@@ -31,7 +31,7 @@ copyright = '2022, Maxwell T. Hansen'
 author = 'Maxwell T. Hansen'
 
 # The full version, including alpha/beta/rc tags
-release = str(ampyl.__version__)
+# release = str(ampyl.__version__)
 
 # -- General configuration ---------------------------------------------------
 
