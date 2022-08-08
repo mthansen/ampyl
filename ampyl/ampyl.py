@@ -39,9 +39,9 @@ from scipy.linalg import block_diag
 import warnings
 import functools
 from copy import deepcopy
-from group_theory import Groups
-from group_theory import Irreps
-from qc_functions import QCFunctions
+from .group_theory import Groups
+from .group_theory import Irreps
+from .qc_functions import QCFunctions
 warnings.simplefilter('always')
 
 PI = np.pi
