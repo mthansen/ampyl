@@ -61,7 +61,7 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 # a list of builtin themes.
 #
 # html_theme = 'press'
-html_title = project + ' version ' + release
+html_title = project + ' version ' #+ release
 html_theme = 'sphinxdoc'
 html_theme_options = {
     # 'nosidebar': True,
