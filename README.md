@@ -38,16 +38,18 @@ import ampyl
 import numpy as np
 import ampyl
 
-fc = ampyl.FlavorChannel(3)  # single 3-particle channel
+# single 3-particle channel
+fc = ampyl.FlavorChannel(3)
 fcs = ampyl.FlavorChannelSpace(fc_list=[fc])
 
-fvs = ampyl.FiniteVolumeSetup()  # finite volume set-up
-tbis = ampyl.ThreeBodyInteractionScheme()  # three-body interaction scheme
+fvs = ampyl.FiniteVolumeSetup()
+tbis = ampyl.ThreeBodyInteractionScheme()
 
-qcis = ampyl.QCIndexSpace(fcs=fcs, fvs=fvs, tbis=tbis, Emax=5.0, Lmax=6.0)
-qc = ampyl.QC(qcis=qcis)  # quantization condition
+qcis = ampyl.QCIndexSpace(fcs=fcs, fvs=fvs,
+                          tbis=tbis, Emax=5.0, Lmax=6.0)
+qc = ampyl.QC(qcis=qcis)
 
-k_params = qcis.default_k_params()  # K-matrix parameters
+k_params = qcis.default_k_params()
 
 L = 5.0
 E_vals = np.arange(3.01, 4., 0.1)
