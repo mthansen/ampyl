@@ -46,7 +46,8 @@ fvs = ampyl.FiniteVolumeSetup()
 tbis = ampyl.ThreeBodyInteractionScheme()
 
 qcis = ampyl.QCIndexSpace(fcs=fcs, fvs=fvs,
-                          tbis=tbis, Emax=5.0, Lmax=6.0)
+                          tbis=tbis,
+                          Emax=5.0, Lmax=6.0)
 qc = ampyl.QC(qcis=qcis)
 
 k_params = qcis.default_k_params()
