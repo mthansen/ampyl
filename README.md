@@ -1,6 +1,6 @@
 [![Build/Test](https://github.com/mthansen/ampyl/workflows/Build/Test/badge.svg)](https://github.com/mthansen/ampyl/actions?query=workflow%3ABuild%2FTest)
 ![Build Doc](https://github.com/mthansen/ampyl/workflows/Build%20Doc/badge.svg)
-[![codecov](https://codecov.io/gh/mthansen/ampyl/branch/main/graph/badge.svg?token=TQAK8EXPDE)](https://codecov.io/gh/mthansen/chatter)
+[![codecov](https://codecov.io/gh/mthansen/ampyl/branch/main/graph/badge.svg?token=IR43OJAV6T)](https://codecov.io/gh/mthansen/ampyl)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 <img src="/doc/ampyl-logo.png" width="25%">
