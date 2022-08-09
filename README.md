@@ -50,5 +50,7 @@ qc = ampyl.QC(qcis=qcis)
 
 k_params = qcis.default_k_params()
 k_params[0][0][0] = 0.1
-qc.get_value(E=3.03182, L=5.0, k_params=k_params, irrep=('A1PLUS', 0))
+qc.get_value(E=3.03182, L=5.0,
+             k_params=k_params,
+             irrep=('A1PLUS', 0))
 ```
