@@ -1,7 +1,7 @@
 ampyl |release|
 =================
 
-A Python library to relate finite-volume data to amplitudes.
+A Python package to relate finite-volume data to amplitudes.
 
 Authors
 -------
