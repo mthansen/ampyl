@@ -1,4 +1,4 @@
-[![Build/Test](https://github.com/mthansen/ampyl/workflows/Build/Test/badge.svg)](https://github.com/mthansen/ampyl/actions?query=workflow%3ABuild%2FTest)
+    [![Build/Test](https://github.com/mthansen/ampyl/workflows/Build/Test/badge.svg)](https://github.com/mthansen/ampyl/actions?query=workflow%3ABuild%2FTest)
 ![Build Doc](https://github.com/mthansen/ampyl/workflows/Build%20Doc/badge.svg)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
@@ -40,7 +40,6 @@ import ampyl
 # single 3-particle channel
 fc = ampyl.FlavorChannel(3)
 fcs = ampyl.FlavorChannelSpace(fc_list=[fc])
-
 fvs = ampyl.FiniteVolumeSetup()
 tbis = ampyl.ThreeBodyInteractionScheme()
 
@@ -50,12 +49,6 @@ qcis = ampyl.QCIndexSpace(fcs=fcs, fvs=fvs,
 qc = ampyl.QC(qcis=qcis)
 
 k_params = qcis.default_k_params()
-
-L = 5.0
-E_vals = np.arange(3.01, 4., 0.1)
-qc_vals = np.array([])
-for E in Evals:
-    qc_tmp = qc.get_value(E, L, k_params, irrep='A1PLUS')
-    qc_vals = np.append(qc_vals, qc_tmp)
-print(np.array([E_vals, qc_vals].T))
+k_params[0][0][0] = 0.1
+qc.get_value(E=3.03182, L=5.0, k_params=k_params, irrep=('A1PLUS', 0))
 ```
