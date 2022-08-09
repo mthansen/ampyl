@@ -1802,6 +1802,17 @@ class QCIndexSpace:
                       np.mod(ibest, len(Evals))], 10))
         return ibest
 
+    def default_k_params(self):
+        """Get the default k-matrix parameters."""
+        pcotdelta_parameter_list = [[]]
+        for sc in self.fcs.sc_list:
+            for n_params in sc.n_params_set:
+                pcotdelta_parameter_list = pcotdelta_parameter_list\
+                    + [[0.0]*n_params]
+        pcotdelta_parameter_list = pcotdelta_parameter_list[1:]
+        k3_params = [0.0]
+        return [pcotdelta_parameter_list, k3_params]
+
     def __str__(self):
         """Summary of the QCIndexSpace."""
         strtmp = "QCIndexSpace containing:\n"
@@ -2039,7 +2050,23 @@ class G:
                 g_block_tmp = np.block(g_inner)
                 g_outer_row = g_outer_row+[g_block_tmp]
             g_final = g_final+[g_outer_row]
-        g_final = np.block(g_final[1:])
+        g_final = g_final[1:]
+        rowsizes = [0]*len(g_final)
+        colsizes = [0]*len(g_final)
+        for i in range(len(g_final)):
+            for j in range(len(g_final)):
+                shtmp = g_final[i][j].shape
+                if shtmp != (0,):
+                    if shtmp[0] > rowsizes[i]:
+                        rowsizes[i] = shtmp[0]
+                    if shtmp[1] > colsizes[j]:
+                        colsizes[j] = shtmp[1]
+        for i in range(len(g_final)):
+            for j in range(len(g_final)):
+                shtmp = g_final[i][j].shape
+                if shtmp != (rowsizes[i], colsizes[j]):
+                    g_final[i][j] = np.zeros((rowsizes[i], colsizes[j]))
+        g_final = np.block(g_final)
         return g_final
 
 
@@ -2384,14 +2411,14 @@ class QC:
         hard cutoff used in the zeta functions.
     """
 
-    def __init__(self, qcis=None, C1cut=3, alphaKSS=1.0):
+    def __init__(self, qcis=None, C1cut=5, alphaKSS=1.0):
         self.qcis = qcis
         self.f = F(qcis=self.qcis, alphaKSS=alphaKSS, C1cut=C1cut)
         self.g = G(qcis=self.qcis)
         self.k = K(qcis=self.qcis)
 
     def get_value(self, E=None, L=None, k_params=None, project=True,
-                  irrep=None, version='standard',
+                  irrep=None, version='kdf_zero_1+',
                   rescale=1.0):
         """Get value."""
         if E is None:
