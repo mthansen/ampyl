@@ -43,21 +43,21 @@ class TestFlavorChannel(unittest.TestCase):
 
     def get_g_abbreviated(self, E, nP, L, kentry_row, kentry_col,
                           ell_row, mazi_row, ell_col, mazi_col):
-        """Get G abbreviated."""
+        """Get G, abbreviated form."""
         masses = [1.0]*3
         alphabeta = [-1.0, 0.0]
-        gtmp = ampyl.QCFunctions.getG_single_entry(E, nP, L,
-                                                   kentry_row, kentry_col,
-                                                   ell_row, mazi_row,
-                                                   ell_col, mazi_col,
-                                                   *masses, *alphabeta,
-                                                   False,
-                                                   'relativistic pole',
-                                                   'hermitian, real harmonics')
-        return gtmp
+        G = ampyl.QCFunctions.getG_single_entry(E, nP, L,
+                                                kentry_row, kentry_col,
+                                                ell_row, mazi_row,
+                                                ell_col, mazi_col,
+                                                *masses, *alphabeta,
+                                                False,
+                                                'relativistic pole',
+                                                'hermitian, real harmonics')
+        return G
 
-    def get_value_direct(self, E, nP, L,
-                         kellm_space_row, kellm_space_col, fcs):
+    def get_value_direct(self, E, nP, L, kellm_space_row, kellm_space_col,
+                         fcs):
         """Get G matrix in a direct way."""
         G_direct = [[]]
         for kellm_entry_row in kellm_space_row:
@@ -86,9 +86,19 @@ class TestFlavorChannel(unittest.TestCase):
         tbis = ampyl.ThreeBodyInteractionScheme()
         qcis = ampyl.QCIndexSpace(fcs=fcs, fvs=fvs, tbis=tbis,
                                   Emax=5.0, Lmax=7.0)
+
+        self.epsilon = 1.0e-15
+
         self.qcis = qcis
         self.fcs = fcs
         self.g = ampyl.G(qcis=qcis)
+
+        fvs = ampyl.FiniteVolumeSetup(nP=np.array([0, 0, 1]))
+        tbis = ampyl.ThreeBodyInteractionScheme()
+        qcis_001 = ampyl.QCIndexSpace(fcs=fcs, fvs=fvs, tbis=tbis,
+                                      Emax=5.0, Lmax=7.0)
+        self.qcis_001 = qcis_001
+        self.g_001 = ampyl.G(qcis=qcis_001)
 
     def tearDown(self):
         """Execute tear-down."""
@@ -101,7 +111,16 @@ class TestFlavorChannel(unittest.TestCase):
                                          self.qcis.kellm_spaces[0][0],
                                          self.qcis.kellm_spaces[0][0],
                                          self.fcs)
-        self.assertTrue((G-G_direct < 1.0e-15).all())
+        self.assertTrue((G-G_direct < self.epsilon).all())
+
+    def test_g_two(self):
+        """Test G, second test."""
+        G = self.g_001.get_value(5.0, 7.0)
+        G_direct = self.get_value_direct(5.0, np.array([0, 0, 1]), 7.0,
+                                         self.qcis_001.kellm_spaces[0][0],
+                                         self.qcis_001.kellm_spaces[0][0],
+                                         self.fcs)
+        self.assertTrue((G-G_direct < self.epsilon).all())
 
 
 class Template(unittest.TestCase):
