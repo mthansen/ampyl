@@ -33,9 +33,6 @@ Created July 2022.
 #
 ###############################################################################
 
-import os
-import sys
-sys.path.append(os.path.abspath('.')+'/../ampyl')
 import numpy as np
 import unittest
 import ampyl
