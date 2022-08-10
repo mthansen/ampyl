@@ -22,8 +22,7 @@ Copyright (C) 2022, Maxwell T. Hansen
 
 The NumPy package is required to use AmPyL. The latest version AmPyL can be installed locally, e.g. using `pip`:
 
-```
-git clone https://github.com/mthansen/ampyl
+```git clone https://github.com/mthansen/ampyl
 cd ampyl
 pip install .
 
@@ -34,8 +33,7 @@ import ampyl
 
 ## Example
 
-```
-import numpy as np
+```import numpy as np
 import ampyl
 
 # single 3-particle channel
@@ -50,8 +48,14 @@ qcis = ampyl.QCIndexSpace(fcs=fcs, fvs=fvs,
 qc = ampyl.QC(qcis=qcis)
 
 k_params = qcis.default_k_params()
+# k_params default is [[[0.0]], [0.0]]
+# first entry is the scattering length
+# second entry is kdf
 k_params[0][0][0] = 0.1
 qc.get_value(E=3.03182, L=5.0,
              k_params=k_params,
              irrep=('A1PLUS', 0))
+# returns a small value, indicating the
+# E, L pair is close to a finite-volume
+# energy
 ```
