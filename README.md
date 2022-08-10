@@ -54,10 +54,13 @@ k_params = qcis.default_k_params()
 # first entry is the scattering length
 # second entry is kdf
 k_params[0][0][0] = 0.1
+qc.get_value(E=3.03181, L=5.0,
+             k_params=k_params,
+             irrep=('A1PLUS', 0))
 qc.get_value(E=3.03182, L=5.0,
              k_params=k_params,
              irrep=('A1PLUS', 0))
-# returns a small value, indicating the
-# E, L pair is close to a finite-volume
-# energy
+# Returns small values with opposite signs,
+# indicating the solution is between the
+# energies indicated.
 ```
