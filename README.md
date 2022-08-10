@@ -5,9 +5,9 @@
 
 <img src="/doc/ampyl-logo.png" width="25%">
 
-A Python library to relate finite-volume data to amplitudes.
+A Python package to relate finite-volume data to amplitudes.
 
-The name AmPyL stands for **Am**plitdues via **Py**thon from finite-volume (**L**). The package requires python version 3.8.x or newer.
+The name AmPyL ("am-pie-ell") stands for **Am**plitdues via **Py**thon from finite-volume (**L**). The package requires python version 3.8.x or newer.
 
 - **Website:** https://github.com/mthansen/ampyl
 - **Documentation:** https://mthansen.github.io/ampyl/
@@ -22,7 +22,8 @@ Copyright (C) 2022, Maxwell T. Hansen
 
 The NumPy package is required to use AmPyL. The latest version AmPyL can be installed locally, e.g. using `pip`:
 
-```git clone https://github.com/mthansen/ampyl
+```python
+git clone https://github.com/mthansen/ampyl
 cd ampyl
 pip install .
 
@@ -33,7 +34,8 @@ import ampyl
 
 ## Example
 
-```import numpy as np
+```python
+import numpy as np
 import ampyl
 
 # single 3-particle channel
