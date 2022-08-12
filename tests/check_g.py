@@ -104,6 +104,72 @@ class TestFlavorChannel(unittest.TestCase):
         """Execute tear-down."""
         pass
 
+    def test_g_zero(self):
+        """Test G."""
+        E = 4.0
+        nP = np.array([0, 0, 0])
+        L = 5.0
+        kentry_row = nP
+        kentry_col = nP
+        ell_row = 0
+        mazi_row = 0
+        ell_col = 0
+        mazi_col = 0
+        m = 1.0
+        masses = [m]*3
+        alphabeta = [-1.0, 0.0]
+        G = ampyl.QCFunctions.getG_single_entry(E, nP, L,
+                                                kentry_row, kentry_col,
+                                                ell_row, mazi_row,
+                                                ell_col, mazi_col,
+                                                *masses, *alphabeta,
+                                                False,
+                                                'relativistic pole',
+                                                'hermitian, real harmonics')
+        smpl = 1./(2.*m*L**3)
+        covpole = 1./((E-2.*m)**2-m**2)
+        G_direct = smpl**2*covpole
+        self.assertTrue(np.abs(G-G_direct) < self.epsilon)
+
+        G = ampyl.QCFunctions.getG_single_entry(E, nP, L,
+                                                kentry_row, kentry_col,
+                                                ell_row, mazi_row,
+                                                ell_col, mazi_col,
+                                                *masses, *alphabeta,
+                                                False,
+                                                'original pole',
+                                                'hermitian, real harmonics')
+        smpl_nv = 1./(2.*m)
+        pole = 1./(E-3.*m)
+        G_direct = smpl**2*pole*smpl_nv
+        self.assertTrue(np.abs(G-G_direct) < self.epsilon)
+
+        E = 6.0
+        nP = np.array([0, 0, 1])
+        L = 10.0
+        kentry_row = np.array([0, 1, 1])
+        kentry_col = np.array([1, 0, 0])
+        m = 1.5
+        masses = [m]*3
+        alphabeta = [-1.0, 0.0]
+        G = ampyl.QCFunctions.getG_single_entry(E, nP, L,
+                                                kentry_row, kentry_col,
+                                                ell_row, mazi_row,
+                                                ell_col, mazi_col,
+                                                *masses, *alphabeta,
+                                                False,
+                                                'relativistic pole',
+                                                'hermitian, real harmonics')
+        om_1 = np.sqrt(m**2+(2.*np.pi/L)**2*(kentry_row@kentry_row))
+        om_2 = np.sqrt(m**2+(2.*np.pi/L)**2*(kentry_col@kentry_col))
+        om_3 = np.sqrt(m**2+(2.*np.pi/L)**2*((nP-kentry_row-kentry_col)
+                                             @ (nP-kentry_row-kentry_col)))
+        smpl_a = 1./(2.*om_1*L**3)
+        smpl_b = 1./(2.*om_2*L**3)
+        covpole = 1./((E-om_1-om_2)**2-om_3**2)
+        G_direct = smpl_a*smpl_b*covpole
+        self.assertTrue(np.abs(G-G_direct) < self.epsilon)
+
     def test_g_one(self):
         """Test G, first test."""
         G = self.g.get_value(5.0, 7.0)
