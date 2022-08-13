@@ -44,8 +44,8 @@ class TestFlavorChannel(unittest.TestCase):
     def get_g_abbreviated(self, E, nP, L, kentry_row, kentry_col,
                           ell_row, mazi_row, ell_col, mazi_col):
         """Get G, abbreviated form."""
-        masses = [1.0]*3
-        alphabeta = [-1.0, 0.0]
+        masses = [1.]*3
+        alphabeta = [-1., 0.]
         G = ampyl.QCFunctions.getG_single_entry(E, nP, L,
                                                 kentry_row, kentry_col,
                                                 ell_row, mazi_row,
@@ -85,7 +85,7 @@ class TestFlavorChannel(unittest.TestCase):
         fvs = ampyl.FiniteVolumeSetup()
         tbis = ampyl.ThreeBodyInteractionScheme()
         qcis = ampyl.QCIndexSpace(fcs=fcs, fvs=fvs, tbis=tbis,
-                                  Emax=5.0, Lmax=7.0)
+                                  Emax=5., Lmax=7.)
 
         self.epsilon = 1.0e-15
 
@@ -96,7 +96,7 @@ class TestFlavorChannel(unittest.TestCase):
         fvs = ampyl.FiniteVolumeSetup(nP=np.array([0, 0, 1]))
         tbis = ampyl.ThreeBodyInteractionScheme()
         qcis_001 = ampyl.QCIndexSpace(fcs=fcs, fvs=fvs, tbis=tbis,
-                                      Emax=5.0, Lmax=7.0)
+                                      Emax=5., Lmax=7.)
         self.qcis_001 = qcis_001
         self.g_001 = ampyl.G(qcis=qcis_001)
 
@@ -106,18 +106,18 @@ class TestFlavorChannel(unittest.TestCase):
 
     def test_g_zero(self):
         """Test G."""
-        E = 4.0
+        E = 4.
         nP = np.array([0, 0, 0])
-        L = 5.0
+        L = 5.
         kentry_row = nP
         kentry_col = nP
         ell_row = 0
         mazi_row = 0
         ell_col = 0
         mazi_col = 0
-        m = 1.0
+        m = 1.
         masses = [m]*3
-        alphabeta = [-1.0, 0.0]
+        alphabeta = [-1., 0.]
         G = ampyl.QCFunctions.getG_single_entry(E, nP, L,
                                                 kentry_row, kentry_col,
                                                 ell_row, mazi_row,
@@ -144,14 +144,14 @@ class TestFlavorChannel(unittest.TestCase):
         G_direct = smpl**2*pole*smpl_nv
         self.assertTrue(np.abs(G-G_direct) < self.epsilon)
 
-        E = 6.0
+        E = 6.
         nP = np.array([0, 0, 1])
-        L = 10.0
+        L = 10.
         kentry_row = np.array([0, 1, 1])
         kentry_col = np.array([1, 0, 0])
         m = 1.5
         masses = [m]*3
-        alphabeta = [-1.0, 0.0]
+        alphabeta = [-1., 0.]
         G = ampyl.QCFunctions.getG_single_entry(E, nP, L,
                                                 kentry_row, kentry_col,
                                                 ell_row, mazi_row,
@@ -170,10 +170,36 @@ class TestFlavorChannel(unittest.TestCase):
         G_direct = smpl_a*smpl_b*covpole
         self.assertTrue(np.abs(G-G_direct) < self.epsilon)
 
+        E = 3.
+        m = 1.
+        masses = [m]*3
+        alphabeta = [-1., 0.]
+        G = ampyl.QCFunctions.getG_single_entry(E, nP, L,
+                                                kentry_row, kentry_col,
+                                                ell_row, mazi_row,
+                                                ell_col, mazi_col,
+                                                *masses, *alphabeta,
+                                                False,
+                                                'relativistic pole',
+                                                'hermitian, real harmonics')
+        om_1 = np.sqrt(m**2+(2.*np.pi/L)**2*(kentry_row@kentry_row))
+        om_2 = np.sqrt(m**2+(2.*np.pi/L)**2*(kentry_col@kentry_col))
+        om_3 = np.sqrt(m**2+(2.*np.pi/L)**2*((nP-kentry_row-kentry_col)
+                                             @ (nP-kentry_row-kentry_col)))
+        smpl_a = 1./(2.*om_1*L**3)
+        smpl_b = 1./(2.*om_2*L**3)
+        covpole = 1./((E-om_1-om_2)**2-om_3**2)
+        E2rowSQ = (E-om_1)**2-(2.*np.pi/L)**2*(nP-kentry_row)@(nP-kentry_row)
+        E2colSQ = (E-om_2)**2-(2.*np.pi/L)**2*(nP-kentry_col)@(nP-kentry_col)
+        HH = ampyl.BKFunctions.J_slow(E2rowSQ/(2.*m)**2)\
+            * ampyl.BKFunctions.J_slow(E2colSQ/(2.*m)**2)
+        G_direct = smpl_a*smpl_b*covpole*HH
+        self.assertTrue(np.abs(G-G_direct) < self.epsilon)
+
     def test_g_one(self):
         """Test G, first test."""
-        G = self.g.get_value(5.0, 7.0)
-        G_direct = self.get_value_direct(5.0, np.array([0, 0, 0]), 7.0,
+        G = self.g.get_value(5., 7.)
+        G_direct = self.get_value_direct(5., np.array([0, 0, 0]), 7.,
                                          self.qcis.kellm_spaces[0][0],
                                          self.qcis.kellm_spaces[0][0],
                                          self.fcs)
@@ -181,8 +207,8 @@ class TestFlavorChannel(unittest.TestCase):
 
     def test_g_two(self):
         """Test G, second test."""
-        G = self.g_001.get_value(5.0, 7.0)
-        G_direct = self.get_value_direct(5.0, np.array([0, 0, 1]), 7.0,
+        G = self.g_001.get_value(5., 7.)
+        G_direct = self.get_value_direct(5., np.array([0, 0, 1]), 7.,
                                          self.qcis_001.kellm_spaces[0][0],
                                          self.qcis_001.kellm_spaces[0][0],
                                          self.fcs)
@@ -205,7 +231,7 @@ class Template(unittest.TestCase):
 
     def test(self):
         """Example test."""
-        self.assertEqual(10.0, self.__example(10.0))
+        self.assertEqual(10., self.__example(10.))
 
 
 unittest.main()

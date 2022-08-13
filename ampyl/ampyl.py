@@ -42,6 +42,7 @@ from copy import deepcopy
 from .group_theory import Groups
 from .group_theory import Irreps
 from .qc_functions import QCFunctions
+from .qc_functions import BKFunctions
 warnings.simplefilter('always')
 
 PI = np.pi
