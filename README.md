@@ -53,7 +53,7 @@ k_params = qcis.default_k_params()
 # k_params default is [[[0.0]], [0.0]]
 # first entry is the scattering length
 # second entry is kdf (3-body
-interaction):
+# interaction):
 k_params[0][0][0] = 0.1
 qc.get_value(E=3.03181, L=5.0,
              k_params=k_params,
