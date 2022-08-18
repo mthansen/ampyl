@@ -20,7 +20,9 @@ Created July 2022.
 #
 import os
 import sys
-sys.path.append(os.path.abspath('.')+'/../ampyl')
+cwd=os.getcwd()
+p=f'{cwd}/../'
+
 import ampyl
 
 
@@ -31,7 +33,7 @@ copyright = '2022, Maxwell T. Hansen'
 author = 'Maxwell T. Hansen'
 
 # The full version, including alpha/beta/rc tags
-# release = str(ampyl.__version__)
+release = str(ampyl.__version__)
 
 # -- General configuration ---------------------------------------------------
 
@@ -50,10 +52,15 @@ extensions = [
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
 
+# The master toctree document.
+master_doc = 'index'
+
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
+
+autosummary_generate = True
 
 # -- Options for HTML output -------------------------------------------------
 
@@ -61,23 +68,27 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 # a list of builtin themes.
 #
 # html_theme = 'press'
-html_title = project + ' version ' #+ release
-html_theme = 'sphinxdoc'
+html_title = project + ' version ' + release
+html_theme = 'jupyter'
+html_theme_path = [p+'/doc']
 html_theme_options = {
     # 'nosidebar': True,
     # 'sidebarwidth': 300,
     'body_max_width': None,
     'navigation_with_keys': True,
 }
+#html_sidebars = {
+#    '**': [
+#        # 'globaltoc.html',
+#        'localtoc.html',
+#        # 'relations.html',
+#        # 'sourcelink.html',
+#        'searchbox.html',
+#    ]
+#}
 html_sidebars = {
-    '**': [
-        # 'globaltoc.html',
-        'localtoc.html',
-        # 'relations.html',
-        # 'sourcelink.html',
-        'searchbox.html',
-    ]
-}
+    '**' : ['localtoc.html','searchbox.html','logo.html']
+    }
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,

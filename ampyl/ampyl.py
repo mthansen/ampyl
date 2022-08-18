@@ -2431,6 +2431,14 @@ class QC:
         if irrep is None:
             raise TypeError("missing required argument 'irrep'")
 
+        if version == 'f3':
+            [pcotdelta_parameter_lists, k3_params] = k_params
+            F = self.f.get_value(E, L, project, irrep)/rescale
+            G = self.g.get_value(E, L, project, irrep)/rescale
+            K = self.k.get_value(E, L, pcotdelta_parameter_lists,
+                                 project, irrep)*rescale
+            return (F/3 - F @ np.linalg.inv(np.linalg.inv(K)+F+G) @ F)
+
         if (len(version) >= 8) and (version[:8] == 'kdf_zero'):
             [pcotdelta_parameter_lists, k3_params] = k_params
             F = self.f.get_value(E, L, project, irrep)/rescale
