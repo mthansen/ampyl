@@ -33,7 +33,7 @@ copyright = '2022, Maxwell T. Hansen'
 author = 'Maxwell T. Hansen'
 
 # The full version, including alpha/beta/rc tags
-release = str(ampyl.__version__)
+# release = str(ampyl.__version__)
 
 # -- General configuration ---------------------------------------------------
 
@@ -68,7 +68,7 @@ autosummary_generate = True
 # a list of builtin themes.
 #
 # html_theme = 'press'
-html_title = project + ' version ' + release
+# html_title = project + ' version ' + release
 html_theme = 'jupyter'
 html_theme_path = [p+'/doc']
 html_theme_options = {
