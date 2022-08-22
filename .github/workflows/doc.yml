@@ -29,7 +29,7 @@ jobs:
           sudo apt-get install pandoc
 
       - name: Deploy
-        uses: mthansen/deploy-sphinx-doc@v0.1
+        uses: mbruno46/deploy-sphinx-doc@v0.1
         with:
           path: doc
           doc-branch: 'documentation'
