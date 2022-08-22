@@ -96,7 +96,7 @@ html_theme_options = {
         # an arbitrary url.        
         'navbar_links' : [
             ('Introduction','intro/index'),
-            ('Documentation','pyobs/index')],
+            ('Documentation','ampyl/index')],
 
 
         'navbar_title' : ' ',
