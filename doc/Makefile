@@ -22,5 +22,5 @@ help:
 html: Makefile
 	@$(SPHINXBUILD) -M html "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS)
 	@if [ ! -d "$(BUILDDIR)/html/_images" ]; then mkdir "$(BUILDDIR)/html/_images"; fi
-	@cp -p $(SOURCEDIR)/pyobs-logo.png $(BUILDDIR)/html/_images
+	@cp -p $(SOURCEDIR)/ampyl-logo.png $(BUILDDIR)/html/_images
 	@touch "$(BUILDDIR)/html/.nojekyll"
