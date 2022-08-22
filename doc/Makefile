@@ -1,3 +1,8 @@
+# Minimal makefile for Sphinx documentation
+#
+
+# You can set these variables from the command line, and also
+# from the environment for the first two.
 SPHINXOPTS    ?=
 SPHINXBUILD   ?= sphinx-build
 SOURCEDIR     = .
@@ -13,3 +18,9 @@ help:
 # "make mode" option.  $(O) is meant as a shortcut for $(SPHINXOPTS).
 %: Makefile
 	@$(SPHINXBUILD) -M $@ "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
+
+html: Makefile
+	@$(SPHINXBUILD) -M html "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS)
+	@if [ ! -d "$(BUILDDIR)/html/_images" ]; then mkdir "$(BUILDDIR)/html/_images"; fi
+	@cp -p $(SOURCEDIR)/pyobs-logo.png $(BUILDDIR)/html/_images
+	@touch "$(BUILDDIR)/html/.nojekyll"
