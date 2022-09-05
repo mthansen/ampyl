@@ -1317,34 +1317,35 @@ class QCIndexSpace:
 
         if fcs is None:
             if verbosity == 2:
-                print('Setting flavor-channel space, None was passed.')
+                print('setting the flavor-channel space, None was passed')
             self._fcs = FlavorChannelSpace(fc_list=[FlavorChannel(3)])
         else:
             if verbosity == 2:
-                print('Setting flavor-channel space.')
+                print('setting the flavor-channel space')
             self._fcs = fcs
 
         if fvs is None:
             if verbosity == 2:
-                print('Setting finite-volume setup, None was passed.')
+                print('setting the finite-volume setup, None was passed')
             self.fvs = FiniteVolumeSetup()
         else:
             if verbosity == 2:
-                print('Setting finite-volume setup.')
+                print('setting the finite-volume setup')
             self.fvs = fvs
 
         if tbis is None:
             if verbosity == 2:
-                print('Setting three-body interaction scheme, None was passed')
+                print('setting the three-body interaction scheme, '
+                      + 'None was passed')
             self.tbis = ThreeBodyInteractionScheme()
         else:
             if verbosity == 2:
-                print('Setting three-body interaction scheme.')
+                print('setting the three-body interaction scheme')
             self.tbis = tbis
 
         self._nP = self.fvs.nP
         if verbosity == 2:
-            print('Setting nP to '+str(self.fvs.nP)+'.')
+            print('setting nP to '+str(self.fvs.nP))
         self.nP = self.fvs.nP
         self.fcs = self._fcs
         self.Emax = Emax
@@ -1430,8 +1431,8 @@ class QCIndexSpace:
         self.tbks_list = tbks_list_tmp
         self._fcs = fcs
 
-    def _get_nPspecmax(self, slice_index):
-        sc = self.fcs.sc_list[self.fcs.three_slices[slice_index][0]]
+    def _get_nPspecmax(self, three_slice_index):
+        sc = self.fcs.sc_list[self.fcs.three_slices[three_slice_index][0]]
         if sc.fc.explicit_flavor_channel:
             mspec = sc.fc.masses[sc.indexing[0]]
         elif sc.fc.isospin_channel:
@@ -1467,32 +1468,33 @@ class QCIndexSpace:
                         )**2))/(2.*FOURPI2*(EmaxSQ*Lmax**2-FOURPI2*nPSQ))
                 return nPspecmax
 
-    def populate_nvec_arr_slot(self, slice_index):
+    def populate_nvec_arr_slot(self, three_slice_index):
         """Populate a given nvec_arr slot."""
         if self.fcs.n_three_slices != 1:
             raise ValueError('n_three_slices different from one not yet '
                              + 'supported')
-        if slice_index != 0:
-            raise ValueError('slice_index != 0 not yet supported')
+        if three_slice_index != 0:
+            raise ValueError('three_slice_index != 0 not yet supported')
         if (self.nP == np.array([0, 0, 0])).all():
             if self.verbosity >= 2:
-                print("populating nvec array, slice_index = ", slice_index)
-            nPspecmax = self._get_nPspecmax(slice_index)
-            if isinstance(self.tbks_list[slice_index], list):
-                tbks_tmp = self.tbks_list[slice_index][0]
+                print("populating nvec array, three_slice_index = ",
+                      str(three_slice_index))
+            nPspecmax = self._get_nPspecmax(three_slice_index)
+            if isinstance(self.tbks_list[three_slice_index], list):
+                tbks_tmp = self.tbks_list[three_slice_index][0]
                 if self.verbosity >= 2:
-                    print("self.tbks_list[slice_index] is a list,",
+                    print("self.tbks_list[three_slice_index] is a list,",
                           "taking first entry")
             else:
-                tbks_tmp = self.tbks_list[slice_index]
+                tbks_tmp = self.tbks_list[three_slice_index]
                 if self.verbosity >= 2:
-                    print("self.tbks_list[slice_index] is not a list")
+                    print("self.tbks_list[three_slice_index] is not a list")
             tbks_copy = deepcopy(tbks_tmp)
             tbks_copy.verbosity = self.verbosity
-            self.tbks_list[slice_index] = [tbks_copy]
+            self.tbks_list[three_slice_index] = [tbks_copy]
             nPspec = nPspecmax
             if self.verbosity >= 2:
-                print("Populating up to nPspecmax = ", nPspecmax)
+                print("populating up to nPspecmax = "+str(nPspecmax))
             while nPspec > 0:
                 if self.verbosity >= 2:
                     print("nPspec**2 = ", int(nPspec**2))
@@ -1501,42 +1503,43 @@ class QCIndexSpace:
                 nvec_arr = np.vstack([y.flat for y in mesh]).T
                 carr = (nvec_arr*nvec_arr).sum(1) > nPspec**2
                 nvec_arr = np.delete(nvec_arr, np.where(carr), axis=0)
-                self.tbks_list[slice_index][-1].nvec_arr = nvec_arr
+                self.tbks_list[three_slice_index][-1].nvec_arr = nvec_arr
                 if self.verbosity >= 2:
-                    print(self.tbks_list[slice_index][-1])
+                    print(self.tbks_list[three_slice_index][-1])
                 tbks_copy = deepcopy(tbks_tmp)
                 tbks_copy.verbosity = self.verbosity
-                self.tbks_list[slice_index] = self.tbks_list[slice_index]\
-                    + [tbks_copy]
+                self.tbks_list[three_slice_index] =\
+                    self.tbks_list[three_slice_index] + [tbks_copy]
                 nPspecSQ = nPspec**2-1.0
                 if nPspecSQ >= 0.0:
                     nPspec = np.sqrt(nPspecSQ)
                 else:
                     nPspec = -1.0
-            self.tbks_list[slice_index] = self.tbks_list[slice_index][:-1]
+            self.tbks_list[three_slice_index] =\
+                self.tbks_list[three_slice_index][:-1]
         else:
-            nPspecmax = self._get_nPspecmax(slice_index)
-            if isinstance(self.tbks_list[slice_index], list):
-                tbks_tmp = self.tbks_list[slice_index][0]
+            nPspecmax = self._get_nPspecmax(three_slice_index)
+            if isinstance(self.tbks_list[three_slice_index], list):
+                tbks_tmp = self.tbks_list[three_slice_index][0]
                 if self.verbosity >= 2:
-                    print("self.tbks_list[slice_index] is a list,",
+                    print("self.tbks_list[three_slice_index] is a list,",
                           "taking first entry")
             else:
-                tbks_tmp = self.tbks_list[slice_index]
+                tbks_tmp = self.tbks_list[three_slice_index]
                 if self.verbosity >= 2:
-                    print("self.tbks_list[slice_index] is not a list")
+                    print("self.tbks_list[three_slice_index] is not a list")
             rng = range(-int(nPspecmax), int(nPspecmax)+1)
             mesh = np.meshgrid(*([rng]*3))
             nvec_arr = np.vstack([y.flat for y in mesh]).T
 
             tbks_copy = deepcopy(tbks_tmp)
             tbks_copy.verbosity = self.verbosity
-            self.tbks_list[slice_index] = [tbks_copy]
+            self.tbks_list[three_slice_index] = [tbks_copy]
             Lmax = self.Lmax
             Emax = self.Emax
             sc_compact_three_subspace\
                 = self.fcs.sc_compact[self.fcs.three_index]
-            masses = sc_compact_three_subspace[slice_index][1:4]
+            masses = sc_compact_three_subspace[three_slice_index][1:4]
             mspec = masses[0]
             nP = self.nP
             deltaL = 0.9
@@ -1566,19 +1569,22 @@ class QCIndexSpace:
                     if self.verbosity >= 2:
                         print("L = ", np.round(Ltmp, 10),
                               ", E = ", np.round(Etmp, 10))
-                    self.tbks_list[slice_index][-1].nvec_arr = nvec_arr_tmp
+                    self.tbks_list[three_slice_index][-1].nvec_arr\
+                        = nvec_arr_tmp
                     if self.verbosity >= 2:
-                        print(self.tbks_list[slice_index][-1])
+                        print(self.tbks_list[three_slice_index][-1])
                     tbks_copy = deepcopy(tbks_tmp)
                     tbks_copy.verbosity = self.verbosity
-                    self.tbks_list[slice_index] = self.tbks_list[slice_index]\
+                    self.tbks_list[three_slice_index] =\
+                        self.tbks_list[three_slice_index]\
                         + [tbks_copy]
-            self.tbks_list[slice_index] = self.tbks_list[slice_index][:-1]
+            self.tbks_list[three_slice_index] =\
+                self.tbks_list[three_slice_index][:-1]
 
     def populate_all_nvec_arr(self):
         """Populate all nvec_arr slots."""
-        for slice_index in range(self.fcs.n_three_slices):
-            self.populate_nvec_arr_slot(slice_index)
+        for three_slice_index in range(self.fcs.n_three_slices):
+            self.populate_nvec_arr_slot(three_slice_index)
 
     def _get_ell_sets(self):
         ell_sets = [[]]
@@ -1615,6 +1621,7 @@ class QCIndexSpace:
         """Populate all kellm spaces."""
         if self.verbosity >= 2:
             print("populating kellm spaces")
+            print(self.n_channels, "channels to populate")
         kellm_slices = [[]]
         kellm_spaces = [[]]
         for cindex in range(self.n_channels):
@@ -1641,6 +1648,7 @@ class QCIndexSpace:
         self.kellm_slices = kellm_slices[1:]
         if self.verbosity >= 2:
             print("result for kellm spaces")
+            print("location: channel index, nvec-space index")
             np.set_printoptions(threshold=20)
             for i in range(len(self.kellm_spaces)):
                 for j in range(len(self.kellm_spaces[i])):
@@ -1653,6 +1661,9 @@ class QCIndexSpace:
         group = self.group
         sc_proj_dicts = []
         sc_proj_dicts_sliced = [[]]
+        if self.verbosity >= 2:
+            print("getting the dict for following qcis:")
+            print(self)
         for cindex in range(self.n_channels):
             proj_dict = group.get_channel_proj_dict(qcis=self, cindex=cindex)
             sc_proj_dicts = sc_proj_dicts+[proj_dict]
@@ -1795,7 +1806,7 @@ class QCIndexSpace:
                                                 len(Evals)),
                   '+',
                   int(ibest/len(Evals)), '* len(Evals)')
-            print('So Lmaxtmp =',
+            print('so Lmaxtmp =',
                   np.round(Lvals[
                       int(ibest/len(Evals))], 10),
                   'and Emaxtmp =',
@@ -1928,13 +1939,13 @@ class G:
         if project:
             try:
                 if nP@nP != 0:
-                    proj_tmp_right = self.qcis.sc_proj_dicts_sliced[
-                        sc_col_ind][
+                    proj_tmp_right = np.array(self.qcis.sc_proj_dicts_sliced[
+                        sc_col_ind])[
                             mask_col_slices][
                                 col_slice_index][irrep]
                     proj_tmp_left = np.conjugate((
-                            self.qcis.sc_proj_dicts_sliced[
-                                sc_row_ind][
+                            np.array(self.qcis.sc_proj_dicts_sliced[
+                                sc_row_ind])[
                                     mask_row_slices][
                                         row_slice_index][irrep]
                                         ).T)
@@ -1951,6 +1962,27 @@ class G:
             Gshell = proj_tmp_left@Gshell@proj_tmp_right
         return Gshell
 
+    def _clean_shape(self, g_collection):
+        rowsizes = [0]*len(g_collection)
+        colsizes = [0]*len(g_collection)
+
+        for i in range(len(g_collection)):
+            for j in range(len(g_collection)):
+                shtmp = g_collection[i][j].shape
+                if shtmp != (0,):
+                    if shtmp[0] > rowsizes[i]:
+                        rowsizes[i] = shtmp[0]
+                    if shtmp[1] > colsizes[j]:
+                        colsizes[j] = shtmp[1]
+
+        for i in range(len(g_collection)):
+            for j in range(len(g_collection)):
+                shtmp = g_collection[i][j].shape
+                if shtmp == (0,):
+                    g_collection[i][j].shape = (rowsizes[i], colsizes[j])
+
+        return g_collection
+
     def get_value(self, E=5.0, L=5.0, project=False, irrep=None):
         """Build the G matrix in a shell-based way."""
         Lmax = self.qcis.Lmax
@@ -1961,23 +1993,56 @@ class G:
             raise ValueError('get_value called with L > Lmax')
         nP = self.qcis.nP
         if self.qcis.verbosity >= 2:
-            print('Evaluating G using numpy accelerated version')
+            print('evaluating G using numpy accelerated version')
             print('E = ', E, ', nP = ', nP, ', L = ', L)
+
+            print(self.qcis.tbis.three_scheme, ',',
+                  self.qcis.fvs.qc_organization)
+            print('cutoff params:', self.alpha, ',', self.beta)
+
+            if self.qcis.tbis.three_scheme == 'original pole':
+                sf = '1./(2.*w1*w2*L**3)'
+            elif self.qcis.tbis.three_scheme == 'relativistic pole':
+                sf = '1./(2.*w1*L**3)\n    * 1./(E-w1-w3+w2)'
+            else:
+                raise ValueError('three_scheme not recognized')
+            if (self.qcis.fvs.qc_organization == 'hermitian')\
+                or (self.qcis.fvs.qc_organization
+                    == 'hermitian, real harmonics'):
+                sf = sf+'\n    * 1./(2.0*w3*L**3)'
+
+            print('G = YY*H1*H2\n    * '+sf+'\n    * 1./(E-w1-w2-w3)\n')
 
         if self.qcis.fcs.n_three_slices != 1:
             raise ValueError('only n_three_slices = 1 is supported')
         cindex_row = cindex_col = 0
+        if self.qcis.verbosity >= 2:
+            print('representatives of three_slice:')
+            print('    cindex_row =', cindex_row,
+                  ', cindex_col =', cindex_col)
+
+        if not (irrep in self.qcis.proj_dict.keys()):
+            raise ValueError('irrep '+str(irrep)+' not in '
+                             + 'qcis.proj_dict.keys()')
 
         three_compact = self.qcis.fcs.sc_compact[self.qcis.fcs.three_index]
         masses = three_compact[0][1:4]
         [m1, m2, m3] = masses
 
         if nP@nP == 0:
+            if self.qcis.verbosity >= 2:
+                print('nP = [0 0 0] indexing')
             tbks_sub_indices = self.qcis.get_tbks_sub_indices(E=E, L=L)
             tbks_entry = self.qcis.tbks_list[0][
                 tbks_sub_indices[0]]
             slices = tbks_entry.slices
+            if self.qcis.verbosity >= 2:
+                print('tbks_sub_indices =', tbks_sub_indices)
+                print('tbks_entry =', tbks_entry)
+                print('slices =', slices)
         else:
+            if self.qcis.verbosity >= 2:
+                print('nP != [0 0 0] indexing')
             mspec = m1
             ibest = self.qcis._get_ibest(E, L)
             tbks_entry = self.qcis.tbks_list[0][ibest]
@@ -1999,6 +2064,8 @@ class G:
             slices = list((np.array(slices))[mask_slices])
 
         g_final = [[]]
+        if self.qcis.verbosity <= 2:
+            print('iterating over spectator channels, slices')
         for sc_row_ind in range(len(three_compact)):
             g_outer_row = []
             row_ell_set = self.qcis.fcs.sc_list[sc_row_ind].ell_set
@@ -2007,6 +2074,8 @@ class G:
                                  + 'supported in G')
             ell1 = row_ell_set[0]
             for sc_col_ind in range(len(three_compact)):
+                if self.qcis.verbosity <= 2:
+                    print('sc_row_ind, sc_col_ind =', sc_row_ind, sc_col_ind)
                 col_ell_set = self.qcis.fcs.sc_list[sc_col_ind].ell_set
                 if len(col_ell_set) != 1:
                     raise ValueError('only length-one ell_set currently '
@@ -2031,42 +2100,16 @@ class G:
                                                project, irrep)
                         g_inner_row = g_inner_row+[g_tmp]
                     g_inner = g_inner+[g_inner_row]
-                g_inner = g_inner[1:]
 
-                rowsizes = [0]*len(g_inner)
-                colsizes = [0]*len(g_inner)
-                for i in range(len(g_inner)):
-                    for j in range(len(g_inner)):
-                        shtmp = g_inner[i][j].shape
-                        if shtmp != (0,):
-                            if shtmp[0] > rowsizes[i]:
-                                rowsizes[i] = shtmp[0]
-                            if shtmp[1] > colsizes[j]:
-                                colsizes[j] = shtmp[1]
-                for i in range(len(g_inner)):
-                    for j in range(len(g_inner)):
-                        shtmp = g_inner[i][j].shape
-                        if shtmp == (0,):
-                            g_inner[i][j].shape = (rowsizes[i], colsizes[j])
+                g_inner = g_inner[1:]
+                g_inner = self._clean_shape(g_inner)
                 g_block_tmp = np.block(g_inner)
+
                 g_outer_row = g_outer_row+[g_block_tmp]
             g_final = g_final+[g_outer_row]
+
         g_final = g_final[1:]
-        rowsizes = [0]*len(g_final)
-        colsizes = [0]*len(g_final)
-        for i in range(len(g_final)):
-            for j in range(len(g_final)):
-                shtmp = g_final[i][j].shape
-                if shtmp != (0,):
-                    if shtmp[0] > rowsizes[i]:
-                        rowsizes[i] = shtmp[0]
-                    if shtmp[1] > colsizes[j]:
-                        colsizes[j] = shtmp[1]
-        for i in range(len(g_final)):
-            for j in range(len(g_final)):
-                shtmp = g_final[i][j].shape
-                if shtmp != (rowsizes[i], colsizes[j]):
-                    g_final[i][j] = np.zeros((rowsizes[i], colsizes[j]))
+        g_final = self._clean_shape(g_final)
         g_final = np.block(g_final)
         return g_final
 
@@ -2177,7 +2220,7 @@ class F:
             raise ValueError('get_value called with L > Lmax')
         nP = self.qcis.nP
         if self.qcis.verbosity >= 2:
-            print('Evaluating F')
+            print('evaluating F')
             print('E = ', E, ', nP = ', nP, ', L = ', L)
 
         if self.qcis.fcs.n_three_slices != 1:
@@ -2335,7 +2378,7 @@ class K:
             raise ValueError('get_value called with L > Lmax')
         nP = self.qcis.nP
         if self.qcis.verbosity >= 2:
-            print('Evaluating F')
+            print('evaluating F')
             print('E = ', E, ', nP = ', nP, ', L = ', L)
 
         if self.qcis.fcs.n_three_slices != 1:

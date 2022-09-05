@@ -9,7 +9,7 @@ Created July 2022.
 
 ###############################################################################
 #
-# ampyl.py
+# group_theory.py
 #
 # MIT License
 # Copyright (c) 2022 Maxwell T. Hansen
@@ -41,7 +41,7 @@ import spherical
 
 ROOT_THREE = np.sqrt(3.0)
 ROOT_TWO = np.sqrt(2.0)
-EPSPROJ = 1.0e-8
+EPSPROJ = 1.0e-10
 
 
 class Irreps:
@@ -645,20 +645,18 @@ class Groups:
                 + " covers " + str(n_times)+'x'+str(n_dim)+' = '\
                 + str(n_tot)+" slots\n"
             total = total+n_tot
-        summarystr = summarystr+"\nTotal is "+str(total)+" \n"
+        summarystr = summarystr+"\ntotal is "+str(total)+" \n"
         if total == totalsize:
-            summarystr = summarystr+"Total matches size of kellm space"
+            summarystr = summarystr+"total matches size of kellm space"
         else:
-            summarystr = summarystr+"Does not match size of kellm space, "\
+            summarystr = summarystr+"does not match size of kellm space, "\
                 + "something went wrong"
         return best_irreps, summarystr
 
     def get_channel_proj_dict(self, qcis=None, cindex=0):
         """Get the dictionary of small projectors for a given qcis."""
         if qcis.verbosity >= 2:
-            print("Getting the dict for following qcis and channel:")
-            print(qcis)
-            print(cindex)
+            print("getting the dict for channel =", cindex)
         if qcis is None:
             raise ValueError('qcis cannot be None')
         nP = qcis.nP

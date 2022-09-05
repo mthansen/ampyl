@@ -20,3 +20,4 @@ dependency_links.txt
 PKG-INFO
 ampy.egg-info
 index.rst.txt
+*.DS_Store

@@ -1,5 +1,5 @@
-The FlavorChannel observable
---------------------
+FlavorChannel
+-------------
 
 .. autoclass:: ampyl.FlavorChannel
     :members: 

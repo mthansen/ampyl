@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+
 """
 Created July 2022.
 
@@ -8,7 +9,7 @@ Created July 2022.
 
 ###############################################################################
 #
-# ampyl.py
+# qc_functions.py
 #
 # MIT License
 # Copyright (c) 2022 Maxwell T. Hansen
@@ -149,7 +150,7 @@ class BKFunctions:
 
         Parameters
         ----------
-        E2CMSQ (float): squared two-particle CM energy
+        E2CMSQ (float): squared two-particle center-of-mass energy
         threshold (float): value of two-particle threshold
         alpha (float): width parameter (alpha = -1.0 is standard)
         beta (float): shift parameter (beta = 0.0 is standard)
@@ -167,11 +168,12 @@ class BKFunctions:
     @staticmethod
     def phase_space(E2CMSQ=9.0, omk=1.0):
         r"""
-        Two-body phase space with \\[\omega_k\\].
+        Two-body phase space with \\[2\omega_k\\] included.
 
         Parameters
         ----------
-        E2CMSQ (float or np.ndarray): squared two-particle CM energy
+        E2CMSQ (float or np.ndarray): squared two-particle center-of-mass
+            energy
         omk (float or np.ndarray): time-component of four-vector k
 
         Returns
@@ -202,15 +204,15 @@ class BKFunctions:
     def q_one_minus_H(E2CMSQ=9.0, m1=1.0, m2=1.0, alpha=-1.0, beta=0.0,
                       J_slow=False):
         r"""
-        Factor for relating K2 to M2: \\[|q|*(1-H(\\cdots))\\].
+        Extra term for relating K2 to M2: \\[|q|*(1-H(\\cdots))\\].
 
         Parameters
         ----------
-        E2CMSQ (float or np.ndarray): squared two-particle CM energy
+        E2CMSQ (float): squared two-particle center-of-mass energy
         m1 (float or np.ndarray): first mass
         m2 (float or np.ndarray): second mass
-        alpha (float or np.ndarray): width parameter
-        beta (float or np.ndarray): shift parameter
+        alpha (float): width parameter (alpha = -1.0 is standard)
+        beta (float): shift parameter (beta = 0.0 is standard)
 
         Returns
         -------
@@ -232,7 +234,7 @@ class BKFunctions:
         r"""
         Cartesian spherical harmonics.
 
-        Includes \\[\sqrt{4 \pi}\\].
+        Includes multiplicative \\[\sqrt{4 \pi}\\] such that \\[Y_{00}==1\\].
 
         Parameters
         ----------
@@ -259,7 +261,7 @@ class BKFunctions:
         r"""
         Real cartesian spherical harmonics.
 
-        Includes \\[\sqrt{4 \pi}\\].
+        Includes multiplicative \\[\sqrt{4 \pi}\\] such that \\[Y_{00}==1\\].
 
         Parameters
         ----------

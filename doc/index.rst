@@ -15,20 +15,27 @@ under the MIT license.
 .. -------------
 ..
 .. .. toctree::
-..    :maxdepth: 2
-..
+..    :maxdepth: 4
 ..    intro/index
 ..    ampyl/index
 
 Features
 --------
 
-* object-oriented for easy manipulation quantization conditions
+* object-oriented for easy manipulation of...
+
+  -- flavor-channel and other index spaces
+
+  -- finite-volume matrices
+
+  -- quantization conditions
+
+  -- other relevant finite-volume and scattering quantities
 
 Authors
 -------
 
-Copyright (C) 2022, Maxwell T. Hansen
+Maxwell T. Hansen, Copyright (C) 2022
 
 .. Indices and tables
    ==================
