@@ -2021,7 +2021,8 @@ class G:
             print('    cindex_row =', cindex_row,
                   ', cindex_col =', cindex_col)
 
-        if not (irrep in self.qcis.proj_dict.keys()):
+        if (not ((irrep is None) and (project is False))
+           and (not (irrep in self.qcis.proj_dict.keys()))):
             raise ValueError('irrep '+str(irrep)+' not in '
                              + 'qcis.proj_dict.keys()')
 
@@ -2064,7 +2065,7 @@ class G:
             slices = list((np.array(slices))[mask_slices])
 
         g_final = [[]]
-        if self.qcis.verbosity <= 2:
+        if self.qcis.verbosity >= 2:
             print('iterating over spectator channels, slices')
         for sc_row_ind in range(len(three_compact)):
             g_outer_row = []
@@ -2074,7 +2075,7 @@ class G:
                                  + 'supported in G')
             ell1 = row_ell_set[0]
             for sc_col_ind in range(len(three_compact)):
-                if self.qcis.verbosity <= 2:
+                if self.qcis.verbosity >= 2:
                     print('sc_row_ind, sc_col_ind =', sc_row_ind, sc_col_ind)
                 col_ell_set = self.qcis.fcs.sc_list[sc_col_ind].ell_set
                 if len(col_ell_set) != 1:
