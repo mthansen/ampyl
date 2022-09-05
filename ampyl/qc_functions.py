@@ -45,7 +45,7 @@ PI = np.pi
 TWOPI = 2.*PI
 FOURPI2 = 4.0*PI**2
 ROOT4PI = np.sqrt(4.*PI)
-EPSILON = 1.0e-20
+EPSILON = 1.0e-15
 
 
 class bcolors:

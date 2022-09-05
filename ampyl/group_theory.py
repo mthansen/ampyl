@@ -70,6 +70,12 @@ class Irreps:
             self.B2 = 'B2'
             self.E = 'E2'
             self.set = [self.A1, self.A2, self.B1, self.B2, self.E]
+        elif (self._nP == np.array([0, 1, 1])).all():
+            self.A1 = 'A1'
+            self.A2 = 'A2'
+            self.B1 = 'B1'
+            self.B2 = 'B2'
+            self.set = [self.A1, self.A2, self.B1, self.B2]
         else:
             raise ValueError('unsupported value of nP in irreps: '
                              + str(self._nP))
@@ -456,12 +462,28 @@ class Groups:
                                            [ROOT_TWO, 0., 0., -ROOT_TWO,
                                             0., 0., ROOT_TWO, -ROOT_TWO]])
 
+        self.Dic2 = np.array(
+            [[[1, 0, 0], [0, 1, 0], [0, 0, 1]],
+             [[-1, 0, 0], [0, 0, 1], [0, 1, 0]],
+             [[1, 0, 0], [0, 0, 1], [0, 1, 0]],
+             [[-1, 0, 0], [0, 1, 0], [0, 0, 1]]])
+
+        self.bTdict['Dic2_A1'] = np.array([[1.]*4])
+
+        self.bTdict['Dic2_A2'] = np.array([[1.]*2+[-1.]*2])
+
+        self.bTdict['Dic2_B1'] = np.array([[1., -1., -1., 1.]])
+
+        self.bTdict['Dic2_B2'] = np.array([[1., -1., 1., -1.]])
+
     def get_little_group(self, nP=np.array([0, 0, 0])):
         """Get the little group."""
         if nP@nP == 0:
             return self.OhP
         elif (nP@nP == 1) and (nP == np.array([0, 0, 1])).all():
             return self.Dic4
+        elif (nP@nP == 2) and (nP == np.array([0, 1, 1])).all():
+            return self.Dic2
         lg = []
         for g_elem in self.OhP:
             nP_rotated = (g_elem@(nP.reshape((3, 1)))).reshape(3)
@@ -550,6 +572,10 @@ class Groups:
         elif (nP == np.array([0, 0, 1])).all():
             group_str = 'Dic4'
             group = self.Dic4
+            bT = self.bTdict[group_str+'_'+irrep][irow]
+        elif (nP == np.array([0, 1, 1])).all():
+            group_str = 'Dic2'
+            group = self.Dic2
             bT = self.bTdict[group_str+'_'+irrep][irow]
         else:
             return ValueError('group not yet supported by get_large_proj')
@@ -661,13 +687,15 @@ class Groups:
             raise ValueError('qcis cannot be None')
         nP = qcis.nP
         irrep_set = Irreps(nP=nP).set
-        if (nP@nP != 0) and (nP@nP != 1):
+        if (nP@nP != 0) and (nP@nP != 1) and (nP@nP != 2):
             raise ValueError('momentum = ', nP, ' is not yet supported')
         proj_dict = {}
         if (nP@nP == 0):
             group_str = 'OhP'
         if (nP@nP == 1):
             group_str = 'Dic4'
+        if (nP@nP == 2):
+            group_str = 'Dic2'
         for i in range(len(irrep_set)):
             irrep = irrep_set[i]
             for irow in range(len(self.bTdict[group_str+'_'+irrep])):
@@ -704,13 +732,15 @@ class Groups:
             raise ValueError('kellm_slice cannot be None')
         nP = qcis.nP
         irrep_set = Irreps(nP=nP).set
-        if (nP@nP != 0) and (nP@nP != 1):
+        if (nP@nP != 0) and (nP@nP != 1) and (nP@nP != 2):
             raise ValueError('momentum = ', nP, ' is not yet supported')
         proj_dict = {}
         if (nP@nP == 0):
             group_str = 'OhP'
         if (nP@nP == 1):
             group_str = 'Dic4'
+        if (nP@nP == 2):
+            group_str = 'Dic2'
         for i in range(len(irrep_set)):
             irrep = irrep_set[i]
             for irow in range(len(self.bTdict[group_str+'_'+irrep])):
@@ -747,6 +777,8 @@ class Groups:
             group_str = 'OhP'
         if (nP@nP == 1):
             group_str = 'Dic4'
+        if (nP@nP == 2):
+            group_str = 'Dic2'
         for i in range(len(qcis.fvs.irreps.set)):
             irrep = qcis.fvs.irreps.set[i]
             for irow in range(len(self.bTdict[group_str+'_'+irrep])):

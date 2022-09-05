@@ -8,7 +8,7 @@ Created July 2022.
 
 ###############################################################################
 #
-# ampyl.py
+# check_g.py
 #
 # MIT License
 # Copyright (c) 2022 Maxwell T. Hansen
@@ -38,8 +38,8 @@ import unittest
 import ampyl
 
 
-class TestFlavorChannel(unittest.TestCase):
-    """Class to test the FlavorChannel class."""
+class TestG(unittest.TestCase):
+    """Class to test the G class."""
 
     def get_g_abbreviated(self, E, nP, L, kentry_row, kentry_col,
                           ell_row, mazi_row, ell_col, mazi_col):
@@ -94,11 +94,16 @@ class TestFlavorChannel(unittest.TestCase):
         self.g = ampyl.G(qcis=qcis)
 
         fvs = ampyl.FiniteVolumeSetup(nP=np.array([0, 0, 1]))
-        tbis = ampyl.ThreeBodyInteractionScheme()
         qcis_001 = ampyl.QCIndexSpace(fcs=fcs, fvs=fvs, tbis=tbis,
                                       Emax=5., Lmax=7.)
         self.qcis_001 = qcis_001
         self.g_001 = ampyl.G(qcis=qcis_001)
+
+        fvs = ampyl.FiniteVolumeSetup(nP=np.array([0, 1, 1]))
+        qcis_011 = ampyl.QCIndexSpace(fcs=fcs, fvs=fvs, tbis=tbis,
+                                      Emax=5., Lmax=7.)
+        self.qcis_011 = qcis_011
+        self.g_011 = ampyl.G(qcis=qcis_011)
 
     def tearDown(self):
         """Execute tear-down."""
@@ -213,6 +218,63 @@ class TestFlavorChannel(unittest.TestCase):
                                          self.qcis_001.kellm_spaces[0][0],
                                          self.fcs)
         self.assertTrue((G-G_direct < self.epsilon).all())
+
+    def test_g_three(self):
+        """Test G, third test."""
+        G = self.g_011.get_value(5., 7.)
+        G_direct = self.get_value_direct(5., np.array([0, 1, 1]), 7.,
+                                         self.qcis_011.kellm_spaces[0][0],
+                                         self.qcis_011.kellm_spaces[0][0],
+                                         self.fcs)
+        self.assertTrue((G-G_direct < self.epsilon).all())
+
+    def test_g_four(self):
+        """Test G, fourth test."""
+        total_trace = 0.
+        for irrep in self.qcis.proj_dict['best_irreps']:
+            trace_tmp = np.trace(self.g.get_value(5., 7.,
+                                                  project=True,
+                                                  irrep=irrep)).real
+            if irrep[0][0] == 'E':
+                total_trace = total_trace+trace_tmp*2.
+            elif irrep[0][0] == 'T':
+                total_trace = total_trace+trace_tmp*3.
+            else:
+                total_trace = total_trace+trace_tmp
+        G = self.g.get_value(5., 7.)
+        self.assertTrue(np.abs(total_trace-np.trace(G)) < self.epsilon)
+
+    def test_g_five(self):
+        """Test G, fifth test."""
+        total_trace = 0.
+        for irrep in self.qcis_001.proj_dict['best_irreps']:
+            trace_tmp = np.trace(self.g_001.get_value(5., 7.,
+                                                      project=True,
+                                                      irrep=irrep)).real
+            if irrep[0][0] == 'E':
+                total_trace = total_trace+trace_tmp*2.
+            elif irrep[0][0] == 'T':
+                total_trace = total_trace+trace_tmp*3.
+            else:
+                total_trace = total_trace+trace_tmp
+        G = self.g_001.get_value(5., 7.)
+        self.assertTrue(np.abs(total_trace-np.trace(G)) < self.epsilon)
+
+    def test_g_six(self):
+        """Test G, sixth test."""
+        total_trace = 0.
+        for irrep in self.qcis_011.proj_dict['best_irreps']:
+            trace_tmp = np.trace(self.g_011.get_value(5., 7.,
+                                                      project=True,
+                                                      irrep=irrep)).real
+            if irrep[0][0] == 'E':
+                total_trace = total_trace+trace_tmp*2.
+            elif irrep[0][0] == 'T':
+                total_trace = total_trace+trace_tmp*3.
+            else:
+                total_trace = total_trace+trace_tmp
+        G = self.g_011.get_value(5., 7.)
+        self.assertTrue(np.abs(total_trace-np.trace(G)) < self.epsilon)
 
 
 class Template(unittest.TestCase):
