@@ -285,7 +285,8 @@ class BKFunctions:
 
     @staticmethod
     def calY(ell=0, mazi=0, nvec_arr=np.array([[1.0, 2.0, 3.0]]),
-             q=1.0, qc_organization='hermitian, real harmonics'):
+             q=1.0, qc_organization={'hermitian': True,
+                                     'real harmonics': True}):
         r"""
         Caligraphic spherical harmonics.
 
@@ -295,29 +296,22 @@ class BKFunctions:
         mazi (int): azimuthal component
         nvec_arr (np.ndarray): array of three-vectors
         q (float): on-shell back-to-back momentum magnitude.
-        qc_organization (str): organization, determining exact definition.
+        qc_organization (dict): organization, determining exact definition.
 
         (Also relies on global EPSILON parameter.)
 
-        qc_organization is drawn from the following:
-            'original'
-            'hermitian'
-            'real harmonics'
-            'hermitian, real harmonics'
+        qc_organization includes the following:
+            qc_organization['hermitian'] (boolean)
+            qc_organization['real harmonics'] (boolean)
 
         Returns
         -------
         (np.ndarray)
         """
-        if (qc_organization == 'original')\
-           or (qc_organization == 'hermitian'):
-            Y = BKFunctions.cart_sph_harm(ell, mazi, nvec_arr)
-        elif (qc_organization == 'real harmonics')\
-            or (qc_organization
-                == 'hermitian, real harmonics'):
+        if qc_organization['real harmonics']:
             Y = BKFunctions.cart_sph_harm_real(ell, mazi, nvec_arr)
         else:
-            raise ValueError('qc_organization not recognized')
+            Y = BKFunctions.cart_sph_harm(ell, mazi, nvec_arr)
         calY = Y/np.abs(q**ell)
         return calY
 
@@ -487,7 +481,8 @@ class QCFunctions:
                           alpha=-1.0, beta=0.0,
                           J_slow=False,
                           three_scheme='relativistic pole',
-                          qc_organization='hermitian, real harmonics'):
+                          qc_organization={'hermitian': True,
+                                           'real harmonics': True}):
         """
         Evaluate single entry of G.
 
@@ -521,13 +516,11 @@ class QCFunctions:
         beta (float): second shape parameter
         J_slow (boolean): switch for version of J
         three_scheme (str): scheme for three-body interaction
-        qc_organization (str): scheme for organizing quantization condition
+        qc_organization (dict): scheme for organizing quantization condition
 
-        qc_organization is drawn from the following:
-            'original'
-            'hermitian'
-            'real harmonics'
-            'hermitian, real harmonics'
+        qc_organization includes the following:
+            qc_organization['hermitian'] (boolean)
+            qc_organization['real harmonics'] (boolean)
 
         Returns
         -------
@@ -562,9 +555,7 @@ class QCFunctions:
         else:
             raise ValueError('three_scheme not recognized')
 
-        if (qc_organization == 'hermitian')\
-            or (qc_organization
-                == 'hermitian, real harmonics'):
+        if qc_organization['hermitian']:
             simple_factor = simple_factor/(2.0*omega3*L**3)
 
         pole_factor = 1.0/(E-omega1-omega2-omega3)
@@ -744,11 +735,9 @@ class QCFunctions:
         """
         Get G, numpy accelerated.
 
-        qc_organization is drawn from the following:
-            'original'
-            'hermitian'
-            'real harmonics'
-            'hermitian, real harmonics'
+        qc_organization includes the following:
+            qc_organization['hermitian'] (boolean)
+            qc_organization['real harmonics'] (boolean)
 
         three_scheme is drawn from the following:
             'original pole'
@@ -835,9 +824,7 @@ class QCFunctions:
         else:
             raise ValueError('three_scheme not recognized')
 
-        if (qc_organization == 'hermitian')\
-            or (qc_organization
-                == 'hermitian, real harmonics'):
+        if qc_organization['hermitian']:
             simple_factor_mat = simple_factor_mat/(2.0*omega3_mat*L**3)
 
         pole_factor = 1.0/(E-omega1_mat-omega2_mat-omega3_mat)
@@ -857,15 +844,14 @@ class QCFunctions:
     def summand(nP2=np.array([0, 0, 0]), qSQ=1.5, gamSQ=1.0,
                 nvec_arr=np.array([[0, 0, 0]]), alphaKSS=1.0,
                 ell1=0, mazi1=0, ell2=0, mazi2=0,
-                qc_organization='hermitian, real harmonics'):
+                qc_organization={'hermitian': True,
+                                 'real harmonics': True}):
         """
         Regulated sum entering the F function.
 
-        qc_organization is drawn from the following:
-            'original'
-            'hermitian'
-            'real harmonics'
-            'hermitian, real harmonics'
+        qc_organization includes the following:
+            qc_organization['hermitian'] (boolean)
+            qc_organization['real harmonics'] (boolean)
         """
         nP2SQ = nP2@nP2
         nP2mag = np.sqrt(nP2SQ)
@@ -927,7 +913,8 @@ class QCFunctions:
     @staticmethod
     def __T1(nP2=np.array([0, 0, 0]), qSQ=1.5, gamSQ=1.0, C1cut=3,
              alphaKSS=1.0, ell1=0, mazi1=0, ell2=0, mazi2=0,
-             qc_organization='hermitian, real harmonics'):
+             qc_organization={'hermitian': True,
+                              'real harmonics': True}):
         rng = range(-C1cut, C1cut+1)
         mesh = np.meshgrid(*([rng]*3))
         nvec_arr = np.vstack([y.flat for y in mesh]).T
@@ -958,7 +945,8 @@ class QCFunctions:
     def getZ_single_entry(nP2=np.array([0, 0, 0]), qSQ=1.5, gamSQ=1.0,
                           C1cut=3, alphaKSS=1.0,
                           ell1=0, mazi1=0, ell2=0, mazi2=0,
-                          qc_organization='hermitian, real harmonics'):
+                          qc_organization={'hermitian': True,
+                                           'real harmonics': True}):
         r"""Evaluate a single entry of \\(Z\\)."""
         return QCFunctions.__T1(nP2, qSQ, gamSQ, C1cut, alphaKSS,
                                 ell1, mazi1, ell2, mazi2, qc_organization)\
@@ -968,7 +956,8 @@ class QCFunctions:
     def getFtwo_single_entry(E2=3.0, nP2=np.array([0, 0, 0]), L=5.0,
                              m1=1.0, m2=1.0, C1cut=3, alphaKSS=1.0,
                              ell1=0, mazi1=0, ell2=0, mazi2=0,
-                             qc_organization='hermitian, real harmonics'):
+                             qc_organization={'hermitian': True,
+                                              'real harmonics': True}):
         r"""Evaluate a single entry of \\(F_2\\)."""
         P2 = TWOPI*nP2/L
         E2SQ = E2**2
@@ -1000,15 +989,14 @@ class QCFunctions:
                           C1cut=3, alphaKSS=1.0, alpha=-1.0, beta=0.0,
                           ell1=0, mazi1=0, ell2=0, mazi2=0,
                           three_scheme='relativistic pole',
-                          qc_organization='hermitian, real harmonics'):
+                          qc_organization={'hermitian': True,
+                                           'real harmonics': True}):
         """
         Evaluate a single entry of F.
 
-        qc_organization is drawn from the following:
-            'original'
-            'hermitian'
-            'real harmonics'
-            'hermitian, real harmonics'
+        qc_organization includes the following:
+            qc_organization['hermitian'] (boolean)
+            qc_organization['real harmonics'] (boolean)
         """
         qco = qc_organization
         nP2 = nP - npspec
@@ -1035,14 +1023,8 @@ class QCFunctions:
         gamma = np.sqrt(gamSQ)
         Htmp = BKFunctions.H(E2CMSQ, m1+m2, alpha, beta)
         pre = -Htmp*2.0/(L*np.sqrt(PI)*16.0*PI*E2CM*gamma)
-        if (qco == 'original')\
-           or (qco == 'real harmonics'):
-            pass
-        elif ((qco == 'hermitian')
-              or (qco == 'hermitian, real harmonics')):
+        if qco['hermitian']:
             pre = pre/(2.0*omspec*L**3)
-        else:
-            raise ValueError('scheme not yet supported for getF_single_entry')
         return pre*(QCFunctions.getZ_single_entry(nP2, qSQ_dimless, gamSQ,
                                                   C1cut, alphaKSS,
                                                   ell1, mazi1,
@@ -1053,11 +1035,9 @@ class QCFunctions:
         """
         Get F, numpy accelerated.
 
-        qc_organization is drawn from the following:
-            'original'
-            'hermitian'
-            'real harmonics'
-            'hermitian, real harmonics'
+        qc_organization includes the following:
+            qc_organization['hermitian'] (boolean)
+            qc_organization['real harmonics'] (boolean)
 
         three_scheme is drawn from the following:
             'original pole'
@@ -1144,15 +1124,14 @@ class QCFunctions:
                           m1=1.0, m2=1.0, mspec=1.0,
                           alpha=-1.0, beta=0.0,
                           ell=0,
-                          qc_organization='hermitian, real harmonics'):
+                          qc_organization={'hermitian': True,
+                                           'real harmonics': True}):
         """
         Evluate a single entry of K.
 
-        qc_organization is drawn from the following:
-            'original'
-            'hermitian'
-            'real harmonics'
-            'hermitian, real harmonics'
+        qc_organization includes the following:
+            qc_organization['hermitian'] (boolean)
+            qc_organization['real harmonics'] (boolean)
         """
         qco = qc_organization
         if pcotdelta_function is None:
@@ -1178,14 +1157,8 @@ class QCFunctions:
                                                       alpha=alpha,
                                                       beta=beta)
         pre = 1.0
-        if (qco == 'original')\
-           or (qco == 'real harmonics'):
-            pass
-        elif ((qco == 'hermitian')
-              or (qco == 'hermitian, real harmonics')):
+        if qco['hermitian']:
             pre = pre*(2.0*omspec*L**3)
-        else:
-            raise ValueError('scheme not yet supported for getK_single_entry')
         pcotdelta = pcotdelta/np.abs(pSQ**(ell))
         return pre*16.0*PI*ECM/(pcotdelta+q_one_minus_H_tmp)
 
@@ -1200,11 +1173,9 @@ class QCFunctions:
         """
         Get K, numpy accelerated.
 
-        qc_organization is drawn from the following:
-            'original'
-            'hermitian'
-            'real harmonics'
-            'hermitian, real harmonics'
+        qc_organization includes the following:
+            qc_organization['hermitian'] (boolean)
+            qc_organization['real harmonics'] (boolean)
 
         three_scheme is drawn from the following:
             'original pole'

@@ -53,7 +53,8 @@ class TestG(unittest.TestCase):
                                                 *masses, *alphabeta,
                                                 False,
                                                 'relativistic pole',
-                                                'hermitian, real harmonics')
+                                                {'hermitian': True,
+                                                 'real harmonics': True})
         return G
 
     def get_value_direct(self, E, nP, L, kellm_space_row, kellm_space_col,
@@ -130,7 +131,8 @@ class TestG(unittest.TestCase):
                                                 *masses, *alphabeta,
                                                 False,
                                                 'relativistic pole',
-                                                'hermitian, real harmonics')
+                                                {'hermitian': True,
+                                                 'real harmonics': True})
         smpl = 1./(2.*m*L**3)
         covpole = 1./((E-2.*m)**2-m**2)
         G_direct = smpl**2*covpole
@@ -143,7 +145,8 @@ class TestG(unittest.TestCase):
                                                 *masses, *alphabeta,
                                                 False,
                                                 'original pole',
-                                                'hermitian, real harmonics')
+                                                {'hermitian': True,
+                                                 'real harmonics': True})
         smpl_nv = 1./(2.*m)
         pole = 1./(E-3.*m)
         G_direct = smpl**2*pole*smpl_nv
@@ -164,7 +167,8 @@ class TestG(unittest.TestCase):
                                                 *masses, *alphabeta,
                                                 False,
                                                 'relativistic pole',
-                                                'hermitian, real harmonics')
+                                                {'hermitian': True,
+                                                 'real harmonics': True})
         om_1 = np.sqrt(m**2+(2.*np.pi/L)**2*(kentry_row@kentry_row))
         om_2 = np.sqrt(m**2+(2.*np.pi/L)**2*(kentry_col@kentry_col))
         om_3 = np.sqrt(m**2+(2.*np.pi/L)**2*((nP-kentry_row-kentry_col)
@@ -186,7 +190,8 @@ class TestG(unittest.TestCase):
                                                 *masses, *alphabeta,
                                                 False,
                                                 'relativistic pole',
-                                                'hermitian, real harmonics')
+                                                {'hermitian': True,
+                                                 'real harmonics': True})
         om_1 = np.sqrt(m**2+(2.*np.pi/L)**2*(kentry_row@kentry_row))
         om_2 = np.sqrt(m**2+(2.*np.pi/L)**2*(kentry_col@kentry_col))
         om_3 = np.sqrt(m**2+(2.*np.pi/L)**2*((nP-kentry_row-kentry_col)

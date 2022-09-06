@@ -866,11 +866,9 @@ class FiniteVolumeSetup:
     The provided data includes the formalism to be used, the total spatial
     momentum, the finite-volume irrep and the qc organization.
 
-    qc_organization is drawn from the following:
-        'original'
-        'hermitian'
-        'real harmonics'
-        'hermitian, real harmonics'
+    qc_organization includes the following:
+        qc_organization['hermitian'] (boolean)
+        qc_organization['real harmonics'] (boolean)
 
     Attributes
     ----------
@@ -889,13 +887,13 @@ class FiniteVolumeSetup:
         instance of the class Irreps() encoding the possible irreducible
         representations of the finite-volume symmetry group for a given
         value of nP.
-    qc_organization : str
+    qc_organization : dict
         specifies how the qc is organized, see list above.
     """
 
     def __init__(self, formalism='RFT',
                  nP=np.array([0, 0, 0]),
-                 qc_organization='hermitian, real harmonics'):
+                 qc_organization={'hermitian': True, 'real harmonics': True}):
         self.formalism = formalism
         self.qc_organization = qc_organization
         self.nP = nP
@@ -924,25 +922,27 @@ class FiniteVolumeSetup:
     @property
     def qc_organization(self):
         """
-        Get the qc organization (str).
+        Get the qc organization (dict).
 
-        qc_organization is drawn from the following:
-            'original'
-            'hermitian'
-            'real harmonics'
-            'hermitian, real harmonics'
+        qc_organization includes the following:
+            qc_organization['hermitian'] (boolean)
+            qc_organization['real harmonics'] (boolean)
         """
         return self._qc_organization
 
     @qc_organization.setter
     def qc_organization(self, qc_organization):
-        if not isinstance(qc_organization, str):
-            raise ValueError("qc_organization must be a str")
-        if ((qc_organization != 'original')
-           and (qc_organization != 'hermitian')
-           and (qc_organization != 'real harmonics')
-           and (qc_organization != 'hermitian, real harmonics')):
-            raise ValueError("qc_organization not recognized")
+        if not isinstance(qc_organization, dict):
+            raise ValueError("qc_organization must be a dict")
+        if 'hermitian' not in qc_organization.keys():
+            raise ValueError('qc_organization must contain key hermitian')
+        if 'real harmonics' not in qc_organization.keys():
+            raise ValueError('qc_organization must contain key real harmonics')
+        if not isinstance(qc_organization['hermitian'], bool):
+            raise ValueError('qc_organization entry hermitian must be a bool')
+        if not isinstance(qc_organization['real harmonics'], bool):
+            raise ValueError('qc_organization entry real harmonics must'
+                             + ' be a bool')
         self._qc_organization = qc_organization
 
     def __str__(self):
@@ -2006,9 +2006,7 @@ class G:
                 sf = '1./(2.*w1*L**3)\n    * 1./(E-w1-w3+w2)'
             else:
                 raise ValueError('three_scheme not recognized')
-            if (self.qcis.fvs.qc_organization == 'hermitian')\
-                or (self.qcis.fvs.qc_organization
-                    == 'hermitian, real harmonics'):
+            if self.qcis.fvs.qc_organization['hermitian']:
                 sf = sf+'\n    * 1./(2.0*w3*L**3)'
 
             print('G = YY*H1*H2\n    * '+sf+'\n    * 1./(E-w1-w2-w3)\n')

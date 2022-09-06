@@ -33,7 +33,6 @@ Created July 2022.
 #
 ###############################################################################
 
-import numpy as np
 import unittest
 import ampyl
 
