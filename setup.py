@@ -43,6 +43,7 @@ setup(
         "numpy",
         "scipy",
         "quaternionic",
-        "spherical"
+        "spherical",
+        "sympy"
     ],
 )
