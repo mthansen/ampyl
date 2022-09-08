@@ -2,5 +2,5 @@ FlavorChannel
 -------------
 
 .. autoclass:: ampyl.FlavorChannel
-    :members: 
+    .. automethod:: __init__
 
