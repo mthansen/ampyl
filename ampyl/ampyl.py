@@ -76,37 +76,36 @@ class bcolors:
 
 
 class FlavorChannel:
-    """
-    Class used to represent a particular flavor channel.
-
-    :param n_particles: number of particles in the channel
-    :type n_particles: int
-    :param masses: mass of each particle in the channel
-    :type masses: list of floats
-    :param spins: twice the spin of each particle in the channel
-    :type spins: list of ints
-    :param explicit_flavor_channel: specifies whether this is an
-    explicit-flavor channel (as opposed to an isospin channel)
-    :type explicit_flavor_channel: bool
-    :param explicit_flavors: explicit flavor of each particle (is None if
-    explicit_flavor_channel is False)
-    :type explicit_flavors: list of ints
-    :param isospin_channel: specifies whether this is an isospin channel (as
-    opposed to an explicit-flavor channel)
-    :type isospin_channel: bool
-    :param isospin_value: total isospin of the channel (is None if
-    isospin_channel is False)
-    :type isospin_value: int
-    :param isospin_flavor: extra flavor label that is only relevant in the
-    case of multiple isospin channels (is None if isospin_channel is False)
-    :type isospin_flavor: int
-    """
+    """Class used to represent a particular flavor channel."""
 
     def __init__(self, n_particles, masses=None, spins=None,
                  explicit_flavor_channel=True, explicit_flavors=None,
                  isospin_channel=False, isospin_value=None,
                  isospin_flavor=None):
-
+        """
+        :param n_particles: number of particles in the channel
+        :type n_particles: int
+        :param masses: mass of each particle in the channel
+        :type masses: list of floats
+        :param spins: twice the spin of each particle in the channel
+        :type spins: list of ints
+        :param explicit_flavor_channel: specifies whether this is an
+            explicit-flavor channel (as opposed to an isospin channel)
+        :type explicit_flavor_channel: bool
+        :param explicit_flavors: explicit flavor of each particle (is None if
+            explicit_flavor_channel is False)
+        :type explicit_flavors: list of ints
+        :param isospin_channel: specifies whether this is an isospin channel
+            (as opposed to an explicit-flavor channel)
+        :type isospin_channel: bool
+        :param isospin_value: total isospin of the channel (is None if
+            isospin_channel is False)
+        :type isospin_value: int
+        :param isospin_flavor: extra flavor label that is only relevant in the
+            case of multiple isospin channels (is None if isospin_channel is
+            False)
+        :type isospin_flavor: int
+        """
         if not isinstance(n_particles, int):
             raise ValueError('n_particles must be an int')
         if n_particles < 2:
