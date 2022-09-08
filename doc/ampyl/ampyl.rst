@@ -3,4 +3,4 @@ FlavorChannel
 
 .. autoclass:: ampyl.FlavorChannel
 
-    .. automethod:: __init__
+.. autoclass:: ampy.FlavorChannelSpace

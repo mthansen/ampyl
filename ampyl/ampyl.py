@@ -76,36 +76,37 @@ class bcolors:
 
 
 class FlavorChannel:
-    """Class used to represent a particular flavor channel."""
+    """
+    Class used to represent a particular flavor channel.
+
+    :param n_particles: number of particles in the channel
+    :type n_particles: int
+    :param masses: mass of each particle in the channel
+    :type masses: list of floats
+    :param spins: twice the spin of each particle in the channel
+    :type spins: list of ints
+    :param explicit_flavor_channel: specifies whether this is an
+        explicit-flavor channel (as opposed to an isospin channel)
+    :type explicit_flavor_channel: bool
+    :param explicit_flavors: explicit flavor of each particle (is None if
+        explicit_flavor_channel is False)
+    :type explicit_flavors: list of ints
+    :param isospin_channel: specifies whether this is an isospin channel
+        (as opposed to an explicit-flavor channel)
+    :type isospin_channel: bool
+    :param isospin_value: total isospin of the channel (is None if
+        isospin_channel is False)
+    :type isospin_value: int
+    :param isospin_flavor: extra flavor label that is only relevant in the
+        case of multiple isospin channels (is None if isospin_channel is
+        False)
+    :type isospin_flavor: int
+    """
 
     def __init__(self, n_particles, masses=None, spins=None,
                  explicit_flavor_channel=True, explicit_flavors=None,
                  isospin_channel=False, isospin_value=None,
                  isospin_flavor=None):
-        """
-        :param n_particles: number of particles in the channel
-        :type n_particles: int
-        :param masses: mass of each particle in the channel
-        :type masses: list of floats
-        :param spins: twice the spin of each particle in the channel
-        :type spins: list of ints
-        :param explicit_flavor_channel: specifies whether this is an
-            explicit-flavor channel (as opposed to an isospin channel)
-        :type explicit_flavor_channel: bool
-        :param explicit_flavors: explicit flavor of each particle (is None if
-            explicit_flavor_channel is False)
-        :type explicit_flavors: list of ints
-        :param isospin_channel: specifies whether this is an isospin channel
-            (as opposed to an explicit-flavor channel)
-        :type isospin_channel: bool
-        :param isospin_value: total isospin of the channel (is None if
-            isospin_channel is False)
-        :type isospin_value: int
-        :param isospin_flavor: extra flavor label that is only relevant in the
-            case of multiple isospin channels (is None if isospin_channel is
-            False)
-        :type isospin_flavor: int
-        """
         if not isinstance(n_particles, int):
             raise ValueError('n_particles must be an int')
         if n_particles < 2:
@@ -538,88 +539,112 @@ class FlavorChannelSpace:
     r"""
     Class used to represent a space of multi-hadron channels.
 
-    Attributes
-    ----------
-    fc_list : list
-        flavor channel list (list of instances of FlavorChannel).
-    sc_list : list
-        spectator channel list (list of instances of _SpectatorChannel).
-        _SpectatorChannel is a class to be used only within FlavorChannelSpace.
-        It includes extra information relevative to FlavorChannel as
-        summarized below.
-    qcd_channel_space : boolean
-        defines whether the space is a qcd channel space (as opposed to an
-        explicit flavor channel space).
-    explicit_flavor_channel_space : boolean
-        defines whether the space is an explicit flavor channel space (as
-        opposed to a qcd channel space).
-    sc_compact : list
-        compact summary of the relevant spectator-channel properties. The exact
-        data depends on whether the space is a qcd channel space or an
-        explicit flavor channel space. In both cases sc_compact is a list of
-        rank-two np.ndarrays, one for each value of n_particles included in
-        the entries of fc_list. If only three-particle channels are included,
-        then len(sc_compact) is 1 and it contains a single rank-two np.ndarray.
-        Focus on this case. Then len(sc_compact[0]) is the total number of
-        three-particle spectator channels.
+    :param fc_list: flavor channel list (list of instances of FlavorChannel)
+    :type fc_list: list
+    :param sc_list: spectator channel list (list of instances of
+         _SpectatorChannel)
 
-        In the case of a qcd channel space len(sc_compact[0].T) is 10. Each
-        row is populated as follows:
-            [3.0, mass1, mass2, mass3, spin1, spin2, spin3, isospin_flavor,
-             isospin_value, sub_isospin],
-        where the first entry is the number of particles and all values are
-        cast to floats.
-
-        In the case of an explicit flavor channel space len(sc_compact[0].T)
-        is again 10. Each row is populated as follows:
-            [3.0, mass1, mass2, mass3, spin1, spin2, spin3, flavor1, flavor2,
-             flavor3],
-        where the first entry is the number of particles and all values are
-        cast to floats.
-    three_index : int
-        if the fc_list includes multiple values of n_particles, three_index
-        is used to specify the location of the sc_compact entry for the
-        three-particle subspace. For the case of only three-particle
-        channels, three_index is 0.
-    three_slices : list
-        list of two-entry (doublet) lists of integers. Each doublet specifies
-        a slice of sc_compact[three_index] according to mass values. So, for
-        a non-negative integer i < len(three_slices) we can evaluate:
-            sc_compact[three_index][three_slices[i][0]:three_slices[i][1]]
-        to get a three-particle subspace with fixed mass values.
-    n_three_slices : int
-        length of three_slices, so the number of different mass values.
-    g_templates : list of lists of np.ndarrays
-        len(g_templates) is equal to len(g_templates[i]) for any non-negative
-        i < len(g_templates). Thus the list of lists is interpreted as a
-        square array, with the number of rows and columns also equal to
-        n_three_slices. Each entry in g_template gives a template for the
-        finite-volume G matrix within each pair of mass-identical subspaces.
-        Off diaongal entries are all zeroes if the sorted set of masses is
-        distinct but can be non-zero if, for example masses 2.0, 2.0, 1.0 swap
-        into masses 1.0, 2.0, 2.0 (where the first entry is the spectator in
-        both cases).
-
-    Attributes of _SpectatorChannel
-    ------------------------------
-    fc : FlavorChannel()
-        instance of FlavorChannel, a key property of the spectator channel.
-    indexing : list
-        permutation of [0, 1, 2], the first entry is the spectator particle
-        (indexing is None for a two-particle or an isospin channel).
-    sub_isospin : int
-        value of the two-particle isospin for the spectator channel
-        (is None for a two-particle or an explicit flavor channel).
-    ell_set : list
-        list of integers specifying the allowed values of orbital angular
-        momentum.
-    p_cot_deltas : list
-        list of functions for the two-particle scattering channels. Same
-        length as ell_set.
-    n_params_set : list
-        number of parameters required for each p_cot_deltas entry. Same length
-        as ell_set.
+         _SpectatorChannel is a class to be used only within
+         FlavorChannelSpace. It includes extra information relevative to
+         FlavorChannel as summarized below.
+    :type sc_list: list
+    :param qcd_channel_space: a
+    :type qcd_channel_space: list
+    :param explicit_flavor_channel_space: a
+    :type explicit_flavor_channel_space: list
+    :param sc_compact: a
+    :type sc_compact: list
+    :param three_index: a
+    :type three_index: list
+    :param three_slices: a
+    :type three_slices: list
+    :param n_three_slices: a
+    :type n_three_slices: list
+    :param g_templates: a
+    :type g_templates: list
     """
+
+    # Attributes
+    # ----------
+    # fc_list : list
+    #     flavor channel list (list of instances of FlavorChannel).
+    # sc_list : list
+    #     spectator channel list (list of instances of _SpectatorChannel).
+    #     _SpectatorChannel is a class to be used only within FlavorChannelSpace.
+    #     It includes extra information relevative to FlavorChannel as
+    #     summarized below.
+    # qcd_channel_space : boolean
+    #     defines whether the space is a qcd channel space (as opposed to an
+    #     explicit flavor channel space).
+    # explicit_flavor_channel_space : boolean
+    #     defines whether the space is an explicit flavor channel space (as
+    #     opposed to a qcd channel space).
+    # sc_compact : list
+    #     compact summary of the relevant spectator-channel properties. The exact
+    #     data depends on whether the space is a qcd channel space or an
+    #     explicit flavor channel space. In both cases sc_compact is a list of
+    #     rank-two np.ndarrays, one for each value of n_particles included in
+    #     the entries of fc_list. If only three-particle channels are included,
+    #     then len(sc_compact) is 1 and it contains a single rank-two np.ndarray.
+    #     Focus on this case. Then len(sc_compact[0]) is the total number of
+    #     three-particle spectator channels.
+
+    #     In the case of a qcd channel space len(sc_compact[0].T) is 10. Each
+    #     row is populated as follows:
+    #         [3.0, mass1, mass2, mass3, spin1, spin2, spin3, isospin_flavor,
+    #          isospin_value, sub_isospin],
+    #     where the first entry is the number of particles and all values are
+    #     cast to floats.
+
+    #     In the case of an explicit flavor channel space len(sc_compact[0].T)
+    #     is again 10. Each row is populated as follows:
+    #         [3.0, mass1, mass2, mass3, spin1, spin2, spin3, flavor1, flavor2,
+    #          flavor3],
+    #     where the first entry is the number of particles and all values are
+    #     cast to floats.
+    # three_index : int
+    #     if the fc_list includes multiple values of n_particles, three_index
+    #     is used to specify the location of the sc_compact entry for the
+    #     three-particle subspace. For the case of only three-particle
+    #     channels, three_index is 0.
+    # three_slices : list
+    #     list of two-entry (doublet) lists of integers. Each doublet specifies
+    #     a slice of sc_compact[three_index] according to mass values. So, for
+    #     a non-negative integer i < len(three_slices) we can evaluate:
+    #         sc_compact[three_index][three_slices[i][0]:three_slices[i][1]]
+    #     to get a three-particle subspace with fixed mass values.
+    # n_three_slices : int
+    #     length of three_slices, so the number of different mass values.
+    # g_templates : list of lists of np.ndarrays
+    #     len(g_templates) is equal to len(g_templates[i]) for any non-negative
+    #     i < len(g_templates). Thus the list of lists is interpreted as a
+    #     square array, with the number of rows and columns also equal to
+    #     n_three_slices. Each entry in g_template gives a template for the
+    #     finite-volume G matrix within each pair of mass-identical subspaces.
+    #     Off diaongal entries are all zeroes if the sorted set of masses is
+    #     distinct but can be non-zero if, for example masses 2.0, 2.0, 1.0 swap
+    #     into masses 1.0, 2.0, 2.0 (where the first entry is the spectator in
+    #     both cases).
+
+    # Attributes of _SpectatorChannel
+    # ------------------------------
+    # fc : FlavorChannel()
+    #     instance of FlavorChannel, a key property of the spectator channel.
+    # indexing : list
+    #     permutation of [0, 1, 2], the first entry is the spectator particle
+    #     (indexing is None for a two-particle or an isospin channel).
+    # sub_isospin : int
+    #     value of the two-particle isospin for the spectator channel
+    #     (is None for a two-particle or an explicit flavor channel).
+    # ell_set : list
+    #     list of integers specifying the allowed values of orbital angular
+    #     momentum.
+    # p_cot_deltas : list
+    #     list of functions for the two-particle scattering channels. Same
+    #     length as ell_set.
+    # n_params_set : list
+    #     number of parameters required for each p_cot_deltas entry. Same length
+    #     as ell_set.
 
     def __init__(self, fc_list=None):
         if fc_list is None:
