@@ -3,4 +3,4 @@ FlavorChannel
 
 .. autoclass:: ampyl.FlavorChannel
 
-.. autoclass:: ampy.FlavorChannelSpace
+.. autoclass:: ampyl.FlavorChannelSpace
