@@ -39,7 +39,7 @@ from ampyl import BKFunctions
 
 
 class TestBKFunctions(unittest.TestCase):
-    """Class to test the FlavorChannel class."""
+    """Class to test the BKFunctions class."""
 
     def check_YY_recon(self, nvec_arr, ell1, mazi1, ell2, mazi2):
         """Check YY recon."""

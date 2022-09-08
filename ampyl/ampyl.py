@@ -79,29 +79,32 @@ class FlavorChannel:
     """
     Class used to represent a particular flavor channel.
 
-    Attributes
-    ----------
-    n_particles : int
-        number of particles in the channel.
-    masses : list of floats
-        mass of each particle in the channel.
-    spins : list of ints
-        twice the spin of each particle in the channel.
-    explicit_flavor_channel : boolean
-        specifies whether this is an explicit-flavor channel (as opposed to an
-        isospin channel).
-    explicit_flavors : list of ints
-        explicit flavor of each particle (is None if explicit_flavor_channel
-        is False).
-    isospin_channel : boolean
-        specifies whether this is an isospin channel (as opposed to an
-        explicit-flavor channel).
-    isospin_value : int
-        total isospin of the channel (is None if isospin_channel is False).
-    isospin_flavor : int
-        extra flavor label that is only relevant in the case of multiple
-        isospin channels (is None if isospin_channel is False).
+    :param n_particles: number of particles in the channel
+    :type n_particles: int
     """
+
+    # Attributes
+    # ----------
+    # n_particles : int
+    #     number of particles in the channel.
+    # masses : list of floats
+    #     mass of each particle in the channel.
+    # spins : list of ints
+    #     twice the spin of each particle in the channel.
+    # explicit_flavor_channel : boolean
+    #     specifies whether this is an explicit-flavor channel (as opposed to an
+    #     isospin channel).
+    # explicit_flavors : list of ints
+    #     explicit flavor of each particle (is None if explicit_flavor_channel
+    #     is False).
+    # isospin_channel : boolean
+    #     specifies whether this is an isospin channel (as opposed to an
+    #     explicit-flavor channel).
+    # isospin_value : int
+    #     total isospin of the channel (is None if isospin_channel is False).
+    # isospin_flavor : int
+    #     extra flavor label that is only relevant in the case of multiple
+    #     isospin channels (is None if isospin_channel is False).
 
     def __init__(self, n_particles, masses=None, spins=None,
                  explicit_flavor_channel=True, explicit_flavors=None,
