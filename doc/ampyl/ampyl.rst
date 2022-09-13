@@ -1,4 +1,4 @@
-FlavorChannel
+AmPyL Classes
 -------------
 
 .. autoclass:: ampyl.FlavorChannel

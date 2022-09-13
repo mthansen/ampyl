@@ -539,93 +539,79 @@ class FlavorChannelSpace:
     r"""
     Class used to represent a space of multi-hadron channels.
 
-    :param fc_list: flavor channel list (list of instances of FlavorChannel)
-    :type fc_list: list
-    :param sc_list: spectator channel list (list of instances of
-         _SpectatorChannel)
+    :param fc_list: flavor channel list
+    :type fc_list: list of instances of FlavorChannel
+    :param sc_list: spectator channel list
 
          _SpectatorChannel is a class to be used only within
          FlavorChannelSpace. It includes extra information relevative to
          FlavorChannel as summarized below.
-    :type sc_list: list
-    :param qcd_channel_space: a
-    :type qcd_channel_space: list
-    :param explicit_flavor_channel_space: a
-    :type explicit_flavor_channel_space: list
+    :type sc_list: list of instances of _SpectatorChannel
+    :param qcd_channel_space: defines whether the space is a qcd channel space
+
+        (as opposed to an explicit flavor channel space)
+    :type qcd_channel_space: bool
+    :param explicit_flavor_channel_space: defines whether the space is an
+        explicit flavor channel space
+
+        (as opposed to a qcd channel space)
+    :type explicit_flavor_channel_space: bool
     :param sc_compact: a
-    :type sc_compact: list
-    :param three_index: a
-    :type three_index: list
-    :param three_slices: a
+    :type sc_compact: compact summary of the relevant spectator-channel
+        properties
+
+        The exact data depends on whether the space is a qcd channel space or
+        an explicit flavor channel space. In both cases sc_compact is a list of
+        rank-two np.ndarrays, one for each value of n_particles included in
+        the entries of fc_list. If only three-particle channels are included,
+        then len(sc_compact) is 1 and it contains a single rank-two np.ndarray.
+        Focus on this case. Then len(sc_compact[0]) is the total number of
+        three-particle spectator channels.
+
+        In the case of a qcd channel space len(sc_compact[0].T) is 10. Each
+        row is populated as follows:
+            [3.0, mass1, mass2, mass3, spin1, spin2, spin3, isospin_flavor,
+              isospin_value, sub_isospin],
+        where the first entry is the number of particles and all values are
+        cast to floats.
+
+        In the case of an explicit flavor channel space len(sc_compact[0].T)
+        is again 10. Each row is populated as follows:
+            [3.0, mass1, mass2, mass3, spin1, spin2, spin3, flavor1, flavor2,
+              flavor3],
+        where the first entry is the number of particles and all values are
+        cast to floats.
+    :param three_index: location of the three-particle subspace
+
+        If the fc_list includes multiple values of n_particles, three_index
+        is used to specify the location of the sc_compact entry for the
+        three-particle subspace. For the case of only three-particle
+        channels, three_index is 0.
+    :type three_index: int
+    :param three_slices: list of two-entry (doublet) lists of integers
+
+        Each doublet specifies a slice of sc_compact[three_index] according to
+        mass values. So, for a non-negative integer i < len(three_slices) we
+        can evaluate:
+            sc_compact[three_index][three_slices[i][0]:three_slices[i][1]]
+        to get a three-particle subspace with fixed mass values.
     :type three_slices: list
-    :param n_three_slices: a
-    :type n_three_slices: list
-    :param g_templates: a
-    :type g_templates: list
+    :param n_three_slices: length of three_slices
+        This is equal to the number of different mass values.
+    :type n_three_slices: int
+    :param g_templates: flavor structure of g
+
+        len(g_templates) is equal to len(g_templates[i]) for any non-negative
+        i < len(g_templates). Thus the list of lists is interpreted as a
+        square array, with the number of rows and columns also equal to
+        n_three_slices. Each entry in g_template gives a template for the
+        finite-volume G matrix within each pair of mass-identical subspaces.
+        Off diaongal entries are all zeroes if the sorted set of masses is
+        distinct but can be non-zero if, for example masses 2.0, 2.0, 1.0 swap
+        into masses 1.0, 2.0, 2.0 (where the first entry is the spectator in
+        both cases).
+    :type g_templates: list of lists of np.ndarrays
     """
-
-    # Attributes
-    # ----------
-    # fc_list : list
-    #     flavor channel list (list of instances of FlavorChannel).
-    # sc_list : list
-    #     spectator channel list (list of instances of _SpectatorChannel).
-    #     _SpectatorChannel is a class to be used only within FlavorChannelSpace.
-    #     It includes extra information relevative to FlavorChannel as
-    #     summarized below.
-    # qcd_channel_space : boolean
-    #     defines whether the space is a qcd channel space (as opposed to an
-    #     explicit flavor channel space).
-    # explicit_flavor_channel_space : boolean
-    #     defines whether the space is an explicit flavor channel space (as
-    #     opposed to a qcd channel space).
-    # sc_compact : list
-    #     compact summary of the relevant spectator-channel properties. The exact
-    #     data depends on whether the space is a qcd channel space or an
-    #     explicit flavor channel space. In both cases sc_compact is a list of
-    #     rank-two np.ndarrays, one for each value of n_particles included in
-    #     the entries of fc_list. If only three-particle channels are included,
-    #     then len(sc_compact) is 1 and it contains a single rank-two np.ndarray.
-    #     Focus on this case. Then len(sc_compact[0]) is the total number of
-    #     three-particle spectator channels.
-
-    #     In the case of a qcd channel space len(sc_compact[0].T) is 10. Each
-    #     row is populated as follows:
-    #         [3.0, mass1, mass2, mass3, spin1, spin2, spin3, isospin_flavor,
-    #          isospin_value, sub_isospin],
-    #     where the first entry is the number of particles and all values are
-    #     cast to floats.
-
-    #     In the case of an explicit flavor channel space len(sc_compact[0].T)
-    #     is again 10. Each row is populated as follows:
-    #         [3.0, mass1, mass2, mass3, spin1, spin2, spin3, flavor1, flavor2,
-    #          flavor3],
-    #     where the first entry is the number of particles and all values are
-    #     cast to floats.
-    # three_index : int
-    #     if the fc_list includes multiple values of n_particles, three_index
-    #     is used to specify the location of the sc_compact entry for the
-    #     three-particle subspace. For the case of only three-particle
-    #     channels, three_index is 0.
-    # three_slices : list
-    #     list of two-entry (doublet) lists of integers. Each doublet specifies
-    #     a slice of sc_compact[three_index] according to mass values. So, for
-    #     a non-negative integer i < len(three_slices) we can evaluate:
-    #         sc_compact[three_index][three_slices[i][0]:three_slices[i][1]]
-    #     to get a three-particle subspace with fixed mass values.
-    # n_three_slices : int
-    #     length of three_slices, so the number of different mass values.
-    # g_templates : list of lists of np.ndarrays
-    #     len(g_templates) is equal to len(g_templates[i]) for any non-negative
-    #     i < len(g_templates). Thus the list of lists is interpreted as a
-    #     square array, with the number of rows and columns also equal to
-    #     n_three_slices. Each entry in g_template gives a template for the
-    #     finite-volume G matrix within each pair of mass-identical subspaces.
-    #     Off diaongal entries are all zeroes if the sorted set of masses is
-    #     distinct but can be non-zero if, for example masses 2.0, 2.0, 1.0 swap
-    #     into masses 1.0, 2.0, 2.0 (where the first entry is the spectator in
-    #     both cases).
-
     # Attributes of _SpectatorChannel
     # ------------------------------
     # fc : FlavorChannel()
