@@ -403,12 +403,31 @@ class FlavorChannel:
         return strtmp[:-2]+"."
 
 
-class _SpectatorChannel:
+class SpectatorChannel:
+    """
+    Class used to represent a particular spectator channel.
 
-    def __init__(self, fc=FlavorChannel(3),
-                 indexing=[0, 1, 2],
-                 sub_isospin=None,
-                 ell_set=[0],
+    :param fc: instance of FlavorChannel, a key property of the spectator
+        channel
+    :type fc: FlavorChannel
+    :param indexing: permutation of [0, 1, 2], the first entry is the spectator
+        particle (indexing is None for a two-particle or an isospin channel)
+    :type indexing: list of ints
+    :param sub_isospin: value of the two-particle isospin for the spectator
+        channel (is None for a two-particle or an explicit flavor channel)
+    :type sub_isospin: int
+    :param ell_set: specifies the allowed values of orbital angular momentum
+    :type ell_set: list of ints
+    :param p_cot_deltas: soecufues the two-particle scattering phase shifts
+        (same length as ell_set)
+    :type p_cot_deltas: list of functions
+    :param n_params_set: specifies the number of parameters for each
+        p_cot_deltas entry (same length as ell_set and p_cot_deltas)
+    :type n_params_set: list of ints
+    """
+
+    def __init__(self, fc=FlavorChannel(3), indexing=[0, 1, 2],
+                 sub_isospin=None, ell_set=[0],
                  p_cot_deltas=[QCFunctions.pcotdelta_scattering_length],
                  n_params_set=[1]):
         self._fc = fc
@@ -427,6 +446,7 @@ class _SpectatorChannel:
 
     @property
     def fc(self):
+        """Get the flavor channel (FlavorChannel)."""
         return self._fc
 
     @fc.setter
@@ -440,6 +460,7 @@ class _SpectatorChannel:
 
     @property
     def indexing(self):
+        """Get the indexing (list of ints)."""
         return self._indexing
 
     @indexing.setter
@@ -471,6 +492,7 @@ class _SpectatorChannel:
 
     @property
     def sub_isospin(self):
+        """Get the sub-channel isospin (int)."""
         return self._sub_isospin
 
     @sub_isospin.setter
@@ -495,6 +517,7 @@ class _SpectatorChannel:
 
     @property
     def ell_set(self):
+        """Get the set of orbital angular momentum (list of ints)."""
         return self._ell_set
 
     @ell_set.setter
@@ -507,6 +530,7 @@ class _SpectatorChannel:
 
     @property
     def p_cot_deltas(self):
+        """Get the set of p-cot-delta functions (list of functions)."""
         return self._p_cot_deltas
 
     @p_cot_deltas.setter
@@ -517,6 +541,7 @@ class _SpectatorChannel:
 
     @property
     def n_params_set(self):
+        """Get the set of parameter counts (list of ints)."""
         return self._n_params_set
 
     @n_params_set.setter
@@ -526,6 +551,7 @@ class _SpectatorChannel:
             raise ValueError('len(ell_set) != len(n_params_set)')
 
     def __str__(self):
+        """Summary of the spectator channel."""
         strtmp = self.fc.__str__().replace('Flavor', 'Spectator')[:-1]+",\n"
         strtmp = strtmp+"    indexing: "+str(self.indexing)+",\n"
         strtmp = strtmp+"    sub_isospin: "+str(self.sub_isospin)+",\n"
@@ -543,10 +569,10 @@ class FlavorChannelSpace:
     :type fc_list: list of instances of FlavorChannel
     :param sc_list: spectator channel list
 
-         _SpectatorChannel is a class to be used only within
+         SpectatorChannel is a class to be used predominantly within
          FlavorChannelSpace. It includes extra information relevative to
          FlavorChannel as summarized below.
-    :type sc_list: list of instances of _SpectatorChannel
+    :type sc_list: list of instances of SpectatorChannel
     :param qcd_channel_space: defines whether the space is a qcd channel space
 
         (as opposed to an explicit flavor channel space)
@@ -612,25 +638,6 @@ class FlavorChannelSpace:
         both cases).
     :type g_templates: list of lists of np.ndarrays
     """
-    # Attributes of _SpectatorChannel
-    # ------------------------------
-    # fc : FlavorChannel()
-    #     instance of FlavorChannel, a key property of the spectator channel.
-    # indexing : list
-    #     permutation of [0, 1, 2], the first entry is the spectator particle
-    #     (indexing is None for a two-particle or an isospin channel).
-    # sub_isospin : int
-    #     value of the two-particle isospin for the spectator channel
-    #     (is None for a two-particle or an explicit flavor channel).
-    # ell_set : list
-    #     list of integers specifying the allowed values of orbital angular
-    #     momentum.
-    # p_cot_deltas : list
-    #     list of functions for the two-particle scattering channels. Same
-    #     length as ell_set.
-    # n_params_set : list
-    #     number of parameters required for each p_cot_deltas entry. Same length
-    #     as ell_set.
 
     def __init__(self, fc_list=None):
         if fc_list is None:
@@ -668,57 +675,57 @@ class FlavorChannelSpace:
 
     def _add_flavor_channel(self, fc):
         if fc.n_particles == 2:
-            sc1 = _SpectatorChannel(fc, indexing=None)
+            sc1 = SpectatorChannel(fc, indexing=None)
             self._add_spectator_channel(sc1)
         elif fc.isospin_channel:
             if fc.isospin_value == 3:
-                sc1 = _SpectatorChannel(fc, indexing=None, sub_isospin=2)
+                sc1 = SpectatorChannel(fc, indexing=None, sub_isospin=2)
                 self._add_spectator_channel(sc1)
             elif fc.isospin_value == 2:
 
-                sc1 = _SpectatorChannel(fc, indexing=None, sub_isospin=1,
-                                        ell_set=[1])
-                sc2 = _SpectatorChannel(fc, indexing=None, sub_isospin=2)
+                sc1 = SpectatorChannel(fc, indexing=None, sub_isospin=1,
+                                       ell_set=[1])
+                sc2 = SpectatorChannel(fc, indexing=None, sub_isospin=2)
                 self._add_spectator_channel(sc1)
                 self._add_spectator_channel(sc2)
             elif fc.isospin_value == 1:
-                sc1 = _SpectatorChannel(fc, indexing=None, sub_isospin=0)
-                sc2 = _SpectatorChannel(fc, indexing=None, sub_isospin=1,
-                                        ell_set=[1])
-                sc3 = _SpectatorChannel(fc, indexing=None, sub_isospin=2)
+                sc1 = SpectatorChannel(fc, indexing=None, sub_isospin=0)
+                sc2 = SpectatorChannel(fc, indexing=None, sub_isospin=1,
+                                       ell_set=[1])
+                sc3 = SpectatorChannel(fc, indexing=None, sub_isospin=2)
                 self._add_spectator_channel(sc1)
                 self._add_spectator_channel(sc2)
                 self._add_spectator_channel(sc3)
             elif fc.isospin_value == 0:
-                sc1 = _SpectatorChannel(fc, indexing=None, sub_isospin=1,
-                                        ell_set=[1])
+                sc1 = SpectatorChannel(fc, indexing=None, sub_isospin=1,
+                                       ell_set=[1])
                 self._add_spectator_channel(sc1)
             else:
                 raise ValueError('this isospin_value is not yet supported')
         elif fc.explicit_flavor_channel:
             if fc.explicit_flavors[0] == fc.explicit_flavors[1]\
                == fc.explicit_flavors[2]:
-                sc1 = _SpectatorChannel(fc)
+                sc1 = SpectatorChannel(fc)
                 self._add_spectator_channel(sc1)
             elif fc.explicit_flavors[0] == fc.explicit_flavors[1]:
-                sc1 = _SpectatorChannel(fc)
-                sc2 = _SpectatorChannel(fc, indexing=[2, 0, 1])
+                sc1 = SpectatorChannel(fc)
+                sc2 = SpectatorChannel(fc, indexing=[2, 0, 1])
                 self._add_spectator_channel(sc1)
                 self._add_spectator_channel(sc2)
             elif fc.explicit_flavors[0] == fc.explicit_flavors[2]:
-                sc1 = _SpectatorChannel(fc)
-                sc2 = _SpectatorChannel(fc, indexing=[1, 2, 0])
+                sc1 = SpectatorChannel(fc)
+                sc2 = SpectatorChannel(fc, indexing=[1, 2, 0])
                 self._add_spectator_channel(sc1)
                 self._add_spectator_channel(sc2)
             elif fc.explicit_flavors[1] == fc.explicit_flavors[2]:
-                sc1 = _SpectatorChannel(fc)
-                sc2 = _SpectatorChannel(fc, indexing=[1, 2, 0])
+                sc1 = SpectatorChannel(fc)
+                sc2 = SpectatorChannel(fc, indexing=[1, 2, 0])
                 self._add_spectator_channel(sc1)
                 self._add_spectator_channel(sc2)
             else:
-                sc1 = _SpectatorChannel(fc=fc)
-                sc2 = _SpectatorChannel(fc=fc, indexing=[1, 2, 0])
-                sc3 = _SpectatorChannel(fc=fc, indexing=[2, 0, 1])
+                sc1 = SpectatorChannel(fc=fc)
+                sc2 = SpectatorChannel(fc=fc, indexing=[1, 2, 0])
+                sc3 = SpectatorChannel(fc=fc, indexing=[2, 0, 1])
                 self._add_spectator_channel(sc1)
                 self._add_spectator_channel(sc2)
                 self._add_spectator_channel(sc3)
@@ -873,43 +880,41 @@ class FiniteVolumeSetup:
     Class used to represent the finite-volume set-up.
 
     The provided data includes the formalism to be used, the total spatial
-    momentum, the finite-volume irrep and the qc organization.
+    momentum, the finite-volume irrep and the qc implementation (qc_impl).
 
-    qc_organization can include the following:
-        qc_organization['hermitian'] (boolean)
-        qc_organization['real harmonics'] (boolean)
-        qc_organization['noZinterp'] (boolean)
-        qc_organization['noYYCG'] (boolean)
+    qc_impl is a dict that can include the following:
+        qc_impl['hermitian'] (bool)
+        qc_impl['real harmonics'] (bool)
+        qc_impl['noZinterp'] (bool)
+        qc_impl['noYYCG'] (bool)
 
-    Attributes
-    ----------
-    formalism : str
-        indicates the formalism used. Currently only 'RFT' (relatvistic-field
-        theory approach) is supported.
-    nP : np.ndarray
-        three-vector encoded as a np.ndarray with shape (3,). Populated with
-        integers indicating the total spatial momentum in units of 2*PI/L,
-        where L is the box length.
-    nPSQ : int
-        magnitude squared of nP.
-    nPmag : float
-        magnitude of nP.
-    irreps : Irreps(nP)
-        instance of the class Irreps() encoding the possible irreducible
-        representations of the finite-volume symmetry group for a given
-        value of nP.
-    qc_organization : dict
-        specifies how the qc is organized, see list above.
+    :param formalism: indicates the formalism used
+
+        Currently only 'RFT' (relatvistic-field theory approach) is supported.
+    :type formalism: str
+    :param nP: three-vector as a numpy array, indicating the total spatial
+        momentum in units of 2*PI/L, where L is the box length
+    :type nP: np.ndarray of ints, shape (3,)
+    :param nPSQ: magnitude squared of nP
+    :type nPSQ: int
+    :param nPmag: magnitude of nP
+    :type nPmag: float
+    :param irreps: specifies how the qc is implemented, see list above
+    :type irreps: Irreps(nP)
+    :param qc_impl: instance of the class Irreps encoding the possible
+        irreducible representations of the finite-volume symmetry group for a
+        given value of nP
+    :type qc_impl: dict
     """
 
     def __init__(self, formalism='RFT',
                  nP=np.array([0, 0, 0]),
-                 qc_organization={'hermitian': True,
-                                  'real harmonics': True,
-                                  'noZinterp': True,
-                                  'noYYCG': True}):
+                 qc_impl={'hermitian': True,
+                          'real harmonics': True,
+                          'noZinterp': True,
+                          'noYYCG': True}):
         self.formalism = formalism
-        self.qc_organization = qc_organization
+        self.qc_impl = qc_impl
         self.nP = nP
         self.irreps = Irreps(nP=self.nP)
 
@@ -934,46 +939,47 @@ class FiniteVolumeSetup:
             self.nPmag = np.sqrt(self.nPSQ)
 
     @property
-    def qc_organization(self):
+    def qc_impl(self):
         """
-        Get the qc organization (dict).
+        Get the qc implementation (dict).
 
         See FiniteVolumeSetup for documentation of possible keys included in
-        qc_organization.
+        qc_impl.
         """
-        return self._qc_organization
+        return self._qc_impl
 
-    @qc_organization.setter
-    def qc_organization(self, qc_organization):
-        if not isinstance(qc_organization, dict):
-            raise ValueError("qc_organization must be a dict")
+    @qc_impl.setter
+    def qc_impl(self, qc_impl):
+        if not isinstance(qc_impl, dict):
+            raise ValueError("qc_impl must be a dict")
 
-        for key in qc_organization.keys():
+        for key in qc_impl.keys():
             if key not in ['hermitian', 'real harmonics',
                            'noZinterp', 'noYYCG']:
                 raise ValueError('key', key, 'not recognized')
 
-        if (('hermitian' in qc_organization.keys())
-           and (not isinstance(qc_organization['hermitian'], bool))):
-            raise ValueError('qc_organization entry hermitian must be a bool')
-        if (('real harmonics' in qc_organization.keys())
-           and (not isinstance(qc_organization['real harmonics'], bool))):
-            raise ValueError('qc_organization entry real harmonics must'
+        if (('hermitian' in qc_impl.keys())
+           and (not isinstance(qc_impl['hermitian'], bool))):
+            raise ValueError('qc_impl entry hermitian must be a bool')
+        if (('real harmonics' in qc_impl.keys())
+           and (not isinstance(qc_impl['real harmonics'], bool))):
+            raise ValueError('qc_impl entry real harmonics must'
                              + ' be a bool')
-        if (('noZinterp' in qc_organization.keys())
-           and (not isinstance(qc_organization['noZinterp'], bool))):
-            raise ValueError('qc_organization entry noZinterp must be a bool')
-        if (('noYYCG' in qc_organization.keys())
-           and (not isinstance(qc_organization['noYYCG'], bool))):
-            raise ValueError('qc_organization entry noYYCG must be a bool')
+        if (('noZinterp' in qc_impl.keys())
+           and (not isinstance(qc_impl['noZinterp'], bool))):
+            raise ValueError('qc_impl entry noZinterp must be a bool')
+        if (('noYYCG' in qc_impl.keys())
+           and (not isinstance(qc_impl['noYYCG'], bool))):
+            raise ValueError('qc_impl entry noYYCG must be a bool')
 
-        self._qc_organization = qc_organization
+        self._qc_impl = qc_impl
 
     def __str__(self):
         """Summary of the finite-volume set-up."""
         strtmp = "FiniteVolumeSetup using the "+self.formalism+":\n"
         strtmp = strtmp+"    nP = "+str(self._nP)+",\n"
-        strtmp = strtmp+"    qc_organization = "+self.qc_organization+",\n"
+        strtmp = strtmp+"    qc_impl = "\
+            + str(self.qc_impl)+",\n"
         return strtmp[:-2]+"."
 
 
@@ -992,21 +998,20 @@ class ThreeBodyInteractionScheme:
     This refers to the type of pole used within the finite-volume G function.
     This choice affects the meaning of the three-body interaction.
 
-    Attributes
-    ----------
-    fcs : FlavorChannelSpace()
-        flavor-channel space, required for building the space of kdf_functions.
-    three_scheme : str
-        specifies the scheme for the scheme dependent kdf, see the list above.
-    scheme_data : list
-        two floats, alpha and beta, specifiy the shape of the cutoff function.
-        Default is [alpha, beta]=[-1.0, 0.0].
-    kdf_functions : list
-        list of lists defining a square array, length is the number of flavor
-        channels.
-    kdf_iso_constant : builtin_function_or_method
-        simplest choice for kdf, a single coupling called beta_0, independent
-        of all kinematics.
+    :param fcs: flavor-channel space, required for building the space of
+        kdf_functions
+    :type fcs: FlavorChannelSpace()
+    :param three_scheme: specifies the scheme for kdf, see options above above
+    :type three_scheme: str
+    :param scheme_data: two parameters, `[alpha, beta]`, specifying the shape
+        of the cutoff function; Default is `[alpha, beta]=[-1.0, 0.0]`
+    :type scheme_data: list of floats, length 2
+    :param kdf_functions: square array of functions specifying the square
+        kdf matrix (length is the number of flavor channels)
+    :type kdf_functions: list of lists of functions
+    :param kdf_iso_constant: simplest choice for kdf, a single coupling called
+        beta_0, independent of all kinematics
+    :type kdf_iso_constant: builtin_function_or_method
     """
 
     def __init__(self, fcs=None, Emin=0.0,
@@ -1067,18 +1072,16 @@ class ThreeBodyKinematicSpace:
     r"""
     Class encoding spectator-momentum kinematics.
 
-    Attributes
-    ----------
-    nP : np.ndarray
-        three-vector encoded as a np.ndarray with shape (3,). Inherited from
-        the finite-volume set-up. Populated with integers indicating the total
-        spatial momentum in units of 2*PI/L, where L is the box length.
-    build_slice_acc : (boolean)
-        determines whether data is prepared to accelerate evaluates of qc.
-    nvec_arry : np.ndarray
-        array with shape (n, 3), giving the defining list of three-vectors.
-    verbosity : int
-        determines how verbose the output is.
+    :param nP: three-vector as a numpy array, indicating the total spatial
+        momentum in units of 2*PI/L, where L is the box length
+    :type nP: np.ndarray of ints, shape (3,)
+    :param build_slice_acc: determines whether data is prepared to accelerate
+        evaluations of the qc
+    :type build_slice_acc: bool
+    :param nvec_arry: gives the defining list of three-vectors
+    :type nvec_arry: np.ndarray of ints, shape (n, 3)
+    :param verbosity: determines how verbose the output is
+    :type verbosity: int
     """
 
     def __init__(self, nP=np.array([0, 0, 0]),
@@ -1321,18 +1324,16 @@ class QCIndexSpace:
     r"""
     Class encoding the quantizaiton condition index space.
 
-    Attributes
-    ----------
-    fcs : FlavorChannelSpace()
-        flavor-channel space defining the index space.
-    fvs : FiniteVolumeSetup()
-        finite-volume set-up defining the index space.
-    tbis : ThreeBodyInteractionScheme()
-        three-body interaction scheme  defining the index space.
-    Emax : float
-        maximum energy for building the space.
-    Lmax : float
-        maximum volume for building the space.
+    :param fcs: flavor-channel space defining the index space
+    :type fcs: FlavorChannelSpace()
+    :param fvs: finite-volume set-up defining the index space
+    :type fvs: FiniteVolumeSetup()
+    :param tbis: three-body interaction scheme defining the index space
+    :type tbis: ThreeBodyInteractionScheme()
+    :param Emax: maximum energy for building the space
+    :type Emax: float
+    :param Lmax: maximum volume for building the space
+    :type Lmax: float
     """
 
     def __init__(self, fcs=None, fvs=None, tbis=None,
@@ -1418,7 +1419,7 @@ class QCIndexSpace:
         self.populate_all_kellm_spaces()
         self.populate_all_proj_dicts()
         self.proj_dict = self.group.get_full_proj_dict(qcis=self)
-        self.populate_noninteracting()
+        self.populate_nonint_data(*([1.]*3))
 
     @property
     def nP(self):
@@ -1790,27 +1791,169 @@ class QCIndexSpace:
             tbks_sub_indices[cindex] = nPmaxintSQ - nPnewintSQ
         return tbks_sub_indices
 
-    def populate_noninteracting(self):
-        """Populate non-interacting energy vectors."""
-        cut = 2
-        trust = 30
-        rng = range(-cut, cut+1)
-        mesh = np.meshgrid(*([rng] * 3))
-        n1vec_arr = np.vstack([y.flat for y in mesh]).T
-        n2vec_arr = np.vstack([y.flat for y in mesh]).T
-        nSQset = [[]]
-        for n1vec in n1vec_arr:
-            for n2vec in n2vec_arr:
-                n3vec = -n1vec-n2vec
-                n1SQ = n1vec@n1vec
-                n2SQ = n2vec@n2vec
-                n3SQ = n3vec@n3vec
-                nSQset = nSQset+[[n1SQ+n2SQ+n3SQ]
-                                 + list(np.sort([n1SQ, n2SQ, n3SQ]))]
-        nSQset = np.array(nSQset[1:])
-        nSQset_unique = ((np.unique(nSQset[np.argsort(nSQset[:, 1])],
-                                    axis=0)).T)[1:].T[:trust]
-        self.nSQset_unique = nSQset_unique
+    def populate_nonint_data(self, m1, m2, m3):
+        """Get non-interacting data."""
+        Emax = self.Emax
+        nP = self.nP
+        Lmax = self.Lmax
+        pSQ = 0.
+        for m in [m1, m2, m3]:
+            pSQ_tmp = ((Emax-m)**2-(nP@nP)*(TWOPI/Lmax)**2)/4.-m**2
+            if pSQ_tmp > pSQ:
+                pSQ = pSQ_tmp
+        nSQ = pSQ*(Lmax/TWOPI)**2
+        nvec_cutoff = int(np.sqrt(nSQ))
+        rng = range(-nvec_cutoff, nvec_cutoff+1)
+        mesh = np.meshgrid(*([rng]*3))
+        nvecs = np.vstack([y.flat for y in mesh]).T
+
+        n1n2n3_arr = []
+        nmin = nvec_cutoff
+        nmax = nvec_cutoff
+        for n1 in nvecs:
+            for n2 in nvecs:
+                n3 = nP-n1-n2
+                n1SQ = n1@n1
+                n2SQ = n2@n2
+                n3SQ = n3@n3
+                E = np.sqrt(m1**2+n1SQ*(TWOPI/Lmax)**2)\
+                    + np.sqrt(m2**2+n2SQ*(TWOPI/Lmax)**2)\
+                    + np.sqrt(m3**2+n3SQ*(TWOPI/Lmax)**2)
+                if E <= Emax:
+                    comp_set = [*(list(n1)), *(list(n2)), *(list(n3))]
+                    min_candidate = np.min(comp_set)
+                    if min_candidate < nmin:
+                        nmin = min_candidate
+                    max_candidate = np.max(comp_set)
+                    if max_candidate > nmax:
+                        nmax = max_candidate
+                    n1n2n3_arr = n1n2n3_arr+[[n1, n2, n3]]
+        n1n2n3_arr = np.array(n1n2n3_arr)
+
+        numsys = nmax-nmin+1
+        E_n1n2n3_compact = []
+        n1n2n3_SQs = deepcopy([])
+        for i in range(len(n1n2n3_arr)):
+            n1 = n1n2n3_arr[i][0]
+            n2 = n1n2n3_arr[i][1]
+            n3 = n1n2n3_arr[i][2]
+            n1SQ = n1@n1
+            n2SQ = n2@n2
+            n3SQ = n3@n3
+            E = np.sqrt(m1**2+n1SQ*(TWOPI/Lmax)**2)\
+                + np.sqrt(m2**2+n2SQ*(TWOPI/Lmax)**2)\
+                + np.sqrt(m3**2+n3SQ*(TWOPI/Lmax)**2)
+            n1_as_num = (n1[2]-nmin)\
+                + (n1[1]-nmin)*numsys+(n1[0]-nmin)*numsys**2
+            n2_as_num = (n2[2]-nmin)\
+                + (n2[1]-nmin)*numsys+(n2[0]-nmin)*numsys**2
+            n3_as_num = (n3[2]-nmin)\
+                + (n3[1]-nmin)*numsys+(n3[0]-nmin)*numsys**2
+            E_n1n2n3_compact = E_n1n2n3_compact+[[E, n1_as_num,
+                                                  n2_as_num,
+                                                  n3_as_num]]
+            n1n2n3_SQs = n1n2n3_SQs+[[n1SQ, n2SQ, n3SQ]]
+        E_n1n2n3_compact = np.array(E_n1n2n3_compact)
+        n1n2n3_SQs = np.array(n1n2n3_SQs)
+
+        re_indexing = np.arange(len(E_n1n2n3_compact))
+        for i in range(4):
+            re_indexing = re_indexing[
+                E_n1n2n3_compact[:, 3-i].argsort(kind='mergesort')]
+            E_n1n2n3_compact = E_n1n2n3_compact[
+                E_n1n2n3_compact[:, 3-i].argsort(kind='mergesort')]
+        n1n2n3_arr = n1n2n3_arr[re_indexing]
+        n1n2n3_SQs = n1n2n3_SQs[re_indexing]
+
+        n1n2n3_ident = []
+        n1n2n3_ident_SQs = deepcopy([])
+        for i in range(len(n1n2n3_arr)):
+            [n1, n2, n3] = n1n2n3_arr[i]
+            candidates = [np.array([n1, n2, n3]),
+                          np.array([n2, n3, n1]),
+                          np.array([n3, n1, n2]),
+                          np.array([n3, n2, n1]),
+                          np.array([n2, n1, n3]),
+                          np.array([n1, n3, n2])]
+
+            include_entry = True
+
+            for candidate in candidates:
+                for n1n2n3_tmp_entry in n1n2n3_ident:
+                    n1n2n3_tmp_entry = np.array(n1n2n3_tmp_entry)
+                    include_entry = include_entry\
+                        and (not ((candidate == n1n2n3_tmp_entry).all()))
+            if include_entry:
+                n1n2n3_ident = n1n2n3_ident+[[n1, n2, n3]]
+                n1n2n3_ident_SQs = n1n2n3_ident_SQs+[n1n2n3_SQs[i]]
+        n1n2n3_ident = np.array(n1n2n3_ident)
+        n1n2n3_ident_SQs = np.array(n1n2n3_ident_SQs)
+
+        n1n2n3_reps = [n1n2n3_arr[0]]
+        n1n2n3_ident_reps = deepcopy([n1n2n3_ident[0]])
+        n1n2n3_SQreps = [n1n2n3_SQs[0]]
+        n1n2n3_ident_SQreps = deepcopy([n1n2n3_ident_SQs[0]])
+        n1n2n3_inds = [0]
+        n1n2n3_ident_inds = deepcopy([0])
+        n1n2n3_counts = deepcopy([0])
+        n1n2n3_ident_counts = deepcopy([0])
+
+        G = self.group.get_little_group(nP)
+        for j in range(len(n1n2n3_arr)):
+            already_included = False
+            for g_elem in G:
+                if not already_included:
+                    for k in range(len(n1n2n3_reps)):
+                        n_included = n1n2n3_reps[k]
+                        if (n1n2n3_arr[j]@g_elem == n_included).all():
+                            already_included = True
+                            n1n2n3_counts[k] = n1n2n3_counts[k]+1
+            if not already_included:
+                n1n2n3_reps = n1n2n3_reps+[n1n2n3_arr[j]]
+                n1n2n3_SQreps = n1n2n3_SQreps+[n1n2n3_SQs[j]]
+                n1n2n3_inds = n1n2n3_inds+[j]
+                n1n2n3_counts = n1n2n3_counts+[1]
+
+        for j in range(len(n1n2n3_ident)):
+            already_included = False
+            for g_elem in G:
+                if not already_included:
+                    for k in range(len(n1n2n3_ident_reps)):
+                        n_included = n1n2n3_ident_reps[k]
+                        n_included = np.array(n_included)
+                        [n1, n2, n3] = n1n2n3_ident[j]@g_elem
+                        candidates = [np.array([n1, n2, n3]),
+                                      np.array([n2, n3, n1]),
+                                      np.array([n3, n1, n2]),
+                                      np.array([n3, n2, n1]),
+                                      np.array([n2, n1, n3]),
+                                      np.array([n1, n3, n2])]
+                        include_entry = True
+                        for candidate in candidates:
+                            include_entry = include_entry\
+                                and (not ((candidate == n_included).all()))
+                        if not include_entry:
+                            already_included = True
+                            n1n2n3_ident_counts[k] = n1n2n3_ident_counts[k]+1
+            if not already_included:
+                n1n2n3_ident_reps = n1n2n3_ident_reps+[n1n2n3_ident[j]]
+                n1n2n3_ident_SQreps = n1n2n3_ident_SQreps+[n1n2n3_ident_SQs[j]]
+                n1n2n3_ident_inds = n1n2n3_ident_inds+[j]
+                n1n2n3_ident_counts = n1n2n3_ident_counts+[1]
+
+        self.n1n2n3_arr = n1n2n3_arr
+        self.n1n2n3_SQs = n1n2n3_SQs
+        self.n1n2n3_reps = n1n2n3_reps
+        self.n1n2n3_SQreps = n1n2n3_SQreps
+        self.n1n2n3_inds = n1n2n3_inds
+        self.n1n2n3_counts = n1n2n3_counts
+
+        self.n1n2n3_ident = n1n2n3_ident
+        self.n1n2n3_ident_SQs = n1n2n3_ident_SQs
+        self.n1n2n3_ident_reps = n1n2n3_ident_reps
+        self.n1n2n3_ident_SQreps = n1n2n3_ident_SQreps
+        self.n1n2n3_ident_inds = n1n2n3_ident_inds
+        self.n1n2n3_ident_counts = n1n2n3_ident_counts
 
     def _get_ibest(self, E, L):
         """Only for non-zero P."""
@@ -1866,10 +2009,9 @@ class G:
     r"""
     Class for the finite-volume G matrix (responsible for exchanges).
 
-    Attributes
-    ----------
-    qcis : QCIndexSpace()
-        all data for this QC object is specified by the qc index space.
+    :param qcis: quantization-condition index space, specifying all data for
+        the class
+    :type qcis: QCIndexSpace()
     """
 
     def __init__(self, qcis=QCIndexSpace()):
@@ -1943,7 +2085,7 @@ class G:
         """Build the G matrix on a single shell."""
         ts = self.qcis.tbis.three_scheme
         nP = self.qcis.nP
-        qco = self.qcis.fvs.qc_organization
+        qc_impl = self.qcis.fvs.qc_impl
         alpha = self.alpha
         beta = self.beta
 
@@ -1957,7 +2099,7 @@ class G:
                                         row_slice, col_slice,
                                         ell1, ell2,
                                         alpha, beta,
-                                        qco, ts,
+                                        qc_impl, ts,
                                         g_rescale)
 
         if project:
@@ -2021,7 +2163,7 @@ class G:
             print('E = ', E, ', nP = ', nP, ', L = ', L)
 
             print(self.qcis.tbis.three_scheme, ',',
-                  self.qcis.fvs.qc_organization)
+                  self.qcis.fvs.qc_impl)
             print('cutoff params:', self.alpha, ',', self.beta)
 
             if self.qcis.tbis.three_scheme == 'original pole':
@@ -2030,8 +2172,8 @@ class G:
                 sf = '1./(2.*w1*L**3)\n    * 1./(E-w1-w3+w2)'
             else:
                 raise ValueError('three_scheme not recognized')
-            if (('hermitian' not in self.qcis.fvs.qc_organization.keys())
-               or (self.qcis.fvs.qc_organization['hermitian'])):
+            if (('hermitian' not in self.qcis.fvs.qc_impl.keys())
+               or (self.qcis.fvs.qc_impl['hermitian'])):
                 sf = sf+'\n    * 1./(2.0*w3*L**3)'
 
             print('G = YY*H1*H2\n    * '+sf+'\n    * 1./(E-w1-w2-w3)\n')
@@ -2140,19 +2282,18 @@ class G:
 
 class F:
     """
-    Class for the F matrix.
+    Class for the finite-volume F matrix.
 
     Warning: It is up to the user to select values of alphaKSS and C1cut that
     lead to a sufficient estimate of the F matrix.
 
-    Attributes
-    ----------
-    qcis : QCIndexSpace()
-        all data for this QC object is specified by the qc index space.
-    alphaKSS : float
-        damping factor entering the zeta functions.
-    C1cut : int
-        hard cutoff used in the zeta functions.
+    :param qcis: quantization-condition index space, specifying all data for
+        the class
+    :type qcis: QCIndexSpace()
+    :param alphaKSS: damping factor entering the zeta functions
+    :type alphaKSS: float
+    :param C1cut: hard cutoff used in the zeta functions
+    :type C1cut: int
     """
 
     def __init__(self, qcis=None, alphaKSS=1.0, C1cut=3):
@@ -2198,7 +2339,7 @@ class F:
         """Build the F matrix on a single shell."""
         ts = self.qcis.tbis.three_scheme
         nP = self.qcis.nP
-        qco = self.qcis.fvs.qc_organization
+        qc_impl = self.qcis.fvs.qc_impl
         alpha = self.alpha
         beta = self.beta
         C1cut = self.C1cut
@@ -2214,7 +2355,7 @@ class F:
                                         ell1, ell2,
                                         alpha, beta,
                                         C1cut, alphaKSS,
-                                        qco, ts)
+                                        qc_impl, ts)
 
         if project:
             try:
@@ -2305,12 +2446,11 @@ class F:
 
 class K:
     """
-    Class for the k matrix.
+    Class for the two-to-two k matrix.
 
-    Attributes
-    ----------
-    qcis : QCIndexSpace()
-        all data for this QC object is specified by the qc index space.
+    :param qcis: quantization-condition index space, specifying all data for
+        the class
+    :type qcis: QCIndexSpace()
     """
 
     def __init__(self, qcis=None):
@@ -2356,7 +2496,7 @@ class K:
         """Build the K matrix on a single shell."""
         ts = self.qcis.tbis.three_scheme
         nP = self.qcis.nP
-        qco = self.qcis.fvs.qc_organization
+        qc_impl = self.qcis.fvs.qc_impl
         alpha = self.alpha
         beta = self.beta
 
@@ -2371,7 +2511,7 @@ class K:
                                         pcotdelta_function,
                                         pcotdelta_parameter_list,
                                         alpha, beta,
-                                        qco, ts)
+                                        qc_impl, ts)
 
         if project:
             try:
@@ -2469,14 +2609,13 @@ class QC:
     Warning: It is up to the user to select values of alphaKSS and C1cut that
     lead to a sufficient estimate of the F matrix.
 
-    Attributes
-    ----------
-    qcis : QCIndexSpace()
-        all data for this QC object is specified by the qc index space.
-    alphaKSS : float
-        damping factor entering the zeta functions.
-    C1cut : int
-        hard cutoff used in the zeta functions.
+    :param qcis: quantization-condition index space, specifying all data for
+        the class
+    :type qcis: QCIndexSpace()
+    :param alphaKSS: damping factor entering the zeta functions
+    :type alphaKSS: float
+    :param C1cut: hard cutoff used in the zeta functions
+    :type C1cut: int
     """
 
     def __init__(self, qcis=None, C1cut=5, alphaKSS=1.0):
@@ -2488,7 +2627,15 @@ class QC:
     def get_value(self, E=None, L=None, k_params=None, project=True,
                   irrep=None, version='kdf_zero_1+',
                   rescale=1.0):
-        """Get value."""
+        r"""
+        Get value.
+
+        version is drawn from the following:
+            'kdf_zero_1+' (defaul)
+            'f3'
+            'kdf_zero_k2_inv'
+            'kdf_zero_f+g_inv'
+        """
         if E is None:
             raise TypeError("missing required argument 'E' (float)")
         if L is None:

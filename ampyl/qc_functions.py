@@ -437,7 +437,7 @@ class BKFunctions:
 
     @staticmethod
     def calY(ell=0, mazi=0, nvec_arr=np.array([[1.0, 2.0, 3.0]]),
-             q=1.0, qc_organization={}):
+             q=1.0, qc_impl={}):
         r"""
         Caligraphic spherical harmonics.
 
@@ -447,19 +447,19 @@ class BKFunctions:
         mazi (int): azimuthal component
         nvec_arr (np.ndarray): array of three-vectors
         q (float): on-shell back-to-back momentum magnitude.
-        qc_organization (dict): organization, determining exact definition.
+        qc_impl (dict): organization, determining exact definition.
 
         (Also relies on global EPSILON parameter.)
 
         See FiniteVolumeSetup for documentation of possible keys included in
-        qc_organization.
+        qc_impl.
 
         Returns
         -------
         (np.ndarray)
         """
-        if (('real harmonics' not in qc_organization.keys())
-           or (qc_organization['real harmonics'])):
+        if (('real harmonics' not in qc_impl.keys())
+           or (qc_impl['real harmonics'])):
             Y = BKFunctions.cart_sph_harm_real(ell, mazi, nvec_arr)
         else:
             Y = BKFunctions.cart_sph_harm(ell, mazi, nvec_arr)
@@ -632,7 +632,7 @@ class QCFunctions:
                           alpha=-1.0, beta=0.0,
                           J_slow=False,
                           three_scheme='relativistic pole',
-                          qc_organization={}):
+                          qc_impl={}):
         """
         Evaluate single entry of G.
 
@@ -666,10 +666,10 @@ class QCFunctions:
         beta (float): second shape parameter
         J_slow (boolean): switch for version of J
         three_scheme (str): scheme for three-body interaction
-        qc_organization (dict): scheme for organizing quantization condition
+        qc_impl (dict): scheme for organizing quantization condition
 
         See FiniteVolumeSetup for documentation of possible keys included in
-        qc_organization.
+        qc_impl.
 
         Returns
         -------
@@ -681,10 +681,10 @@ class QCFunctions:
 
         calY1 = BKFunctions.calY(ell1, mazi1,
                                  vecstar_for1.reshape((1, 3)),
-                                 q_for1, qc_organization)[0]
+                                 q_for1, qc_impl)[0]
         calY2 = BKFunctions.calY(ell2, mazi2,
                                  vecstar_for2.reshape((1, 3)),
-                                 q_for2, qc_organization)[0]
+                                 q_for2, qc_impl)[0]
         calY2conj = np.conjugate(calY2)
 
         HH = BKFunctions.H(E2CMSQ_for1, m1+m2, alpha, beta, J_slow)\
@@ -704,8 +704,8 @@ class QCFunctions:
         else:
             raise ValueError('three_scheme not recognized')
 
-        if (('hermitian' not in qc_organization.keys())
-           or (qc_organization['hermitian'])):
+        if (('hermitian' not in qc_impl.keys())
+           or (qc_impl['hermitian'])):
             simple_factor = simple_factor/(2.0*omega3*L**3)
 
         pole_factor = 1.0/(E-omega1-omega2-omega3)
@@ -880,13 +880,13 @@ class QCFunctions:
                    row_slicing, col_slicing,
                    ell1, ell2,
                    alpha, beta,
-                   qc_organization, three_scheme,
+                   qc_impl, three_scheme,
                    g_rescale):
         """
         Get G, numpy accelerated.
 
         See FiniteVolumeSetup for documentation of possible keys included in
-        qc_organization.
+        qc_impl.
 
         three_scheme is drawn from the following:
             'original pole'
@@ -916,13 +916,13 @@ class QCFunctions:
                                          vecstar_for1.reshape(
                                              (shape1_tmp[0]*shape1_tmp[1], 3)),
                                          q_for1_mat.reshape(q_for1_mat.size),
-                                         qc_organization)
+                                         qc_impl)
                 shape2_tmp = vecstar_for2.shape
                 calY2 = BKFunctions.calY(ell2, mazi2,
                                          vecstar_for2.reshape(
                                              (shape2_tmp[0]*shape2_tmp[1], 3)),
                                          q_for2_mat.reshape(q_for2_mat.size),
-                                         qc_organization)
+                                         qc_impl)
                 calY2conj = np.conjugate(calY2)
                 calY1 = (calY1).reshape(r2_shape)
                 calY1row = calY1row+[calY1]
@@ -973,8 +973,8 @@ class QCFunctions:
         else:
             raise ValueError('three_scheme not recognized')
 
-        if (('hermitian' not in qc_organization.keys())
-           or (qc_organization['hermitian'])):
+        if (('hermitian' not in qc_impl.keys())
+           or (qc_impl['hermitian'])):
             simple_factor_mat = simple_factor_mat/(2.0*omega3_mat*L**3)
 
         pole_factor = 1.0/(E-omega1_mat-omega2_mat-omega3_mat)
@@ -994,12 +994,12 @@ class QCFunctions:
     def summand(nP2=np.array([0, 0, 0]), qSQ=1.5, gamSQ=1.0,
                 nvec_arr=np.array([[0, 0, 0]]), alphaKSS=1.0,
                 ell1=0, mazi1=0, ell2=0, mazi2=0,
-                qc_organization={}):
+                qc_impl={}):
         """
         Regulated sum entering the F function.
 
         See FiniteVolumeSetup for documentation of possible keys included in
-        qc_organization.
+        qc_impl.
         """
         nP2SQ = nP2@nP2
         nP2mag = np.sqrt(nP2SQ)
@@ -1009,12 +1009,12 @@ class QCFunctions:
             rSQ_arr = (nvec_arr**2).sum(1)
             if ell1 != 0:
                 calY1 = BKFunctions.calY(ell1, mazi1, nvec_arr,
-                                         q, qc_organization)
+                                         q, qc_impl)
                 sph_harm_value = sph_harm_value*calY1
 
             if ell2 != 0:
                 calY2 = BKFunctions.calY(ell2, mazi2, nvec_arr,
-                                         q, qc_organization)
+                                         q, qc_impl)
                 calY2conj = np.conjugate(calY2)
                 sph_harm_value = sph_harm_value*calY2conj
 
@@ -1045,11 +1045,11 @@ class QCFunctions:
                 rSQ_arr = (rvec_arr**2).sum(1)
                 if ell1 != 0:
                     calY1 = BKFunctions.calY(ell1, mazi1, rvec_arr,
-                                             q, qc_organization)
+                                             q, qc_impl)
                     sph_harm_value = sph_harm_value*calY1
                 if ell2 != 0:
                     calY2 = BKFunctions.calY(ell2, mazi2, rvec_arr,
-                                             q, qc_organization)
+                                             q, qc_impl)
                     calY2conj = np.conjugate(calY2)
                     sph_harm_value = sph_harm_value*calY2conj
                 if ((ell1 == ell2) and (mazi1 == mazi2)):
@@ -1061,13 +1061,13 @@ class QCFunctions:
     @staticmethod
     def __T1(nP2=np.array([0, 0, 0]), qSQ=1.5, gamSQ=1.0, C1cut=3,
              alphaKSS=1.0, ell1=0, mazi1=0, ell2=0, mazi2=0,
-             qc_organization={}):
+             qc_impl={}):
         rng = range(-C1cut, C1cut+1)
         mesh = np.meshgrid(*([rng]*3))
         nvec_arr = np.vstack([y.flat for y in mesh]).T
         return np.sum(QCFunctions.summand(nP2, qSQ, gamSQ, nvec_arr, alphaKSS,
                                           ell1, mazi1, ell2, mazi2,
-                                          qc_organization))/ROOT4PI
+                                          qc_impl))/ROOT4PI
 
     @staticmethod
     def __T2(qSQ=1.5, gamSQ=1.0, alphaKSS=1.0,
@@ -1092,17 +1092,17 @@ class QCFunctions:
     def getZ_single_entry(nP2=np.array([0, 0, 0]), qSQ=1.5, gamSQ=1.0,
                           C1cut=3, alphaKSS=1.0,
                           ell1=0, mazi1=0, ell2=0, mazi2=0,
-                          qc_organization={}):
+                          qc_impl={}):
         r"""Evaluate a single entry of \\(Z\\)."""
         return QCFunctions.__T1(nP2, qSQ, gamSQ, C1cut, alphaKSS,
-                                ell1, mazi1, ell2, mazi2, qc_organization)\
+                                ell1, mazi1, ell2, mazi2, qc_impl)\
             + QCFunctions.__T2(qSQ, gamSQ, alphaKSS, ell1, mazi1, ell2, mazi2)
 
     @staticmethod
     def getFtwo_single_entry(E2=3.0, nP2=np.array([0, 0, 0]), L=5.0,
                              m1=1.0, m2=1.0, C1cut=3, alphaKSS=1.0,
                              ell1=0, mazi1=0, ell2=0, mazi2=0,
-                             qc_organization={}):
+                             qc_impl={}):
         r"""Evaluate a single entry of \\(F_2\\)."""
         P2 = TWOPI*nP2/L
         E2SQ = E2**2
@@ -1125,7 +1125,7 @@ class QCFunctions:
         return pre*(QCFunctions.getZ_single_entry(nP2, qSQ_dimless, gamSQ,
                                                   C1cut, alphaKSS,
                                                   ell1, mazi1, ell2, mazi2,
-                                                  qc_organization))
+                                                  qc_impl))
 
     @staticmethod
     def getF_single_entry(E=4.0, nP=np.array([0, 0, 0]), L=5.0,
@@ -1134,14 +1134,13 @@ class QCFunctions:
                           C1cut=3, alphaKSS=1.0, alpha=-1.0, beta=0.0,
                           ell1=0, mazi1=0, ell2=0, mazi2=0,
                           three_scheme='relativistic pole',
-                          qc_organization={}):
+                          qc_impl={}):
         """
         Evaluate a single entry of F.
 
         See FiniteVolumeSetup for documentation of possible keys included in
-        qc_organization.
+        qc_impl.
         """
-        qco = qc_organization
         nP2 = nP - npspec
         pspec = TWOPI*npspec/L
         pspecSQ = pspec@pspec
@@ -1166,15 +1165,15 @@ class QCFunctions:
         gamma = np.sqrt(gamSQ)
         Htmp = BKFunctions.H(E2CMSQ, m1+m2, alpha, beta)
         pre = -Htmp*2.0/(L*np.sqrt(PI)*16.0*PI*E2CM*gamma)
-        if ('hermitian' not in qco.keys()) or (qco['hermitian']):
+        if ('hermitian' not in qc_impl.keys()) or (qc_impl['hermitian']):
             pre = pre/(2.0*omspec*L**3)
         return pre*(QCFunctions.getZ_single_entry(nP2, qSQ_dimless, gamSQ,
                                                   C1cut, alphaKSS,
                                                   ell1, mazi1,
-                                                  ell2, mazi2, qco))
+                                                  ell2, mazi2, qc_impl))
 
     def getF_array(E, nP, L, m1, m2, m3, tbks_entry, slice_entry,
-                   ell1, ell2, alpha, beta, C1cut, alphaKSS, qco, ts):
+                   ell1, ell2, alpha, beta, C1cut, alphaKSS, qc_impl, ts):
         """
         Get F, numpy accelerated.
 
@@ -1203,7 +1202,7 @@ class QCFunctions:
                                                           ell2=ell2,
                                                           mazi2=mazi2,
                                                           three_scheme=ts,
-                                                          qc_organization=qco)
+                                                          qc_impl=qc_impl)
                     if np.abs(f_tmp.imag) < EPSILON:
                         f_tmp = f_tmp.real
                     if np.abs(f_tmp) < EPSILON:
@@ -1263,14 +1262,13 @@ class QCFunctions:
                           m1=1.0, m2=1.0, mspec=1.0,
                           alpha=-1.0, beta=0.0,
                           ell=0,
-                          qc_organization={}):
+                          qc_impl={}):
         """
         Evluate a single entry of K.
 
         See FiniteVolumeSetup for documentation of possible keys included in
-        qc_organization.
+        qc_impl.
         """
-        qco = qc_organization
         if pcotdelta_function is None:
             pcotdelta_function = QCFunctions.pcotdelta_scattering_length
         P = TWOPI*nP/L
@@ -1294,7 +1292,7 @@ class QCFunctions:
                                                       alpha=alpha,
                                                       beta=beta)
         pre = 1.0
-        if ('hermitian' not in qco.keys()) or (qco['hermitian']):
+        if ('hermitian' not in qc_impl.keys()) or (qc_impl['hermitian']):
             pre = pre*(2.0*omspec*L**3)
         pcotdelta = pcotdelta/np.abs(pSQ**(ell))
         return pre*16.0*PI*ECM/(pcotdelta+q_one_minus_H_tmp)
@@ -1306,12 +1304,12 @@ class QCFunctions:
                    pcotdelta_function,
                    pcotdelta_parameter_list,
                    alpha, beta,
-                   qco, ts):
+                   qc_impl, ts):
         """
         Get K, numpy accelerated.
 
         See FiniteVolumeSetup for documentation of possible keys included in
-        qc_organization.
+        qc_impl.
 
         three_scheme is drawn from the following:
             'original pole'
@@ -1327,7 +1325,7 @@ class QCFunctions:
                                                   m1=m2, m2=m3, mspec=m1,
                                                   alpha=alpha, beta=beta,
                                                   ell=ell,
-                                                  qc_organization=qco)
+                                                  qc_impl=qc_impl)
             if np.abs(k_tmp.imag) < EPSILON:
                 k_tmp = k_tmp.real
             if np.abs(k_tmp) < EPSILON:

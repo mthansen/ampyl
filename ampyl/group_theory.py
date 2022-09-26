@@ -41,7 +41,7 @@ import spherical
 
 ROOT_THREE = np.sqrt(3.0)
 ROOT_TWO = np.sqrt(2.0)
-EPSPROJ = 1.0e-10
+EPSPROJ = 1.0e-9
 
 
 class Irreps:
