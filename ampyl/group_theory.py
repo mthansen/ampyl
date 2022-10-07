@@ -41,7 +41,38 @@ import spherical
 
 ROOT_THREE = np.sqrt(3.0)
 ROOT_TWO = np.sqrt(2.0)
-EPSPROJ = 1.0e-9
+EPSPROJ = 1.0e-8
+PION_ORDERS = [[0, 1, 2],
+               [1, 0, 2],
+               [0, 2, 1],
+               [1, 2, 0],
+               [2, 0, 1],
+               [2, 1, 0]]
+
+ISO_PROJECTOR_ZERO = np.diag([0.]*6+[1.])
+ISO_PROJECTOR_ONE = np.diag([0.]*3+[1.]*3+[0.])
+ISO_PROJECTOR_TWO = np.diag([0.]+[1.]*2+[0.]*4)
+ISO_PROJECTOR_THREE = np.diag([1.]+[0.]*6)
+
+ISO_PROJECTORS = [ISO_PROJECTOR_ZERO,
+                  ISO_PROJECTOR_ONE,
+                  ISO_PROJECTOR_TWO,
+                  ISO_PROJECTOR_THREE]
+
+CAL_C_ISO = np.array([[1./np.sqrt(10.), 1./np.sqrt(10.), 1./np.sqrt(10.),
+                       np.sqrt(2./5.), 1./np.sqrt(10.), 1./np.sqrt(10.),
+                       1./np.sqrt(10.)],
+                      [-0.5, -0.5, 0., 0., 0., 0.5, 0.5],
+                      [-1./np.sqrt(12.), 1./np.sqrt(12.), -1./np.sqrt(3.), 0.,
+                       1./np.sqrt(3.), -1./np.sqrt(12.), 1./np.sqrt(12.)],
+                      [np.sqrt(3./20.), np.sqrt(3./20.), -1./np.sqrt(15.),
+                       -2./np.sqrt(15.), -1./np.sqrt(15.), np.sqrt(3./20.),
+                       np.sqrt(3./20.)],
+                      [0.5, -0.5, 0., 0., 0., -0.5, 0.5],
+                      [0., 0., 1./np.sqrt(3.), -1./np.sqrt(3.), 1./np.sqrt(3.),
+                       0., 0.],
+                      [-1./np.sqrt(6.), 1./np.sqrt(6.), 1./np.sqrt(6.), 0.,
+                       -1./np.sqrt(6.), -1./np.sqrt(6.), 1./np.sqrt(6.)]])
 
 
 class Irreps:
@@ -561,6 +592,46 @@ class Groups:
         induced_rep = np.kron(nvec_arr_rot_matrix, wig_d_block)
         return induced_rep
 
+    def generate_induced_rep_nonint(self, identical_arr=np.zeros((1, 3, 3)),
+                                    nonidentical_arr=np.zeros((1, 3, 3)),
+                                    g_elem=np.identity(3)):
+        """Generate the non-interacting induced representation matrix."""
+        loc_inds = []
+        identical_arr_rot = np.moveaxis(
+            g_elem@np.moveaxis(identical_arr, 0, 2), 2, 0)
+        for i in range(len(identical_arr)):
+            identical_arr_rot_entry = identical_arr_rot[i]
+            loc_ind = []
+            for pion_order in PION_ORDERS:
+                loc_ind_tmp = np.where(
+                    np.all(identical_arr
+                           == identical_arr_rot_entry[pion_order],
+                           axis=(1, 2))
+                    )[0]
+                loc_ind = loc_ind+list(loc_ind_tmp)
+            loc_ind = np.unique(loc_ind)
+            assert len(loc_ind) == 1
+            loc_inds = loc_inds+[loc_ind[0]]
+
+        nonidentical_arr_rot = np.moveaxis(
+            g_elem@np.moveaxis(nonidentical_arr, 0, 2), 2, 0)
+        for i in range(len(nonidentical_arr)):
+            nonidentical_arr_rot_entry = nonidentical_arr_rot[i]
+            loc_ind = np.where(
+                np.all(nonidentical_arr
+                       == nonidentical_arr_rot_entry, axis=(1, 2))
+                )[0]
+            assert len(loc_ind) == 1
+            loc_inds = loc_inds+[loc_ind[0]+len(identical_arr)]
+
+        nonint_rot_matrix = [[]]
+        for loc_ind in loc_inds:
+            nonint_rot_row = np.zeros(len(loc_inds))
+            nonint_rot_row[loc_ind] = 1.0
+            nonint_rot_matrix = nonint_rot_matrix+[nonint_rot_row]
+        nonint_rot_matrix = np.array(nonint_rot_matrix[1:])
+        return nonint_rot_matrix
+
     def get_large_proj(self, nP=np.array([0, 0, 0]), irrep='A1PLUS', irow=0,
                        nvec_arr=np.zeros((1, 3)),
                        ellm_set=[[0, 0]]):
@@ -585,6 +656,35 @@ class Groups:
             g_elem = group[g_ind]
             induced_rep = self.generate_induced_rep(nvec_arr, ellm_set,
                                                     g_elem)
+            proj = proj+induced_rep*bT[g_ind]
+        return proj
+
+    def get_large_proj_nonint(self, nP=np.array([0, 0, 0]), irrep='A1PLUS',
+                              irow=0,
+                              identical_arr=np.zeros((1, 3, 3)),
+                              nonidentical_arr=np.zeros((1, 3, 3))):
+        """Get a particular large projector."""
+        if (nP == np.array([0, 0, 0])).all():
+            group_str = 'OhP'
+            group = self.OhP
+            bT = self.bTdict[group_str+'_'+irrep][irow]
+        elif (nP == np.array([0, 0, 1])).all():
+            group_str = 'Dic4'
+            group = self.Dic4
+            bT = self.bTdict[group_str+'_'+irrep][irow]
+        elif (nP == np.array([0, 1, 1])).all():
+            group_str = 'Dic2'
+            group = self.Dic2
+            bT = self.bTdict[group_str+'_'+irrep][irow]
+        else:
+            return ValueError('group not yet supported by get_large_proj')
+        dim = len(identical_arr)+len(nonidentical_arr)
+        proj = np.zeros((dim, dim))
+        for g_ind in range(len(group)):
+            g_elem = group[g_ind]
+            induced_rep = self.generate_induced_rep_nonint(identical_arr,
+                                                           nonidentical_arr,
+                                                           g_elem)
             proj = proj+induced_rep*bT[g_ind]
         return proj
 
@@ -678,6 +778,175 @@ class Groups:
             summarystr = summarystr+"does not match size of kellm space, "\
                 + "something went wrong"
         return best_irreps, summarystr
+
+    def get_iso_projection(self, qcis=None, iso_index=0, shell_index=0):
+        """Get the iso-projector for non-interacting vectors."""
+        if qcis is None:
+            raise ValueError('qcis cannot be None')
+        identical_arr = qcis.n1n2n3_ident_batched[shell_index]
+        nonidentical_arr = qcis.n1n2n3_batched[shell_index]
+        iso_projector = ISO_PROJECTORS[iso_index]
+        iso_prepare_sets = []
+        id_sub_len = len(identical_arr)
+        for ident_subset_index in range(id_sub_len):
+            ident_subset_entry = identical_arr[ident_subset_index]
+            iso_prepare_entry = [ident_subset_index-id_sub_len]
+            for pion_order in PION_ORDERS:
+                loc_indices = np.where(
+                    (nonidentical_arr
+                     == ident_subset_entry[pion_order]).all(axis=(1, 2))
+                    )
+                assert len(loc_indices) == 1
+                loc_index = loc_indices[0][0]
+                iso_prepare_entry = iso_prepare_entry+[loc_index]
+            iso_prepare_sets = iso_prepare_sets+[iso_prepare_entry]
+        iso_prepare_sets = np.array(iso_prepare_sets).T+id_sub_len
+        three_ident_entry = iso_prepare_sets[0]
+        iso_prepare_sets = np.insert(iso_prepare_sets, 4,
+                                     three_ident_entry, axis=0)
+        iso_prepare_sets = np.delete(iso_prepare_sets, 0, axis=0)
+        iso_prepare = []
+        for iso_prepare_set in iso_prepare_sets.T:
+            iso_prepare = iso_prepare+list(iso_prepare_set)
+        iso_prepare_mat = (np.identity(len(iso_prepare))[iso_prepare])
+        iso_prepare_matT = iso_prepare_mat.T
+        mask = []
+        for i in range(len(iso_prepare_matT)):
+            mask = mask+[not (iso_prepare_matT[i] == 0.).all()]
+        iso_prepare_matT_masked = iso_prepare_matT[mask]
+        iso_prepare_mat = iso_prepare_matT_masked.T
+
+        iso_rot = block_diag(*(id_sub_len*[CAL_C_ISO]))
+        full_chbasis = iso_rot@iso_prepare_mat
+        full_iso_proj = block_diag(*(id_sub_len*[iso_projector]))
+        # assert (((full_chbasis.T)@full_chbasis
+        #         - np.identity(len(full_chbasis))) < 1.e-10).all()
+        final = full_iso_proj@full_chbasis
+        return final
+
+    def get_nonint_proj_dict_shell(self, qcis=None, cindex=0,
+                                   definite_iso=False, isovalue=None,
+                                   shell_index=None):
+        """Get the dictionary of small projectors for a given qcis."""
+        if qcis is None:
+            raise ValueError('qcis cannot be None')
+        nP = qcis.nP
+        irrep_set = Irreps(nP=nP).set
+        identical_arr = qcis.n1n2n3_ident_batched[shell_index]
+        nonidentical_arr = qcis.n1n2n3_batched[shell_index]
+
+        if (nP@nP != 0) and (nP@nP != 1) and (nP@nP != 2):
+            raise ValueError('momentum = ', nP, ' is not yet supported')
+        non_proj_dict = {}
+        if (nP@nP == 0):
+            group_str = 'OhP'
+        if (nP@nP == 1):
+            group_str = 'Dic4'
+        if (nP@nP == 2):
+            group_str = 'Dic2'
+
+        for i in range(len(irrep_set)):
+            irrep = irrep_set[i]
+            for irow in range(len(self.bTdict[group_str+'_'+irrep])):
+                slice_index = 0
+                for three_slice in qcis.fcs.three_slices:
+                    if cindex > three_slice[1]:
+                        slice_index = slice_index+1
+                proj = self.get_large_proj_nonint(nP, irrep, irow,
+                                                  identical_arr,
+                                                  nonidentical_arr)
+                eigvals, eigvecs = np.linalg.eig(proj)
+                eigvalsround = (np.round(np.abs(eigvals), 10))
+                example_eigval = 0.0
+                for i in range(len(eigvalsround)):
+                    eigval = eigvalsround[i]
+                    if np.abs(eigval) > 1.0e-10:
+                        if example_eigval == 0.0:
+                            example_eigval = eigval
+                        else:
+                            assert np.abs(
+                                example_eigval-eigval
+                                ) < 1.0e-10
+                if np.abs(example_eigval) > 1.0e-10:
+                    proj = proj/example_eigval
+                if definite_iso:
+                    isoproj = self.get_iso_projection(qcis, isovalue,
+                                                      shell_index)
+                    isorotproj = isoproj@proj@np.transpose(isoproj)
+                else:
+                    isorotproj = proj
+                finalproj = self._get_final_proj(isorotproj)
+                if len(finalproj) != 0:
+                    non_proj_dict[(irrep, irow)] = finalproj
+                for keytmp in non_proj_dict:
+                    proj_tmp = non_proj_dict[keytmp]
+                    if (proj_tmp.imag == np.zeros(proj_tmp.shape)).all():
+                        non_proj_dict[keytmp] = proj_tmp.real
+        return non_proj_dict
+
+    def get_nonint_proj_dict(self, qcis=None, cindex=0, definite_iso=True):
+        """Get it."""
+        master_dict = {}
+        if qcis is None:
+            raise ValueError('qcis cannot be None')
+        row_zero_value = 0
+        summary_string = ''
+        nshells = len(qcis.n1n2n3_ident_reps)
+        for shell_index in range(nshells):
+            shell_total = 0
+            nstates = len(qcis.n1n2n3_ident_batched[shell_index])\
+                + len(qcis.n1n2n3_batched[shell_index])
+            summary_string = summary_string\
+                + f'shell_index = {shell_index} ({nstates} states):\n'
+            if definite_iso:
+                isoset = range(4)
+            else:
+                isoset = range(1)
+            for isovalue in isoset:
+                non_proj_dict = self.get_nonint_proj_dict_shell(qcis, 0,
+                                                                definite_iso,
+                                                                isovalue,
+                                                                shell_index)
+                master_dict[(shell_index, isovalue)] = non_proj_dict
+                iso_shell_total = 0
+                if len(non_proj_dict) == 0:
+                    summary_string = summary_string\
+                        + f'    I3 = {isovalue} does not contain this shell\n'
+                else:
+                    summary_string = summary_string\
+                        + f'    I3 = {isovalue} contains...\n'
+                for dict_ent in non_proj_dict:
+                    irrep, row = dict_ent
+                    n_embedded = len(non_proj_dict[dict_ent].T)
+                    dim = 1
+                    if irrep[0] == 'E':
+                        dim = 2
+                    if irrep[0] == 'T':
+                        dim = 3
+                    if row == 0:
+                        row_zero_value = n_embedded
+                    else:
+                        assert row_zero_value == n_embedded
+                    shell_total = shell_total+n_embedded
+                    iso_shell_total = iso_shell_total+n_embedded
+                    if row == 0:
+                        if n_embedded == 1:
+                            s = ''
+                        else:
+                            s = 's'
+                        shell_covered = shell_total+n_embedded*(dim-1)
+                        iso_shell_covered = iso_shell_total+n_embedded*(dim-1)
+                        summary_string = summary_string\
+                            + (f'       {irrep} '
+                               f'(appears {n_embedded} time{s}), '
+                               f'covered {shell_covered}/{nstates} '
+                               f'({iso_shell_covered} for this isospin)\n')
+                    if shell_total == nstates:
+                        summary_string = summary_string\
+                            + '    The shell is covered!\n\n'
+        summary_string = summary_string[:-1]
+        master_dict['summary'] = summary_string
+        return master_dict
 
     def get_channel_proj_dict(self, qcis=None, cindex=0):
         """Get the dictionary of small projectors for a given qcis."""

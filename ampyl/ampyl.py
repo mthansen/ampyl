@@ -60,6 +60,33 @@ G_TEMPLATE_DICT[2] = np.array([[0.5, -np.sqrt(3.)/2.],
                                [-np.sqrt(3.)/2., -0.5]])
 G_TEMPLATE_DICT[3] = np.array([[1.]])
 
+ISO_PROJECTOR_THREE = np.array([[1., 0., 0., 0., 0., 0., 0.]])
+ISO_PROJECTOR_TWO = np.array([[0., 1., 0., 0., 0., 0., 0.],
+                              [0., 0., 1., 0., 0., 0., 0.]])
+ISO_PROJECTOR_ONE = np.array([[0., 0., 0., 1., 0., 0., 0.],
+                              [0., 0., 0., 0., 1., 0., 0.],
+                              [0., 0., 0., 0., 0., 1., 0.]])
+ISO_PROJECTOR_ZERO = np.array([[0., 0., 0., 0., 0., 0., 1.]])
+ISO_PROJECTORS = [ISO_PROJECTOR_ZERO,
+                  ISO_PROJECTOR_ONE,
+                  ISO_PROJECTOR_TWO,
+                  ISO_PROJECTOR_THREE]
+
+CAL_C_ISO = np.array([[1./np.sqrt(10.), 1./np.sqrt(10.), 1./np.sqrt(10.),
+                       np.sqrt(2./5.), 1./np.sqrt(10.), 1./np.sqrt(10.),
+                       1./np.sqrt(10.)],
+                      [-0.5, -0.5, 0., 0., 0., 0.5, 0.5],
+                      [-1./np.sqrt(12.), 1./np.sqrt(12.), -1./np.sqrt(3.), 0.,
+                       1./np.sqrt(3.), -1./np.sqrt(12.), 1./np.sqrt(12.)],
+                      [np.sqrt(3./20.), np.sqrt(3./20.), -1./np.sqrt(15.),
+                       -2./np.sqrt(15.), -1./np.sqrt(15.), np.sqrt(3./20.),
+                       np.sqrt(3./20.)],
+                      [0.5, -0.5, 0., 0., 0., -0.5, 0.5],
+                      [0., 0., 1./np.sqrt(3.), -1./np.sqrt(3.), 1./np.sqrt(3.),
+                       0., 0.],
+                      [-1./np.sqrt(6.), 1./np.sqrt(6.), 1./np.sqrt(6.), 0.,
+                       -1./np.sqrt(6.), -1./np.sqrt(6.), 1./np.sqrt(6.)]])
+
 
 class bcolors:
     """Class collecting text colors."""
@@ -1941,12 +1968,67 @@ class QCIndexSpace:
                 n1n2n3_ident_inds = n1n2n3_ident_inds+[j]
                 n1n2n3_ident_counts = n1n2n3_ident_counts+[1]
 
+        n1n2n3_batched = list(np.arange(len(n1n2n3_ident_reps)))
+        for j in range(len(n1n2n3_arr)):
+            for k in range(len(n1n2n3_ident_reps)):
+                include_entry = False
+                n_rep = n1n2n3_ident_reps[k]
+                n_rep = np.array(n_rep)
+                for g_elem in G:
+                    [n1, n2, n3] = n1n2n3_arr[j]@g_elem
+                    candidates = [np.array([n1, n2, n3]),
+                                  np.array([n2, n3, n1]),
+                                  np.array([n3, n1, n2]),
+                                  np.array([n3, n2, n1]),
+                                  np.array([n2, n1, n3]),
+                                  np.array([n1, n3, n2])]
+                    for candidate in candidates:
+                        include_entry = include_entry\
+                            or (((candidate == n_rep).all()))
+                if include_entry:
+                    if isinstance(n1n2n3_batched[k], np.int64):
+                        n1n2n3_batched[k] = [n1n2n3_arr[j]]
+                    else:
+                        n1n2n3_batched[k] = n1n2n3_batched[k]\
+                            + [n1n2n3_arr[j]]
+
+        n1n2n3_ident_batched = list(np.arange(len(n1n2n3_ident_reps)))
+        for j in range(len(n1n2n3_ident)):
+            for k in range(len(n1n2n3_ident_reps)):
+                include_entry = False
+                n_rep = n1n2n3_ident_reps[k]
+                n_rep = np.array(n_rep)
+                for g_elem in G:
+                    [n1, n2, n3] = n1n2n3_ident[j]@g_elem
+                    candidates = [np.array([n1, n2, n3]),
+                                  np.array([n2, n3, n1]),
+                                  np.array([n3, n1, n2]),
+                                  np.array([n3, n2, n1]),
+                                  np.array([n2, n1, n3]),
+                                  np.array([n1, n3, n2])]
+                    for candidate in candidates:
+                        include_entry = include_entry\
+                            or (((candidate == n_rep).all()))
+                if include_entry:
+                    if isinstance(n1n2n3_ident_batched[k], np.int64):
+                        n1n2n3_ident_batched[k] = [n1n2n3_ident[j]]
+                    else:
+                        n1n2n3_ident_batched[k] = n1n2n3_ident_batched[k]\
+                            + [n1n2n3_ident[j]]
+
+        for j in range(len(n1n2n3_batched)):
+            n1n2n3_batched[j] = np.array(n1n2n3_batched[j])
+
+        for j in range(len(n1n2n3_ident_batched)):
+            n1n2n3_ident_batched[j] = np.array(n1n2n3_ident_batched[j])
+
         self.n1n2n3_arr = n1n2n3_arr
         self.n1n2n3_SQs = n1n2n3_SQs
         self.n1n2n3_reps = n1n2n3_reps
         self.n1n2n3_SQreps = n1n2n3_SQreps
         self.n1n2n3_inds = n1n2n3_inds
         self.n1n2n3_counts = n1n2n3_counts
+        self.n1n2n3_batched = n1n2n3_batched
 
         self.n1n2n3_ident = n1n2n3_ident
         self.n1n2n3_ident_SQs = n1n2n3_ident_SQs
@@ -1954,6 +2036,50 @@ class QCIndexSpace:
         self.n1n2n3_ident_SQreps = n1n2n3_ident_SQreps
         self.n1n2n3_ident_inds = n1n2n3_ident_inds
         self.n1n2n3_ident_counts = n1n2n3_ident_counts
+        self.n1n2n3_ident_batched = n1n2n3_ident_batched
+
+    @staticmethod
+    def count_by_isospin(flavor_basis):
+        """Count by isospin."""
+        iso_basis = CAL_C_ISO@flavor_basis
+
+        iso_basis_normalized = []
+        for entry in iso_basis:
+            if entry@entry != 0.:
+                entry_norm = entry/np.sqrt(entry@entry)
+                iso_basis_normalized = iso_basis_normalized+[entry_norm]
+            else:
+                iso_basis_normalized = iso_basis_normalized+[entry]
+        iso_basis_normalized = np.array(iso_basis_normalized)
+
+        iso_basis_broken = []
+        for iso_projector in ISO_PROJECTORS:
+            iso_basis_broken_entry = iso_projector@iso_basis_normalized
+            iso_basis_broken = iso_basis_broken+[iso_basis_broken_entry]
+
+        iso_basis_broken_collapsed = []
+        counts = [0, 0, 0, 0]
+        for k in range(len(iso_basis_broken)):
+            iso_basis_broken_entry = iso_basis_broken[k]
+            reduced_entry = deepcopy(iso_basis_broken_entry)
+            for i in range(len(reduced_entry)):
+                reduced_entry_line = reduced_entry[i]
+                if reduced_entry_line@reduced_entry_line != 0.:
+                    for j in range(len(reduced_entry)):
+                        if ((j > i) and
+                           (reduced_entry_line@reduced_entry[j] != 0.)):
+                            reduced_entry[j] = reduced_entry[j]\
+                                - reduced_entry_line\
+                                * (reduced_entry_line@reduced_entry[j])
+            collapsed_entry = []
+            for reduced_entry_line in reduced_entry:
+                if reduced_entry_line@reduced_entry_line > EPSILON:
+                    collapsed_entry = collapsed_entry+[reduced_entry_line]
+                    counts[k] = counts[k]+1
+            collapsed_entry = np.array(collapsed_entry)
+            iso_basis_broken_collapsed = iso_basis_broken_collapsed\
+                + [collapsed_entry]
+        return counts, iso_basis_broken_collapsed
 
     def _get_ibest(self, E, L):
         """Only for non-zero P."""
