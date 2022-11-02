@@ -133,7 +133,8 @@ class FlavorChannel:
     def __init__(self, n_particles, masses=None, spins=None,
                  explicit_flavor_channel=True, explicit_flavors=None,
                  isospin_channel=False, isospin_value=None,
-                 isospin_flavor=None):
+                 isospin_flavor=None,
+                 individual_isospins=None):
         if not isinstance(n_particles, int):
             raise ValueError('n_particles must be an int')
         if n_particles < 2:
@@ -167,12 +168,14 @@ class FlavorChannel:
         self._isospin_channel = isospin_channel
         self._isospin_value = isospin_value
         self._isospin_flavor = isospin_flavor
+        self._individual_isospins = individual_isospins
 
         self.explicit_flavor_channel = explicit_flavor_channel
         self.explicit_flavors = explicit_flavors
         self.isospin_channel = isospin_channel
         self.isospin_value = isospin_value
         self.isospin_flavor = isospin_flavor
+        self.individual_isospins = individual_isospins
 
         self.masses = masses
         self.spins = spins
@@ -364,7 +367,8 @@ class FlavorChannel:
         self._masses = self._generic_setter(masses, 'masses', float, 'float')
         if self.isospin_channel:
             if not (np.array(self._masses) ==
-                    np.array([self._masses[0]]*self._n_particles)).all():
+                    np.array([self._masses[0]]*self._n_particles)).all()\
+               and len(self._masses) != 2:
                 warnings.warn("\n"+bcolors.WARNING
                               + "masses must be equal for isospin "
                               + "channel. "
@@ -382,13 +386,25 @@ class FlavorChannel:
         self._spins = self._generic_setter(spins, 'spins', int, 'int')
         if self.isospin_channel:
             if not (np.array(self._spins) ==
-                    np.array([self._spins[0]]*self._n_particles)).all():
+                    np.array([self._spins[0]]*self._n_particles)).all()\
+               and len(self._spins) != 2:
                 warnings.warn("\n"+bcolors.WARNING
                               + "spins must be equal for isospin "
                               + "channel. "
                               + "Setting to first value."
                               + f"{bcolors.ENDC}", stacklevel=2)
                 self._spins = [self._spins[0]]*self._n_particles
+
+    @property
+    def individual_isospins(self):
+        """Get the individual isospins."""
+        return self._individual_isospins
+
+    @individual_isospins.setter
+    def individual_isospins(self, individual_isospins):
+        if individual_isospins is not None:
+            self._individual_isospins = self._generic_setter(
+                individual_isospins, 'individual_isospins', float, 'float')
 
     @property
     def n_particles(self):
@@ -415,19 +431,22 @@ class FlavorChannel:
 
     def __str__(self):
         """Summary of the flavor channel."""
-        strtmp = "FlavorChannel with the following details:\n"
-        strtmp = strtmp+"    "+str(self._n_particles)+" particles,\n"
-        strtmp = strtmp+"    masses: "+str(self._masses)+",\n"
-        strtmp = strtmp+"    spins: "+str(self._spins)+",\n"
-        strtmp = strtmp+"    explicit_flavor_channel: "\
-            + str(self._explicit_flavor_channel)+",\n"
-        strtmp = strtmp+"    explicit_flavors: "\
-            + str(self._explicit_flavors)+",\n"
-        strtmp = strtmp+"    isospin_channel: "\
-            + str(self._isospin_channel)+",\n"
-        strtmp = strtmp+"    isospin_value: "+str(self._isospin_value)+",\n"
-        strtmp = strtmp+"    isospin_flavor: "+str(self._isospin_flavor)+",\n"
-        return strtmp[:-2]+"."
+        strtmp = 'FlavorChannel with the following details:\n'
+        strtmp = strtmp+f'    {self._n_particles} particles,\n'
+        strtmp = strtmp+f'    masses: {self._masses},\n'
+        strtmp = strtmp+f'    spins: {self._spins},\n'
+        strtmp = strtmp+(f'    explicit_flavor_channel: '
+                         f'{self._explicit_flavor_channel},\n')
+        strtmp = strtmp+(f'    explicit_flavors: '
+                         f'{self._explicit_flavors},\n')
+        strtmp = strtmp+(f'    isospin_channel: '
+                         f'{self._isospin_channel},\n')
+        strtmp = strtmp+f'    isospin_value: {self._isospin_value},\n'
+        if self._individual_isospins is not None:
+            strtmp = strtmp+(f'    individual_isospins:'
+                             f'{self._individual_isospins},\n')
+        strtmp = strtmp+f'    isospin_flavor: {self._isospin_flavor},\n'
+        return strtmp[:-2]+'.'
 
 
 class SpectatorChannel:
@@ -594,6 +613,8 @@ class FlavorChannelSpace:
 
     :param fc_list: flavor channel list
     :type fc_list: list of instances of FlavorChannel
+    :param ni_list: non-interacting flavor channel list
+    :type ni_list: list of instances of FlavorChannel
     :param sc_list: spectator channel list
 
          SpectatorChannel is a class to be used predominantly within
@@ -666,11 +687,16 @@ class FlavorChannelSpace:
     :type g_templates: list of lists of np.ndarrays
     """
 
-    def __init__(self, fc_list=None):
+    def __init__(self, fc_list=None, ni_list=None):
         if fc_list is None:
             self.fc_list = []
         else:
             self.fc_list = fc_list
+
+        if ni_list is None:
+            self.ni_list = fc_list
+        else:
+            self.ni_list = ni_list
 
         if len(fc_list) > 0:
             self.qcd_channel_space = fc_list[0].isospin_channel
@@ -1446,7 +1472,8 @@ class QCIndexSpace:
         self.populate_all_kellm_spaces()
         self.populate_all_proj_dicts()
         self.proj_dict = self.group.get_full_proj_dict(qcis=self)
-        self.populate_nonint_data(*([1.]*3))
+        self.populate_two_nonint_data()
+        self.populate_nonint_data()
 
     @property
     def nP(self):
@@ -1818,8 +1845,133 @@ class QCIndexSpace:
             tbks_sub_indices[cindex] = nPmaxintSQ - nPnewintSQ
         return tbks_sub_indices
 
-    def populate_nonint_data(self, m1, m2, m3):
+    def populate_two_nonint_data(self):
+        """Get two non int."""
+        ni_list = self.fcs.ni_list
+        fc_two = None
+        for fc in ni_list:
+            if fc.n_particles == 2:
+                fc_two = fc
+        if fc_two is not None:
+            Emax = self.Emax
+            nP = self.nP
+            nPSQ = nP@nP
+            Lmax = self.Lmax
+
+            [m1, m2] = fc_two.masses
+            ECMSQ = Emax**2-FOURPI2*nPSQ/Lmax**2
+            pSQ = (ECMSQ**2-2.0*ECMSQ*m1**2
+                   + m1**4-2.0*ECMSQ*m2**2-2.0*m1**2*m2**2+m2**4)\
+                / (4.0*ECMSQ)
+            nSQ = pSQ*(Lmax/TWOPI)**2
+            nvec_cutoff = int(np.sqrt(nSQ))
+            rng = range(-nvec_cutoff, nvec_cutoff+1)
+            mesh = np.meshgrid(*([rng]*3))
+            nvecs = np.vstack([y.flat for y in mesh]).T
+            n1n2_arr = []
+            nmin = nvec_cutoff
+            nmax = nvec_cutoff
+            for n1 in nvecs:
+                n2 = nP-n1
+                n1SQ = n1@n1
+                n2SQ = n2@n2
+                E = np.sqrt(m1**2+n1SQ*(TWOPI/Lmax)**2)\
+                    + np.sqrt(m2**2+n2SQ*(TWOPI/Lmax)**2)
+                if E <= Emax:
+                    comp_set = [*(list(n1)), *(list(n2))]
+                    min_candidate = np.min(comp_set)
+                    if min_candidate < nmin:
+                        nmin = min_candidate
+                    max_candidate = np.max(comp_set)
+                    if max_candidate > nmax:
+                        nmax = max_candidate
+                    n1n2_arr = n1n2_arr+[[n1, n2]]
+            n1n2_arr = np.array(n1n2_arr)
+
+            numsys = nmax-nmin+1
+            E_n1n2_compact = []
+            n1n2_SQs = deepcopy([])
+            for i in range(len(n1n2_arr)):
+                n1 = n1n2_arr[i][0]
+                n2 = n1n2_arr[i][1]
+                n1SQ = n1@n1
+                n2SQ = n2@n2
+                E = np.sqrt(m1**2+n1SQ*(TWOPI/Lmax)**2)\
+                    + np.sqrt(m2**2+n2SQ*(TWOPI/Lmax)**2)
+                n1_as_num = (n1[2]-nmin)\
+                    + (n1[1]-nmin)*numsys+(n1[0]-nmin)*numsys**2
+                n2_as_num = (n2[2]-nmin)\
+                    + (n2[1]-nmin)*numsys+(n2[0]-nmin)*numsys**2
+                E_n1n2_compact = E_n1n2_compact+[[E, n1_as_num,
+                                                  n2_as_num]]
+                n1n2_SQs = n1n2_SQs+[[n1SQ, n2SQ]]
+            E_n1n2_compact = np.array(E_n1n2_compact)
+            n1n2_SQs = np.array(n1n2_SQs)
+
+            re_indexing = np.arange(len(E_n1n2_compact))
+            for i in range(3):
+                re_indexing = re_indexing[
+                    E_n1n2_compact[:, 2-i].argsort(kind='mergesort')]
+                E_n1n2_compact = E_n1n2_compact[
+                    E_n1n2_compact[:, 2-i].argsort(kind='mergesort')]
+            n1n2_arr = n1n2_arr[re_indexing]
+            n1n2_SQs = n1n2_SQs[re_indexing]
+
+            n1n2_reps = [n1n2_arr[0]]
+            n1n2_SQreps = [n1n2_SQs[0]]
+            n1n2_inds = [0]
+            n1n2_counts = deepcopy([0])
+
+            G = self.group.get_little_group(nP)
+            for j in range(len(n1n2_arr)):
+                already_included = False
+                for g_elem in G:
+                    if not already_included:
+                        for k in range(len(n1n2_reps)):
+                            n_included = n1n2_reps[k]
+                            if (n1n2_arr[j]@g_elem == n_included).all():
+                                already_included = True
+                                n1n2_counts[k] = n1n2_counts[k]+1
+                if not already_included:
+                    n1n2_reps = n1n2_reps+[n1n2_arr[j]]
+                    n1n2_SQreps = n1n2_SQreps+[n1n2_SQs[j]]
+                    n1n2_inds = n1n2_inds+[j]
+                    n1n2_counts = n1n2_counts+[1]
+
+            n1n2_batched = list(np.arange(len(n1n2_reps)))
+            for j in range(len(n1n2_arr)):
+                for k in range(len(n1n2_reps)):
+                    include_entry = False
+                    n_rep = n1n2_reps[k]
+                    n_rep = np.array(n_rep)
+                    for g_elem in G:
+                        [n1, n2] = n1n2_arr[j]@g_elem
+                        candidates = [np.array([n1, n2])]
+                        for candidate in candidates:
+                            include_entry = include_entry\
+                                or (((candidate == n_rep).all()))
+                    if include_entry:
+                        if isinstance(n1n2_batched[k], np.int64):
+                            n1n2_batched[k] = [n1n2_arr[j]]
+                        else:
+                            n1n2_batched[k] = n1n2_batched[k]\
+                                + [n1n2_arr[j]]
+            self.n1n2_arr = n1n2_arr
+            self.n1n2_SQs = n1n2_SQs
+            self.n1n2_reps = n1n2_reps
+            self.n1n2_SQreps = n1n2_SQreps
+            self.n1n2_inds = n1n2_inds
+            self.n1n2_counts = n1n2_counts
+            self.n1n2_batched = n1n2_batched
+
+    def populate_nonint_data(self):
         """Get non-interacting data."""
+        ni_list = self.fcs.ni_list
+        fc_three = None
+        for fc in ni_list:
+            if fc.n_particles == 3:
+                fc_three = fc
+        [m1, m2, m3] = fc_three.masses
         Emax = self.Emax
         nP = self.nP
         Lmax = self.Lmax

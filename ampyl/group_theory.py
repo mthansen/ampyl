@@ -177,7 +177,11 @@ class Groups:
 
         self.bTdict = {}
 
+        self.chardict = {}
+
         self.bTdict['OhP_A1PLUS'] = np.array([[1.]*48])
+
+        self.chardict['OhP_A1PLUS'] = self.bTdict['OhP_A1PLUS']
 
         self.bTdict['OhP_A2PLUS'] = np.array([[1., -1., -1., -1., -1.,
                                                -1., -1., 1., 1., 1., 1.,
@@ -188,6 +192,8 @@ class Groups:
                                                1., 1., 1., 1., 1., -1.,
                                                -1., -1., -1., -1., -1.,
                                                1., 1., 1.]])
+
+        self.chardict['OhP_A2PLUS'] = self.bTdict['OhP_A2PLUS']
 
         self.bTdict['OhP_EPLUS'] = np.array([[1., 1., 1., 1., 1., -2., -2.,
                                               1., -2., -2., 1., -2., 1., 1.,
@@ -213,6 +219,15 @@ class Groups:
                                               -ROOT_THREE, -ROOT_THREE,
                                               -ROOT_THREE, -ROOT_THREE,
                                               -ROOT_THREE]])
+
+        self.chardict['OhP_EPLUS'] = np.array(2*[[2., 0., 0., 0., 0., 0., 0.,
+                                                  -1., -1., -1., -1., -1., -1.,
+                                                  -1., -1., 0., 0., 0., 0., 0.,
+                                                  0., 2., 2., 2., 2., 0., 0.,
+                                                  0., 0., 0., 0., -1., -1.,
+                                                  -1., -1., -1., -1., -1., -1.,
+                                                  0., 0., 0., 0., 0., 0., 2.,
+                                                  2., 2.]])
 
         self.bTdict['OhP_T1PLUS'] = np.array([[-1.+1.*1j, -1.+1.*1j, 1.-1.*1j,
                                                1.+1.*1j, 1.-1.*1j, -1.-1.*1j,
@@ -264,6 +279,15 @@ class Groups:
                                                -1.-1.*1j, -1.+1.*1j, 1.-1.*1j]]
                                              )
 
+        self.chardict['OhP_T1PLUS'] = np.array(3*[[3., -1., -1., -1., -1., -1.,
+                                                   -1., 0., 0., 0., 0., 0., 0.,
+                                                   0., 0., 1., 1., 1., 1., 1.,
+                                                   1., -1., -1., -1., 3., -1.,
+                                                   -1., -1., -1., -1., -1., 0.,
+                                                   0., 0., 0., 0., 0., 0., 0.,
+                                                   1., 1., 1., 1., 1., 1., -1.,
+                                                   -1., -1.]])
+
         self.bTdict['OhP_T2PLUS'] = np.array([[1.+1.*1j, -1.-1.*1j, 1.+1.*1j,
                                                1.+1.*1j, 1.-1.*1j, 1.+1.*1j,
                                                -1.+1.*1j, -1.-1.*1j, -1.+1.*1j,
@@ -314,7 +338,18 @@ class Groups:
                                                -1.+1.*1j, -1.-1.*1j, 1.+1.*1j]]
                                              )
 
+        self.chardict['OhP_T2PLUS'] = np.array(3*[[3., 1., 1., 1., 1., 1., 1.,
+                                                   0., 0., 0., 0., 0., 0., 0.,
+                                                   0., -1., -1., -1., -1., -1.,
+                                                   -1., -1., -1., -1., 3., 1.,
+                                                   1., 1., 1., 1., 1., 0., 0.,
+                                                   0., 0., 0., 0., 0., 0., -1.,
+                                                   -1., -1., -1., -1., -1.,
+                                                   -1., -1., -1.]])
+
         self.bTdict['OhP_A1MINUS'] = np.array([[1.0]*24+[-1.0]*24])
+
+        self.chardict['OhP_A1MINUS'] = self.bTdict['OhP_A1MINUS']
 
         self.bTdict['OhP_A2MINUS'] = np.array([[1., -1., -1., -1., -1., -1.,
                                                 -1., 1., 1., 1., 1., 1., 1.,
@@ -324,6 +359,8 @@ class Groups:
                                                 -1., -1., -1., -1., -1., -1.,
                                                 1., 1., 1., 1., 1., 1., -1.,
                                                 -1., -1.]])
+
+        self.chardict['OhP_A2MINUS'] = self.bTdict['OhP_A2MINUS']
 
         self.bTdict['OhP_EMINUS'] = np.array([[1., 1., 1., 1., 1., -2., -2.,
                                                1., -2., -2., 1., -2., 1., 1.,
@@ -349,6 +386,15 @@ class Groups:
                                                -ROOT_THREE, 0., 0., ROOT_THREE,
                                                ROOT_THREE, ROOT_THREE,
                                                ROOT_THREE, ROOT_THREE]])
+
+        self.chardict['OhP_EMINUS'] = np.array(2*[[2., 0., 0., 0., 0., 0., 0.,
+                                                   -1., -1., -1., -1., -1.,
+                                                   -1., -1., -1., 0., 0., 0.,
+                                                   0., 0., 0., 2., 2., 2., -2.,
+                                                   0., 0., 0., 0., 0., 0., 1.,
+                                                   1., 1., 1., 1., 1., 1., 1.,
+                                                   0., 0., 0., 0., 0., 0., -2.,
+                                                   -2., -2.]])
 
         self.bTdict['OhP_T1MINUS'] = np.array([[-1.+1.*1j, -1.+1.*1j, 1.-1.*1j,
                                                 1.+1.*1j, 1.-1.*1j, -1.-1.*1j,
@@ -401,6 +447,15 @@ class Groups:
                                                 -1.-1.*1j, -1.+1.*1j,
                                                 -1.-1.*1j, 1.+1.*1j, 1.-1.*1j,
                                                 -1.+1.*1j]])
+
+        self.chardict['OhP_T1MINUS'] = np.array(3*[[3., -1., -1., -1., -1.,
+                                                    -1., -1., 0., 0., 0., 0.,
+                                                    0., 0., 0., 0., 1., 1., 1.,
+                                                    1., 1., 1., -1., -1., -1.,
+                                                    -3., 1., 1., 1., 1., 1.,
+                                                    1., 0., 0., 0., 0., 0., 0.,
+                                                    0., 0., -1., -1., -1., -1.,
+                                                    -1., -1., 1., 1., 1.]])
 
         self.bTdict['OhP_T2MINUS'] = np.array([[ROOT_TWO, -ROOT_TWO, ROOT_TWO,
                                                 ROOT_TWO, 0.-ROOT_TWO*1j,
@@ -467,6 +522,15 @@ class Groups:
                                                 0.-ROOT_TWO*1j, ROOT_TWO,
                                                 0.-ROOT_TWO*1j, ROOT_TWO,
                                                 -ROOT_TWO]])
+
+        self.chardict['OhP_T2MINUS'] = np.array(3*[[3., 1., 1., 1., 1., 1., 1.,
+                                                    0., 0., 0., 0., 0., 0., 0.,
+                                                    0., -1., -1., -1., -1.,
+                                                    -1., -1., -1., -1., -1.,
+                                                    -3., -1., -1., -1., -1.,
+                                                    -1., -1., 0., 0., 0., 0.,
+                                                    0., 0., 0., 0., 1., 1., 1.,
+                                                    1., 1., 1., 1., 1., 1.]])
 
         self.Dic4 = np.array(
             [[[1, 0, 0], [0, 1, 0], [0, 0, 1]],
@@ -592,6 +656,39 @@ class Groups:
         induced_rep = np.kron(nvec_arr_rot_matrix, wig_d_block)
         return induced_rep
 
+    def generate_induced_rep_noninttwo(self,
+                                       nonidentical_arr=np.zeros((1, 2, 3)),
+                                       g_elem=np.identity(3)):
+        """Generate the non-interacting induced representation matrix."""
+        loc_inds = []
+        nonidentical_arr_rot = np.moveaxis(
+            g_elem@np.moveaxis(nonidentical_arr, 0, 2), 2, 0)
+        for i in range(len(nonidentical_arr)):
+            nonidentical_arr_rot_entry = nonidentical_arr_rot[i]
+            loc_ind = np.where(
+                np.all(nonidentical_arr
+                       == nonidentical_arr_rot_entry, axis=(1, 2))
+                )[0]
+            assert len(loc_ind) == 1
+            loc_inds = loc_inds+[loc_ind[0]]
+
+        nonint_rot_matrix = [[]]
+        for loc_ind in loc_inds:
+            nonint_rot_row = np.zeros(len(loc_inds))
+            nonint_rot_row[loc_ind] = 1.0
+            nonint_rot_matrix = nonint_rot_matrix+[nonint_rot_row]
+        nonint_rot_matrix = np.array(nonint_rot_matrix[1:])
+
+        wig_d_ell_set = []
+        ell_set = [1]
+        for ell in ell_set:
+            wig_d_ell_set = wig_d_ell_set\
+                + [self.generate_wigner_d(ell, g_elem,
+                                          real_harmonics=True).T]
+        wig_d_block = block_diag(*wig_d_ell_set)
+        induced_rep = np.kron(nonint_rot_matrix, wig_d_block)
+        return induced_rep
+
     def generate_induced_rep_nonint(self, identical_arr=np.zeros((1, 3, 3)),
                                     nonidentical_arr=np.zeros((1, 3, 3)),
                                     g_elem=np.identity(3)):
@@ -685,6 +782,33 @@ class Groups:
             induced_rep = self.generate_induced_rep_nonint(identical_arr,
                                                            nonidentical_arr,
                                                            g_elem)
+            proj = proj+induced_rep*bT[g_ind]
+        return proj
+
+    def get_large_proj_nonint_two(self, nP=np.array([0, 0, 0]), irrep='A1PLUS',
+                                  irow=0,
+                                  nonidentical_arr=np.zeros((1, 2, 3))):
+        """Get a particular large projector."""
+        if (nP == np.array([0, 0, 0])).all():
+            group_str = 'OhP'
+            group = self.OhP
+            bT = self.chardict[group_str+'_'+irrep][irow]
+        elif (nP == np.array([0, 0, 1])).all():
+            group_str = 'Dic4'
+            group = self.Dic4
+            bT = self.chardict[group_str+'_'+irrep][irow]
+        elif (nP == np.array([0, 1, 1])).all():
+            group_str = 'Dic2'
+            group = self.Dic2
+            bT = self.chardict[group_str+'_'+irrep][irow]
+        else:
+            return ValueError('group not yet supported by get_large_proj')
+        dim = len(nonidentical_arr)*3
+        proj = np.zeros((dim, dim))
+        for g_ind in range(len(group)):
+            g_elem = group[g_ind]
+            induced_rep = self.generate_induced_rep_noninttwo(nonidentical_arr,
+                                                              g_elem)
             proj = proj+induced_rep*bT[g_ind]
         return proj
 
@@ -884,6 +1008,90 @@ class Groups:
                         non_proj_dict[keytmp] = proj_tmp.real
         return non_proj_dict
 
+    def get_noninttwo_proj_dict_shell(self, qcis=None, cindex=0,
+                                      definite_iso=False, isovalue=None,
+                                      shell_index=None):
+        """Get the dictionary of small projectors for a given qcis."""
+        if qcis is None:
+            raise ValueError('qcis cannot be None')
+        nP = qcis.nP
+        irrep_set = Irreps(nP=nP).set
+        nonidentical_arr = qcis.n1n2_batched[shell_index]
+
+        if (nP@nP != 0) and (nP@nP != 1) and (nP@nP != 2):
+            raise ValueError('momentum = ', nP, ' is not yet supported')
+        non_proj_dict = {}
+        if (nP@nP == 0):
+            group_str = 'OhP'
+        if (nP@nP == 1):
+            group_str = 'Dic4'
+        if (nP@nP == 2):
+            group_str = 'Dic2'
+
+        for i in range(len(irrep_set)):
+            irrep = irrep_set[i]
+            for irow in range(len(self.chardict[group_str+'_'+irrep])):
+                proj = self.get_large_proj_nonint_two(nP, irrep, irow,
+                                                      nonidentical_arr)
+                some_zero_vec = False
+                for nonidentical_entry in nonidentical_arr:
+                    for single_vec in nonidentical_entry:
+                        some_zero_vec = some_zero_vec\
+                            or (single_vec@single_vec == 0)
+                proj = np.round(proj, 10)
+                some_zero_vec = True
+                if some_zero_vec:
+                    zero_rows = []
+                    nonzero_rows = []
+                    for i in range(len(proj)):
+                        if np.abs(proj[i]@proj[i]) < 1.0e-10:
+                            zero_rows = zero_rows+[i]
+                        else:
+                            nonzero_rows = nonzero_rows+[i]
+                    proj = np.concatenate([proj[nonzero_rows],
+                                           proj[zero_rows]])
+                    projT = proj.T
+                    zero_rows = []
+                    nonzero_rows = []
+                    for i in range(len(projT)):
+                        if np.abs(projT[i]@projT[i]) < 1.0e-10:
+                            zero_rows = zero_rows+[i]
+                        else:
+                            nonzero_rows = nonzero_rows+[i]
+                    projT = np.concatenate([projT[nonzero_rows],
+                                            projT[zero_rows]])
+                    proj = projT.T
+                eigvals, eigvecs = np.linalg.eig(proj)
+                eigvalsround = (np.round(np.abs(eigvals), 10))
+                example_eigval = 0.0
+                for i in range(len(eigvalsround)):
+                    eigval = eigvalsround[i]
+                    if np.abs(eigval) > 1.0e-10:
+                        if example_eigval == 0.0:
+                            example_eigval = eigval
+                        else:
+                            # assert np.abs(
+                            #     example_eigval-eigval
+                            #     ) < 1.0e-10
+                            pass
+                if np.abs(example_eigval) > 1.0e-10:
+                    proj = proj/example_eigval
+                if definite_iso:
+                    # isoproj = self.get_iso_projection(qcis, isovalue,
+                    #                                   shell_index)
+                    # isorotproj = isoproj@proj@np.transpose(isoproj)
+                    isorotproj = proj
+                else:
+                    isorotproj = proj
+                finalproj = self._get_final_proj(isorotproj)
+                if len(finalproj) != 0:
+                    non_proj_dict[(irrep, irow)] = finalproj
+                for keytmp in non_proj_dict:
+                    proj_tmp = non_proj_dict[keytmp]
+                    if (proj_tmp.imag == np.zeros(proj_tmp.shape)).all():
+                        non_proj_dict[keytmp] = proj_tmp.real
+        return non_proj_dict
+
     def get_nonint_proj_dict(self, qcis=None, cindex=0, definite_iso=True):
         """Get it."""
         master_dict = {}
@@ -926,7 +1134,79 @@ class Groups:
                     if row == 0:
                         row_zero_value = n_embedded
                     else:
-                        assert row_zero_value == n_embedded
+                        if row_zero_value != n_embedded:
+                            print(f'Warning: row_zero_value = '
+                                  f'{row_zero_value}, n_embedded = '
+                                  f'{n_embedded}')
+                    shell_total = shell_total+n_embedded
+                    iso_shell_total = iso_shell_total+n_embedded
+                    if row == 0:
+                        if n_embedded == 1:
+                            s = ''
+                        else:
+                            s = 's'
+                        shell_covered = shell_total+n_embedded*(dim-1)
+                        iso_shell_covered = iso_shell_total+n_embedded*(dim-1)
+                        summary_string = summary_string\
+                            + (f'       {irrep} '
+                               f'(appears {n_embedded} time{s}), '
+                               f'covered {shell_covered}/{nstates} '
+                               f'({iso_shell_covered} for this isospin)\n')
+                    if shell_total == nstates:
+                        summary_string = summary_string\
+                            + '    The shell is covered!\n\n'
+        summary_string = summary_string[:-1]
+        master_dict['summary'] = summary_string
+        return master_dict
+
+    def get_noninttwo_proj_dict(self, qcis=None, cindex=0, definite_iso=True):
+        """Get it."""
+        master_dict = {}
+        if qcis is None:
+            raise ValueError('qcis cannot be None')
+        row_zero_value = 0
+        summary_string = ''
+        nshells = len(qcis.n1n2_reps)
+        for shell_index in range(nshells):
+            shell_total = 0
+            nstates = len(qcis.n1n2_batched[shell_index])*3
+            summary_string = summary_string\
+                + f'shell_index = {shell_index} ({nstates} states):\n'
+            summary_string = summary_string\
+                + f'representative momenta = \n{qcis.n1n2_reps[shell_index]}\n'
+            if definite_iso:
+                isoset = [2]
+            else:
+                isoset = range(1)
+            for isovalue in isoset:
+                non_proj_dict = self.get_noninttwo_proj_dict_shell(qcis, 0,
+                                                                   definite_iso,
+                                                                   isovalue,
+                                                                   shell_index)
+                master_dict[(shell_index, isovalue)] = non_proj_dict
+                iso_shell_total = 0
+                if len(non_proj_dict) == 0:
+                    summary_string = summary_string\
+                        + f'    I2 = {isovalue} does not contain this shell\n'
+                else:
+                    summary_string = summary_string\
+                        + f'    I2 = {isovalue} contains...\n'
+                for dict_ent in non_proj_dict:
+                    irrep, row = dict_ent
+                    dim = 1
+                    if irrep[0] == 'E':
+                        dim = 2
+                    if irrep[0] == 'T':
+                        dim = 3
+                    n_embedded = int(len(non_proj_dict[dict_ent].T)/dim)
+                    if row == 0:
+                        row_zero_value = n_embedded
+                    else:
+                        if row_zero_value != n_embedded:
+                            print(f'Warning: row_zero_value = '
+                                  f'{row_zero_value}, n_embedded = '
+                                  f'{n_embedded}')
+                    n_embedded = row_zero_value
                     shell_total = shell_total+n_embedded
                     iso_shell_total = iso_shell_total+n_embedded
                     if row == 0:
