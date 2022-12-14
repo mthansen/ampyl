@@ -640,12 +640,12 @@ class FlavorChannelSpace:
         an explicit flavor channel space. In both cases sc_compact is a list of
         rank-two np.ndarrays, one for each value of n_particles included in
         the entries of fc_list. If only three-particle channels are included,
-        then len(sc_compact) is 1 and it contains a single rank-two np.ndarray.
-        Focus on this case. Then len(sc_compact[0]) is the total number of
-        three-particle spectator channels.
+        then ``len(sc_compact)`` is 1 and it contains a single rank-two
+        np.ndarray. Focus on this case. Then ``len(sc_compact[0])`` is the
+        total number of three-particle spectator channels.
 
-        In the case of a qcd channel space len(sc_compact[0].T) is 10. Each
-        row is populated as follows: .. code-block:: python
+        In the case of a qcd channel space ``len(sc_compact[0].T)`` is 10. Each
+        row is populated as follows:::
 
             [3.0, mass1, mass2, mass3, spin1, spin2, spin3, isospin_flavor,
              isospin_value, sub_isospin]
@@ -653,10 +653,13 @@ class FlavorChannelSpace:
         where the first entry is the number of particles and all values are
         cast to floats.
 
-        In the case of an explicit flavor channel space len(sc_compact[0].T)
-        is again 10. Each row is populated as follows:
-            `[3.0, mass1, mass2, mass3, spin1, spin2, spin3, flavor1, flavor2,
-            flavor3]`,
+        In the case of an explicit flavor channel space
+        ``len(sc_compact[0].T)`` is again 10. Each row is populated as
+        follows:::
+
+            [3.0, mass1, mass2, mass3, spin1, spin2, spin3, flavor1, flavor2,
+            flavor3]
+
         where the first entry is the number of particles and all values are
         cast to floats.
     :type sc_compact: list
@@ -669,10 +672,12 @@ class FlavorChannelSpace:
     :type three_index: int
     :param three_slices: list of two-entry (doublet) lists of integers
 
-        Each doublet specifies a slice of sc_compact[three_index] according to
-        mass values. So, for a non-negative integer i < len(three_slices) we
-        can evaluate:
-            `sc_compact[three_index][three_slices[i][0]:three_slices[i][1]]`
+        Each doublet specifies a slice of ``sc_compact[three_index]`` according
+        to mass values. So, for a non-negative integer
+        ``i < len(three_slices)`` we can evaluate:::
+
+            sc_compact[three_index][three_slices[i][0]:three_slices[i][1]]
+
         to get a three-particle subspace with fixed mass values.
     :type three_slices: list
     :param n_three_slices: length of three_slices
@@ -680,15 +685,15 @@ class FlavorChannelSpace:
     :type n_three_slices: int
     :param g_templates: flavor structure of g
 
-        len(g_templates) is equal to len(g_templates[i]) for any non-negative
-        i < len(g_templates). Thus the list of lists is interpreted as a
-        square array, with the number of rows and columns also equal to
-        n_three_slices. Each entry in g_template gives a template for the
-        finite-volume G matrix within each pair of mass-identical subspaces.
-        Off diaongal entries are all zeroes if the sorted set of masses is
-        distinct but can be non-zero if, for example masses 2.0, 2.0, 1.0 swap
-        into masses 1.0, 2.0, 2.0 (where the first entry is the spectator in
-        both cases).
+        ``len(g_templates)`` is equal to ``len(g_templates[i])`` for any
+        non-negative ``i < len(g_templates)``. Thus the list of lists is
+        interpreted as a square array, with the number of rows and columns also
+        equal to n_three_slices. Each entry in g_template gives a template for
+        the finite-volume G matrix within each pair of mass-identical
+        subspaces. Off diaongal entries are all zeroes if the sorted set of
+        masses is distinct but can be non-zero if, for example masses
+        ``2.0, 2.0, 1.0`` swap into masses ``1.0, 2.0, 2.0`` (where the first
+        entry is the spectator in both cases).
     :type g_templates: list of lists of np.ndarrays
     """
 
