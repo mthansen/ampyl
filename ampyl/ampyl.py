@@ -486,7 +486,6 @@ class SpectatorChannel:
         self.indexing = indexing
         self.sub_isospin = sub_isospin
         self.ell_set = ell_set
-        self.p_cot_deltas = p_cot_deltas
         if p_cot_deltas is None:
             tmp = []
             for i in range(len(ell_set)):
