@@ -575,7 +575,8 @@ class SpectatorChannel:
     @ell_set.setter
     def ell_set(self, ell_set):
         self._ell_set = ell_set
-        if len(self.p_cot_deltas) != len(ell_set):
+        if ((self.p_cot_deltas is not None)
+           and (len(self.p_cot_deltas) != len(ell_set))):
             self._p_cot_deltas = [self._p_cot_deltas[0]]*len(ell_set)
         if len(self.n_params_set) != len(ell_set):
             self._n_params_set = [self._n_params_set[0]]*len(ell_set)
