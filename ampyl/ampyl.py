@@ -588,7 +588,8 @@ class SpectatorChannel:
     @p_cot_deltas.setter
     def p_cot_deltas(self, p_cot_deltas):
         self._p_cot_deltas = p_cot_deltas
-        if len(self.ell_set) != len(p_cot_deltas):
+        if ((p_cot_deltas is not None)
+           and (len(self.ell_set) != len(p_cot_deltas))):
             raise ValueError('len(ell_set) != len(p_cot_deltas)')
 
     @property
