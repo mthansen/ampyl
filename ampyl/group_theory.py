@@ -764,15 +764,15 @@ class Groups:
         if (nP == np.array([0, 0, 0])).all():
             group_str = 'OhP'
             group = self.OhP
-            bT = self.bTdict[group_str+'_'+irrep][irow]
+            bT = self.chardict[group_str+'_'+irrep][irow]
         elif (nP == np.array([0, 0, 1])).all():
             group_str = 'Dic4'
             group = self.Dic4
-            bT = self.bTdict[group_str+'_'+irrep][irow]
+            bT = self.chardict[group_str+'_'+irrep][irow]
         elif (nP == np.array([0, 1, 1])).all():
             group_str = 'Dic2'
             group = self.Dic2
-            bT = self.bTdict[group_str+'_'+irrep][irow]
+            bT = self.chardict[group_str+'_'+irrep][irow]
         else:
             return ValueError('group not yet supported by get_large_proj')
         dim = len(identical_arr)+len(nonidentical_arr)
@@ -1106,6 +1106,8 @@ class Groups:
                 + len(qcis.n1n2n3_batched[shell_index])
             summary_string = summary_string\
                 + f'shell_index = {shell_index} ({nstates} states):\n'
+            summary_string = summary_string\
+                + f'representative momenta = \n{qcis.n1n2n3_ident_reps[shell_index]}\n'
             if definite_iso:
                 isoset = range(4)
             else:
@@ -1125,12 +1127,12 @@ class Groups:
                         + f'    I3 = {isovalue} contains...\n'
                 for dict_ent in non_proj_dict:
                     irrep, row = dict_ent
-                    n_embedded = len(non_proj_dict[dict_ent].T)
                     dim = 1
                     if irrep[0] == 'E':
                         dim = 2
                     if irrep[0] == 'T':
                         dim = 3
+                    n_embedded = int(len(non_proj_dict[dict_ent].T)/dim)
                     if row == 0:
                         row_zero_value = n_embedded
                     else:
@@ -1154,7 +1156,7 @@ class Groups:
                                f'({iso_shell_covered} for this isospin)\n')
                     if shell_total == nstates:
                         summary_string = summary_string\
-                            + '    The shell is covered!\n\n'
+                            + 'The shell is covered!\n\n'
         summary_string = summary_string[:-1]
         master_dict['summary'] = summary_string
         return master_dict
@@ -1223,7 +1225,7 @@ class Groups:
                                f'({iso_shell_covered} for this isospin)\n')
                     if shell_total == nstates:
                         summary_string = summary_string\
-                            + '    The shell is covered!\n\n'
+                            + 'The shell is covered!\n\n'
         summary_string = summary_string[:-1]
         master_dict['summary'] = summary_string
         return master_dict

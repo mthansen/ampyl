@@ -48,6 +48,10 @@ TWOPI = 2.*PI
 FOURPI2 = 4.0*PI**2
 ROOT4PI = np.sqrt(4.*PI)
 EPSILON = 1.0e-15
+QC_IMPL_DEFAULTS = {'hermitian': True,
+                    'real harmonics': True,
+                    'Zinterp': False,
+                    'YYCG': False}
 
 
 class bcolors:
@@ -1318,7 +1322,7 @@ class QCFunctions:
         nvec_arr_slice = tbks_entry.nvec_arr[slice_entry[0]:slice_entry[1]]
         k_list = []
         for nvec in nvec_arr_slice:
-            k_tmp = QCFunctions.getK_single_entry(pcotdelta_function=None,
+            k_tmp = QCFunctions.getK_single_entry(pcotdelta_function=pcotdelta_function,
                                                   pcotdelta_parameters=pcotdelta_parameter_list,
                                                   E=E, nP=nP, L=L,
                                                   npspec=nvec,
