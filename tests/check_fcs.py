@@ -52,7 +52,7 @@ class TestFlavorChannel(unittest.TestCase):
         """Test default three-particle flavor channel."""
         self.assertEqual(self.fc.n_particles, 3)
         self.assertEqual(self.fc.masses, 3*[1.0])
-        self.assertEqual(self.fc.spins, 3*[0])
+        self.assertEqual(self.fc.twospins, 3*[0])
         self.assertTrue(self.fc.explicit_flavor_channel)
         self.assertEqual(self.fc.explicit_flavors, 3*[1])
         self.assertFalse(self.fc.isospin_channel)
