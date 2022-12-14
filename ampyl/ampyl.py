@@ -465,7 +465,7 @@ class SpectatorChannel:
     :param ell_set: specifies the allowed values of orbital angular momentum
     :type ell_set: list of ints
     :param p_cot_deltas: specifies the two-particle scattering phase shifts
-        (same length as ell_set)
+        (same length as ell_set, default is scattering length only)
     :type p_cot_deltas: list of functions
     :param n_params_set: specifies the number of parameters for each
         p_cot_deltas entry (same length as ell_set and p_cot_deltas)
@@ -473,8 +473,7 @@ class SpectatorChannel:
     """
 
     def __init__(self, fc=FlavorChannel(3), indexing=[0, 1, 2],
-                 sub_isospin=None, ell_set=[0],
-                 p_cot_deltas=[QCFunctions.pcotdelta_scattering_length],
+                 sub_isospin=None, ell_set=[0], p_cot_deltas=None,
                  n_params_set=[1]):
         self._fc = fc
         self._indexing = indexing
@@ -488,6 +487,13 @@ class SpectatorChannel:
         self.sub_isospin = sub_isospin
         self.ell_set = ell_set
         self.p_cot_deltas = p_cot_deltas
+        if p_cot_deltas is None:
+            tmp = []
+            for i in range(len(ell_set)):
+                tmp = tmp+[QCFunctions.pcotdelta_scattering_length]
+                self.p_cot_deltas = tmp
+            else:
+                self.p_cot_deltas = p_cot_deltas
         self.n_params_set = n_params_set
 
     @property
@@ -613,25 +619,21 @@ class FlavorChannelSpace:
 
     :param fc_list: flavor-channel list
     :type fc_list: list of instances of FlavorChannel
-    :param ni_list: non-interacting flavor channel list
+    :param ni_list: non-interacting flavor-channel list
     :type ni_list: list of instances of FlavorChannel
     :param sc_list: spectator-channel list
-
-         SpectatorChannel is a class to be used predominantly within
+         (SpectatorChannel is a class to be used predominantly within
          FlavorChannelSpace. It includes extra information relevative to
-         FlavorChannel as summarized in the SpectatorChannel documentation.
+         FlavorChannel as summarized in the SpectatorChannel documentation.)
     :type sc_list: list of instances of SpectatorChannel
     :param qcd_channel_space: defines whether the space is a qcd channel space
-
         (as opposed to an explicit flavor channel space)
     :type qcd_channel_space: bool
     :param explicit_flavor_channel_space: defines whether the space is an
-        explicit flavor channel space
-
-        (as opposed to a qcd channel space)
+        explicit flavor channel space (as opposed to a qcd channel space)
     :type explicit_flavor_channel_space: bool
-    :param sc_compact: compact summary of the relevant spectator-channel
-        properties
+    :param sc_compact: Compact summary of the relevant spectator-channel
+        properties:
 
         The exact data depends on whether the space is a qcd channel space or
         an explicit flavor channel space. In both cases sc_compact is a list of
@@ -643,15 +645,15 @@ class FlavorChannelSpace:
 
         In the case of a qcd channel space len(sc_compact[0].T) is 10. Each
         row is populated as follows:
-            [3.0, mass1, mass2, mass3, spin1, spin2, spin3, isospin_flavor,
-              isospin_value, sub_isospin],
+            `[3.0, mass1, mass2, mass3, spin1, spin2, spin3, isospin_flavor,
+            isospin_value, sub_isospin]`,
         where the first entry is the number of particles and all values are
         cast to floats.
 
         In the case of an explicit flavor channel space len(sc_compact[0].T)
         is again 10. Each row is populated as follows:
-            [3.0, mass1, mass2, mass3, spin1, spin2, spin3, flavor1, flavor2,
-              flavor3],
+            `[3.0, mass1, mass2, mass3, spin1, spin2, spin3, flavor1, flavor2,
+            flavor3]`,
         where the first entry is the number of particles and all values are
         cast to floats.
     :type sc_compact: list
@@ -667,7 +669,7 @@ class FlavorChannelSpace:
         Each doublet specifies a slice of sc_compact[three_index] according to
         mass values. So, for a non-negative integer i < len(three_slices) we
         can evaluate:
-            sc_compact[three_index][three_slices[i][0]:three_slices[i][1]]
+            `sc_compact[three_index][three_slices[i][0]:three_slices[i][1]]`
         to get a three-particle subspace with fixed mass values.
     :type three_slices: list
     :param n_three_slices: length of three_slices
