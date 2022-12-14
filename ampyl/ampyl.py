@@ -645,9 +645,12 @@ class FlavorChannelSpace:
         three-particle spectator channels.
 
         In the case of a qcd channel space len(sc_compact[0].T) is 10. Each
-        row is populated as follows:
-        ``[3.0, mass1, mass2, mass3, spin1, spin2, spin3, isospin_flavor,
-        isospin_value, sub_isospin]``
+        row is populated as follows:::
+            .. code-block:: python
+
+            [3.0, mass1, mass2, mass3, spin1, spin2, spin3, isospin_flavor,
+            isospin_value, sub_isospin]
+
         where the first entry is the number of particles and all values are
         cast to floats.
 
