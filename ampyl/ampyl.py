@@ -49,17 +49,17 @@ warnings.simplefilter('always')
 PI = np.pi
 TWOPI = 2.*PI
 FOURPI2 = 4.0*PI**2
-EPSILON = 1.0e-20
+EPSILON20 = 1.0e-20
 PRINT_THRESHOLD_DEFAULT = np.get_printoptions()['threshold']
 
 G_TEMPLATE_DICT = {}
 G_TEMPLATE_DICT[0] = np.array([[-1.]])
-G_TEMPLATE_DICT[1] = np.array([[1./3., -1./np.sqrt(3.), np.sqrt(5.)/3.],
+G_TEMPLATE_DICT[2] = np.array([[1./3., -1./np.sqrt(3.), np.sqrt(5.)/3.],
                                [-1./np.sqrt(3.), 0.5, np.sqrt(15.)/6.],
                                [np.sqrt(5.)/3., np.sqrt(15.)/6., 1./6.]])
-G_TEMPLATE_DICT[2] = np.array([[0.5, -np.sqrt(3.)/2.],
+G_TEMPLATE_DICT[4] = np.array([[0.5, -np.sqrt(3.)/2.],
                                [-np.sqrt(3.)/2., -0.5]])
-G_TEMPLATE_DICT[3] = np.array([[1.]])
+G_TEMPLATE_DICT[6] = np.array([[1.]])
 
 ISO_PROJECTOR_THREE = np.array([[1., 0., 0., 0., 0., 0., 0.]])
 ISO_PROJECTOR_TWO = np.array([[0., 1., 0., 0., 0., 0., 0.],
@@ -107,79 +107,148 @@ class FlavorChannel:
     """
     Class used to represent a particular flavor channel.
 
-    :param n_particles: number of particles in the channel
+    :param n_particles: number of particles in the channel (no default)
     :type n_particles: int
-    :param masses: mass of each particle in the channel
+    :param masses: mass of each particle in the channel (default is
+        ``[1.0]*n_particles``)
     :type masses: list of floats
-    :param twospins: twice the spin of each particle in the channel
+    :param twospins: twice the spin of each particle in the channel (default
+        is ``[0]*n_particles``)
     :type twospins: list of ints
-    :param explicit_flavor_channel: specifies whether this is an
-        explicit-flavor channel (as opposed to an isospin channel)
-    :type explicit_flavor_channel: bool
-    :param explicit_flavors: explicit flavor of each particle (is None if
-        explicit_flavor_channel is False)
-    :type explicit_flavors: list of ints
+    :param explicit_flavors: explicit flavor of each particle (default is
+        ``['pi']*n_particles``)
+    :type explicit_flavors: list of strs
     :param isospin_channel: specifies whether this is an isospin channel
-        (as opposed to an explicit-flavor channel)
+        (default is ``False``)
     :type isospin_channel: bool
-    :param isospin_value: total isospin of the channel (is None if
-        isospin_channel is False)
-    :type isospin_value: int
-    :param isospin_flavor: extra flavor label that is only relevant in the
-        case of multiple isospin channels (is None if isospin_channel is
-        False)
-    :type isospin_flavor: int
+    :param twoisospins: twice the isospin of each particle in the channel
+        (is ``None`` if ``isospin_channel`` is ``False``, default is ``None``
+         but if ``isospin_channel`` is ``True`` then default to
+         ``[2]*n_particles``)
+    :type twoisospins: list of ints
+    :param allowed_total_twoisospins: twice the allowed total isospins for the
+        channel (is ``None`` if ``isospin_channel`` is ``False``, default is
+        ``None`` but if ``isospin_channel`` is ``True`` then set is constructed
+        from ``twoisospins``)
+    :type allowed_total_twoisospins: list of ints
+    :param twoisospin_value: twice the isospin of the channel (is None if
+        isospin_channel is False, default is ``None`` but if
+        ``isospin_channel`` is ``True`` then default to ``max_twoisospin``)
+    :type twoisospin_value: int
     """
 
     def __init__(self, n_particles, masses=None, twospins=None,
-                 explicit_flavor_channel=True, explicit_flavors=None,
-                 isospin_channel=False, isospin_value=None,
-                 isospin_flavor=None, individual_isospins=None):
+                 explicit_flavors=None, isospin_channel=False,
+                 twoisospins=None, twoisospin_value=None):
         if not isinstance(n_particles, int):
             raise ValueError('n_particles must be an int')
         if n_particles < 2:
             raise ValueError('n_particles must be >= 2')
         self._n_particles = n_particles
 
+        allowed_total_twoisospins = None
         if masses is None:
             masses = n_particles*[1.0]
         if twospins is None:
             twospins = n_particles*[0]
-        if not isospin_channel and isospin_value is not None:
+        if not isospin_channel and twoisospin_value is not None:
             isospin_channel = True
-            explicit_flavor_channel = False
-        if not isospin_channel and isospin_flavor is not None:
+        if not isospin_channel and twoisospins is not None:
             isospin_channel = True
-            explicit_flavor_channel = False
-        if not explicit_flavor_channel and explicit_flavors is not None:
-            explicit_flavor_channel = True
-        if explicit_flavor_channel and explicit_flavors is None:
-            explicit_flavors = n_particles*[1]
+        if explicit_flavors is None:
+            explicit_flavors = n_particles*['pi']
         if isospin_channel:
-            explicit_flavor_channel = False
-            explicit_flavors = None
-            if isospin_value is None:
-                isospin_value = n_particles
-            if isospin_flavor is None:
-                isospin_flavor = 0
+            if twoisospins is None:
+                twoisospins = n_particles*[2]
 
-        self._explicit_flavor_channel = explicit_flavor_channel
         self._explicit_flavors = explicit_flavors
         self._isospin_channel = isospin_channel
-        self._isospin_value = isospin_value
-        self._isospin_flavor = isospin_flavor
-        self._individual_isospins = individual_isospins
+        self._twoisospins = twoisospins
+        self._allowed_total_twoisospins = allowed_total_twoisospins
+        self._twoisospin_value = twoisospin_value
 
-        self.explicit_flavor_channel = explicit_flavor_channel
-        self.explicit_flavors = explicit_flavors
-        self.isospin_channel = isospin_channel
-        self.isospin_value = isospin_value
-        self.isospin_flavor = isospin_flavor
-        self.individual_isospins = individual_isospins
+        self._masses = masses
+        self._twospins = twospins
 
-        self.masses = masses
-        self.twospins = twospins
-        self.n_particles = n_particles
+        self.explicit_flavors = self._explicit_flavors
+        self.isospin_channel = self._isospin_channel
+        self.twoisospins = self._twoisospins
+        self.twoisospin_value = self._twoisospin_value
+
+        self.masses = self._masses
+        self.twospins = self._twospins
+        self.n_particles = self._n_particles
+
+    def _get_allowed(self, twoisospins=None):
+        if twoisospins is None:
+            twoisospins = self._twoisospins
+        if len(twoisospins) == 1:
+            return twoisospins
+        if len(twoisospins) == 2:
+            min_isospin = int(np.abs(twoisospins[0]-twoisospins[1]))
+            max_isospin = int(np.abs(twoisospins[0]+twoisospins[1]))
+            np_int64_list = list(np.arange(min_isospin, max_isospin+2, 2))
+            allowed_totals_two_particles = []
+            for np_int64_list_entry in np_int64_list:
+                allowed_totals_two_particles =\
+                    allowed_totals_two_particles\
+                    + [int(np_int64_list_entry)]
+            return allowed_totals_two_particles
+        if len(twoisospins) == 3:
+            unique_flavors = np.unique(self.explicit_flavors)
+            redundant_list = []
+            counting_list = [[]]
+            for j in range(len(unique_flavors)):
+                spectator_flavor = unique_flavors[j]
+                i = (np.where(np.array(
+                    self.explicit_flavors) == spectator_flavor))[0][0]
+                spectator_twoisospin = twoisospins[i]
+                pair_twoisospins = twoisospins[:i]+twoisospins[i+1:]
+                pair_flavors = self.explicit_flavors[:i]\
+                    + self.explicit_flavors[i+1:]
+                combined_pair_twoisospins =\
+                    self._get_allowed(twoisospins=pair_twoisospins)
+                for combined_pair_twoisospin in combined_pair_twoisospins:
+                    combined_three_particle_twoisospins =\
+                        self._get_allowed(
+                            twoisospins=[combined_pair_twoisospin,
+                                         spectator_twoisospin]
+                            )
+                    for combined_entry in combined_three_particle_twoisospins:
+                        redundant_list = redundant_list+[combined_entry]
+                        candidate = str([combined_entry,
+                                         combined_pair_twoisospin,
+                                         spectator_flavor,
+                                         spectator_twoisospin,
+                                         pair_flavors,
+                                         pair_twoisospins])
+                        if candidate not in counting_list:
+                            counting_list = counting_list+[candidate]
+            np_int64_list = list(np.sort(np.unique(redundant_list)))
+            allowed_totals_three_particles = []
+            for np_int64_list_entry in np_int64_list:
+                allowed_totals_three_particles =\
+                    allowed_totals_three_particles\
+                    + [int(np_int64_list_entry)]
+            counting_list = counting_list[1:]
+            summary_list = [[]]
+            for entry in counting_list:
+                entry_list = entry.replace('[', '')\
+                    .replace(']', '')\
+                    .replace(' ', '')\
+                    .replace("'", "")\
+                    .split(',')
+                line = []
+                for entry in entry_list:
+                    try:
+                        line = line+[int(entry)]
+                    except ValueError:
+                        line = line+[entry]
+                summary_list = summary_list+[line]
+            summary_list = np.array(summary_list[1:], dtype=object)
+            self.summary_list = summary_list
+            return allowed_totals_three_particles
+        raise ValueError('not supported')
 
     def _generic_setter(self, var, varstr, enttype, enttypestr):
         if not isinstance(var, list):
@@ -203,64 +272,22 @@ class FlavorChannel:
         return var+[var[-1]]*(self._n_particles-len(var))
 
     @property
-    def explicit_flavor_channel(self):
-        """Get explicit-flavor-channel status (bool)."""
-        return self._explicit_flavor_channel
-
-    @explicit_flavor_channel.setter
-    def explicit_flavor_channel(self, explicit_flavor_channel):
-        if not isinstance(explicit_flavor_channel, bool):
-            raise ValueError('explicit_flavor_channel must be a boolean')
-        self._explicit_flavor_channel = explicit_flavor_channel
-        if explicit_flavor_channel and self._isospin_channel:
-            warnings.warn("\n"+bcolors.WARNING
-                          + "explicit_flavor_channel is being set to True but "
-                          + "isospin_channel is True. Setting it to False."
-                          + f"{bcolors.ENDC}", stacklevel=2)
-            self.isospin_channel = False
-        if explicit_flavor_channel and (self._explicit_flavors is None):
-            warnings.warn("\n"+bcolors.WARNING
-                          + "explicit_flavor_channel is being set to True but "
-                          + "explicit_flavors is None. Setting it to default."
-                          + f"{bcolors.ENDC}", stacklevel=2)
-            self._explicit_flavors = (self.n_particles)*[1]
-        if ((not explicit_flavor_channel)
-           and (self._explicit_flavors is not None)):
-            warnings.warn("\n"+bcolors.WARNING
-                          + "explicit_flavor_channel is being set to False "
-                          + "but explicit_flavors is not None. Setting it to "
-                          + "None."
-                          + f"{bcolors.ENDC}", stacklevel=2)
-            self._explicit_flavors = None
-
-    @property
     def explicit_flavors(self):
-        """Get explicit flavors (list of ints)."""
+        """Get explicit flavors (list of strs)."""
         return self._explicit_flavors
 
     @explicit_flavors.setter
     def explicit_flavors(self, explicit_flavors):
         if explicit_flavors is None:
-            self._explicit_flavors = explicit_flavors
+            warnings.warn("\n"+bcolors.WARNING
+                          + "explicit_flavors is being set to None but this is"
+                          + "not allowed. Setting it to a list of pi strings."
+                          + f"{bcolors.ENDC}", stacklevel=2)
+            self._explicit_flavors = (self.n_particles)*['pi']
         else:
             self._explicit_flavors = self._generic_setter(explicit_flavors,
                                                           'explicit_flavors',
-                                                          int, 'int')
-        if ((not self.explicit_flavor_channel)
-           and (explicit_flavors is not None)):
-            warnings.warn("\n"+bcolors.WARNING
-                          + "explicit_flavors is being set but "
-                          + "explicit_flavor_channel is False. Setting it to "
-                          + "True."
-                          + f"{bcolors.ENDC}", stacklevel=2)
-            self.explicit_flavor_channel = True
-        if self.explicit_flavor_channel and (explicit_flavors is None):
-            warnings.warn("\n"+bcolors.WARNING
-                          + "explicit_flavors is being set to None but "
-                          + "explicit_flavor_channel is True. Setting it to "
-                          + "False."
-                          + f"{bcolors.ENDC}", stacklevel=2)
-            self.explicit_flavor_channel = False
+                                                          str, 'str')
 
     @property
     def isospin_channel(self):
@@ -270,92 +297,129 @@ class FlavorChannel:
     @isospin_channel.setter
     def isospin_channel(self, isospin_channel):
         if not isinstance(isospin_channel, bool):
-            raise ValueError('explicit_flavor_channel must be a boolean')
+            raise ValueError('isospin_channel must be a boolean')
         self._isospin_channel = isospin_channel
-        if isospin_channel and self._explicit_flavor_channel:
+        if isospin_channel and (self._twoisospins is None):
             warnings.warn("\n"+bcolors.WARNING
                           + "isospin_channel is being set to True but "
-                          + "explicit_flavor_channel is True. Setting it to "
-                          + "False."
+                          + "twoisospins is None. Setting it to default."
                           + f"{bcolors.ENDC}", stacklevel=2)
-            self.explicit_flavor_channel = False
-        if isospin_channel and (self._isospin_value is None):
+            self._twoisospins = self.n_particles*[2]
+            self._allowed_total_twoisospins = self._get_allowed()
+        if isospin_channel and (self._allowed_total_twoisospins is None):
+            self._allowed_total_twoisospins = self._get_allowed()
+        if isospin_channel and (self._twoisospin_value is None):
             warnings.warn("\n"+bcolors.WARNING
                           + "isospin_channel is being set to True but "
-                          + "isospin_value is None. Setting it to default."
+                          + "twoisospin_value is None. Setting it to default."
                           + f"{bcolors.ENDC}", stacklevel=2)
-            self._isospin_value = self.n_particles
-        if isospin_channel and (self._isospin_flavor is None):
-            warnings.warn("\n"+bcolors.WARNING
-                          + "isospin_channel is being set to True but "
-                          + "isospin_flavor is None. Setting it to default."
-                          + f"{bcolors.ENDC}", stacklevel=2)
-            self._isospin_flavor = 0
-        if (not isospin_channel) and (self._isospin_value is not None):
+            self._twoisospin_value = self._allowed_total_twoisospins[-1]
+        if (not isospin_channel) and (self._twoisospins is not None):
             warnings.warn("\n"+bcolors.WARNING
                           + "isospin_channel is being set to False but "
-                          + "isospin_value is not None. Setting it to None."
+                          + "_twoisospins is not None. Setting it to None."
                           + f"{bcolors.ENDC}", stacklevel=2)
-            self._isospin_value = None
-        if (not isospin_channel) and (self._isospin_flavor is not None):
+            self._twoisospins = None
+        if ((not isospin_channel)
+           and (self._allowed_total_twoisospins is not None)):
             warnings.warn("\n"+bcolors.WARNING
                           + "isospin_channel is being set to False but "
-                          + "isospin_flavor is not None. Setting it to None."
+                          + "allowed_total_twoisospins is not None. Setting "
+                          + "it to None."
                           + f"{bcolors.ENDC}", stacklevel=2)
-            self._isospin_flavor = None
+            self._allowed_total_twoisospins = None
+        if (not isospin_channel) and (self._twoisospin_value is not None):
+            warnings.warn("\n"+bcolors.WARNING
+                          + "isospin_channel is being set to False but "
+                          + "twoisospin_value is not None. Setting it to None."
+                          + f"{bcolors.ENDC}", stacklevel=2)
+            self._twoisospin_value = None
 
     @property
-    def isospin_value(self):
-        """Get isospin value (int)."""
-        return self._isospin_value
+    def twoisospins(self):
+        """Get twice the isospin of each particle."""
+        return self._twoisospins
 
-    @isospin_value.setter
-    def isospin_value(self, isospin_value):
-        if ((isospin_value is not None)
-           and (not isinstance(isospin_value, int))):
-            raise ValueError('isospin_value must be an int')
-        if ((isospin_value is not None)
-           and (isospin_value > self._n_particles)):
-            raise ValueError('isospin_value should not exceed n_particles')
-        self._isospin_value = isospin_value
-        if (not self.isospin_channel) and (isospin_value is not None):
+    @twoisospins.setter
+    def twoisospins(self, twoisospins):
+        if twoisospins is not None:
+            self._twoisospins = self._generic_setter(
+                twoisospins, 'twoisospins', int, 'int')
+            for i in range(len(self._twoisospins)):
+                for j in range(len(self._twoisospins)):
+                    f1 = self.explicit_flavors[i]
+                    f2 = self.explicit_flavors[j]
+                    ti1 = self._twoisospins[i]
+                    ti2 = self._twoisospins[j]
+                    if (f1 == f2) and (ti1 != ti2):
+                        warnings.warn("\n"+bcolors.WARNING
+                                      + "isospins must be equal when flavors "
+                                      + "are equal. Changing one of the "
+                                      + "twoisospins."
+                                      + f"{bcolors.ENDC}", stacklevel=2)
+                        self._twoisospins[j] = ti1
+            self._allowed_total_twoisospins = self._get_allowed()
+            if ((self._twoisospin_value is not None)
+               and (self._twoisospin_value not in
+                    self._allowed_total_twoisospins)):
+                warnings.warn("\n"+bcolors.WARNING
+                              + "twoisospin_value currently not in "
+                              + "allowed_total_twoisospins. Setting it to "
+                              + "maximum allowed value."
+                              + f"{bcolors.ENDC}", stacklevel=2)
+                self._twoisospin_value = self._allowed_total_twoisospins[-1]
+        if self.isospin_channel and (twoisospins is None):
             warnings.warn("\n"+bcolors.WARNING
-                          + "isospin_value is being set but isospin_channel "
-                          + "is False. Setting it to True."
+                          + "twoisospins is being set to None "
+                          + "but isospin_channel is true. Setting it to False."
+                          + f"{bcolors.ENDC}", stacklevel=2)
+            self.isospin_channel = False
+        if (not self.isospin_channel) and (twoisospins is not None):
+            warnings.warn("\n"+bcolors.WARNING
+                          + "twoisospins is being set but isospin_channel is "
+                          + "False. Setting it to True."
                           + f"{bcolors.ENDC}", stacklevel=2)
             self.isospin_channel = True
-        if self.isospin_channel and (isospin_value is None):
+
+    @property
+    def allowed_total_twoisospins(self):
+        """Get the set of twice the allowed total isospins (list of ints)."""
+        return self._allowed_total_twoisospins
+
+    @property
+    def twoisospin_value(self):
+        """Get twice the isospin value (int)."""
+        return self._twoisospin_value
+
+    @twoisospin_value.setter
+    def twoisospin_value(self, twoisospin_value):
+        if ((twoisospin_value is not None)
+           and (not isinstance(twoisospin_value, int))):
+            raise ValueError('twoisospin_value must be an int')
+        if ((twoisospin_value is not None)
+           and (self._allowed_total_twoisospins is not None)
+           and (twoisospin_value not in self._allowed_total_twoisospins)):
             warnings.warn("\n"+bcolors.WARNING
-                          + "isospin_value is being set to None but "
+                          + "twoisospin_value currently not in "
+                          + "allowed_total_twoisospins. Setting it to "
+                          + "maximum allowed value."
+                          + f"{bcolors.ENDC}", stacklevel=2)
+            self._twoisospin_value = self._allowed_total_twoisospins[-1]
+        else:
+            self._twoisospin_value = twoisospin_value
+        if (not self.isospin_channel) and (twoisospin_value is not None):
+            warnings.warn("\n"+bcolors.WARNING
+                          + "twoisospin_value is being set but "
+                          + "isospin_channel is False. Setting it to True."
+                          + f"{bcolors.ENDC}", stacklevel=2)
+            self.isospin_channel = True
+        if self.isospin_channel and (twoisospin_value is None):
+            warnings.warn("\n"+bcolors.WARNING
+                          + "twoisospin_value is being set to None but "
                           + "isospin_channel is True. Setting it to False."
                           + f"{bcolors.ENDC}", stacklevel=2)
             self.isospin_channel = False
             self.isospin_flavor = None
-
-    @property
-    def isospin_flavor(self):
-        """Get isospin flavor (int)."""
-        return self._isospin_flavor
-
-    @isospin_flavor.setter
-    def isospin_flavor(self, isospin_flavor):
-        if ((isospin_flavor is not None)
-           and (not isinstance(isospin_flavor, int))):
-            raise ValueError('isospin_flavor must be an int')
-        self._isospin_flavor = isospin_flavor
-        if (not self.isospin_channel) and (isospin_flavor is not None):
-            warnings.warn("\n"+bcolors.WARNING
-                          + "isospin_flavor is being set but isospin_channel "
-                          + "is False. Setting it to True."
-                          + f"{bcolors.ENDC}", stacklevel=2)
-            self.isospin_channel = True
-        if self.isospin_channel and (isospin_flavor is None):
-            warnings.warn("\n"+bcolors.WARNING
-                          + "isospin_value is being set to None but "
-                          + "isospin_channel is True. Setting it to False."
-                          + f"{bcolors.ENDC}", stacklevel=2)
-            self.isospin_channel = False
-            self.isospin_value = None
 
     @property
     def masses(self):
@@ -365,46 +429,39 @@ class FlavorChannel:
     @masses.setter
     def masses(self, masses):
         self._masses = self._generic_setter(masses, 'masses', float, 'float')
-        if self.isospin_channel:
-            if not (np.array(self._masses) ==
-                    np.array([self._masses[0]]*self._n_particles)).all()\
-               and len(self._masses) != 2:
-                warnings.warn("\n"+bcolors.WARNING
-                              + "masses must be equal for isospin "
-                              + "channel. "
-                              + "Setting to first value."
-                              + f"{bcolors.ENDC}", stacklevel=2)
-                self._masses = [self._masses[0]]*self._n_particles
+        for i in range(len(self._masses)):
+            for j in range(len(self._masses)):
+                f1 = self.explicit_flavors[i]
+                f2 = self.explicit_flavors[j]
+                m1 = self._masses[i]
+                m2 = self._masses[j]
+                if (f1 == f2) and (m1 != m2):
+                    warnings.warn("\n"+bcolors.WARNING
+                                  + "masses must be equal when flavors are "
+                                  + "equal. Changing one of the masses."
+                                  + f"{bcolors.ENDC}", stacklevel=2)
+                    self._masses[j] = m1
 
     @property
     def twospins(self):
-        """Get 2xspins (list of ints)."""
+        """Get twoice the spins (list of ints)."""
         return self._twospins
 
     @twospins.setter
     def twospins(self, twospins):
         self._twospins = self._generic_setter(twospins, 'twospins', int, 'int')
-        if self.isospin_channel:
-            if not (np.array(self._twospins) ==
-                    np.array([self._twospins[0]]*self._n_particles)).all()\
-               and len(self._twospins) != 2:
-                warnings.warn("\n"+bcolors.WARNING
-                              + "twospins must be equal for isospin "
-                              + "channel. "
-                              + "Setting to first value."
-                              + f"{bcolors.ENDC}", stacklevel=2)
-                self._twospins = [self._twospins[0]]*self._n_particles
-
-    @property
-    def individual_isospins(self):
-        """Get the individual isospins."""
-        return self._individual_isospins
-
-    @individual_isospins.setter
-    def individual_isospins(self, individual_isospins):
-        if individual_isospins is not None:
-            self._individual_isospins = self._generic_setter(
-                individual_isospins, 'individual_isospins', float, 'float')
+        for i in range(len(self._twospins)):
+            for j in range(len(self._masses)):
+                f1 = self.explicit_flavors[i]
+                f2 = self.explicit_flavors[j]
+                s1 = self._twospins[i]
+                s2 = self._twospins[j]
+                if (f1 == f2) and (s1 != s2):
+                    warnings.warn("\n"+bcolors.WARNING
+                                  + "twospins must be equal when flavors are "
+                                  + "equal. Changing one of the twospins."
+                                  + f"{bcolors.ENDC}", stacklevel=2)
+                    self._twospins[j] = s1
 
     @property
     def n_particles(self):
@@ -422,30 +479,27 @@ class FlavorChannel:
             self.masses = self._masses
             self.twospins = self._twospins
             self.explicit_flavors = self._explicit_flavors
-            if self._isospin_channel and self._isospin_value > n_particles:
-                warnings.warn("\n"+bcolors.WARNING
-                              + "isospin_value should not exceed n_particles. "
-                              + "Setting isospin_value to equal n_particles."
-                              + f"{bcolors.ENDC}", stacklevel=2)
-                self._isospin_value = n_particles
+            self.twoisospins = self._twoisospins
+            self.twoisospin_value = self._twoisospin_value
 
     def __str__(self):
         """Summary of the flavor channel."""
         strtmp = 'FlavorChannel with the following details:\n'
         strtmp = strtmp+f'    {self._n_particles} particles,\n'
         strtmp = strtmp+f'    masses: {self._masses},\n'
-        strtmp = strtmp+f'    twospins: {self._twospins},\n'
-        strtmp = strtmp+(f'    explicit_flavor_channel: '
-                         f'{self._explicit_flavor_channel},\n')
+        strtmp = strtmp+f'    spins: {np.array(self._twospins)*0.5},\n'
         strtmp = strtmp+(f'    explicit_flavors: '
                          f'{self._explicit_flavors},\n')
         strtmp = strtmp+(f'    isospin_channel: '
                          f'{self._isospin_channel},\n')
-        strtmp = strtmp+f'    isospin_value: {self._isospin_value},\n'
-        if self._individual_isospins is not None:
-            strtmp = strtmp+(f'    individual_isospins:'
-                             f'{self._individual_isospins},\n')
-        strtmp = strtmp+f'    isospin_flavor: {self._isospin_flavor},\n'
+        if self._isospin_channel:
+            strtmp = strtmp+(f'    isospins: '
+                             f'{np.array(self._twoisospins)*0.5},\n')
+            strtmp = strtmp+(f'    allowed total isospins: '
+                             f'{np.array(self._allowed_total_twoisospins)*0.5}'
+                             f',\n')
+            strtmp = strtmp+(f'    isospin_value:'
+                             f' {float(self._twoisospin_value)*0.5},\n')
         return strtmp[:-2]+'.'
 
 
@@ -457,11 +511,12 @@ class SpectatorChannel:
         channel
     :type fc: FlavorChannel
     :param indexing: permutation of [0, 1, 2], the first entry is the spectator
-        particle (indexing is None for a two-particle or an isospin channel)
+        particle (indexing is None for a two-particle channel)
     :type indexing: list of ints
-    :param sub_isospin: value of the two-particle isospin for the spectator
-        channel (is None for a two-particle or an explicit flavor channel)
-    :type sub_isospin: int
+    :param sub_twoisospin: twice the value of the two-particle isospin for the
+        spectator channel (is None if the flavor channel is not an isospin
+        channel)
+    :type sub_twoisospin: int
     :param ell_set: specifies the allowed values of orbital angular momentum
     :type ell_set: list of ints
     :param p_cot_deltas: specifies the two-particle scattering phase shifts
@@ -473,18 +528,18 @@ class SpectatorChannel:
     """
 
     def __init__(self, fc=FlavorChannel(3), indexing=[0, 1, 2],
-                 sub_isospin=None, ell_set=[0], p_cot_deltas=None,
+                 sub_twoisospin=None, ell_set=[0], p_cot_deltas=None,
                  n_params_set=[1]):
         self._fc = fc
         self._indexing = indexing
-        self._sub_isospin = sub_isospin
+        self._sub_twoisospin = sub_twoisospin
         self._ell_set = ell_set
         self._p_cot_deltas = p_cot_deltas
         self._n_params_set = n_params_set
 
         self.fc = fc
         self.indexing = indexing
-        self.sub_isospin = sub_isospin
+        self.sub_twoisospin = sub_twoisospin
         self.ell_set = ell_set
         if p_cot_deltas is None:
             tmp = []
@@ -506,7 +561,7 @@ class SpectatorChannel:
     def fc(self, fc):
         self._fc = fc
         self.indexing = self._indexing
-        self.sub_isospin = self._sub_isospin
+        self.sub_twoisospin = self._sub_twoisospin
         self.ell_set = self._ell_set
         self.p_cot_deltas = self._p_cot_deltas
         self.n_params_set = self._n_params_set
@@ -525,8 +580,8 @@ class SpectatorChannel:
                           + f"{bcolors.ENDC}", stacklevel=2)
             self._indexing = None
         elif (self.fc.n_particles == 2) and (indexing is None):
-            pass
-        elif self.fc.explicit_flavor_channel:
+            self._indexing = None
+        elif self.fc.n_particles >= 3:
             if not isinstance(indexing, list):
                 raise ValueError('for n_particles > 2, '
                                  + 'indexing must be a list')
@@ -536,37 +591,35 @@ class SpectatorChannel:
                 raise ValueError('indexing must be a permuatation of '
                                  + 'ascending integers')
             self._indexing = indexing
-        elif self.fc.isospin_channel and indexing is not None:
-            warnings.warn("\n"+bcolors.WARNING
-                          + "indexing is not None for an isospin_channel. "
-                          + "Setting it to None."
-                          + f"{bcolors.ENDC}", stacklevel=2)
-            self._indexing = None
+        else:
+            raise ValueError('something wrong with indexing')
 
     @property
-    def sub_isospin(self):
-        """Get the sub-channel isospin (int)."""
-        return self._sub_isospin
+    def sub_twoisospin(self):
+        """Get twice the sub-channel isospin (int)."""
+        return self._sub_twoisospin
 
-    @sub_isospin.setter
-    def sub_isospin(self, sub_isospin):
-        if ((sub_isospin is not None)
+    @sub_twoisospin.setter
+    def sub_twoisospin(self, sub_twoisospin):
+        if ((sub_twoisospin is not None)
            and (self.fc.n_particles == 2)):
-            raise ValueError('sub_isospin must be None for n_particles == 2')
-        if ((sub_isospin is not None)
-           and (not isinstance(sub_isospin, int))):
-            raise ValueError('sub_isospin must be an int')
-        if ((sub_isospin is not None)
-           and (sub_isospin > self.fc.n_particles-1)):
-            raise ValueError('sub_isospin should not exceed n_particles-1')
-        if (not self.fc.isospin_channel) and (sub_isospin is not None):
-            raise ValueError('sub_isospin cannot be set because '
+            raise ValueError('sub_twoisospin must be None for n_particles == 2'
+                             )
+        if ((sub_twoisospin is not None)
+           and (not isinstance(sub_twoisospin, int))):
+            raise ValueError('sub_twoisospin must be an int')
+        if ((sub_twoisospin is not None)
+           and (sub_twoisospin > 2*(self.fc.n_particles-1))):
+            raise ValueError('sub_twoisospin should not exceed'
+                             + '2*(n_particles-1)')
+        if (not self.fc.isospin_channel) and (sub_twoisospin is not None):
+            raise ValueError('sub_twoisospin cannot be set because '
                              + 'isospin_channel is False')
-        if (self.fc.isospin_channel and (sub_isospin is None)
+        if (self.fc.isospin_channel and (sub_twoisospin is None)
            and (self.fc.n_particles != 2)):
-            raise ValueError('sub_isospin cannot be set to None because '
+            raise ValueError('sub_twoisospin cannot be set to None because '
                              + 'isospin_channel is True')
-        self._sub_isospin = sub_isospin
+        self._sub_twoisospin = sub_twoisospin
 
     @property
     def ell_set(self):
@@ -609,11 +662,16 @@ class SpectatorChannel:
         """Summary of the spectator channel."""
         strtmp = self.fc.__str__().replace('Flavor', 'Spectator')[:-1]+",\n"
         strtmp = strtmp+"    indexing: "+str(self.indexing)+",\n"
-        strtmp = strtmp+"    sub_isospin: "+str(self.sub_isospin)+",\n"
+        if self.fc.isospin_channel:
+            strtmp = strtmp+"    sub_isospin: "\
+                + str(float(self.sub_twoisospin)*0.5)+",\n"
         strtmp = strtmp+"    ell_set: "+str(self.ell_set)+",\n"
-        strtmp = strtmp+"    p_cot_deltas: "+str(self.p_cot_deltas)+",\n"
+        pcd_str = ""
+        for pcd_tmp in self.p_cot_deltas:
+            pcd_str = pcd_str+str(pcd_tmp)+",\n"
+        strtmp = strtmp+"    p_cot_deltas: "+pcd_str
         strtmp = strtmp+"    n_params_set: "+str(self.n_params_set)+",\n"
-        return strtmp[:-1]
+        return strtmp[:-2]+"."
 
 
 class FlavorChannelSpace:
@@ -629,47 +687,27 @@ class FlavorChannelSpace:
          FlavorChannelSpace. It includes extra information relevative to
          FlavorChannel as summarized in the SpectatorChannel documentation.)
     :type sc_list: list of instances of SpectatorChannel
-    :param qcd_channel_space: defines whether the space is a qcd channel space
-        (as opposed to an explicit flavor channel space)
-    :type qcd_channel_space: bool
-    :param explicit_flavor_channel_space: defines whether the space is an
-        explicit flavor channel space (as opposed to a qcd channel space)
-    :type explicit_flavor_channel_space: bool
     :param sc_compact: Compact summary of the relevant spectator-channel
         properties:
 
+        sc_compact is a list of rank-two np.ndarrays, one for each value of
+        n_particles included in the entries of fc_list. If only three-particle
+        channels are included, then ``len(sc_compact)`` is 1 and it contains a
+        single rank-two np.ndarray. Focus on this case. Then
+        ``len(sc_compact[0])`` is the total number of three-particle spectator
+        channels and each entry ``sc_compact[0][i]`` (for non-negative integer
+        ``i < len(sc_compact[0])``) is the data for a given channel, has
+        length 16, and is populated as follows::
 
-        The exact data depends on whether the space is a qcd channel space or
-        an explicit flavor channel space. In both cases sc_compact is a list of
-        rank-two np.ndarrays, one for each value of n_particles included in
-        the entries of fc_list. If only three-particle channels are included,
-        then ``len(sc_compact)`` is 1 and it contains a single rank-two
-        np.ndarray. Focus on this case. Then ``len(sc_compact[0])`` is the
-        total number of three-particle spectator channels.
+            [3.0, mass1, mass2, mass3, twospin1, twospin2, twospin3,
+             flavor1, flavor2, flavor3, isospin_channel,
+             twoisospin1, twoisospin2, twoisospin3, twoisospin_value
+             sub_twoisospin]
 
-
-        In the case of a qcd channel space ``len(sc_compact[0].T)`` is 10. Each
-        row is populated as follows::
-
-            [3.0, mass1, mass2, mass3, spin1, spin2, spin3,
-             isospin_flavor, isospin_value, sub_isospin]
-
-        where the first entry is the number of particles and all values are
-        cast to floats.
-
-
-        In the case of an explicit flavor channel space
-        ``len(sc_compact[0].T)`` is again 10. Each row is populated as
-        follows::
-
-            [3.0, mass1, mass2, mass3, spin1, spin2, spin3,
-             flavor1, flavor2, flavor3]
-
-        where the first entry is the number of particles and all values are
-        cast to floats.
+        where the first entry is the number of particles. In the case that
+        isospin_channel is False, all subsequent entries are None.
     :type sc_compact: list
     :param three_index: location of the three-particle subspace
-
 
         If the fc_list includes multiple values of n_particles, three_index
         is used to specify the location of the sc_compact entry for the
@@ -692,10 +730,10 @@ class FlavorChannelSpace:
     :param g_templates: flavor structure of g
 
         ``len(g_templates)`` is equal to ``len(g_templates[i])`` for any
-        non-negative ``i < len(g_templates)``. Thus the list of lists is
-        interpreted as a square array, with the number of rows and columns also
-        equal to n_three_slices. Each entry in g_template gives a template for
-        the finite-volume G matrix within each pair of mass-identical
+        non-negative integer ``i < len(g_templates)``. Thus the list of lists
+        is interpreted as a square array, with the number of rows and columns
+        also equal to n_three_slices. Each entry in g_template gives a template
+        for the finite-volume G matrix within each pair of mass-identical
         subspaces. Off diaongal entries are all zeroes if the sorted set of
         masses is distinct but can be non-zero if, for example masses
         2.0, 2.0, 1.0 swap into masses 1.0, 2.0, 2.0 (where the first
@@ -714,25 +752,6 @@ class FlavorChannelSpace:
         else:
             self.ni_list = ni_list
 
-        if len(fc_list) > 0:
-            self.qcd_channel_space = fc_list[0].isospin_channel
-            self.explicit_flavor_channel_space\
-                = fc_list[0].explicit_flavor_channel
-
-        if self.qcd_channel_space and self.explicit_flavor_channel_space:
-            raise ValueError('FlavorChannelSpace cannot be both a '
-                             + 'qcd_channel_space and a '
-                             + 'explicit_flavor_channel_space')
-
-        for fc in fc_list:
-            if fc.explicit_flavor_channel\
-               is not self.explicit_flavor_channel_space:
-                raise ValueError('channels do not all have the same status '
-                                 + 'of explicit_flavor_channel')
-            if fc.isospin_channel is not self.qcd_channel_space:
-                raise ValueError('channels do not all have same status of '
-                                 + 'isospin_channel')
-
         self.sc_list = []
         for fc in fc_list:
             self._add_flavor_channel(fc)
@@ -747,31 +766,61 @@ class FlavorChannelSpace:
             sc1 = SpectatorChannel(fc, indexing=None)
             self._add_spectator_channel(sc1)
         elif fc.isospin_channel:
-            if fc.isospin_value == 3:
-                sc1 = SpectatorChannel(fc, indexing=None, sub_isospin=2)
-                self._add_spectator_channel(sc1)
-            elif fc.isospin_value == 2:
-
-                sc1 = SpectatorChannel(fc, indexing=None, sub_isospin=1,
-                                       ell_set=[1])
-                sc2 = SpectatorChannel(fc, indexing=None, sub_isospin=2)
-                self._add_spectator_channel(sc1)
-                self._add_spectator_channel(sc2)
-            elif fc.isospin_value == 1:
-                sc1 = SpectatorChannel(fc, indexing=None, sub_isospin=0)
-                sc2 = SpectatorChannel(fc, indexing=None, sub_isospin=1,
-                                       ell_set=[1])
-                sc3 = SpectatorChannel(fc, indexing=None, sub_isospin=2)
-                self._add_spectator_channel(sc1)
-                self._add_spectator_channel(sc2)
-                self._add_spectator_channel(sc3)
-            elif fc.isospin_value == 0:
-                sc1 = SpectatorChannel(fc, indexing=None, sub_isospin=1,
-                                       ell_set=[1])
-                self._add_spectator_channel(sc1)
-            else:
-                raise ValueError('this isospin_value is not yet supported')
-        elif fc.explicit_flavor_channel:
+            for entry in fc.summary_list:
+                if entry[0] == fc.twoisospin_value:
+                    flavors = entry[[2, 4, 5]]
+                    sub_twoisospin = entry[1]
+                    indexing = []
+                    for flavor in flavors:
+                        tmp_locations = np.where(np.array(fc.explicit_flavors)
+                                                 == flavor)[0]
+                        added = False
+                        for tmp_location in tmp_locations:
+                            if (tmp_location not in indexing) and not added:
+                                indexing = indexing+[tmp_location]
+                                added = True
+                    ell_set = [0]
+                    if (sub_twoisospin == 2) and (flavors[1] == flavors[2]):
+                        ell_set = [1]
+                    sctmp = SpectatorChannel(fc, indexing=indexing,
+                                             sub_twoisospin=sub_twoisospin,
+                                             ell_set=ell_set)
+                    self._add_spectator_channel(sctmp)
+            #         print(entry)
+            #         print(flavors)
+            #         print(indexing)
+            #         print(sub_twoisospin)
+            # if fc.twoisospin_value == 6:
+            #     sc1 = SpectatorChannel(fc, indexing=[0, 1, 2],
+            #                             sub_twoisospin=4)
+            #     self._add_spectator_channel(sc1)
+            # elif fc.twoisospin_value == 4:
+            #     sc1 = SpectatorChannel(fc, indexing=[0, 1, 2],
+            #                             sub_twoisospin=2,
+            #                             ell_set=[1])
+            #     sc2 = SpectatorChannel(fc, indexing=[0, 1, 2],
+            #                             sub_twoisospin=4)
+            #     self._add_spectator_channel(sc1)
+            #     self._add_spectator_channel(sc2)
+            # elif fc.twoisospin_value == 2:
+            #     sc1 = SpectatorChannel(fc, indexing=[0, 1, 2],
+            #                             sub_twoisospin=0)
+            #     sc2 = SpectatorChannel(fc, indexing=[0, 1, 2],
+            #                             sub_twoisospin=2,
+            #                             ell_set=[1])
+            #     sc3 = SpectatorChannel(fc, indexing=[0, 1, 2],
+            #                             sub_twoisospin=4)
+            #     self._add_spectator_channel(sc1)
+            #     self._add_spectator_channel(sc2)
+            #     self._add_spectator_channel(sc3)
+            # elif fc.twoisospin_value == 0:
+            #     sc1 = SpectatorChannel(fc, indexing=[0, 1, 2],
+            #                             sub_twoisospin=2,
+            #                             ell_set=[1])
+            #     self._add_spectator_channel(sc1)
+            # else:
+            #     raise ValueError('this isospin_value is not yet supported')
+        else:
             if fc.explicit_flavors[0] == fc.explicit_flavors[1]\
                == fc.explicit_flavors[2]:
                 sc1 = SpectatorChannel(fc)
@@ -798,9 +847,6 @@ class FlavorChannelSpace:
                 self._add_spectator_channel(sc1)
                 self._add_spectator_channel(sc2)
                 self._add_spectator_channel(sc3)
-        else:
-            raise ValueError('either isospin_channel or'
-                             + ' explicit_flavor_channel must be True')
 
     def _build_sorted_sc_list(self):
         n_particles_max = 0
@@ -810,33 +856,54 @@ class FlavorChannelSpace:
         sc_compact = [[[]] for _ in range(n_particles_max-1)]
         for sc in self.sc_list:
             sc_comp_tmp = [sc.fc.n_particles]
-            if sc.fc.isospin_channel:
-                sc_comp_tmp = sc_comp_tmp+sc.fc.masses
-                sc_comp_tmp = sc_comp_tmp+sc.fc.twospins
-                sc_comp_tmp = sc_comp_tmp+[sc.fc.isospin_flavor]
-                sc_comp_tmp = sc_comp_tmp+[sc.fc.isospin_value]
-                if sc.fc.n_particles != 2:
-                    sc_comp_tmp = sc_comp_tmp+[sc.sub_isospin]
-            elif sc.fc.explicit_flavor_channel and sc.indexing is not None:
+            if sc.fc.n_particles == 3:
                 sc_comp_tmp = sc_comp_tmp\
                     + list(np.array(sc.fc.masses)[sc.indexing])
                 sc_comp_tmp = sc_comp_tmp\
                     + list(np.array(sc.fc.twospins)[sc.indexing])
                 sc_comp_tmp = sc_comp_tmp\
                     + list(np.array(sc.fc.explicit_flavors)[sc.indexing])
+                sc_comp_tmp = sc_comp_tmp+[sc.fc.isospin_channel]
+                if sc.fc.isospin_channel:
+                    sc_comp_tmp = sc_comp_tmp\
+                        + list(np.array(sc.fc.twoisospins)[sc.indexing])
+                    sc_comp_tmp = sc_comp_tmp+[sc.fc.twoisospin_value]
+                    sc_comp_tmp = sc_comp_tmp+[sc.sub_twoisospin]
+                else:
+                    sc_comp_tmp = sc_comp_tmp+[None, None, None, None, None]
+            # if sc.fc.isospin_channel:
+            #     sc_comp_tmp = sc_comp_tmp+sc.fc.masses
+            #     sc_comp_tmp = sc_comp_tmp+sc.fc.twospins
+            #     sc_comp_tmp = sc_comp_tmp+sc.fc.explicit_flavors
+            #     sc_comp_tmp = sc_comp_tmp+[sc.fc.isospin_channel]
+            #     sc_comp_tmp = sc_comp_tmp+sc.fc.twoisospins
+            #     sc_comp_tmp = sc_comp_tmp+[sc.fc.twoisospin_value]
+            #     if sc.fc.n_particles != 2:
+            #         sc_comp_tmp = sc_comp_tmp+[sc.sub_twoisospin]
+            # elif (sc.indexing is not None) and (sc.fc.n_particles == 3):
+            #     sc_comp_tmp = sc_comp_tmp\
+            #         + list(np.array(sc.fc.masses)[sc.indexing])
+            #     sc_comp_tmp = sc_comp_tmp\
+            #         + list(np.array(sc.fc.twospins)[sc.indexing])
+            #     sc_comp_tmp = sc_comp_tmp\
+            #         + list(np.array(sc.fc.explicit_flavors)[sc.indexing])
+            #     sc_comp_tmp = sc_comp_tmp+[False, None, None, None, None, None]
             else:
                 return ValueError('something is wrong with channel'
                                   + ' specification.')
             sc_compact[sc.fc.n_particles-2] = sc_compact[sc.fc.n_particles-2]\
                 + [sc_comp_tmp]
         for j in range(len(sc_compact)):
-            sc_compact[j] = np.array(sc_compact[j][1:])
+            sc_compact[j] = np.array(sc_compact[j][1:], dtype=object)
             len_tmp = len(sc_compact[j].T)
             for i in range(len_tmp):
-                if not ((self.qcd_channel_space) and (i == 0)):
+                # if not ((self.sc_list[0].fc.isospin_channel) and (i == 0)):
+                try:
                     sc_compact[j] = sc_compact[j][
                         sc_compact[j][:, len_tmp-i-1].argsort(
                             kind='mergesort')]
+                except TypeError:
+                    pass
         self.sc_compact = []
         for sc_compact_entry in sc_compact:
             if len(sc_compact_entry) != 0:
@@ -844,7 +911,7 @@ class FlavorChannelSpace:
         self.three_slices = [[]]
         three_index = 0
         for j in range(len(self.sc_compact)):
-            if self.sc_compact[j][0][0] == 3.0:
+            if self.sc_compact[j][0][0] == 3:
                 three_index = j
         self.three_index = three_index
         sc_compact_three_subspace = self.sc_compact[three_index]
@@ -866,35 +933,54 @@ class FlavorChannelSpace:
 
     def _build_g_templates(self):
         g_templates_tmp = [[]]
-        if self.qcd_channel_space:
+        if self.sc_list[0].fc.isospin_channel:
             for three_slice in self.three_slices:
                 iso_slices = [[]]
                 len_tmp = three_slice[1]-three_slice[0]
                 zero_point = 0
                 i = 0
-                iso_pos = 8
+                iso_pos = 14
                 while i < len_tmp:
                     iso_val_tmp = int(self.sc_compact[self.three_index][
                         three_slice[0]+i][iso_pos])
-                    if iso_val_tmp == 0:
+                    twoisospins = self.sc_compact[self.three_index][
+                        three_slice[0]+i][[11, 12, 13]]
+                    three_pions = (twoisospins == np.array([2, 2, 2])).all()
+                    if three_pions and (iso_val_tmp == 0):
                         iso_dim_tmp = 1
-                    elif iso_val_tmp == 1:
+                    elif three_pions and (iso_val_tmp == 2):
                         iso_dim_tmp = 3
-                    elif iso_val_tmp == 2:
+                    elif three_pions and (iso_val_tmp == 4):
                         iso_dim_tmp = 2
-                    elif iso_val_tmp == 3:
+                    elif three_pions and (iso_val_tmp == 6):
                         iso_dim_tmp = 1
+                    else:
+                        k = 0
+                        iso_val_k_tmp = int(self.sc_compact[self.three_index][
+                            three_slice[0]+i+k][iso_pos])
+                        inbounds = True
+                        while inbounds and iso_val_k_tmp == iso_val_tmp:
+                            k = k+1
+                            try:
+                                iso_val_k_tmp = int(self.sc_compact[
+                                    self.three_index][
+                                    three_slice[0]+i+k][iso_pos])
+                            except IndexError:
+                                inbounds = False
+                        iso_dim_tmp = k
                     iso_slices = iso_slices+[[zero_point,
                                               zero_point+iso_dim_tmp,
+                                              three_pions,
                                               iso_val_tmp]]
                     zero_point = zero_point+iso_dim_tmp
                     i = i+iso_dim_tmp
                 iso_slices = iso_slices[1:]
                 g_template_tmp = np.zeros((len_tmp, len_tmp))
                 for iso_slice in iso_slices:
-                    ((g_template_tmp[iso_slice[0]:iso_slice[1]]).T)[
-                        iso_slice[0]:iso_slice[1]]\
-                        = G_TEMPLATE_DICT[iso_slice[2]]
+                    if iso_slice[2]:
+                        ((g_template_tmp[iso_slice[0]:iso_slice[1]]).T)[
+                            iso_slice[0]:iso_slice[1]]\
+                            = G_TEMPLATE_DICT[iso_slice[3]]
                 g_templates_tmp = g_templates_tmp+[g_template_tmp]
             g_templates_tmp = g_templates_tmp[1:]
             self.g_templates = [[]]
@@ -909,7 +995,7 @@ class FlavorChannelSpace:
                             )]
                 self.g_templates = self.g_templates+[g_templates_row]
             self.g_templates = self.g_templates[1:]
-        elif self.explicit_flavor_channel_space:
+        else:
             self.g_templates = [[]]
             for slice_row in self.three_slices:
                 len_row = slice_row[1]-slice_row[0]
@@ -939,9 +1025,15 @@ class FlavorChannelSpace:
                     g_templates_row = g_templates_row+[g_template_tmp]
                 self.g_templates = self.g_templates+[g_templates_row]
             self.g_templates = self.g_templates[1:]
-        else:
-            raise ValueError("either qcd_channel_space or " +
-                             "explicit_flavor_channel_space must be True")
+
+    def __str__(self):
+        """Summary of the flavor-channel space."""
+        strtmp = "FlavorChannelSpace with the following SpectatorChannels:\n"
+        for sc in self.sc_list:
+            strtmp = strtmp+"    "
+            strtmp = strtmp+sc.__str__().replace('\n    ',
+                                                 '\n        ')[:-1]+",\n"
+        return strtmp[:-2]+"."
 
 
 class FiniteVolumeSetup:
@@ -1456,9 +1548,9 @@ class QCIndexSpace:
             Emin = np.mod(Emax-3.0, deltaE)+3.0
             Lvals = np.arange(Lmin, Lmax, deltaL)
             Evals = np.arange(Emin, Emax, deltaE)
-            if np.abs(Lvals[-1] - Lmax) > EPSILON:
+            if np.abs(Lvals[-1] - Lmax) > EPSILON20:
                 Lvals = np.append(Lvals, Lmax)
-            if np.abs(Evals[-1] - Emax) > EPSILON:
+            if np.abs(Evals[-1] - Emax) > EPSILON20:
                 Evals = np.append(Evals, Emax)
             self.Lvals = Lvals[::-1]
             self.Evals = Evals[::-1]
@@ -1529,14 +1621,14 @@ class QCIndexSpace:
 
     def _get_nPspecmax(self, three_slice_index):
         sc = self.fcs.sc_list[self.fcs.three_slices[three_slice_index][0]]
-        if sc.fc.explicit_flavor_channel:
-            mspec = sc.fc.masses[sc.indexing[0]]
-        elif sc.fc.isospin_channel:
-            mspec = sc.fc.masses[0]
-        else:
-            raise ValueError('get_nPspecmax was handed a channel that is '
-                             + 'neither an isospin-channel nor an explicit '
-                             + 'flavor channel.')
+        # if sc.fc.explicit_flavor_channel:
+        mspec = sc.fc.masses[sc.indexing[0]]
+        # elif sc.fc.isospin_channel:
+        #     mspec = sc.fc.masses[0]
+        # else:
+        #     raise ValueError('get_nPspecmax was handed a channel that is '
+        #                      + 'neither an isospin-channel nor an explicit '
+        #                      + 'flavor channel.')
         Emax = self.Emax
         EmaxSQ = Emax**2
         nPSQ = self.nP@self.nP
@@ -1644,9 +1736,9 @@ class QCIndexSpace:
             Emin = np.mod(Emax-3.0, deltaE)+3.0
             Lvals = np.arange(Lmin, Lmax, deltaL)
             Evals = np.arange(Emin, Emax, deltaE)
-            if np.abs(Lvals[-1] - Lmax) > EPSILON:
+            if np.abs(Lvals[-1] - Lmax) > EPSILON20:
                 Lvals = np.append(Lvals, Lmax)
-            if np.abs(Evals[-1] - Emax) > EPSILON:
+            if np.abs(Evals[-1] - Emax) > EPSILON20:
                 Evals = np.append(Evals, Emax)
             Lvals = Lvals[::-1]
             Evals = Evals[::-1]
@@ -1786,15 +1878,15 @@ class QCIndexSpace:
             for slice_index in range(self.fcs.n_three_slices):
                 cindex = self.fcs.three_slices[slice_index][0]
                 sc = self.fcs.sc_list[cindex]
-                if sc.fc.explicit_flavor_channel:
-                    mspec = sc.fc.masses[sc.indexing[0]]
-                elif sc.fc.isospin_channel:
-                    mspec = sc.fc.masses[0]
-                else:
-                    raise ValueError('get_tbks_sub_indices was handed a'
-                                     + ' channel that is neither an'
-                                     + ' isospin-channel nor an explicit'
-                                     + ' flavor channel.')
+                # if sc.fc.explicit_flavor_channel:
+                mspec = sc.fc.masses[sc.indexing[0]]
+                # elif sc.fc.isospin_channel:
+                mspec = sc.fc.masses[0]
+                # else:
+                #     raise ValueError('get_tbks_sub_indices was handed a'
+                #                      + ' channel that is neither an'
+                #                      + ' isospin-channel nor an explicit'
+                #                      + ' flavor channel.')
                 nP = self.nP
                 tbkstmp_set = self.tbks_list[cindex]
                 still_searching = True
@@ -1828,14 +1920,14 @@ class QCIndexSpace:
             cindex = self.fcs.three_slices[slice_index][0]
             nPspecmax = self._get_nPspecmax(cindex)
             sc = self.fcs.sc_list[cindex]
-            if sc.fc.explicit_flavor_channel:
-                mspec = sc.fc.masses[sc.indexing[0]]
-            elif sc.fc.isospin_channel:
-                mspec = sc.fc.masses[0]
-            else:
-                raise ValueError('get_tbks_sub_indices was handed a channel '
-                                 + 'that is neither an isospin-channel nor '
-                                 + 'an explicit flavor channel.')
+            # if sc.fc.explicit_flavor_channel:
+            mspec = sc.fc.masses[sc.indexing[0]]
+            # elif sc.fc.isospin_channel:
+            #     mspec = sc.fc.masses[0]
+            # else:
+            #     raise ValueError('get_tbks_sub_indices was handed a channel '
+            #                      + 'that is neither an isospin-channel nor '
+            #                      + 'an explicit flavor channel.')
             ESQ = E**2
             nPSQ = self.nP@self.nP
             EminSQ = self.tbis.Emin**2
@@ -2242,7 +2334,7 @@ class QCIndexSpace:
                                 * (reduced_entry_line@reduced_entry[j])
             collapsed_entry = []
             for reduced_entry_line in reduced_entry:
-                if reduced_entry_line@reduced_entry_line > EPSILON:
+                if reduced_entry_line@reduced_entry_line > EPSILON20:
                     collapsed_entry = collapsed_entry+[reduced_entry_line]
                     counts[k] = counts[k]+1
             collapsed_entry = np.array(collapsed_entry)

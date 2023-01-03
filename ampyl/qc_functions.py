@@ -47,7 +47,7 @@ PI = np.pi
 TWOPI = 2.*PI
 FOURPI2 = 4.0*PI**2
 ROOT4PI = np.sqrt(4.*PI)
-EPSILON = 1.0e-15
+EPSILON15 = 1.0e-15
 QC_IMPL_DEFAULTS = {'hermitian': True,
                     'real harmonics': True,
                     'Zinterp': False,
@@ -247,7 +247,7 @@ class BKFunctions:
         ell (int): orbital angular momentum
         mazi (int): azimuthal component
         nvec_arr (np.ndarray): array of three-vectors
-        (Also relies on global EPSILON parameter.)
+        (Also relies on global EPSILON15 parameter.)
 
         Returns
         -------
@@ -257,8 +257,9 @@ class BKFunctions:
         nys = (nvec_arr.T)[1]
         nzs = (nvec_arr.T)[2]
         nmags = np.sqrt((nvec_arr**2).sum(1))
-        thetas = np.arccos(nzs/(nmags+EPSILON))
-        phis = np.arctan(nys/(nxs+EPSILON))+(1.0-np.sign(nxs+EPSILON))*PI/2.0
+        thetas = np.arccos(nzs/(nmags+EPSILON15))
+        phis = np.arctan(nys/(nxs+EPSILON15))\
+            + (1.0-np.sign(nxs+EPSILON15))*PI/2.0
         return ROOT4PI*(nmags**ell)*sph_harm(mazi, ell, phis, thetas)
 
     @staticmethod
@@ -274,7 +275,7 @@ class BKFunctions:
         ell (int): orbital angular momentum
         mazi (int): azimuthal component
         nvec_arr (np.ndarray): array of three-vectors
-        (Also relies on global EPSILON parameter.)
+        (Also relies on global EPSILON15 parameter.)
 
         Returns
         -------
@@ -453,7 +454,7 @@ class BKFunctions:
         q (float): on-shell back-to-back momentum magnitude.
         qc_impl (dict): organization, determining exact definition.
 
-        (Also relies on global EPSILON parameter.)
+        (Also relies on global EPSILON15 parameter.)
 
         See FiniteVolumeSetup for documentation of possible keys included in
         qc_impl.
@@ -531,7 +532,7 @@ class BKFunctions:
         """
         betaSQ = (beta_vec*beta_vec).sum(2)
         if not (np.abs(betaSQ - betaSQ[0][0]*np.ones_like(betaSQ))
-                < EPSILON).all():
+                < EPSILON15).all():
             raise ValueError('betaSQ in standard_boost_array is not '
                              + 'proportional to a matrix of ones')
         if betaSQ[0][0] == 0.0:
@@ -620,9 +621,9 @@ class QCFunctions:
 
         q_for1 = np.sqrt(qSQ_for1+0.*1j)
         q_for2 = np.sqrt(qSQ_for2+0.*1j)
-        if np.abs(q_for1.imag) < EPSILON:
+        if np.abs(q_for1.imag) < EPSILON15:
             q_for1 = q_for1.real
-        if np.abs(q_for2.imag) < EPSILON:
+        if np.abs(q_for2.imag) < EPSILON15:
             q_for2 = q_for2.real
         return [vecstar_for1, vecstar_for2, E2CMSQ_for1,
                 E2CMSQ_for2, q_for1, q_for2]
@@ -1207,9 +1208,9 @@ class QCFunctions:
                                                           mazi2=mazi2,
                                                           three_scheme=ts,
                                                           qc_impl=qc_impl)
-                    if np.abs(f_tmp.imag) < EPSILON:
+                    if np.abs(f_tmp.imag) < EPSILON15:
                         f_tmp = f_tmp.real
-                    if np.abs(f_tmp) < EPSILON:
+                    if np.abs(f_tmp) < EPSILON15:
                         f_tmp = 0.0
                     f_row = f_row+[f_tmp]
                 f_mat_entry = f_mat_entry+[f_row]
@@ -1330,9 +1331,9 @@ class QCFunctions:
                                                   alpha=alpha, beta=beta,
                                                   ell=ell,
                                                   qc_impl=qc_impl)
-            if np.abs(k_tmp.imag) < EPSILON:
+            if np.abs(k_tmp.imag) < EPSILON15:
                 k_tmp = k_tmp.real
-            if np.abs(k_tmp) < EPSILON:
+            if np.abs(k_tmp) < EPSILON15:
                 k_tmp = 0.0
             k_list = k_list+[k_tmp]*(2*ell+1)
         return block_diag(*k_list)
