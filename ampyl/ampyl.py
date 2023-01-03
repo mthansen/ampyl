@@ -68,10 +68,8 @@ ISO_PROJECTOR_ONE = np.array([[0., 0., 0., 1., 0., 0., 0.],
                               [0., 0., 0., 0., 1., 0., 0.],
                               [0., 0., 0., 0., 0., 1., 0.]])
 ISO_PROJECTOR_ZERO = np.array([[0., 0., 0., 0., 0., 0., 1.]])
-ISO_PROJECTORS = [ISO_PROJECTOR_ZERO,
-                  ISO_PROJECTOR_ONE,
-                  ISO_PROJECTOR_TWO,
-                  ISO_PROJECTOR_THREE]
+ISO_PROJECTORS = [ISO_PROJECTOR_ZERO, ISO_PROJECTOR_ONE,
+                  ISO_PROJECTOR_TWO, ISO_PROJECTOR_THREE]
 
 CAL_C_ISO = np.array([[1./np.sqrt(10.), 1./np.sqrt(10.), 1./np.sqrt(10.),
                        np.sqrt(2./5.), 1./np.sqrt(10.), 1./np.sqrt(10.),
@@ -123,8 +121,8 @@ class FlavorChannel:
     :type isospin_channel: bool
     :param twoisospins: twice the isospin of each particle in the channel
         (is ``None`` if ``isospin_channel`` is ``False``, default is ``None``
-         but if ``isospin_channel`` is ``True`` then default to
-         ``[2]*n_particles``)
+        but if ``isospin_channel`` is ``True`` then default to
+        ``[2]*n_particles``)
     :type twoisospins: list of ints
     :param allowed_total_twoisospins: twice the allowed total isospins for the
         channel (is ``None`` if ``isospin_channel`` is ``False``, default is
@@ -786,40 +784,6 @@ class FlavorChannelSpace:
                                              sub_twoisospin=sub_twoisospin,
                                              ell_set=ell_set)
                     self._add_spectator_channel(sctmp)
-            #         print(entry)
-            #         print(flavors)
-            #         print(indexing)
-            #         print(sub_twoisospin)
-            # if fc.twoisospin_value == 6:
-            #     sc1 = SpectatorChannel(fc, indexing=[0, 1, 2],
-            #                             sub_twoisospin=4)
-            #     self._add_spectator_channel(sc1)
-            # elif fc.twoisospin_value == 4:
-            #     sc1 = SpectatorChannel(fc, indexing=[0, 1, 2],
-            #                             sub_twoisospin=2,
-            #                             ell_set=[1])
-            #     sc2 = SpectatorChannel(fc, indexing=[0, 1, 2],
-            #                             sub_twoisospin=4)
-            #     self._add_spectator_channel(sc1)
-            #     self._add_spectator_channel(sc2)
-            # elif fc.twoisospin_value == 2:
-            #     sc1 = SpectatorChannel(fc, indexing=[0, 1, 2],
-            #                             sub_twoisospin=0)
-            #     sc2 = SpectatorChannel(fc, indexing=[0, 1, 2],
-            #                             sub_twoisospin=2,
-            #                             ell_set=[1])
-            #     sc3 = SpectatorChannel(fc, indexing=[0, 1, 2],
-            #                             sub_twoisospin=4)
-            #     self._add_spectator_channel(sc1)
-            #     self._add_spectator_channel(sc2)
-            #     self._add_spectator_channel(sc3)
-            # elif fc.twoisospin_value == 0:
-            #     sc1 = SpectatorChannel(fc, indexing=[0, 1, 2],
-            #                             sub_twoisospin=2,
-            #                             ell_set=[1])
-            #     self._add_spectator_channel(sc1)
-            # else:
-            #     raise ValueError('this isospin_value is not yet supported')
         else:
             if fc.explicit_flavors[0] == fc.explicit_flavors[1]\
                == fc.explicit_flavors[2]:
@@ -871,23 +835,6 @@ class FlavorChannelSpace:
                     sc_comp_tmp = sc_comp_tmp+[sc.sub_twoisospin]
                 else:
                     sc_comp_tmp = sc_comp_tmp+[None, None, None, None, None]
-            # if sc.fc.isospin_channel:
-            #     sc_comp_tmp = sc_comp_tmp+sc.fc.masses
-            #     sc_comp_tmp = sc_comp_tmp+sc.fc.twospins
-            #     sc_comp_tmp = sc_comp_tmp+sc.fc.explicit_flavors
-            #     sc_comp_tmp = sc_comp_tmp+[sc.fc.isospin_channel]
-            #     sc_comp_tmp = sc_comp_tmp+sc.fc.twoisospins
-            #     sc_comp_tmp = sc_comp_tmp+[sc.fc.twoisospin_value]
-            #     if sc.fc.n_particles != 2:
-            #         sc_comp_tmp = sc_comp_tmp+[sc.sub_twoisospin]
-            # elif (sc.indexing is not None) and (sc.fc.n_particles == 3):
-            #     sc_comp_tmp = sc_comp_tmp\
-            #         + list(np.array(sc.fc.masses)[sc.indexing])
-            #     sc_comp_tmp = sc_comp_tmp\
-            #         + list(np.array(sc.fc.twospins)[sc.indexing])
-            #     sc_comp_tmp = sc_comp_tmp\
-            #         + list(np.array(sc.fc.explicit_flavors)[sc.indexing])
-            #     sc_comp_tmp = sc_comp_tmp+[False, None, None, None, None, None]
             else:
                 return ValueError('something is wrong with channel'
                                   + ' specification.')
@@ -897,7 +844,6 @@ class FlavorChannelSpace:
             sc_compact[j] = np.array(sc_compact[j][1:], dtype=object)
             len_tmp = len(sc_compact[j].T)
             for i in range(len_tmp):
-                # if not ((self.sc_list[0].fc.isospin_channel) and (i == 0)):
                 try:
                     sc_compact[j] = sc_compact[j][
                         sc_compact[j][:, len_tmp-i-1].argsort(
