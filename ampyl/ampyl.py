@@ -1176,7 +1176,7 @@ class ThreeBodyInteractionScheme:
 
     :param fcs: flavor-channel space, required for building the space of
         kdf_functions
-    :type fcs: FlavorChannelSpace()
+    :type fcs: FlavorChannelSpace
     :param three_scheme: specifies the scheme for kdf, see options above above
     :type three_scheme: str
     :param scheme_data: two parameters, `[alpha, beta]`, specifying the shape
@@ -1501,11 +1501,11 @@ class QCIndexSpace:
     Class encoding the quantizaiton condition index space.
 
     :param fcs: flavor-channel space defining the index space
-    :type fcs: FlavorChannelSpace()
+    :type fcs: FlavorChannelSpace
     :param fvs: finite-volume set-up defining the index space
-    :type fvs: FiniteVolumeSetup()
+    :type fvs: FiniteVolumeSetup
     :param tbis: three-body interaction scheme defining the index space
-    :type tbis: ThreeBodyInteractionScheme()
+    :type tbis: ThreeBodyInteractionScheme
     :param Emax: maximum energy for building the space
     :type Emax: float
     :param Lmax: maximum volume for building the space
@@ -2412,7 +2412,7 @@ class G:
 
     :param qcis: quantization-condition index space, specifying all data for
         the class
-    :type qcis: QCIndexSpace()
+    :type qcis: QCIndexSpace
     """
 
     def __init__(self, qcis=QCIndexSpace()):
@@ -2690,7 +2690,7 @@ class F:
 
     :param qcis: quantization-condition index space, specifying all data for
         the class
-    :type qcis: QCIndexSpace()
+    :type qcis: QCIndexSpace
     :param alphaKSS: damping factor entering the zeta functions
     :type alphaKSS: float
     :param C1cut: hard cutoff used in the zeta functions
@@ -2851,7 +2851,7 @@ class K:
 
     :param qcis: quantization-condition index space, specifying all data for
         the class
-    :type qcis: QCIndexSpace()
+    :type qcis: QCIndexSpace
     """
 
     def __init__(self, qcis=None):
@@ -3012,7 +3012,7 @@ class QC:
 
     :param qcis: quantization-condition index space, specifying all data for
         the class
-    :type qcis: QCIndexSpace()
+    :type qcis: QCIndexSpace
     :param alphaKSS: damping factor entering the zeta functions
     :type alphaKSS: float
     :param C1cut: hard cutoff used in the zeta functions
