@@ -544,18 +544,29 @@ class Groups:
 
         self.bTdict['Dic4_A1'] = np.array([[1.]*8])
 
+        self.chardict['Dic4_A1'] = self.bTdict['Dic4_A1']
+
         self.bTdict['Dic4_A2'] = np.array([[1.]*4+[-1.]*4])
+
+        self.chardict['Dic4_A2'] = self.bTdict['Dic4_A2']
 
         self.bTdict['Dic4_B1'] = np.array([[1., -1., -1., 1.,
                                             -1., -1., 1., 1.]])
 
+        self.chardict['Dic4_B1'] = self.bTdict['Dic4_B1']
+
         self.bTdict['Dic4_B2'] = np.array([[1., -1., -1., 1.,
                                             1., 1., -1., -1.]])
+
+        self.chardict['Dic4_B2'] = self.bTdict['Dic4_B2']
 
         self.bTdict['Dic4_E2'] = np.array([[0., -1j*ROOT_TWO, 1j*ROOT_TWO, 0.,
                                             -1j*ROOT_TWO, 1j*ROOT_TWO, 0., 0.],
                                            [ROOT_TWO, 0., 0., -ROOT_TWO,
                                             0., 0., ROOT_TWO, -ROOT_TWO]])
+
+        self.chardict['Dic4_E2'] = np.array(2*[[2., 0., 0., -2.,
+                                                0., 0., 0., 0.]])
 
         self.Dic2 = np.array(
             [[[1, 0, 0], [0, 1, 0], [0, 0, 1]],
@@ -565,11 +576,19 @@ class Groups:
 
         self.bTdict['Dic2_A1'] = np.array([[1.]*4])
 
+        self.chardict['Dic2_A1'] = self.bTdict['Dic2_A1']
+
         self.bTdict['Dic2_A2'] = np.array([[1.]*2+[-1.]*2])
+
+        self.chardict['Dic2_A2'] = self.bTdict['Dic2_A2']
 
         self.bTdict['Dic2_B1'] = np.array([[1., -1., -1., 1.]])
 
+        self.chardict['Dic2_B1'] = self.bTdict['Dic2_B1']
+
         self.bTdict['Dic2_B2'] = np.array([[1., -1., 1., -1.]])
+
+        self.chardict['Dic2_B2'] = self.bTdict['Dic2_B2']
 
     def get_little_group(self, nP=np.array([0, 0, 0])):
         """Get the little group."""
