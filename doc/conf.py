@@ -66,13 +66,14 @@ autosummary_generate = True
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = 'jupyter'
-html_theme_path = [p+'/doc']
+html_theme = "dotted"
+# html_theme = 'jupyter'
+# html_theme_path = [p+'/doc']
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ['jupyter/static']
+# html_static_path = ['jupyter/static']
 
 #### Tweaks by Mattia
 
@@ -93,7 +94,7 @@ html_theme_options = {
         #    (name, "/aa/bb", 1)          # a link to an arbitrary relative url
         #    (name, "http://example.com", True) # arbitrary absolute url
         # Note the "1" or "True" value above as the third argument to indicate
-        # an arbitrary url.        
+        # an arbitrary url.
         'navbar_links' : [
             ('Introduction','intro/index'),
             ('Documentation','ampyl/index')],
