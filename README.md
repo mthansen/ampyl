@@ -7,7 +7,7 @@
 
 A Python package to relate finite-volume data to amplitudes.
 
-The name AmPyL ("am-pie-ell") stands for **Am**plitdues via **Py**thon from finite-volume (**L**). The package requires python version 3.8.x or newer.
+The name AmPyL ("am-pie-ell") stands for **Am**plitdues via **Py**thon from finite-volume (**L**) data. The package requires python version 3.8.x or newer.
 
 - **Website:** https://github.com/mthansen/ampyl
 - **Documentation:** https://mthansen.github.io/ampyl/
