@@ -134,7 +134,7 @@ class FlavorChannel:
         from ``twoisospins``)
     :type allowed_total_twoisospins: list of ints
     :param twoisospin_value: twice the isospin of the channel (is None if
-        isospin_channel is False, default is ``None`` but if
+        ``isospin_channel`` is ``False``, default is ``None`` but if
         ``isospin_channel`` is ``True`` then default to largest value in
         ``allowed_total_twoisospins``)
     :type twoisospin_value: int
@@ -776,7 +776,7 @@ class FlavorChannelSpace:
              sub_twoisospin]
 
         where the first entry is the number of particles. In the case that
-        isospin_channel is False, all subsequent entries are None.
+        ``isospin_channel`` is ``False``, all subsequent entries are ``None``.
     :type sc_compact: list
     :param three_index: location of the three-particle subspace
 
