@@ -53,7 +53,7 @@ class TestFlavorChannel(unittest.TestCase):
         self.assertEqual(self.fc.n_particles, 3)
         self.assertEqual(self.fc.masses, 3*[1.0])
         self.assertEqual(self.fc.twospins, 3*[0])
-        self.assertEqual(self.fc.explicit_flavors, 3*['pi'])
+        self.assertEqual(self.fc.flavors, 3*['pi'])
         self.assertFalse(self.fc.isospin_channel)
         self.assertIsNone(self.fc.twoisospin_value)
 
