@@ -2091,7 +2091,6 @@ class QCIndexSpace:
         gamma = 1./np.sqrt(1.-beta**2)
         p_cutoff = beta*gamma*omp+gamma*np.sqrt(pSQ)
         nvec_cutoff = int(p_cutoff*Lmax/TWOPI)
-        print(nvec_cutoff)
         rng = range(-nvec_cutoff, nvec_cutoff+1)
         mesh = np.meshgrid(*([rng]*3))
         nvecs = np.vstack([y.flat for y in mesh]).T
