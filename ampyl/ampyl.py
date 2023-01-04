@@ -135,13 +135,17 @@ class FlavorChannel:
     :type twoisospin_value: int
     :param summary: compact collection of the relevant data for an isospin
         channel. Each row is a possible combination of spectator and isospin
-        assignments. Each row contains seven entries:
-        ``[possible two-isospin value, possible two-particle sub-two-isospin,
-        spectator flavor, spectator two-isospin, first non-spectator flavor,
-        second non-spectator flavor, first non-spectator two-isospin,
-        second non-spectator two-isospin]``. For example for three pions
-        with total isospin 0 the unique entry is ``[0, 2, 'pi', 2, 'pi', 'pi',
-        2, 2]``.
+        assignments. The multiple rows ignore ``twoisospin_value`` and are
+        populated with all possible values based on ``twoisospins``. Each row
+        contains seven entries::
+
+            [isospin value (x2), two-particle sub-isospin (x2),
+             spectator flavor, spectator isospin (x2), first non-spectator
+             flavor, second non-spectator flavor, first non-spectator isospin
+             (x2), second non-spectator isospin (x2)]
+
+        For example, for three pions with total isospin 0 the unique entry is
+        ``[0, 2, 'pi', 2, 'pi', 'pi', 2, 2]``.
     :type summary: np.ndarray
     """
 
