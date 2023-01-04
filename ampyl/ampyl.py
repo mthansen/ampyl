@@ -2080,8 +2080,13 @@ class QCIndexSpace:
             pSQ_tmp = ((Emax-m)**2-(nP@nP)*(TWOPI/Lmax)**2)/4.-m**2
             if pSQ_tmp > pSQ:
                 pSQ = pSQ_tmp
-        nSQ = pSQ*(Lmax/TWOPI)**2
-        nvec_cutoff = int(np.sqrt(nSQ))
+                omp = np.sqrt(pSQ+m**2)
+
+        beta = np.sqrt(nP@nP)*TWOPI/Lmax/Emax
+        gamma = 1./np.sqrt(1.-beta**2)
+        p_cutoff = beta*gamma*omp+gamma*np.sqrt(pSQ)
+        nvec_cutoff = int(p_cutoff*Lmax/TWOPI)
+        print(nvec_cutoff)
         rng = range(-nvec_cutoff, nvec_cutoff+1)
         mesh = np.meshgrid(*([rng]*3))
         nvecs = np.vstack([y.flat for y in mesh]).T
