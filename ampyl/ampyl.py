@@ -52,6 +52,11 @@ FOURPI2 = 4.0*PI**2
 EPSILON20 = 1.0e-20
 PRINT_THRESHOLD_DEFAULT = np.get_printoptions()['threshold']
 
+DELTA_L_FOR_GRID = 0.9
+DELTA_E_FOR_GRID = 0.9
+L_GRID_SHIFT = 2.0
+E_GRID_SHIFT = 3.0
+
 G_TEMPLATE_DICT = {}
 G_TEMPLATE_DICT[0] = np.array([[-1.]])
 G_TEMPLATE_DICT[2] = np.array([[1./3., -1./np.sqrt(3.), np.sqrt(5.)/3.],
@@ -1063,9 +1068,8 @@ class FiniteVolumeSetup:
         qc_impl['Zinterp'] (bool)
         qc_impl['YYCG'] (bool)
 
-    :param formalism: indicates the formalism used
-
-        Currently only 'RFT' (relatvistic-field theory approach) is supported.
+    :param formalism: indicates the formalism used. (Currently only 'RFT'
+        (relatvistic-field theory approach) is supported.)
     :type formalism: str
     :param nP: three-vector as a numpy array, indicating the total spatial
         momentum in units of 2*PI/L, where L is the box length
@@ -1074,21 +1078,20 @@ class FiniteVolumeSetup:
     :type nPSQ: int
     :param nPmag: magnitude of nP
     :type nPmag: float
-    :param irreps: encodes the possible
-        irreducible representations of the finite-volume symmetry group for a
-        given value of nP
+    :param irreps: encodes the possible irreducible representations of the
+        finite-volume symmetry group for a given value of nP
     :type irreps: instance of Irreps
     :param qc_impl: all settings for the implementation of the quantization
         condition
     :type qc_impl: dict
     """
 
-    def __init__(self, formalism='RFT',
-                 nP=np.array([0, 0, 0]),
-                 qc_impl={'hermitian': QC_IMPL_DEFAULTS['hermitian'],
-                          'real harmonics': QC_IMPL_DEFAULTS['real harmonics'],
-                          'Zinterp': QC_IMPL_DEFAULTS['Zinterp'],
-                          'YYCG': QC_IMPL_DEFAULTS['YYCG']}):
+    def __init__(self, formalism='RFT', nP=np.array([0, 0, 0]), qc_impl=None):
+        if qc_impl is None:
+            qc_impl = {'hermitian': QC_IMPL_DEFAULTS['hermitian'],
+                       'real harmonics': QC_IMPL_DEFAULTS['real harmonics'],
+                       'Zinterp': QC_IMPL_DEFAULTS['Zinterp'],
+                       'YYCG': QC_IMPL_DEFAULTS['YYCG']}
         self.formalism = formalism
         self.qc_impl = qc_impl
         self.nP = nP
@@ -1180,7 +1183,7 @@ class ThreeBodyInteractionScheme:
     :param three_scheme: specifies the scheme for kdf, see options above above
     :type three_scheme: str
     :param scheme_data: two parameters, `[alpha, beta]`, specifying the shape
-        of the cutoff function; Default is `[alpha, beta]=[-1.0, 0.0]`
+        of the cutoff function; Ddfault is `[alpha, beta]=[-1.0, 0.0]`
     :type scheme_data: list of floats, length 2
     :param kdf_functions: square array of functions specifying the square
         kdf matrix (length is the number of flavor channels)
@@ -1190,10 +1193,8 @@ class ThreeBodyInteractionScheme:
     :type kdf_iso_constant: builtin_function_or_method
     """
 
-    def __init__(self, fcs=None, Emin=0.0,
-                 three_scheme='relativistic pole',
-                 scheme_data=[-1.0, 0.0],
-                 kdf_functions=None):
+    def __init__(self, fcs=None, Emin=0.0, three_scheme='relativistic pole',
+                 scheme_data=[-1.0, 0.0], kdf_functions=None):
         self.Emin = Emin
         if fcs is None:
             self.fcs = FlavorChannelSpace(fc_list=[FlavorChannel(3)])
@@ -1260,11 +1261,8 @@ class ThreeBodyKinematicSpace:
     :type verbosity: int
     """
 
-    def __init__(self, nP=np.array([0, 0, 0]),
-                 nvec_arr=np.array([]),
-                 build_slice_acc=True,
-                 verbosity=0):
-
+    def __init__(self, nP=np.array([0, 0, 0]), nvec_arr=np.array([]),
+                 build_slice_acc=True, verbosity=0):
         self.build_slice_acc = build_slice_acc
         self.nP = nP
         self.nvec_arr = nvec_arr
@@ -1556,10 +1554,10 @@ class QCIndexSpace:
         if self.nPSQ != 0:
             if verbosity == 2:
                 print('nPSQ is nonzero, will use grid')
-            deltaL = 0.9
-            deltaE = 0.9
-            Lmin = np.mod(Lmax-2.0, deltaL)+2.0
-            Emin = np.mod(Emax-3.0, deltaE)+3.0
+            deltaL = DELTA_L_FOR_GRID
+            deltaE = DELTA_E_FOR_GRID
+            Lmin = np.mod(Lmax-L_GRID_SHIFT, deltaL)+L_GRID_SHIFT
+            Emin = np.mod(Emax-E_GRID_SHIFT, deltaE)+E_GRID_SHIFT
             Lvals = np.arange(Lmin, Lmax, deltaL)
             Evals = np.arange(Emin, Emax, deltaE)
             if np.abs(Lvals[-1] - Lmax) > EPSILON20:
@@ -1635,14 +1633,7 @@ class QCIndexSpace:
 
     def _get_nPspecmax(self, three_slice_index):
         sc = self.fcs.sc_list[self.fcs.three_slices[three_slice_index][0]]
-        # if sc.fc.explicit_flavor_channel:
         mspec = sc.fc.masses[sc.indexing[0]]
-        # elif sc.fc.isospin_channel:
-        #     mspec = sc.fc.masses[0]
-        # else:
-        #     raise ValueError('get_nPspecmax was handed a channel that is '
-        #                      + 'neither an isospin-channel nor an explicit '
-        #                      + 'flavor channel.')
         Emax = self.Emax
         EmaxSQ = Emax**2
         nPSQ = self.nP@self.nP
@@ -1744,10 +1735,10 @@ class QCIndexSpace:
             masses = sc_compact_three_subspace[three_slice_index][1:4]
             mspec = masses[0]
             nP = self.nP
-            deltaL = 0.9
-            deltaE = 0.9
-            Lmin = np.mod(Lmax-2.0, deltaL)+2.0
-            Emin = np.mod(Emax-3.0, deltaE)+3.0
+            deltaL = DELTA_L_FOR_GRID
+            deltaE = DELTA_E_FOR_GRID
+            Lmin = np.mod(Lmax-L_GRID_SHIFT, deltaL)+L_GRID_SHIFT
+            Emin = np.mod(Emax-E_GRID_SHIFT, deltaE)+E_GRID_SHIFT
             Lvals = np.arange(Lmin, Lmax, deltaL)
             Evals = np.arange(Emin, Emax, deltaE)
             if np.abs(Lvals[-1] - Lmax) > EPSILON20:
@@ -1892,15 +1883,8 @@ class QCIndexSpace:
             for slice_index in range(self.fcs.n_three_slices):
                 cindex = self.fcs.three_slices[slice_index][0]
                 sc = self.fcs.sc_list[cindex]
-                # if sc.fc.explicit_flavor_channel:
                 mspec = sc.fc.masses[sc.indexing[0]]
-                # elif sc.fc.isospin_channel:
                 mspec = sc.fc.masses[0]
-                # else:
-                #     raise ValueError('get_tbks_sub_indices was handed a'
-                #                      + ' channel that is neither an'
-                #                      + ' isospin-channel nor an explicit'
-                #                      + ' flavor channel.')
                 nP = self.nP
                 tbkstmp_set = self.tbks_list[cindex]
                 still_searching = True
@@ -1934,14 +1918,7 @@ class QCIndexSpace:
             cindex = self.fcs.three_slices[slice_index][0]
             nPspecmax = self._get_nPspecmax(cindex)
             sc = self.fcs.sc_list[cindex]
-            # if sc.fc.explicit_flavor_channel:
             mspec = sc.fc.masses[sc.indexing[0]]
-            # elif sc.fc.isospin_channel:
-            #     mspec = sc.fc.masses[0]
-            # else:
-            #     raise ValueError('get_tbks_sub_indices was handed a channel '
-            #                      + 'that is neither an isospin-channel nor '
-            #                      + 'an explicit flavor channel.')
             ESQ = E**2
             nPSQ = self.nP@self.nP
             EminSQ = self.tbis.Emin**2
