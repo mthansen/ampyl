@@ -178,7 +178,6 @@ class FlavorChannel:
         self._twoisospins = twoisospins
         self._allowed_total_twoisospins = allowed_total_twoisospins
         self._twoisospin_value = twoisospin_value
-
         self._masses = masses
         self._twospins = twospins
 
@@ -186,10 +185,12 @@ class FlavorChannel:
         self.isospin_channel = self._isospin_channel
         self.twoisospins = self._twoisospins
         self.twoisospin_value = self._twoisospin_value
-
         self.masses = self._masses
         self.twospins = self._twospins
         self.n_particles = self._n_particles
+
+        if not self._isospin_channel:
+            self.summary = None
 
     def _get_allowed(self, twoisospins=None):
         if twoisospins is None:
@@ -216,8 +217,7 @@ class FlavorChannel:
                     self.flavors) == spectator_flavor))[0][0]
                 spectator_twoisospin = twoisospins[i]
                 pair_twoisospins = twoisospins[:i]+twoisospins[i+1:]
-                pair_flavors = self.flavors[:i]\
-                    + self.flavors[i+1:]
+                pair_flavors = self.flavors[:i] + self.flavors[i+1:]
                 combined_pair_twoisospins =\
                     self._get_allowed(twoisospins=pair_twoisospins)
                 for combined_pair_twoisospin in combined_pair_twoisospins:
@@ -260,7 +260,7 @@ class FlavorChannel:
             summary = np.array(summary[1:], dtype=object)
             self.summary = summary
             return allowed_totals_three_particles
-        raise ValueError('not supported')
+        raise ValueError('n_particles > 3 not supported within FlavorChannel')
 
     def _generic_setter(self, var, varstr, enttype, enttypestr):
         if not isinstance(var, list):
@@ -292,14 +292,13 @@ class FlavorChannel:
     def flavors(self, flavors):
         if flavors is None:
             warnings.warn("\n"+bcolors.WARNING
-                          + "flavors is being set to None but this is"
-                          + "not allowed. Setting it to a list of pi strings."
+                          + "flavors is being set to None but this is not "
+                          + "allowed. Setting it to a list of pi strings."
                           + f"{bcolors.ENDC}", stacklevel=2)
             self._flavors = (self.n_particles)*['pi']
         else:
-            self._flavors = self._generic_setter(flavors,
-                                                          'flavors',
-                                                          str, 'str')
+            self._flavors = self._generic_setter(flavors, 'flavors',
+                                                 str, 'str')
 
     @property
     def isospin_channel(self):
