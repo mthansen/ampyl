@@ -559,6 +559,10 @@ class SpectatorChannel:
     :param indexing: permutation of [0, 1, 2], the first entry is the spectator
         particle (indexing is None for a two-particle channel)
     :type indexing: list of ints
+    :param allowed_sub_twoisospins: twice the possible values of isospins for
+        the two-particle subsystems, given the total isospin and the spectator
+        flavor
+    :param allowed_sub_twoisospins: list
     :param sub_twoisospin: twice the value of the two-particle isospin for the
         spectator channel (is None if the flavor channel is not an isospin
         channel)
@@ -576,12 +580,23 @@ class SpectatorChannel:
     def __init__(self, fc=FlavorChannel(3), indexing=[0, 1, 2],
                  sub_twoisospin=None, ell_set=[0], p_cot_deltas=None,
                  n_params_set=[1]):
+
+        self.allowed_sub_twoisospins = None
+
         self._fc = fc
         self._indexing = indexing
         self._sub_twoisospin = sub_twoisospin
         self._ell_set = ell_set
         self._p_cot_deltas = p_cot_deltas
         self._n_params_set = n_params_set
+
+        if fc.isospin_channel:
+            allowed_sub_twoisospins = []
+            for entry in fc.summary_reduced:
+                if fc.flavors[indexing[0]] == entry[2]:
+                    allowed_sub_twoisospins = allowed_sub_twoisospins\
+                        + [entry[1]]
+            self.allowed_sub_twoisospins = allowed_sub_twoisospins
 
         self.fc = fc
         self.indexing = indexing
@@ -657,10 +672,9 @@ class SpectatorChannel:
            and (not isinstance(sub_twoisospin, int))):
             raise ValueError('sub_twoisospin must be an int')
         if ((sub_twoisospin is not None)
-           and (sub_twoisospin > 2*(self.fc.n_particles-1))):
-            self.fc.summary.T
-            raise ValueError('sub_twoisospin should not exceed'
-                             + '2*(n_particles-1)')
+           and (self.allowed_sub_twoisospins is not None)
+           and (sub_twoisospin not in self.allowed_sub_twoisospins)):
+            raise ValueError('sub-two-isospin is not in allowed set')
         if (not self.fc.isospin_channel) and (sub_twoisospin is not None):
             raise ValueError('sub_twoisospin cannot be set because '
                              + 'isospin_channel is False')
@@ -714,6 +728,9 @@ class SpectatorChannel:
         if self.fc.isospin_channel:
             strtmp = strtmp+"    sub_isospin: "\
                 + str(float(self.sub_twoisospin)*0.5)+",\n"
+            if self.allowed_sub_twoisospins is not None:
+                strtmp = strtmp+"    allowed sub_isospins: "\
+                    + str(np.array(self.allowed_sub_twoisospins)*0.5)+",\n"
         strtmp = strtmp+"    ell_set: "+str(self.ell_set)+",\n"
         pcd_str = ""
         for pcd_tmp in self.p_cot_deltas:
