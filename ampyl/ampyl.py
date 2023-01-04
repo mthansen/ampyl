@@ -140,9 +140,9 @@ class FlavorChannel:
         contains seven entries::
 
             [isospin value (x2), two-particle sub-isospin (x2),
-             spectator flavor, spectator isospin (x2), first non-spectator
-             flavor, second non-spectator flavor, first non-spectator isospin
-             (x2), second non-spectator isospin (x2)]
+             spectator flavor, spectator isospin (x2),
+             first non-spectator flavor, second non-spectator flavor,
+             first non-spectator isospin (x2), second non-spectator isospin (x2)]
 
         For example, for three pions with total isospin 0 the unique entry is
         ``[0, 2, 'pi', 2, 'pi', 'pi', 2, 2]``.
