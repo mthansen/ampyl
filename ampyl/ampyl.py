@@ -113,16 +113,15 @@ class FlavorChannel:
     :param twospins: twice the spin of each particle in the channel (default
         is ``[0]*n_particles``)
     :type twospins: list of ints
-    :param explicit_flavors: explicit flavor of each particle (default is
-        ``['pi']*n_particles``)
-    :type explicit_flavors: list of strs
+    :param flavors: flavor of each particle (default is ``['pi']*n_particles``)
+    :type flavors: list of strs
     :param isospin_channel: specifies whether this is an isospin channel
         (default is ``False``)
     :type isospin_channel: bool
     :param twoisospins: twice the isospin of each particle in the channel
         (is ``None`` if ``isospin_channel`` is ``False``, default is ``None``
         but if ``isospin_channel`` is ``True`` then default to
-        ``[2]*n_particles``)
+        ``[2]*n_particles``, i.e. pion isospins)
     :type twoisospins: list of ints
     :param allowed_total_twoisospins: twice the allowed total isospins for the
         channel (is ``None`` if ``isospin_channel`` is ``False``, default is
@@ -131,12 +130,23 @@ class FlavorChannel:
     :type allowed_total_twoisospins: list of ints
     :param twoisospin_value: twice the isospin of the channel (is None if
         isospin_channel is False, default is ``None`` but if
-        ``isospin_channel`` is ``True`` then default to ``max_twoisospin``)
+        ``isospin_channel`` is ``True`` then default to largest value in
+        ``allowed_total_twoisospins``)
     :type twoisospin_value: int
+    :param summary: compact collection of the relevant data for an isospin
+        channel. Each row is a possible combination of spectator and isospin
+        assignments. Each row contains seven entries:
+        ``[possible two-isospin value, possible two-particle sub-two-isospin,
+        spectator flavor, spectator two-isospin, first non-spectator flavor,
+        second non-spectator flavor, first non-spectator two-isospin,
+        second non-spectator two-isospin]``. For example for three pions
+        with total isospin 0 the unique entry is ``[0, 2, 'pi', 2, 'pi', 'pi',
+        2, 2]``.
+    :type summary: np.ndarray
     """
 
     def __init__(self, n_particles, masses=None, twospins=None,
-                 explicit_flavors=None, isospin_channel=False,
+                 flavors=None, isospin_channel=False,
                  twoisospins=None, twoisospin_value=None):
         if not isinstance(n_particles, int):
             raise ValueError('n_particles must be an int')
@@ -153,13 +163,13 @@ class FlavorChannel:
             isospin_channel = True
         if not isospin_channel and twoisospins is not None:
             isospin_channel = True
-        if explicit_flavors is None:
-            explicit_flavors = n_particles*['pi']
+        if flavors is None:
+            flavors = n_particles*['pi']
         if isospin_channel:
             if twoisospins is None:
                 twoisospins = n_particles*[2]
 
-        self._explicit_flavors = explicit_flavors
+        self._flavors = flavors
         self._isospin_channel = isospin_channel
         self._twoisospins = twoisospins
         self._allowed_total_twoisospins = allowed_total_twoisospins
@@ -168,7 +178,7 @@ class FlavorChannel:
         self._masses = masses
         self._twospins = twospins
 
-        self.explicit_flavors = self._explicit_flavors
+        self.flavors = self._flavors
         self.isospin_channel = self._isospin_channel
         self.twoisospins = self._twoisospins
         self.twoisospin_value = self._twoisospin_value
@@ -193,17 +203,17 @@ class FlavorChannel:
                     + [int(np_int64_list_entry)]
             return allowed_totals_two_particles
         if len(twoisospins) == 3:
-            unique_flavors = np.unique(self.explicit_flavors)
+            unique_flavors = np.unique(self.flavors)
             redundant_list = []
             counting_list = [[]]
             for j in range(len(unique_flavors)):
                 spectator_flavor = unique_flavors[j]
                 i = (np.where(np.array(
-                    self.explicit_flavors) == spectator_flavor))[0][0]
+                    self.flavors) == spectator_flavor))[0][0]
                 spectator_twoisospin = twoisospins[i]
                 pair_twoisospins = twoisospins[:i]+twoisospins[i+1:]
-                pair_flavors = self.explicit_flavors[:i]\
-                    + self.explicit_flavors[i+1:]
+                pair_flavors = self.flavors[:i]\
+                    + self.flavors[i+1:]
                 combined_pair_twoisospins =\
                     self._get_allowed(twoisospins=pair_twoisospins)
                 for combined_pair_twoisospin in combined_pair_twoisospins:
@@ -229,7 +239,7 @@ class FlavorChannel:
                     allowed_totals_three_particles\
                     + [int(np_int64_list_entry)]
             counting_list = counting_list[1:]
-            summary_list = [[]]
+            summary = [[]]
             for entry in counting_list:
                 entry_list = entry.replace('[', '')\
                     .replace(']', '')\
@@ -242,9 +252,9 @@ class FlavorChannel:
                         line = line+[int(entry)]
                     except ValueError:
                         line = line+[entry]
-                summary_list = summary_list+[line]
-            summary_list = np.array(summary_list[1:], dtype=object)
-            self.summary_list = summary_list
+                summary = summary+[line]
+            summary = np.array(summary[1:], dtype=object)
+            self.summary = summary
             return allowed_totals_three_particles
         raise ValueError('not supported')
 
@@ -270,21 +280,21 @@ class FlavorChannel:
         return var+[var[-1]]*(self._n_particles-len(var))
 
     @property
-    def explicit_flavors(self):
+    def flavors(self):
         """Get explicit flavors (list of strs)."""
-        return self._explicit_flavors
+        return self._flavors
 
-    @explicit_flavors.setter
-    def explicit_flavors(self, explicit_flavors):
-        if explicit_flavors is None:
+    @flavors.setter
+    def flavors(self, flavors):
+        if flavors is None:
             warnings.warn("\n"+bcolors.WARNING
-                          + "explicit_flavors is being set to None but this is"
+                          + "flavors is being set to None but this is"
                           + "not allowed. Setting it to a list of pi strings."
                           + f"{bcolors.ENDC}", stacklevel=2)
-            self._explicit_flavors = (self.n_particles)*['pi']
+            self._flavors = (self.n_particles)*['pi']
         else:
-            self._explicit_flavors = self._generic_setter(explicit_flavors,
-                                                          'explicit_flavors',
+            self._flavors = self._generic_setter(flavors,
+                                                          'flavors',
                                                           str, 'str')
 
     @property
@@ -345,8 +355,8 @@ class FlavorChannel:
                 twoisospins, 'twoisospins', int, 'int')
             for i in range(len(self._twoisospins)):
                 for j in range(len(self._twoisospins)):
-                    f1 = self.explicit_flavors[i]
-                    f2 = self.explicit_flavors[j]
+                    f1 = self.flavors[i]
+                    f2 = self.flavors[j]
                     ti1 = self._twoisospins[i]
                     ti2 = self._twoisospins[j]
                     if (f1 == f2) and (ti1 != ti2):
@@ -429,8 +439,8 @@ class FlavorChannel:
         self._masses = self._generic_setter(masses, 'masses', float, 'float')
         for i in range(len(self._masses)):
             for j in range(len(self._masses)):
-                f1 = self.explicit_flavors[i]
-                f2 = self.explicit_flavors[j]
+                f1 = self.flavors[i]
+                f2 = self.flavors[j]
                 m1 = self._masses[i]
                 m2 = self._masses[j]
                 if (f1 == f2) and (m1 != m2):
@@ -450,8 +460,8 @@ class FlavorChannel:
         self._twospins = self._generic_setter(twospins, 'twospins', int, 'int')
         for i in range(len(self._twospins)):
             for j in range(len(self._masses)):
-                f1 = self.explicit_flavors[i]
-                f2 = self.explicit_flavors[j]
+                f1 = self.flavors[i]
+                f2 = self.flavors[j]
                 s1 = self._twospins[i]
                 s2 = self._twospins[j]
                 if (f1 == f2) and (s1 != s2):
@@ -476,7 +486,7 @@ class FlavorChannel:
             self._n_particles = n_particles
             self.masses = self._masses
             self.twospins = self._twospins
-            self.explicit_flavors = self._explicit_flavors
+            self.flavors = self._flavors
             self.twoisospins = self._twoisospins
             self.twoisospin_value = self._twoisospin_value
 
@@ -486,8 +496,8 @@ class FlavorChannel:
         strtmp = strtmp+f'    {self._n_particles} particles,\n'
         strtmp = strtmp+f'    masses: {self._masses},\n'
         strtmp = strtmp+f'    spins: {np.array(self._twospins)*0.5},\n'
-        strtmp = strtmp+(f'    explicit_flavors: '
-                         f'{self._explicit_flavors},\n')
+        strtmp = strtmp+(f'    flavors: '
+                         f'{self._flavors},\n')
         strtmp = strtmp+(f'    isospin_channel: '
                          f'{self._isospin_channel},\n')
         if self._isospin_channel:
@@ -764,13 +774,13 @@ class FlavorChannelSpace:
             sc1 = SpectatorChannel(fc, indexing=None)
             self._add_spectator_channel(sc1)
         elif fc.isospin_channel:
-            for entry in fc.summary_list:
+            for entry in fc.summary:
                 if entry[0] == fc.twoisospin_value:
                     flavors = entry[[2, 4, 5]]
                     sub_twoisospin = entry[1]
                     indexing = []
                     for flavor in flavors:
-                        tmp_locations = np.where(np.array(fc.explicit_flavors)
+                        tmp_locations = np.where(np.array(fc.flavors)
                                                  == flavor)[0]
                         added = False
                         for tmp_location in tmp_locations:
@@ -785,21 +795,21 @@ class FlavorChannelSpace:
                                              ell_set=ell_set)
                     self._add_spectator_channel(sctmp)
         else:
-            if fc.explicit_flavors[0] == fc.explicit_flavors[1]\
-               == fc.explicit_flavors[2]:
+            if fc.flavors[0] == fc.flavors[1]\
+               == fc.flavors[2]:
                 sc1 = SpectatorChannel(fc)
                 self._add_spectator_channel(sc1)
-            elif fc.explicit_flavors[0] == fc.explicit_flavors[1]:
+            elif fc.flavors[0] == fc.flavors[1]:
                 sc1 = SpectatorChannel(fc)
                 sc2 = SpectatorChannel(fc, indexing=[2, 0, 1])
                 self._add_spectator_channel(sc1)
                 self._add_spectator_channel(sc2)
-            elif fc.explicit_flavors[0] == fc.explicit_flavors[2]:
+            elif fc.flavors[0] == fc.flavors[2]:
                 sc1 = SpectatorChannel(fc)
                 sc2 = SpectatorChannel(fc, indexing=[1, 2, 0])
                 self._add_spectator_channel(sc1)
                 self._add_spectator_channel(sc2)
-            elif fc.explicit_flavors[1] == fc.explicit_flavors[2]:
+            elif fc.flavors[1] == fc.flavors[2]:
                 sc1 = SpectatorChannel(fc)
                 sc2 = SpectatorChannel(fc, indexing=[1, 2, 0])
                 self._add_spectator_channel(sc1)
@@ -826,7 +836,7 @@ class FlavorChannelSpace:
                 sc_comp_tmp = sc_comp_tmp\
                     + list(np.array(sc.fc.twospins)[sc.indexing])
                 sc_comp_tmp = sc_comp_tmp\
-                    + list(np.array(sc.fc.explicit_flavors)[sc.indexing])
+                    + list(np.array(sc.fc.flavors)[sc.indexing])
                 sc_comp_tmp = sc_comp_tmp+[sc.fc.isospin_channel]
                 if sc.fc.isospin_channel:
                     sc_comp_tmp = sc_comp_tmp\
