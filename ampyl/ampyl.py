@@ -1963,8 +1963,13 @@ class QCIndexSpace:
             pSQ = (ECMSQ**2-2.0*ECMSQ*m1**2
                    + m1**4-2.0*ECMSQ*m2**2-2.0*m1**2*m2**2+m2**4)\
                 / (4.0*ECMSQ)
-            nSQ = pSQ*(Lmax/TWOPI)**2
-            nvec_cutoff = int(np.sqrt(nSQ))
+            mmax = np.max([m1, m2])
+            omp = np.sqrt(pSQ+mmax**2)
+
+            beta = np.sqrt(nPSQ)*TWOPI/Lmax/Emax
+            gamma = 1./np.sqrt(1.-beta**2)
+            p_cutoff = beta*gamma*omp+gamma*np.sqrt(pSQ)
+            nvec_cutoff = int(p_cutoff*Lmax/TWOPI)
             rng = range(-nvec_cutoff, nvec_cutoff+1)
             mesh = np.meshgrid(*([rng]*3))
             nvecs = np.vstack([y.flat for y in mesh]).T
