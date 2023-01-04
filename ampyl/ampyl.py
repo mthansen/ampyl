@@ -147,6 +147,9 @@ class FlavorChannel:
         For example, for three pions with total isospin 0 the unique entry is
         ``[0, 2, 'pi', 2, 'pi', 'pi', 2, 2]``.
     :type summary: np.ndarray
+    :param summary_reduced: as with ``summary`` but reduced to only include
+        entries with the correct ``twoisospin_value``.
+    :type summary_reduced: np.ndarray
     """
 
     def __init__(self, n_particles, masses=None, twospins=None,
@@ -157,6 +160,9 @@ class FlavorChannel:
         if n_particles < 2:
             raise ValueError('n_particles must be >= 2')
         self._n_particles = n_particles
+
+        self.summary = None
+        self.summary_reduced = None
 
         allowed_total_twoisospins = None
         if masses is None:
@@ -188,9 +194,6 @@ class FlavorChannel:
         self.masses = self._masses
         self.twospins = self._twospins
         self.n_particles = self._n_particles
-
-        if not self._isospin_channel:
-            self.summary = None
 
     def _get_allowed(self, twoisospins=None):
         if twoisospins is None:
@@ -259,6 +262,13 @@ class FlavorChannel:
                 summary = summary+[line]
             summary = np.array(summary[1:], dtype=object)
             self.summary = summary
+            summary_reduced = [[]]
+            if self.twoisospin_value is not None:
+                for entry in summary:
+                    if entry[0] == self.twoisospin_value:
+                        summary_reduced = summary_reduced+[entry]
+            summary_reduced = np.array(summary_reduced[1:], dtype=object)
+            self.summary_reduced = summary_reduced
             return allowed_totals_three_particles
         raise ValueError('n_particles > 3 not supported within FlavorChannel')
 
@@ -325,6 +335,14 @@ class FlavorChannel:
                           + "twoisospin_value is None. Setting it to default."
                           + f"{bcolors.ENDC}", stacklevel=2)
             self._twoisospin_value = self._allowed_total_twoisospins[-1]
+            if self.summary is not None:
+                summary_reduced = [[]]
+                if self.twoisospin_value is not None:
+                    for entry in self.summary:
+                        if entry[0] == self.twoisospin_value:
+                            summary_reduced = summary_reduced+[entry]
+                summary_reduced = np.array(summary_reduced[1:], dtype=object)
+                self.summary_reduced = summary_reduced
         if (not isospin_channel) and (self._twoisospins is not None):
             warnings.warn("\n"+bcolors.WARNING
                           + "isospin_channel is being set to False but "
@@ -379,6 +397,15 @@ class FlavorChannel:
                               + "maximum allowed value."
                               + f"{bcolors.ENDC}", stacklevel=2)
                 self._twoisospin_value = self._allowed_total_twoisospins[-1]
+                if self.summary is not None:
+                    summary_reduced = [[]]
+                    if self.twoisospin_value is not None:
+                        for entry in self.summary:
+                            if entry[0] == self.twoisospin_value:
+                                summary_reduced = summary_reduced+[entry]
+                    summary_reduced = np.array(summary_reduced[1:],
+                                               dtype=object)
+                    self.summary_reduced = summary_reduced
         if self.isospin_channel and (twoisospins is None):
             warnings.warn("\n"+bcolors.WARNING
                           + "twoisospins is being set to None "
@@ -418,6 +445,14 @@ class FlavorChannel:
             self._twoisospin_value = self._allowed_total_twoisospins[-1]
         else:
             self._twoisospin_value = twoisospin_value
+        if self.summary is not None:
+            summary_reduced = [[]]
+            if self.twoisospin_value is not None:
+                for entry in self.summary:
+                    if entry[0] == self.twoisospin_value:
+                        summary_reduced = summary_reduced+[entry]
+            summary_reduced = np.array(summary_reduced[1:], dtype=object)
+            self.summary_reduced = summary_reduced
         if (not self.isospin_channel) and (twoisospin_value is not None):
             warnings.warn("\n"+bcolors.WARNING
                           + "twoisospin_value is being set but "
@@ -552,6 +587,7 @@ class SpectatorChannel:
         self.indexing = indexing
         self.sub_twoisospin = sub_twoisospin
         self.ell_set = ell_set
+
         if p_cot_deltas is None:
             tmp = []
             for i in range(len(ell_set)):
@@ -561,6 +597,7 @@ class SpectatorChannel:
         else:
             self._p_cot_deltas = p_cot_deltas
             self.p_cot_deltas = p_cot_deltas
+
         self.n_params_set = n_params_set
 
     @property
@@ -594,8 +631,8 @@ class SpectatorChannel:
             self._indexing = None
         elif self.fc.n_particles >= 3:
             if not isinstance(indexing, list):
-                raise ValueError('for n_particles > 2, '
-                                 + 'indexing must be a list')
+                raise ValueError('for n_particles > 2, indexing must be a '
+                                 + 'list')
             if len(indexing) != self.fc.n_particles:
                 raise ValueError('indexing must have length n_particles')
             if (np.sort(indexing) != np.arange(self.fc.n_particles)).any():
@@ -603,7 +640,7 @@ class SpectatorChannel:
                                  + 'ascending integers')
             self._indexing = indexing
         else:
-            raise ValueError('something wrong with indexing')
+            raise ValueError('unknown problem with indexing')
 
     @property
     def sub_twoisospin(self):
@@ -614,13 +651,14 @@ class SpectatorChannel:
     def sub_twoisospin(self, sub_twoisospin):
         if ((sub_twoisospin is not None)
            and (self.fc.n_particles == 2)):
-            raise ValueError('sub_twoisospin must be None for n_particles == 2'
-                             )
+            raise ValueError('sub_twoisospin must be None '
+                             + 'for n_particles == 2')
         if ((sub_twoisospin is not None)
            and (not isinstance(sub_twoisospin, int))):
             raise ValueError('sub_twoisospin must be an int')
         if ((sub_twoisospin is not None)
            and (sub_twoisospin > 2*(self.fc.n_particles-1))):
+            self.fc.summary.T
             raise ValueError('sub_twoisospin should not exceed'
                              + '2*(n_particles-1)')
         if (not self.fc.isospin_channel) and (sub_twoisospin is not None):
