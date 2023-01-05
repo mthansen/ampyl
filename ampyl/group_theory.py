@@ -1134,7 +1134,7 @@ class Groups:
             else:
                 isoset = range(1)
             for isovalue in isoset:
-                non_proj_dict = self.get_nonint_proj_dict_shell(qcis, 0,
+                non_proj_dict = self.get_nonint_proj_dict_shell(qcis, cindex,
                                                                 definite_iso,
                                                                 isovalue,
                                                                 shell_index)
