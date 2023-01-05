@@ -1533,6 +1533,8 @@ class QCIndexSpace:
     def __init__(self, fcs=None, fvs=None, tbis=None,
                  Emax=5.0, Lmax=5.0, verbosity=0, ell_max=4):
         self.verbosity = verbosity
+        self.Emax = Emax
+        self.Lmax = Lmax
 
         if fcs is None:
             if verbosity == 2:
@@ -1567,8 +1569,6 @@ class QCIndexSpace:
             print('setting nP to '+str(self.fvs.nP))
         self.nP = self.fvs.nP
         self.fcs = self._fcs
-        self.Emax = Emax
-        self.Lmax = Lmax
         self.group = Groups(ell_max=ell_max)
 
         if self.nPSQ != 0:
@@ -1651,6 +1651,9 @@ class QCIndexSpace:
         self.n_two_channels = 0
         self.n_three_channels = 0
         for sc in fcs.sc_list:
+            if np.sum(sc.fc.masses) > self.Emax:
+                raise ValueError("QCIndexSpace includes channel with "
+                                 + "threshold exceeding Emax.")
             if sc.fc.n_particles == 2:
                 self.n_two_channels = self.n_two_channels+1
             elif sc.fc.n_particles == 3:
