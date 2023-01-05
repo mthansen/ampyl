@@ -595,7 +595,7 @@ class SpectatorChannel:
         self._p_cot_deltas = p_cot_deltas
         self._n_params_set = n_params_set
 
-        if fc.isospin_channel:
+        if fc.isospin_channel and fc.n_particles > 2:
             allowed_sub_twoisospins = []
             for entry in fc.summary_reduced:
                 if fc.flavors[indexing[0]] == entry[2]:
@@ -731,8 +731,9 @@ class SpectatorChannel:
         strtmp = self.fc.__str__().replace('Flavor', 'Spectator')[:-1]+",\n"
         strtmp = strtmp+"    indexing: "+str(self.indexing)+",\n"
         if self.fc.isospin_channel:
-            strtmp = strtmp+"    sub_isospin: "\
-                + str(float(self.sub_twoisospin)*0.5)+",\n"
+            if self.sub_twoisospin is not None:
+                strtmp = strtmp+"    sub_isospin: "\
+                    + str(float(self.sub_twoisospin)*0.5)+",\n"
             if self.allowed_sub_twoisospins is not None:
                 strtmp = strtmp+"    allowed sub_isospins: "\
                     + str(np.array(self.allowed_sub_twoisospins)*0.5)+",\n"
@@ -893,7 +894,21 @@ class FlavorChannelSpace:
         sc_compact = [[[]] for _ in range(n_particles_max-1)]
         for sc in self.sc_list:
             sc_comp_tmp = [sc.fc.n_particles]
-            if sc.fc.n_particles == 3:
+            if sc.fc.n_particles == 2:
+                sc_comp_tmp = sc_comp_tmp\
+                    + list(np.array(sc.fc.masses))
+                sc_comp_tmp = sc_comp_tmp\
+                    + list(np.array(sc.fc.twospins))
+                sc_comp_tmp = sc_comp_tmp\
+                    + list(np.array(sc.fc.flavors))
+                sc_comp_tmp = sc_comp_tmp+[sc.fc.isospin_channel]
+                if sc.fc.isospin_channel:
+                    sc_comp_tmp = sc_comp_tmp\
+                        + list(np.array(sc.fc.twoisospins))
+                    sc_comp_tmp = sc_comp_tmp+[sc.fc.twoisospin_value]
+                else:
+                    sc_comp_tmp = sc_comp_tmp+[None, None, None]
+            elif sc.fc.n_particles == 3:
                 sc_comp_tmp = sc_comp_tmp\
                     + list(np.array(sc.fc.masses)[sc.indexing])
                 sc_comp_tmp = sc_comp_tmp\
@@ -928,27 +943,32 @@ class FlavorChannelSpace:
             if len(sc_compact_entry) != 0:
                 self.sc_compact = self.sc_compact+[sc_compact_entry]
         self.three_slices = [[]]
-        three_index = 0
+        three_index = None
         for j in range(len(self.sc_compact)):
             if self.sc_compact[j][0][0] == 3:
                 three_index = j
         self.three_index = three_index
-        sc_compact_three_subspace = self.sc_compact[three_index]
-        sc_three_masses_previous = sc_compact_three_subspace[0][1:4]
-        slice_min = 0
-        slice_max = 0
-        for sc_compact_entry in sc_compact_three_subspace:
-            sc_three_masses_current = sc_compact_entry[1:4]
-            if (sc_three_masses_previous == sc_three_masses_current).all():
-                slice_max = slice_max+1
-            else:
-                self.three_slices = self.three_slices+[[slice_min, slice_max]]
-                slice_min = slice_max
-                slice_max = slice_max+1
-                sc_three_masses_previous = sc_three_masses_current
-        self.three_slices = self.three_slices+[[slice_min, slice_max]]
-        self.three_slices = self.three_slices[1:]
-        self.n_three_slices = len(self.three_slices)
+        if self.three_index is not None:
+            sc_compact_three_subspace = self.sc_compact[three_index]
+            sc_three_masses_previous = sc_compact_three_subspace[0][1:4]
+            slice_min = 0
+            slice_max = 0
+            for sc_compact_entry in sc_compact_three_subspace:
+                sc_three_masses_current = sc_compact_entry[1:4]
+                if (sc_three_masses_previous == sc_three_masses_current).all():
+                    slice_max = slice_max+1
+                else:
+                    self.three_slices = self.three_slices+[[slice_min,
+                                                            slice_max]]
+                    slice_min = slice_max
+                    slice_max = slice_max+1
+                    sc_three_masses_previous = sc_three_masses_current
+            self.three_slices = self.three_slices+[[slice_min, slice_max]]
+            self.three_slices = self.three_slices[1:]
+            self.n_three_slices = len(self.three_slices)
+        else:
+            self.three_slices = []
+            self.n_three_slices = 0
 
     def _build_g_templates(self):
         g_templates_tmp = [[]]
