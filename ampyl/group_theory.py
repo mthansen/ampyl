@@ -922,12 +922,13 @@ class Groups:
                 + "something went wrong"
         return best_irreps, summarystr
 
-    def get_iso_projection(self, qcis=None, iso_index=0, shell_index=0):
+    def get_iso_projection(self, qcis=None, cindex=0, iso_index=0,
+                           shell_index=0):
         """Get the iso-projector for non-interacting vectors."""
         if qcis is None:
             raise ValueError('qcis cannot be None')
-        identical_arr = qcis.n1n2n3_ident_batched[shell_index]
-        nonidentical_arr = qcis.n1n2n3_batched[shell_index]
+        identical_arr = qcis.n1n2n3_ident_batched[cindex][shell_index]
+        nonidentical_arr = qcis.n1n2n3_batched[cindex][shell_index]
         iso_projector = ISO_PROJECTORS[iso_index]
         iso_prepare_sets = []
         id_sub_len = len(identical_arr)
@@ -975,8 +976,8 @@ class Groups:
             raise ValueError('qcis cannot be None')
         nP = qcis.nP
         irrep_set = Irreps(nP=nP).set
-        identical_arr = qcis.n1n2n3_ident_batched[shell_index]
-        nonidentical_arr = qcis.n1n2n3_batched[shell_index]
+        identical_arr = qcis.n1n2n3_ident_batched[cindex][shell_index]
+        nonidentical_arr = qcis.n1n2n3_batched[cindex][shell_index]
 
         if (nP@nP != 0) and (nP@nP != 1) and (nP@nP != 2):
             raise ValueError('momentum = ', nP, ' is not yet supported')
@@ -1013,7 +1014,7 @@ class Groups:
                 if np.abs(example_eigval) > 1.0e-10:
                     proj = proj/example_eigval
                 if definite_iso:
-                    isoproj = self.get_iso_projection(qcis, isovalue,
+                    isoproj = self.get_iso_projection(qcis, cindex, isovalue,
                                                       shell_index)
                     isorotproj = isoproj@proj@np.transpose(isoproj)
                 else:
@@ -1035,7 +1036,7 @@ class Groups:
             raise ValueError('qcis cannot be None')
         nP = qcis.nP
         irrep_set = Irreps(nP=nP).set
-        nonidentical_arr = qcis.n1n2_batched[shell_index]
+        nonidentical_arr = qcis.n1n2_batched[cindex][shell_index]
 
         if (nP@nP != 0) and (nP@nP != 1) and (nP@nP != 2):
             raise ValueError('momentum = ', nP, ' is not yet supported')
@@ -1096,7 +1097,7 @@ class Groups:
                 if np.abs(example_eigval) > 1.0e-10:
                     proj = proj/example_eigval
                 if definite_iso:
-                    # isoproj = self.get_iso_projection(qcis, isovalue,
+                    # isoproj = self.get_iso_projection(qcis, cindex, isovalue,
                     #                                   shell_index)
                     # isorotproj = isoproj@proj@np.transpose(isoproj)
                     isorotproj = proj
@@ -1118,15 +1119,16 @@ class Groups:
             raise ValueError('qcis cannot be None')
         row_zero_value = 0
         summary_string = ''
-        nshells = len(qcis.n1n2n3_ident_reps)
+        nshells = len(qcis.n1n2n3_ident_reps[cindex])
         for shell_index in range(nshells):
             shell_total = 0
-            nstates = len(qcis.n1n2n3_ident_batched[shell_index])\
-                + len(qcis.n1n2n3_batched[shell_index])
+            nstates = len(qcis.n1n2n3_ident_batched[cindex][shell_index])\
+                + len(qcis.n1n2n3_batched[cindex][shell_index])
             summary_string = summary_string\
                 + f'shell_index = {shell_index} ({nstates} states):\n'
             summary_string = summary_string\
-                + f'representative momenta = \n{qcis.n1n2n3_ident_reps[shell_index]}\n'
+                + (f'representative momenta '
+                   f'= \n{qcis.n1n2n3_ident_reps[cindex][shell_index]}\n')
             if definite_iso:
                 isoset = range(4)
             else:
@@ -1187,14 +1189,15 @@ class Groups:
             raise ValueError('qcis cannot be None')
         row_zero_value = 0
         summary_string = ''
-        nshells = len(qcis.n1n2_reps)
+        nshells = len(qcis.n1n2_reps[cindex])
         for shell_index in range(nshells):
             shell_total = 0
-            nstates = len(qcis.n1n2_batched[shell_index])*3
+            nstates = len(qcis.n1n2_batched[cindex][shell_index])*3
             summary_string = summary_string\
                 + f'shell_index = {shell_index} ({nstates} states):\n'
             summary_string = summary_string\
-                + f'representative momenta = \n{qcis.n1n2_reps[shell_index]}\n'
+                + (f'representative momenta '
+                   f'= \n{qcis.n1n2_reps[cindex][shell_index]}\n')
             if definite_iso:
                 isoset = [2]
             else:
