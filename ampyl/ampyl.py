@@ -1574,18 +1574,7 @@ class QCIndexSpace:
         if self.nPSQ != 0:
             if verbosity == 2:
                 print('nPSQ is nonzero, will use grid')
-            deltaL = DELTA_L_FOR_GRID
-            deltaE = DELTA_E_FOR_GRID
-            Lmin = np.mod(Lmax-L_GRID_SHIFT, deltaL)+L_GRID_SHIFT
-            Emin = np.mod(Emax-E_GRID_SHIFT, deltaE)+E_GRID_SHIFT
-            Lvals = np.arange(Lmin, Lmax, deltaL)
-            Evals = np.arange(Emin, Emax, deltaE)
-            if np.abs(Lvals[-1] - Lmax) > EPSILON20:
-                Lvals = np.append(Lvals, Lmax)
-            if np.abs(Evals[-1] - Emax) > EPSILON20:
-                Evals = np.append(Evals, Emax)
-            self.Lvals = Lvals[::-1]
-            self.Evals = Evals[::-1]
+            [self.Evals, self.Lvals] = self._get_grid_nonzero_nP(Emax, Lmax)
             if verbosity == 2:
                 print('Lvals =', self.Lvals)
                 print('Evals =', self.Evals)
@@ -1615,6 +1604,21 @@ class QCIndexSpace:
         self.proj_dict = self.group.get_full_proj_dict(qcis=self)
         self.populate_two_nonint_data()
         self.populate_three_nonint_data()
+
+    def _get_grid_nonzero_nP(self, Emax, Lmax):
+        deltaL = DELTA_L_FOR_GRID
+        deltaE = DELTA_E_FOR_GRID
+        Lmin = np.mod(Lmax-L_GRID_SHIFT, deltaL)+L_GRID_SHIFT
+        Emin = np.mod(Emax-E_GRID_SHIFT, deltaE)+E_GRID_SHIFT
+        Lvals = np.arange(Lmin, Lmax, deltaL)
+        Evals = np.arange(Emin, Emax, deltaE)
+        if np.abs(Lvals[-1] - Lmax) > EPSILON20:
+            Lvals = np.append(Lvals, Lmax)
+        if np.abs(Evals[-1] - Emax) > EPSILON20:
+            Evals = np.append(Evals, Emax)
+        Lvals = Lvals[::-1]
+        Evals = Evals[::-1]
+        return [Evals, Lvals]
 
     @property
     def nP(self):
@@ -1755,18 +1759,7 @@ class QCIndexSpace:
             masses = sc_compact_three_subspace[three_slice_index][1:4]
             mspec = masses[0]
             nP = self.nP
-            deltaL = DELTA_L_FOR_GRID
-            deltaE = DELTA_E_FOR_GRID
-            Lmin = np.mod(Lmax-L_GRID_SHIFT, deltaL)+L_GRID_SHIFT
-            Emin = np.mod(Emax-E_GRID_SHIFT, deltaE)+E_GRID_SHIFT
-            Lvals = np.arange(Lmin, Lmax, deltaL)
-            Evals = np.arange(Emin, Emax, deltaE)
-            if np.abs(Lvals[-1] - Lmax) > EPSILON20:
-                Lvals = np.append(Lvals, Lmax)
-            if np.abs(Evals[-1] - Emax) > EPSILON20:
-                Evals = np.append(Evals, Emax)
-            Lvals = Lvals[::-1]
-            Evals = Evals[::-1]
+            [Evals, Lvals] = self._get_grid_nonzero_nP(Emax, Lmax)
             for Ltmp in Lvals:
                 for Etmp in Evals:
                     E2CMSQ = (Etmp-np.sqrt(mspec**2
