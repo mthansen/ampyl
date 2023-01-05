@@ -1648,14 +1648,20 @@ class QCIndexSpace:
     @fcs.setter
     def fcs(self, fcs):
         self.n_channels = len(fcs.sc_list)
+        self.n_two_channels = 0
         self.n_three_channels = 0
         for sc in fcs.sc_list:
-            if sc.fc.n_particles != 3:
-                raise ValueError("QCIndexSpace currently only supports "
-                                 + "three-particle channels")
-            if sc.fc.n_particles == 3:
+            if sc.fc.n_particles == 2:
+                self.n_two_channels = self.n_two_channels+1
+            elif sc.fc.n_particles == 3:
                 self.n_three_channels = self.n_three_channels+1
+            else:
+                raise ValueError("QCIndexSpace currently only supports "
+                                 + "two- and three-particle channels")
         tbks_list_tmp = []
+        for i in range(self.n_two_channels):
+            tbks_list_tmp = tbks_list_tmp\
+                + [ThreeBodyKinematicSpace(nP=self.nP)]
         for i in range(self.fcs.n_three_slices):
             tbks_list_tmp = tbks_list_tmp\
                 + [ThreeBodyKinematicSpace(nP=self.nP)]
@@ -1663,7 +1669,8 @@ class QCIndexSpace:
         self._fcs = fcs
 
     def _get_nPspecmax(self, three_slice_index):
-        sc = self.fcs.sc_list[self.fcs.three_slices[three_slice_index][0]]
+        sc = self.fcs.sc_list[self.fcs.three_slices[three_slice_index][0]
+                              + self.n_two_channels]
         mspec = sc.fc.masses[sc.indexing[0]]
         Emax = self.Emax
         EmaxSQ = Emax**2
@@ -1692,30 +1699,125 @@ class QCIndexSpace:
                         )**2))/(2.*FOURPI2*(EmaxSQ*Lmax**2-FOURPI2*nPSQ))
                 return nPspecmax
 
-    def populate_nvec_arr_slot(self, three_slice_index):
+    def populate_nvec_arr_slot(self, slot_index, three_particle_channel=True):
         """Populate a given nvec_arr slot."""
-        if self.fcs.n_three_slices != 1:
-            raise ValueError('n_three_slices different from one not yet '
-                             + 'supported')
-        if three_slice_index != 0:
-            raise ValueError('three_slice_index != 0 not yet supported')
-        if (self.nP == np.array([0, 0, 0])).all():
-            if self.verbosity >= 2:
-                print("populating nvec array, three_slice_index = ",
-                      str(three_slice_index))
-            nPspecmax = self._get_nPspecmax(three_slice_index)
-            if isinstance(self.tbks_list[three_slice_index], list):
-                tbks_tmp = self.tbks_list[three_slice_index][0]
+        if three_particle_channel:
+            three_slice_index = slot_index-self.n_two_channels
+            if self.fcs.n_three_slices != 1:
+                raise ValueError('n_three_slices different from one not yet '
+                                 + 'supported')
+            if three_slice_index != 0:
+                raise ValueError('three_slice_index != 0 not yet supported')
+            if (self.nP == np.array([0, 0, 0])).all():
                 if self.verbosity >= 2:
-                    print("self.tbks_list[three_slice_index] is a list,",
+                    print("populating nvec array, three_slice_index = ",
+                          str(three_slice_index))
+                nPspecmax = self._get_nPspecmax(three_slice_index)
+                if isinstance(self.tbks_list[slot_index], list):
+                    tbks_tmp = self.tbks_list[slot_index][0]
+                    if self.verbosity >= 2:
+                        print("self.tbks_list[slot_index] is a list,",
+                              "taking first entry")
+                else:
+                    tbks_tmp = self.tbks_list[slot_index]
+                    if self.verbosity >= 2:
+                        print("self.tbks_list[slot_index] is not a list")
+                tbks_copy = deepcopy(tbks_tmp)
+                tbks_copy.verbosity = self.verbosity
+                self.tbks_list[slot_index] = [tbks_copy]
+                nPspec = nPspecmax
+                if self.verbosity >= 2:
+                    print("populating up to nPspecmax = "+str(nPspecmax))
+                while nPspec > 0:
+                    if self.verbosity >= 2:
+                        print("nPspec**2 = ", int(nPspec**2))
+                    rng = range(-int(nPspec), int(nPspec)+1)
+                    mesh = np.meshgrid(*([rng]*3))
+                    nvec_arr = np.vstack([y.flat for y in mesh]).T
+                    carr = (nvec_arr*nvec_arr).sum(1) > nPspec**2
+                    nvec_arr = np.delete(nvec_arr, np.where(carr), axis=0)
+                    self.tbks_list[slot_index][-1].nvec_arr = nvec_arr
+                    if self.verbosity >= 2:
+                        print(self.tbks_list[slot_index][-1])
+                    tbks_copy = deepcopy(tbks_tmp)
+                    tbks_copy.verbosity = self.verbosity
+                    self.tbks_list[slot_index] =\
+                        self.tbks_list[slot_index] + [tbks_copy]
+                    nPspecSQ = nPspec**2-1.0
+                    if nPspecSQ >= 0.0:
+                        nPspec = np.sqrt(nPspecSQ)
+                    else:
+                        nPspec = -1.0
+                self.tbks_list[slot_index] =\
+                    self.tbks_list[slot_index][:-1]
+            else:
+                nPspecmax = self._get_nPspecmax(three_slice_index)
+                if isinstance(self.tbks_list[slot_index], list):
+                    tbks_tmp = self.tbks_list[slot_index][0]
+                    if self.verbosity >= 2:
+                        print("self.tbks_list[slot_index] is a list,",
+                              "taking first entry")
+                else:
+                    tbks_tmp = self.tbks_list[slot_index]
+                    if self.verbosity >= 2:
+                        print("self.tbks_list[slot_index] is not a list")
+                rng = range(-int(nPspecmax), int(nPspecmax)+1)
+                mesh = np.meshgrid(*([rng]*3))
+                nvec_arr = np.vstack([y.flat for y in mesh]).T
+
+                tbks_copy = deepcopy(tbks_tmp)
+                tbks_copy.verbosity = self.verbosity
+                self.tbks_list[slot_index] = [tbks_copy]
+                Lmax = self.Lmax
+                Emax = self.Emax
+                sc_compact_three_subspace\
+                    = self.fcs.sc_compact[self.fcs.three_index]
+                masses = sc_compact_three_subspace[three_slice_index][1:4]
+                mspec = masses[0]
+                nP = self.nP
+                [Evals, Lvals] = self._get_grid_nonzero_nP(Emax, Lmax)
+                for Ltmp in Lvals:
+                    for Etmp in Evals:
+                        E2CMSQ = (Etmp-np.sqrt(mspec**2
+                                               + FOURPI2/Ltmp**2
+                                               * ((nvec_arr**2)
+                                                  .sum(axis=1))))**2\
+                            - FOURPI2/Ltmp**2*((nP-nvec_arr)**2).sum(axis=1)
+                        carr = E2CMSQ < 0.0
+                        E2CMSQ = E2CMSQ.reshape((len(E2CMSQ), 1))
+                        E2nvec_arr = np.concatenate((E2CMSQ, nvec_arr), axis=1)
+                        E2nvec_arr = np.delete(E2nvec_arr, np.where(carr),
+                                               axis=0)
+                        nvec_arr_tmp = ((E2nvec_arr.T)[1:]).T
+                        nvec_arr_tmp = nvec_arr_tmp.astype(np.int64)
+                        if self.verbosity >= 2:
+                            print("L = ", np.round(Ltmp, 10),
+                                  ", E = ", np.round(Etmp, 10))
+                        self.tbks_list[slot_index][-1].nvec_arr\
+                            = nvec_arr_tmp
+                        if self.verbosity >= 2:
+                            print(self.tbks_list[slot_index][-1])
+                        tbks_copy = deepcopy(tbks_tmp)
+                        tbks_copy.verbosity = self.verbosity
+                        self.tbks_list[slot_index] =\
+                            self.tbks_list[slot_index]\
+                            + [tbks_copy]
+                self.tbks_list[slot_index] =\
+                    self.tbks_list[slot_index][:-1]
+        else:
+            nPspecmax = 0.0001
+            if isinstance(self.tbks_list[slot_index], list):
+                tbks_tmp = self.tbks_list[slot_index][0]
+                if self.verbosity >= 2:
+                    print("self.tbks_list[slot_index] is a list,",
                           "taking first entry")
             else:
-                tbks_tmp = self.tbks_list[three_slice_index]
+                tbks_tmp = self.tbks_list[slot_index]
                 if self.verbosity >= 2:
-                    print("self.tbks_list[three_slice_index] is not a list")
+                    print("self.tbks_list[slot_index] is not a list")
             tbks_copy = deepcopy(tbks_tmp)
             tbks_copy.verbosity = self.verbosity
-            self.tbks_list[three_slice_index] = [tbks_copy]
+            self.tbks_list[slot_index] = [tbks_copy]
             nPspec = nPspecmax
             if self.verbosity >= 2:
                 print("populating up to nPspecmax = "+str(nPspecmax))
@@ -1727,77 +1829,29 @@ class QCIndexSpace:
                 nvec_arr = np.vstack([y.flat for y in mesh]).T
                 carr = (nvec_arr*nvec_arr).sum(1) > nPspec**2
                 nvec_arr = np.delete(nvec_arr, np.where(carr), axis=0)
-                self.tbks_list[three_slice_index][-1].nvec_arr = nvec_arr
+                self.tbks_list[slot_index][-1].nvec_arr = nvec_arr
                 if self.verbosity >= 2:
-                    print(self.tbks_list[three_slice_index][-1])
+                    print(self.tbks_list[slot_index][-1])
                 tbks_copy = deepcopy(tbks_tmp)
                 tbks_copy.verbosity = self.verbosity
-                self.tbks_list[three_slice_index] =\
-                    self.tbks_list[three_slice_index] + [tbks_copy]
+                self.tbks_list[slot_index] =\
+                    self.tbks_list[slot_index] + [tbks_copy]
                 nPspecSQ = nPspec**2-1.0
                 if nPspecSQ >= 0.0:
                     nPspec = np.sqrt(nPspecSQ)
                 else:
                     nPspec = -1.0
-            self.tbks_list[three_slice_index] =\
-                self.tbks_list[three_slice_index][:-1]
-        else:
-            nPspecmax = self._get_nPspecmax(three_slice_index)
-            if isinstance(self.tbks_list[three_slice_index], list):
-                tbks_tmp = self.tbks_list[three_slice_index][0]
-                if self.verbosity >= 2:
-                    print("self.tbks_list[three_slice_index] is a list,",
-                          "taking first entry")
-            else:
-                tbks_tmp = self.tbks_list[three_slice_index]
-                if self.verbosity >= 2:
-                    print("self.tbks_list[three_slice_index] is not a list")
-            rng = range(-int(nPspecmax), int(nPspecmax)+1)
-            mesh = np.meshgrid(*([rng]*3))
-            nvec_arr = np.vstack([y.flat for y in mesh]).T
-
-            tbks_copy = deepcopy(tbks_tmp)
-            tbks_copy.verbosity = self.verbosity
-            self.tbks_list[three_slice_index] = [tbks_copy]
-            Lmax = self.Lmax
-            Emax = self.Emax
-            sc_compact_three_subspace\
-                = self.fcs.sc_compact[self.fcs.three_index]
-            masses = sc_compact_three_subspace[three_slice_index][1:4]
-            mspec = masses[0]
-            nP = self.nP
-            [Evals, Lvals] = self._get_grid_nonzero_nP(Emax, Lmax)
-            for Ltmp in Lvals:
-                for Etmp in Evals:
-                    E2CMSQ = (Etmp-np.sqrt(mspec**2
-                                           + FOURPI2/Ltmp**2
-                                           * ((nvec_arr**2).sum(axis=1))))**2\
-                        - FOURPI2/Ltmp**2*((nP-nvec_arr)**2).sum(axis=1)
-                    carr = E2CMSQ < 0.0
-                    E2CMSQ = E2CMSQ.reshape((len(E2CMSQ), 1))
-                    E2nvec_arr = np.concatenate((E2CMSQ, nvec_arr), axis=1)
-                    E2nvec_arr = np.delete(E2nvec_arr, np.where(carr), axis=0)
-                    nvec_arr_tmp = ((E2nvec_arr.T)[1:]).T
-                    nvec_arr_tmp = nvec_arr_tmp.astype(np.int64)
-                    if self.verbosity >= 2:
-                        print("L = ", np.round(Ltmp, 10),
-                              ", E = ", np.round(Etmp, 10))
-                    self.tbks_list[three_slice_index][-1].nvec_arr\
-                        = nvec_arr_tmp
-                    if self.verbosity >= 2:
-                        print(self.tbks_list[three_slice_index][-1])
-                    tbks_copy = deepcopy(tbks_tmp)
-                    tbks_copy.verbosity = self.verbosity
-                    self.tbks_list[three_slice_index] =\
-                        self.tbks_list[three_slice_index]\
-                        + [tbks_copy]
-            self.tbks_list[three_slice_index] =\
-                self.tbks_list[three_slice_index][:-1]
+            self.tbks_list[slot_index] =\
+                self.tbks_list[slot_index][:-1]
 
     def populate_all_nvec_arr(self):
         """Populate all nvec_arr slots."""
+        for slot_index in range(self.n_two_channels):
+            self.populate_nvec_arr_slot(slot_index,
+                                        three_particle_channel=False)
         for three_slice_index in range(self.fcs.n_three_slices):
-            self.populate_nvec_arr_slot(three_slice_index)
+            slot_index = three_slice_index+self.n_two_channels
+            self.populate_nvec_arr_slot(slot_index)
 
     def _get_ell_sets(self):
         ell_sets = [[]]
@@ -2991,6 +3045,7 @@ class K:
         """Build the K matrix in a shell-based way."""
         Lmax = self.qcis.Lmax
         Emax = self.qcis.Emax
+        n_two_channels = self.qcis.n_two_channels
         if E > Emax:
             raise ValueError('get_value called with E > Emax')
         if L > Lmax:
@@ -3016,7 +3071,7 @@ class K:
         else:
             mspec = m1
             ibest = self.qcis._get_ibest(E, L)
-            tbks_entry = self.qcis.tbks_list[three_slice_index][ibest]
+            tbks_entry = self.qcis.tbks_list[three_slice_index+n_two_channels][ibest]
             kvecSQ_arr = FOURPI2*tbks_entry.nvecSQ_arr/L**2
             kvec_arr = TWOPI*tbks_entry.nvec_arr/L
             omk_arr = np.sqrt(mspec**2+kvecSQ_arr)
