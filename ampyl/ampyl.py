@@ -1966,7 +1966,7 @@ class QCIndexSpace:
         return tbks_sub_indices
 
     def populate_two_nonint_data(self):
-        """Get two non int."""
+        """Get two-particle non-interacting data."""
         ni_list = self.fcs.ni_list
         fc_two = None
         for fc in ni_list:
@@ -2090,7 +2090,7 @@ class QCIndexSpace:
             self.n1n2_batched = n1n2_batched
 
     def populate_three_nonint_data(self):
-        """Get non-interacting data."""
+        """Get three-particle non-interacting data."""
         ni_list = self.fcs.ni_list
         fc_three = None
         for fc in ni_list:
