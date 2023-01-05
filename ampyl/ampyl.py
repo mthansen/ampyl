@@ -1614,7 +1614,7 @@ class QCIndexSpace:
         self.populate_all_proj_dicts()
         self.proj_dict = self.group.get_full_proj_dict(qcis=self)
         self.populate_two_nonint_data()
-        self.populate_nonint_data()
+        self.populate_three_nonint_data()
 
     @property
     def nP(self):
@@ -2089,7 +2089,7 @@ class QCIndexSpace:
             self.n1n2_counts = n1n2_counts
             self.n1n2_batched = n1n2_batched
 
-    def populate_nonint_data(self):
+    def populate_three_nonint_data(self):
         """Get non-interacting data."""
         ni_list = self.fcs.ni_list
         fc_three = None
