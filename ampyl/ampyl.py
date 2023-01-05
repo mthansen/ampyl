@@ -1648,6 +1648,13 @@ class QCIndexSpace:
     @fcs.setter
     def fcs(self, fcs):
         self.n_channels = len(fcs.sc_list)
+        self.n_three_channels = 0
+        for sc in fcs.sc_list:
+            if sc.fc.n_particles != 3:
+                raise ValueError("QCIndexSpace currently only supports "
+                                 + "three-particle channels")
+            if sc.fc.n_particles == 3:
+                self.n_three_channels = self.n_three_channels+1
         tbks_list_tmp = []
         for i in range(self.fcs.n_three_slices):
             tbks_list_tmp = tbks_list_tmp\
