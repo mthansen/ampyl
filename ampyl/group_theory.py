@@ -992,10 +992,6 @@ class Groups:
         for i in range(len(irrep_set)):
             irrep = irrep_set[i]
             for irow in range(len(self.bTdict[group_str+'_'+irrep])):
-                slice_index = 0
-                for three_slice in qcis.fcs.three_slices:
-                    if cindex > three_slice[1]:
-                        slice_index = slice_index+1
                 proj = self.get_large_proj_nonint(nP, irrep, irow,
                                                   identical_arr,
                                                   nonidentical_arr)
@@ -1272,11 +1268,18 @@ class Groups:
         for i in range(len(irrep_set)):
             irrep = irrep_set[i]
             for irow in range(len(self.bTdict[group_str+'_'+irrep])):
+                if qcis.fcs.n_three_slices > 1:
+                    raise ValueError("only one three-slice currently "
+                                     + "supported in get_channel_proj_dict")
+                if cindex < qcis.n_two_channels:
+                    slot_index = cindex
+                else:
+                    slot_index = qcis.n_two_channels
                 slice_index = 0
                 for three_slice in qcis.fcs.three_slices:
-                    if cindex > three_slice[1]:
+                    if slot_index-qcis.n_two_channels > three_slice[1]:
                         slice_index = slice_index+1
-                nvec_arr = qcis.tbks_list[slice_index][0].nvec_arr
+                nvec_arr = qcis.tbks_list[slot_index][slice_index].nvec_arr
                 ellm_set = qcis.ellm_sets[cindex]
                 proj = self.get_large_proj(nP=nP, irrep=irrep,
                                            irow=irow,
@@ -1318,12 +1321,19 @@ class Groups:
             irrep = irrep_set[i]
             for irow in range(len(self.bTdict[group_str+'_'+irrep])):
                 slice_index = 0
+                if qcis.fcs.n_three_slices > 1:
+                    raise ValueError("only one three-slice currently "
+                                     + "supported in get_slice_proj_dict")
+                if cindex < qcis.n_two_channels:
+                    slot_index = cindex
+                else:
+                    slot_index = qcis.n_two_channels
                 for three_slice in qcis.fcs.three_slices:
-                    if cindex > three_slice[1]:
+                    if slot_index-qcis.n_two_channels > three_slice[1]:
                         slice_index = slice_index+1
                 nslice = [int(kellm_slice[0]/len(qcis.ellm_sets[cindex])),
                           int(kellm_slice[1]/len(qcis.ellm_sets[cindex]))]
-                nvec_arr = qcis.tbks_list[slice_index][0].nvec_arr[
+                nvec_arr = qcis.tbks_list[slot_index][slice_index].nvec_arr[
                     nslice[0]:nslice[1]]
                 ellm_set = qcis.ellm_sets[cindex]
                 proj = self.get_large_proj(nP=nP, irrep=irrep,
@@ -1357,11 +1367,18 @@ class Groups:
             for irow in range(len(self.bTdict[group_str+'_'+irrep])):
                 proj_list = []
                 for cindex in range(qcis.n_channels):
+                    if qcis.fcs.n_three_slices > 1:
+                        raise ValueError("only one three-slice currently "
+                                         + "supported in get_full_proj_dict")
+                    if cindex < qcis.n_two_channels:
+                        slot_index = cindex
+                    else:
+                        slot_index = qcis.n_two_channels
                     slice_index = 0
                     for three_slice in qcis.fcs.three_slices:
-                        if cindex > three_slice[1]:
+                        if slot_index-qcis.n_two_channels > three_slice[1]:
                             slice_index = slice_index+1
-                    nvec_arr = qcis.tbks_list[slice_index][0].nvec_arr
+                    nvec_arr = qcis.tbks_list[slot_index][slice_index].nvec_arr
                     ellm_set = qcis.ellm_sets[cindex]
                     proj_tmp = self.get_large_proj(nP=nP, irrep=irrep,
                                                    irow=irow,

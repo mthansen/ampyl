@@ -1895,8 +1895,14 @@ class QCIndexSpace:
         kellm_slices = [[]]
         kellm_spaces = [[]]
         for cindex in range(self.n_channels):
-            slice_index = self._get_three_slice_index(cindex)
-            tbks_list_tmp = self.tbks_list[slice_index]
+            if self.fcs.n_three_slices > 1:
+                raise ValueError("only one three-slice currently supported "
+                                 + "in populate_all_kellm_spaces")
+            if cindex < self.n_two_channels:
+                slot_index = cindex
+            else:
+                slot_index = self.n_two_channels
+            tbks_list_tmp = self.tbks_list[slot_index]
             ellm_set = self.ellm_sets[cindex]
             kellm_slices_single = [[]]
             kellm_spaces_single = [[]]
@@ -2711,6 +2717,9 @@ class G:
             if self.qcis.verbosity >= 2:
                 print('nP = [0 0 0] indexing')
             tbks_sub_indices = self.qcis.get_tbks_sub_indices(E=E, L=L)
+            if len(self.qcis.tbks_list) > 1:
+                raise ValueError("get_value within G assumes tbks_list is "
+                                 + "length one.")
             tbks_entry = self.qcis.tbks_list[0][
                 tbks_sub_indices[0]]
             slices = tbks_entry.slices
@@ -2723,6 +2732,9 @@ class G:
                 print('nP != [0 0 0] indexing')
             mspec = m1
             ibest = self.qcis._get_ibest(E, L)
+            if len(self.qcis.tbks_list) > 1:
+                raise ValueError("get_value within G assumes tbks_list is "
+                                 + "length one.")
             tbks_entry = self.qcis.tbks_list[0][ibest]
             kvecSQ_arr = FOURPI2*tbks_entry.nvecSQ_arr/L**2
             kvec_arr = TWOPI*tbks_entry.nvec_arr/L
@@ -2910,12 +2922,18 @@ class F:
 
         if nP@nP == 0:
             tbks_sub_indices = self.qcis.get_tbks_sub_indices(E=E, L=L)
+            if len(self.qcis.tbks_list) > 1:
+                raise ValueError("get_value within F assumes tbks_list is "
+                                 + "length one.")
             tbks_entry = self.qcis.tbks_list[0][
                 tbks_sub_indices[0]]
             slices = tbks_entry.slices
         else:
             mspec = m1
             ibest = self.qcis._get_ibest(E, L)
+            if len(self.qcis.tbks_list) > 1:
+                raise ValueError("get_value within F assumes tbks_list is "
+                                 + "length one.")
             tbks_entry = self.qcis.tbks_list[three_slice_index][ibest]
             kvecSQ_arr = FOURPI2*tbks_entry.nvecSQ_arr/L**2
             kvec_arr = TWOPI*tbks_entry.nvec_arr/L
@@ -3068,13 +3086,19 @@ class K:
 
         if nP@nP == 0:
             tbks_sub_indices = self.qcis.get_tbks_sub_indices(E=E, L=L)
+            if len(self.qcis.tbks_list) > 1:
+                raise ValueError("get_value within K assumes tbks_list is "
+                                 + "length one.")
             tbks_entry = self.qcis.tbks_list[0][
                 tbks_sub_indices[0]]
             slices = tbks_entry.slices
         else:
             mspec = m1
             ibest = self.qcis._get_ibest(E, L)
-            tbks_entry = self.qcis.tbks_list[three_slice_index+n_two_channels][ibest]
+            if len(self.qcis.tbks_list) > 1:
+                raise ValueError("get_value within K assumes tbks_list is "
+                                 + "length one.")
+            tbks_entry = self.qcis.tbks_list[0][ibest]
             kvecSQ_arr = FOURPI2*tbks_entry.nvecSQ_arr/L**2
             kvec_arr = TWOPI*tbks_entry.nvec_arr/L
             omk_arr = np.sqrt(mspec**2+kvecSQ_arr)
