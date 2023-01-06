@@ -2662,7 +2662,7 @@ class G:
         for i in range(len(g_collection)):
             for j in range(len(g_collection)):
                 shtmp = g_collection[i][j].shape
-                if shtmp == (0,):
+                if shtmp == (0,) or shtmp == (0, 0):
                     g_collection[i][j].shape = (rowsizes[i], colsizes[j])
 
         return g_collection
