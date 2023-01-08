@@ -109,7 +109,7 @@ class Irreps:
             self.set = [self.A1, self.A2, self.B1, self.B2]
         else:
             raise ValueError("unsupported value of nP in irreps: "
-xxxxx                             + str(self._nP))
+                             + str(self._nP))
 
     def __str__(self):
         """Summary of the irrep set."""
