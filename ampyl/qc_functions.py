@@ -107,7 +107,7 @@ class BKFunctions:
             if z >= 1.0:
                 return 1.0
             return np.exp(-1.0/z*np.exp(-1.0/(1.0-z)))
-        raise ValueError('z must be a float or np.ndarray')
+        raise ValueError("z must be a float or np.ndarray")
 
     @staticmethod
     def J(z=np.array([0.5])):
@@ -143,7 +143,7 @@ class BKFunctions:
             if z >= 1.0:
                 return 1.0
             return np.exp(-1.0/z*np.exp(-1.0/(1.0-z)))
-        raise ValueError('z must be a float or np.ndarray')
+        raise ValueError("z must be a float or np.ndarray")
 
     @staticmethod
     def H(E2CMSQ=9.0, threshold=2.0, alpha=-1.0, beta=0.0, J_slow=False):
@@ -390,7 +390,7 @@ class BKFunctions:
         elif mazi1 == 0 and mazi2 == 0:
             foil_set = [[ell1, mazi1, ell2, mazi2, 1.]]
         else:
-            raise ValueError('Values for (mazi1, mazi2) not understood')
+            raise ValueError("Values for (mazi1, mazi2) not understood")
 
         reco_list = [[]]
         for entry in foil_set:
@@ -430,7 +430,7 @@ class BKFunctions:
             elif mazi == 0:
                 reco_dict[(ell, mazi)] = reco_dict[(ell, mazi)]+coeff
             else:
-                raise ValueError('Values for mazi not understood')
+                raise ValueError("Values for mazi not understood")
 
         final_reco_list = [[]]
         for key in reco_dict:
@@ -533,8 +533,8 @@ class BKFunctions:
         betaSQ = (beta_vec*beta_vec).sum(2)
         if not (np.abs(betaSQ - betaSQ[0][0]*np.ones_like(betaSQ))
                 < EPSILON15).all():
-            raise ValueError('betaSQ in standard_boost_array is not '
-                             + 'proportional to a matrix of ones')
+            raise ValueError("betaSQ in standard_boost_array is not "
+                             + "proportional to a matrix of ones")
         if betaSQ[0][0] == 0.0:
             return four_momentum
         if betaSQ[0][0] < 0.0:
@@ -707,7 +707,7 @@ class QCFunctions:
         elif three_scheme == 'relativistic pole':
             simple_factor = 1.0/(2.0*omega1*L**3*(E-omega1-omega3+omega2))
         else:
-            raise ValueError('three_scheme not recognized')
+            raise ValueError("three_scheme not recognized")
 
         if (('hermitian' not in qc_impl.keys())
            or (qc_impl['hermitian'])):
@@ -976,7 +976,7 @@ class QCFunctions:
             simple_factor_mat = 1.0/(2.0*omega1_mat*L**3
                                      * (E-omega1_mat-omega3_mat+omega2_mat))
         else:
-            raise ValueError('three_scheme not recognized')
+            raise ValueError("three_scheme not recognized")
 
         if (('hermitian' not in qc_impl.keys())
            or (qc_impl['hermitian'])):

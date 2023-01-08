@@ -108,8 +108,8 @@ class Irreps:
             self.B2 = 'B2'
             self.set = [self.A1, self.A2, self.B1, self.B2]
         else:
-            raise ValueError('unsupported value of nP in irreps: '
-                             + str(self._nP))
+            raise ValueError("unsupported value of nP in irreps: "
+xxxxx                             + str(self._nP))
 
     def __str__(self):
         """Summary of the irrep set."""
@@ -643,7 +643,7 @@ class Groups:
             Udagger = np.conjugate(U).T
             wig_d = U@wig_d@Udagger
             if not (np.abs(wig_d.imag) < EPSPROJ).all():
-                raise ValueError('real Wigner-D is complex')
+                raise ValueError("real Wigner-D is complex")
             wig_d = wig_d.real
         wig_d = wig_d*multiplier
         return wig_d
@@ -765,7 +765,7 @@ class Groups:
             group = self.Dic2
             bT = self.bTdict[group_str+'_'+irrep][irow]
         else:
-            return ValueError('group not yet supported by get_large_proj')
+            return ValueError("group not yet supported by get_large_proj")
         dim = len(nvec_arr)*len(ellm_set)
         proj = np.zeros((dim, dim))
         for g_ind in range(len(group)):
@@ -793,7 +793,7 @@ class Groups:
             group = self.Dic2
             bT = self.chardict[group_str+'_'+irrep][irow]
         else:
-            return ValueError('group not yet supported by get_large_proj')
+            return ValueError("group not yet supported by get_large_proj")
         dim = len(identical_arr)+len(nonidentical_arr)
         proj = np.zeros((dim, dim))
         for g_ind in range(len(group)):
@@ -821,7 +821,7 @@ class Groups:
             group = self.Dic2
             bT = self.chardict[group_str+'_'+irrep][irow]
         else:
-            return ValueError('group not yet supported by get_large_proj')
+            return ValueError("group not yet supported by get_large_proj")
         dim = len(nonidentical_arr)*3
         proj = np.zeros((dim, dim))
         for g_ind in range(len(group)):
@@ -926,7 +926,7 @@ class Groups:
                            shell_index=0):
         """Get the iso-projector for non-interacting vectors."""
         if qcis is None:
-            raise ValueError('qcis cannot be None')
+            raise ValueError("qcis cannot be None")
         identical_arr = qcis.n1n2n3_ident_batched[cindex][shell_index]
         nonidentical_arr = qcis.n1n2n3_batched[cindex][shell_index]
         iso_projector = ISO_PROJECTORS[iso_index]
@@ -973,14 +973,14 @@ class Groups:
                                    shell_index=None):
         """Get the dictionary of small projectors for a given qcis."""
         if qcis is None:
-            raise ValueError('qcis cannot be None')
+            raise ValueError("qcis cannot be None")
         nP = qcis.nP
         irrep_set = Irreps(nP=nP).set
         identical_arr = qcis.n1n2n3_ident_batched[cindex][shell_index]
         nonidentical_arr = qcis.n1n2n3_batched[cindex][shell_index]
 
         if (nP@nP != 0) and (nP@nP != 1) and (nP@nP != 2):
-            raise ValueError('momentum = ', nP, ' is not yet supported')
+            raise ValueError("momentum = ", nP, " is not yet supported")
         non_proj_dict = {}
         if (nP@nP == 0):
             group_str = 'OhP'
@@ -1029,13 +1029,13 @@ class Groups:
                                       shell_index=None):
         """Get the dictionary of small projectors for a given qcis."""
         if qcis is None:
-            raise ValueError('qcis cannot be None')
+            raise ValueError("qcis cannot be None")
         nP = qcis.nP
         irrep_set = Irreps(nP=nP).set
         nonidentical_arr = qcis.n1n2_batched[cindex][shell_index]
 
         if (nP@nP != 0) and (nP@nP != 1) and (nP@nP != 2):
-            raise ValueError('momentum = ', nP, ' is not yet supported')
+            raise ValueError("momentum = ", nP, " is not yet supported")
         non_proj_dict = {}
         if (nP@nP == 0):
             group_str = 'OhP'
@@ -1112,7 +1112,7 @@ class Groups:
         """Get it."""
         master_dict = {}
         if qcis is None:
-            raise ValueError('qcis cannot be None')
+            raise ValueError("qcis cannot be None")
         row_zero_value = 0
         summary_string = ''
         nshells = len(qcis.n1n2n3_ident_reps[cindex])
@@ -1182,7 +1182,7 @@ class Groups:
         """Get it."""
         master_dict = {}
         if qcis is None:
-            raise ValueError('qcis cannot be None')
+            raise ValueError("qcis cannot be None")
         row_zero_value = 0
         summary_string = ''
         nshells = len(qcis.n1n2_reps[cindex])
@@ -1253,11 +1253,11 @@ class Groups:
         if qcis.verbosity >= 2:
             print("getting the dict for channel =", cindex)
         if qcis is None:
-            raise ValueError('qcis cannot be None')
+            raise ValueError("qcis cannot be None")
         nP = qcis.nP
         irrep_set = Irreps(nP=nP).set
         if (nP@nP != 0) and (nP@nP != 1) and (nP@nP != 2):
-            raise ValueError('momentum = ', nP, ' is not yet supported')
+            raise ValueError("momentum = ", nP, " is not yet supported")
         proj_dict = {}
         if (nP@nP == 0):
             group_str = 'OhP'
@@ -1303,13 +1303,13 @@ class Groups:
     def get_slice_proj_dict(self, qcis=None, cindex=0, kellm_slice=None):
         """Get the dictionary of small projectors for one kellm_slice."""
         if qcis is None:
-            raise ValueError('qcis cannot be None')
+            raise ValueError("qcis cannot be None")
         if kellm_slice is None:
-            raise ValueError('kellm_slice cannot be None')
+            raise ValueError("kellm_slice cannot be None")
         nP = qcis.nP
         irrep_set = Irreps(nP=nP).set
         if (nP@nP != 0) and (nP@nP != 1) and (nP@nP != 2):
-            raise ValueError('momentum = ', nP, ' is not yet supported')
+            raise ValueError("momentum = ", nP, " is not yet supported")
         proj_dict = {}
         if (nP@nP == 0):
             group_str = 'OhP'
@@ -1353,7 +1353,7 @@ class Groups:
     def get_full_proj_dict(self, qcis=None):
         """Get the dictionary of small projectors for the entire qcis."""
         if qcis is None:
-            raise ValueError('qcis cannot be None')
+            raise ValueError("qcis cannot be None")
         proj_dict = {}
         nP = qcis.nP
         if (nP@nP == 0):

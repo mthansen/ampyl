@@ -161,9 +161,9 @@ class FlavorChannel:
                  flavors=None, isospin_channel=False,
                  twoisospins=None, twoisospin_value=None):
         if not isinstance(n_particles, int):
-            raise ValueError('n_particles must be an int')
+            raise ValueError("n_particles must be an int")
         if n_particles < 2:
-            raise ValueError('n_particles must be >= 2')
+            raise ValueError("n_particles must be >= 2")
         self._n_particles = n_particles
 
         self.summary = None
@@ -275,7 +275,7 @@ class FlavorChannel:
             summary_reduced = np.array(summary_reduced[1:], dtype=object)
             self.summary_reduced = summary_reduced
             return allowed_totals_three_particles
-        raise ValueError('n_particles > 3 not supported within FlavorChannel')
+        raise ValueError("n_particles > 3 not supported within FlavorChannel")
 
     def _generic_setter(self, var, varstr, enttype, enttypestr):
         if not isinstance(var, list):
@@ -323,7 +323,7 @@ class FlavorChannel:
     @isospin_channel.setter
     def isospin_channel(self, isospin_channel):
         if not isinstance(isospin_channel, bool):
-            raise ValueError('isospin_channel must be a boolean')
+            raise ValueError("isospin_channel must be a boolean")
         self._isospin_channel = isospin_channel
         if isospin_channel and (self._twoisospins is None):
             warnings.warn("\n"+bcolors.WARNING
@@ -438,7 +438,7 @@ class FlavorChannel:
     def twoisospin_value(self, twoisospin_value):
         if ((twoisospin_value is not None)
            and (not isinstance(twoisospin_value, int))):
-            raise ValueError('twoisospin_value must be an int')
+            raise ValueError("twoisospin_value must be an int")
         if ((twoisospin_value is not None)
            and (self._allowed_total_twoisospins is not None)
            and (twoisospin_value not in self._allowed_total_twoisospins)):
@@ -522,9 +522,9 @@ class FlavorChannel:
     @n_particles.setter
     def n_particles(self, n_particles):
         if not isinstance(n_particles, int):
-            raise ValueError('n_particles must be an int')
+            raise ValueError("n_particles must be an int")
         if n_particles < 2:
-            raise ValueError('n_particles must be >= 2')
+            raise ValueError("n_particles must be >= 2")
         else:
             self._n_particles = n_particles
             self.masses = self._masses
@@ -651,16 +651,16 @@ class SpectatorChannel:
             self._indexing = None
         elif self.fc.n_particles >= 3:
             if not isinstance(indexing, list):
-                raise ValueError('for n_particles > 2, indexing must be a '
-                                 + 'list')
+                raise ValueError("for n_particles > 2, indexing must be a "
+                                 + "list")
             if len(indexing) != self.fc.n_particles:
-                raise ValueError('indexing must have length n_particles')
+                raise ValueError("indexing must have length n_particles")
             if (np.sort(indexing) != np.arange(self.fc.n_particles)).any():
-                raise ValueError('indexing must be a permuatation of '
-                                 + 'ascending integers')
+                raise ValueError("indexing must be a permuatation of "
+                                 + "ascending integers")
             self._indexing = indexing
         else:
-            raise ValueError('unknown problem with indexing')
+            raise ValueError("unknown problem with indexing")
 
     @property
     def sub_twoisospin(self):
@@ -671,22 +671,22 @@ class SpectatorChannel:
     def sub_twoisospin(self, sub_twoisospin):
         if ((sub_twoisospin is not None)
            and (self.fc.n_particles == 2)):
-            raise ValueError('sub_twoisospin must be None '
-                             + 'for n_particles == 2')
+            raise ValueError("sub_twoisospin must be None "
+                             + "for n_particles == 2")
         if ((sub_twoisospin is not None)
            and (not isinstance(sub_twoisospin, int))):
-            raise ValueError('sub_twoisospin must be an int')
+            raise ValueError("sub_twoisospin must be an int")
         if ((sub_twoisospin is not None)
            and (self.allowed_sub_twoisospins is not None)
            and (sub_twoisospin not in self.allowed_sub_twoisospins)):
-            raise ValueError('sub-two-isospin is not in allowed set')
+            raise ValueError("sub-two-isospin is not in allowed set")
         if (not self.fc.isospin_channel) and (sub_twoisospin is not None):
-            raise ValueError('sub_twoisospin cannot be set because '
-                             + 'isospin_channel is False')
+            raise ValueError("sub_twoisospin cannot be set because "
+                             + "isospin_channel is False")
         if (self.fc.isospin_channel and (sub_twoisospin is None)
            and (self.fc.n_particles != 2)):
-            raise ValueError('sub_twoisospin cannot be set to None because '
-                             + 'isospin_channel is True')
+            raise ValueError("sub_twoisospin cannot be set to None because "
+                             + "isospin_channel is True")
         self._sub_twoisospin = sub_twoisospin
 
     @property
@@ -713,7 +713,7 @@ class SpectatorChannel:
         self._p_cot_deltas = p_cot_deltas
         if ((p_cot_deltas is not None)
            and (len(self.ell_set) != len(p_cot_deltas))):
-            raise ValueError('len(ell_set) != len(p_cot_deltas)')
+            raise ValueError("len(ell_set) != len(p_cot_deltas)")
 
     @property
     def n_params_set(self):
@@ -724,7 +724,7 @@ class SpectatorChannel:
     def n_params_set(self, n_params_set):
         self._n_params_set = n_params_set
         if len(self.ell_set) != len(n_params_set):
-            raise ValueError('len(ell_set) != len(n_params_set)')
+            raise ValueError("len(ell_set) != len(n_params_set)")
 
     def __str__(self):
         """Summary of the spectator channel."""
@@ -924,8 +924,8 @@ class FlavorChannelSpace:
                 else:
                     sc_comp_tmp = sc_comp_tmp+[None, None, None, None, None]
             else:
-                return ValueError('something is wrong with channel'
-                                  + ' specification.')
+                return ValueError("something is wrong with channel"
+                                  + " specification.")
             sc_compact[sc.fc.n_particles-2] = sc_compact[sc.fc.n_particles-2]\
                 + [sc_comp_tmp]
         for j in range(len(sc_compact)):
@@ -1155,21 +1155,21 @@ class FiniteVolumeSetup:
         for key in qc_impl.keys():
             if key not in ['hermitian', 'real harmonics',
                            'Zinterp', 'YYCG']:
-                raise ValueError('key', key, 'not recognized')
+                raise ValueError("key", key, "not recognized")
 
         if (('hermitian' in qc_impl.keys())
            and (not isinstance(qc_impl['hermitian'], bool))):
-            raise ValueError('qc_impl entry hermitian must be a bool')
+            raise ValueError("qc_impl entry 'hermitian' must be a bool")
         if (('real harmonics' in qc_impl.keys())
            and (not isinstance(qc_impl['real harmonics'], bool))):
-            raise ValueError('qc_impl entry real harmonics must'
-                             + ' be a bool')
+            raise ValueError("qc_impl entry real harmonics must"
+                             + " be a bool")
         if (('Zinterp' in qc_impl.keys())
            and (not isinstance(qc_impl['Zinterp'], bool))):
-            raise ValueError('qc_impl entry Zinterp must be a bool')
+            raise ValueError("qc_impl entry 'Zinterp' must be a bool")
         if (('YYCG' in qc_impl.keys())
            and (not isinstance(qc_impl['YYCG'], bool))):
-            raise ValueError('qc_impl entry YYCG must be a bool')
+            raise ValueError("qc_impl entry 'YYCG' must be a bool")
 
         self._qc_impl = qc_impl
 
@@ -1687,8 +1687,8 @@ class QCIndexSpace:
                     ))/(2.*Emax*TWOPI)
                 return nPspecmax
             else:
-                raise ValueError('simultaneous nonzero nP and Emin not'
-                                 + ' supported')
+                raise ValueError("simultaneous nonzero nP and Emin not"
+                                 + " supported")
         else:
             if nPSQ == 0:
                 nPspecmax = Lmax*(EmaxSQ-mspec**2)/(2.0*TWOPI*Emax)
@@ -1707,10 +1707,10 @@ class QCIndexSpace:
         if three_particle_channel:
             three_slice_index = slot_index-self.n_two_channels
             if self.fcs.n_three_slices != 1:
-                raise ValueError('n_three_slices different from one not yet '
-                                 + 'supported')
+                raise ValueError("n_three_slices different from one not yet "
+                                 + "supported")
             if three_slice_index != 0:
-                raise ValueError('three_slice_index != 0 not yet supported')
+                raise ValueError("three_slice_index != 0 not yet supported")
             if (self.nP == np.array([0, 0, 0])).all():
                 if self.verbosity >= 2:
                     print("populating nvec array, three_slice_index = ",
@@ -1958,9 +1958,9 @@ class QCIndexSpace:
     def get_tbks_sub_indices(self, E, L):
         """Get the indices of the relevant three-body kinematics spaces."""
         if E > self.Emax:
-            raise ValueError('get_tbks_sub_indices called with E > Emax')
+            raise ValueError("get_tbks_sub_indices called with E > Emax")
         if L > self.Lmax:
-            raise ValueError('get_tbks_sub_indices called with L > Lmax')
+            raise ValueError("get_tbks_sub_indices called with L > Lmax")
         tbks_sub_indices = [0]*len(self.tbks_list)
         if (self.nP)@(self.nP) != 0:
             for slice_index in range(self.fcs.n_three_slices):
@@ -2011,7 +2011,7 @@ class QCIndexSpace:
                         E**4+(EminSQ-mspec**2)**2-2.*E**2*(EminSQ+mspec**2)
                         ))/(2.*E*TWOPI)
                 else:
-                    raise ValueError('nonzero nP and Emin not supported')
+                    raise ValueError("nonzero nP and Emin not supported")
             else:
                 if nPSQ == 0:
                     nPspecnew = L*(ESQ-mspec**2)/(2.0*TWOPI*E)
@@ -2549,7 +2549,7 @@ class G:
         three_slice_index_col\
             = self.qcis._get_three_slice_index(cindex_col)
         if not (three_slice_index_row == three_slice_index_col == 0):
-            raise ValueError('only one mass slice is supported in G')
+            raise ValueError("only one mass slice is supported in G")
         three_slice_index = three_slice_index_row
         if nP@nP == 0:
             row_slice = tbks_entry.slices[row_slice_index]
@@ -2672,9 +2672,9 @@ class G:
         Lmax = self.qcis.Lmax
         Emax = self.qcis.Emax
         if E > Emax:
-            raise ValueError('get_value called with E > Emax')
+            raise ValueError("get_value called with E > Emax")
         if L > Lmax:
-            raise ValueError('get_value called with L > Lmax')
+            raise ValueError("get_value called with L > Lmax")
         nP = self.qcis.nP
         if self.qcis.verbosity >= 2:
             print('evaluating G using numpy accelerated version')
@@ -2689,7 +2689,7 @@ class G:
             elif self.qcis.tbis.three_scheme == 'relativistic pole':
                 sf = '1./(2.*w1*L**3)\n    * 1./(E-w1-w3+w2)'
             else:
-                raise ValueError('three_scheme not recognized')
+                raise ValueError("three_scheme not recognized")
             if (('hermitian' not in self.qcis.fvs.qc_impl.keys())
                or (self.qcis.fvs.qc_impl['hermitian'])):
                 sf = sf+'\n    * 1./(2.0*w3*L**3)'
@@ -2697,7 +2697,7 @@ class G:
             print('G = YY*H1*H2\n    * '+sf+'\n    * 1./(E-w1-w2-w3)\n')
 
         if self.qcis.fcs.n_three_slices != 1:
-            raise ValueError('only n_three_slices = 1 is supported')
+            raise ValueError("only n_three_slices = 1 is supported")
         cindex_row = cindex_col = 0
         if self.qcis.verbosity >= 2:
             print('representatives of three_slice:')
@@ -2760,16 +2760,16 @@ class G:
             g_outer_row = []
             row_ell_set = self.qcis.fcs.sc_list[sc_row_ind].ell_set
             if len(row_ell_set) != 1:
-                raise ValueError('only length-one ell_set currently '
-                                 + 'supported in G')
+                raise ValueError("only length-one ell_set currently "
+                                 + "supported in G")
             ell1 = row_ell_set[0]
             for sc_col_ind in range(len(three_compact)):
                 if self.qcis.verbosity >= 2:
                     print('sc_row_ind, sc_col_ind =', sc_row_ind, sc_col_ind)
                 col_ell_set = self.qcis.fcs.sc_list[sc_col_ind].ell_set
                 if len(col_ell_set) != 1:
-                    raise ValueError('only length-one ell_set currently '
-                                     + 'supported in G')
+                    raise ValueError("only length-one ell_set currently "
+                                     + "supported in G")
                 ell2 = col_ell_set[0]
                 g_rescale = self.qcis.fcs.g_templates[0][0][
                     sc_row_ind][sc_col_ind]
@@ -2904,16 +2904,16 @@ class F:
         Lmax = self.qcis.Lmax
         Emax = self.qcis.Emax
         if E > Emax:
-            raise ValueError('get_value called with E > Emax')
+            raise ValueError("get_value called with E > Emax")
         if L > Lmax:
-            raise ValueError('get_value called with L > Lmax')
+            raise ValueError("get_value called with L > Lmax")
         nP = self.qcis.nP
         if self.qcis.verbosity >= 2:
             print('evaluating F')
             print('E = ', E, ', nP = ', nP, ', L = ', L)
 
         if self.qcis.fcs.n_three_slices != 1:
-            raise ValueError('only n_three_slices = 1 is supported')
+            raise ValueError("only n_three_slices = 1 is supported")
         three_slice_index = 0
         cindex = 0
         three_compact = self.qcis.fcs.sc_compact[self.qcis.fcs.three_index]
@@ -2956,8 +2956,8 @@ class F:
         for sc_ind in range(len(three_compact)):
             ell_set = self.qcis.fcs.sc_list[sc_ind].ell_set
             if len(ell_set) != 1:
-                raise ValueError('only length-one ell_set currently '
-                                 + 'supported in F')
+                raise ValueError("only length-one ell_set currently "
+                                 + "supported in F")
             ell1 = ell_set[0]
             ell2 = ell1
             for slice_index in range(len(slices)):
@@ -3068,16 +3068,16 @@ class K:
         Emax = self.qcis.Emax
         n_two_channels = self.qcis.n_two_channels
         if E > Emax:
-            raise ValueError('get_value called with E > Emax')
+            raise ValueError("get_value called with E > Emax")
         if L > Lmax:
-            raise ValueError('get_value called with L > Lmax')
+            raise ValueError("get_value called with L > Lmax")
         nP = self.qcis.nP
         if self.qcis.verbosity >= 2:
             print('evaluating F')
             print('E = ', E, ', nP = ', nP, ', L = ', L)
 
         if self.qcis.fcs.n_three_slices != 1:
-            raise ValueError('only n_three_slices = 1 is supported')
+            raise ValueError("only n_three_slices = 1 is supported")
         three_slice_index = 0
         cindex = 0
         three_compact = self.qcis.fcs.sc_compact[self.qcis.fcs.three_index]
@@ -3120,8 +3120,8 @@ class K:
         for sc_ind in range(len(three_compact)):
             ell_set = self.qcis.fcs.sc_list[sc_ind].ell_set
             if len(ell_set) != 1:
-                raise ValueError('only length-one ell_set currently '
-                                 + 'supported in K')
+                raise ValueError("only length-one ell_set currently "
+                                 + "supported in K")
             ell = ell_set[0]
             pcotdelta_parameter_list = pcotdelta_parameter_lists[sc_ind]
             pcotdelta_function = self.qcis.fcs.sc_list[
