@@ -2638,14 +2638,17 @@ class G:
                         ).T)
             except KeyError:
                 return np.array([])
-
-        proj_support_right = np.diag(proj_tmp_right@(proj_tmp_right.T))
-        zero_frac_right = float(np.count_nonzero(proj_support_right == 0.))\
-            / float(len(proj_support_right))
-        proj_support_left = np.diag((proj_tmp_left.T)@proj_tmp_left)
-        zero_frac_left = float(np.count_nonzero(proj_support_left == 0.))\
-            / float(len(proj_support_left))
-        sparse = (zero_frac_right > 1.5) and (zero_frac_left > 1.5)
+            proj_support_right = np.diag(proj_tmp_right@(proj_tmp_right.T))
+            zero_frac_right = float(np.count_nonzero(proj_support_right
+                                                     == 0.))\
+                / float(len(proj_support_right))
+            proj_support_left = np.diag((proj_tmp_left.T)@proj_tmp_left)
+            zero_frac_left = float(np.count_nonzero(proj_support_left
+                                                    == 0.))\
+                / float(len(proj_support_left))
+            sparse = (zero_frac_right > 1.5) and (zero_frac_left > 1.5)
+        else:
+            sparse = False
 
         if not sparse:
             Gshell = QCFunctions.getG_array(E, nP, L, m1, m2, m3,
