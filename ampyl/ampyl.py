@@ -1943,13 +1943,20 @@ class QCIndexSpace:
         for cindex in range(self.n_channels):
             proj_dict = group.get_channel_proj_dict(qcis=self, cindex=cindex)
             sc_proj_dicts = sc_proj_dicts+[proj_dict]
-            sc_proj_dict_single_slice = []
-            for kellm_slice in self.kellm_slices[cindex][0]:
+            sc_proj_dict_single_slice = [[]]
+            for ibest_tmp in range(len(self.kellm_slices[cindex])):
+                best_kellm_slices = self.kellm_slices[cindex][ibest_tmp]
+                sc_proj_dict_single_best = []
+                for kellm_slice in best_kellm_slices:
+                    sc_proj_dict_single_best = sc_proj_dict_single_best\
+                        + [group.get_slice_proj_dict(
+                            qcis=self,
+                            cindex=cindex,
+                            kellm_slice=kellm_slice,
+                            slice_index=ibest_tmp)]
                 sc_proj_dict_single_slice = sc_proj_dict_single_slice\
-                    + [group.get_slice_proj_dict(
-                        qcis=self,
-                        cindex=cindex,
-                        kellm_slice=kellm_slice)]
+                    + [sc_proj_dict_single_best]
+            sc_proj_dict_single_slice = sc_proj_dict_single_slice[1:]
             sc_proj_dicts_sliced = sc_proj_dicts_sliced\
                 + [sc_proj_dict_single_slice]
         self.sc_proj_dicts = sc_proj_dicts
@@ -2611,37 +2618,79 @@ class G:
             = self._get_masks_and_slices(E, nP, L, tbks_entry,
                                          cindex_row, cindex_col,
                                          row_slice_index, col_slice_index)
-
-        Gshell = QCFunctions.getG_array(E, nP, L, m1, m2, m3,
-                                        tbks_entry,
-                                        row_slice, col_slice,
-                                        ell1, ell2,
-                                        alpha, beta,
-                                        qc_impl, ts,
-                                        g_rescale)
-
         if project:
             try:
                 if nP@nP != 0:
+                    ibest = self.qcis._get_ibest(E, L)
                     proj_tmp_right = np.array(self.qcis.sc_proj_dicts_sliced[
-                        sc_col_ind])[
-                            mask_col_slices][
-                                col_slice_index][irrep]
+                        sc_col_ind][ibest])[mask_col_slices][col_slice_index][
+                            irrep]
                     proj_tmp_left = np.conjugate((
-                            np.array(self.qcis.sc_proj_dicts_sliced[
-                                sc_row_ind])[
-                                    mask_row_slices][
-                                        row_slice_index][irrep]
-                                        ).T)
+                        np.array(self.qcis.sc_proj_dicts_sliced[sc_row_ind][
+                            ibest])[mask_row_slices][row_slice_index][irrep]
+                    ).T)
                 else:
                     proj_tmp_right = self.qcis.sc_proj_dicts_sliced[
-                        sc_col_ind][col_slice_index][irrep]
+                        sc_col_ind][0][col_slice_index][irrep]
                     proj_tmp_left = np.conjugate((
                         self.qcis.sc_proj_dicts_sliced[
-                            sc_row_ind][row_slice_index][irrep]
+                            sc_row_ind][0][row_slice_index][irrep]
                         ).T)
             except KeyError:
                 return np.array([])
+            proj_support_right = np.diag(proj_tmp_right@(proj_tmp_right.T))
+            zero_frac_right = float(np.count_nonzero(proj_support_right
+                                                     == 0.))\
+                / float(len(proj_support_right))
+            proj_support_left = np.diag((proj_tmp_left.T)@proj_tmp_left)
+            zero_frac_left = float(np.count_nonzero(proj_support_left
+                                                    == 0.))\
+                / float(len(proj_support_left))
+            sparse = (zero_frac_right > 1.5) and (zero_frac_left > 1.5)
+        else:
+            sparse = False
+
+        if not sparse:
+            Gshell = QCFunctions.getG_array(E, nP, L, m1, m2, m3,
+                                            tbks_entry,
+                                            row_slice, col_slice,
+                                            ell1, ell2,
+                                            alpha, beta,
+                                            qc_impl, ts,
+                                            g_rescale)
+        else:
+            n1vec_arr_slice = tbks_entry.nvec_arr[row_slice[0]:row_slice[1]]
+            n1vecSQ_arr_slice = tbks_entry.nvecSQ_arr[
+                row_slice[0]:row_slice[1]]
+
+            n2vec_arr_slice = tbks_entry.nvec_arr[col_slice[0]:col_slice[1]]
+            n2vecSQ_arr_slice = tbks_entry.nvecSQ_arr[
+                col_slice[0]:col_slice[1]]
+            Gshell = np.zeros((len(n1vecSQ_arr_slice)*(2*ell1+1),
+                               len(n2vecSQ_arr_slice)*(2*ell2+1)))
+            for i1 in range(len(n1vecSQ_arr_slice)):
+                for i2 in range(2*ell1+1):
+                    ifull = i1*(2*ell1+1)+i2
+                    np1spec = n1vec_arr_slice[i1]
+                    mazi1 = i2-ell1
+                    for j1 in range(len(n2vecSQ_arr_slice)):
+                        for j2 in range(2*ell2+1):
+                            jfull = j1*(2*ell2+1)+j2
+                            np2spec = n2vec_arr_slice[j1]
+                            mazi2 = j2-ell2
+                            if ((proj_support_left[ifull] != 0.0)
+                               and (proj_support_right[jfull] != 0.0)):
+                                Gshell[ifull][jfull] = QCFunctions\
+                                    .getG_single_entry(E, nP, L,
+                                                       np1spec, np2spec,
+                                                       ell1, mazi1,
+                                                       ell2, mazi2,
+                                                       m1, m2, m3,
+                                                       alpha, beta,
+                                                       False,
+                                                       ts,
+                                                       qc_impl,
+                                                       g_rescale)
         if project:
             Gshell = proj_tmp_left@Gshell@proj_tmp_right
         return Gshell
@@ -2859,7 +2908,8 @@ class F:
 
     def get_shell(self, E=5.0, L=5.0, m1=1.0, m2=1.0, m3=1.0,
                   cindex=None, sc_ind=None, ell1=0, ell2=0, tbks_entry=None,
-                  slice_index=None, project=False, irrep=None):
+                  slice_index=None, project=False, irrep=None,
+                  mask=None):
         """Build the F matrix on a single shell."""
         ts = self.qcis.tbis.three_scheme
         nP = self.qcis.nP
@@ -2880,17 +2930,16 @@ class F:
                                         alpha, beta,
                                         C1cut, alphaKSS,
                                         qc_impl, ts)
-
         if project:
             try:
                 if nP@nP != 0:
-                    proj_tmp_right = self.qcis.sc_proj_dicts_sliced[
-                        sc_ind][
-                        mask_slices][slice_index][irrep]
+                    ibest = self.qcis._get_ibest(E, L)
+                    proj_tmp_right = np.array(self.qcis.sc_proj_dicts_sliced[
+                        sc_ind][ibest])[mask_slices][slice_index][irrep]
                     proj_tmp_left = np.conjugate(((proj_tmp_right)).T)
                 else:
                     proj_tmp_right = self.qcis.sc_proj_dicts_sliced[
-                        sc_ind][slice_index][irrep]
+                        sc_ind][0][slice_index][irrep]
                     proj_tmp_left = np.conjugate((proj_tmp_right).T)
             except KeyError:
                 return np.array([])
@@ -2928,6 +2977,7 @@ class F:
             tbks_entry = self.qcis.tbks_list[0][
                 tbks_sub_indices[0]]
             slices = tbks_entry.slices
+            mask = None
         else:
             mspec = m1
             ibest = self.qcis._get_ibest(E, L)
@@ -2947,11 +2997,18 @@ class F:
 
             mask_slices = []
             slices = tbks_entry.slices
+            if self.qcis.verbosity >= 2:
+                print('slices =')
+                print(slices)
             for slice_entry in slices:
                 mask_slices = mask_slices\
                     + [mask[slice_entry[0]:slice_entry[1]].all()]
             slices = list((np.array(slices))[mask_slices])
-
+            if self.qcis.verbosity >= 2:
+                print('mask_slices =')
+                print(mask_slices)
+                print('range for sc_ind =')
+                print(range(len(three_compact)))
         f_final_list = []
         for sc_ind in range(len(three_compact)):
             ell_set = self.qcis.fcs.sc_list[sc_ind].ell_set
@@ -2961,6 +3018,17 @@ class F:
             ell1 = ell_set[0]
             ell2 = ell1
             for slice_index in range(len(slices)):
+                if self.qcis.verbosity >= 2:
+                    print('get_shell is receiving:')
+                    print(E, L,
+                          m1, m2, m3)
+                    print(f'cindex = {cindex}\n'
+                          f'sc_ind = {sc_ind}\n'
+                          f'ell1 = {ell1}\n'
+                          f'ell2 = {ell2}\n')
+                    print(tbks_entry)
+                    print('slice_index = '+str(slice_index))
+                    print(project, irrep)
                 f_tmp = self.get_shell(E, L,
                                        m1, m2, m3,
                                        cindex,  # for P
@@ -2968,7 +3036,8 @@ class F:
                                        ell1, ell2,
                                        tbks_entry,
                                        slice_index,
-                                       project, irrep)
+                                       project, irrep,
+                                       mask)
                 if len(f_tmp) != 0:
                     f_final_list = f_final_list+[f_tmp]
         return block_diag(*f_final_list)
@@ -3046,13 +3115,13 @@ class K:
         if project:
             try:
                 if nP@nP != 0:
-                    proj_tmp_right = self.qcis.sc_proj_dicts_sliced[
-                        sc_ind][
-                        mask_slices][slice_index][irrep]
+                    ibest = self.qcis._get_ibest(E, L)
+                    proj_tmp_right = np.array(self.qcis.sc_proj_dicts_sliced[
+                        sc_ind][ibest])[mask_slices][slice_index][irrep]
                     proj_tmp_left = np.conjugate(((proj_tmp_right)).T)
                 else:
                     proj_tmp_right = self.qcis.sc_proj_dicts_sliced[
-                        sc_ind][slice_index][irrep]
+                        sc_ind][0][slice_index][irrep]
                     proj_tmp_left = np.conjugate((proj_tmp_right).T)
             except KeyError:
                 return np.array([])

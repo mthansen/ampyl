@@ -56,7 +56,36 @@ class TestFlavorChannel(unittest.TestCase):
         return F
 
     def get_value_direct(self, E, nP, L, kellm_space, C1cut, alphaKSS):
-        """Get F matrix in a direct way."""
+        """
+        Get F matrix in a direct way.
+
+        :param E: total energy
+        :type E: float
+        :param nP: total momentum
+        :type nP: numpy.ndarray
+        :param L: volume
+        :type L: float
+        :param kellm_space: Each element represents a set of `kellm` values
+        :type kellm_space: list of arrays
+        :param C1cut: cutoff on the sum
+        :type C1cut: int
+        :param alphaKSS: damping parameter
+        :type alphaKSS: float
+
+        :returns: 2D array representing the F matrix
+        :rtype: numpy.ndarray
+
+        .. note::
+            The method starts by initializing an empty 2D list `F_direct` and
+            then loops through each entry in `kellm_space`. Within the inner
+            loop, it also loops through `kellm_space` to find the matching
+            entry. If the current row and column entries are equal, the method
+            calls `get_f_abbreviated` with the parameters from the current row
+            and column entries. The result is then added to the current row of
+            the `F_direct` list. If the current row and column entries are not
+            equal, the value 0 is added to the current row. After the loops,
+            the `F_direct` list is converted to a NumPy array and returned.
+        """
         F_direct = [[]]
         for kellm_entry_row in kellm_space:
             F_row = []

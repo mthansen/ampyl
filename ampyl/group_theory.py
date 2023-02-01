@@ -1300,7 +1300,7 @@ class Groups:
 
         return proj_dict
 
-    def get_slice_proj_dict(self, qcis=None, cindex=0, kellm_slice=None):
+    def get_slice_proj_dict(self, qcis=None, cindex=0, kellm_slice=None, slice_index=None):
         """Get the dictionary of small projectors for one kellm_slice."""
         if qcis is None:
             raise ValueError("qcis cannot be None")
@@ -1320,7 +1320,8 @@ class Groups:
         for i in range(len(irrep_set)):
             irrep = irrep_set[i]
             for irow in range(len(self.bTdict[group_str+'_'+irrep])):
-                slice_index = 0
+                if slice_index == None:
+                    slice_index = 0
                 if qcis.fcs.n_three_slices > 1:
                     raise ValueError("only one three-slice currently "
                                      + "supported in get_slice_proj_dict")
@@ -1328,9 +1329,9 @@ class Groups:
                     slot_index = cindex
                 else:
                     slot_index = qcis.n_two_channels
-                for three_slice in qcis.fcs.three_slices:
-                    if slot_index-qcis.n_two_channels > three_slice[1]:
-                        slice_index = slice_index+1
+                # for three_slice in qcis.fcs.three_slices:
+                #     if slot_index-qcis.n_two_channels > three_slice[1]:
+                #         slice_index = slice_index+1
                 nslice = [int(kellm_slice[0]/len(qcis.ellm_sets[cindex])),
                           int(kellm_slice[1]/len(qcis.ellm_sets[cindex]))]
                 nvec_arr = qcis.tbks_list[slot_index][slice_index].nvec_arr[
