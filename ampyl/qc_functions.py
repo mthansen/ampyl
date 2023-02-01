@@ -465,7 +465,16 @@ class BKFunctions:
         """
         if (('real harmonics' not in qc_impl.keys())
            or (qc_impl['real harmonics'])):
-            Y = BKFunctions.cart_sph_harm_real(ell, mazi, nvec_arr)
+            if ell == 0:
+                Y = np.ones(len(nvec_arr))
+            elif ell == 1 and mazi == 0:
+                Y = np.sqrt(3.)*(nvec_arr.T)[2]
+            elif ell == 1 and mazi == -1:
+                Y = np.sqrt(3.)*(nvec_arr.T)[1]
+            elif ell == 1 and mazi == 1:
+                Y = np.sqrt(3.)*(nvec_arr.T)[0]
+            else:
+                Y = BKFunctions.cart_sph_harm_real(ell, mazi, nvec_arr)
         else:
             Y = BKFunctions.cart_sph_harm(ell, mazi, nvec_arr)
         calY = Y/np.abs(q**ell)
@@ -530,11 +539,7 @@ class BKFunctions:
         -------
         (np.ndarray)
         """
-        betaSQ = (beta_vec*beta_vec).sum(2)
-        if not (np.abs(betaSQ - betaSQ[0][0]*np.ones_like(betaSQ))
-                < EPSILON15).all():
-            raise ValueError("betaSQ in standard_boost_array is not "
-                             + "proportional to a matrix of ones")
+        betaSQ = (beta_vec[0][0]@beta_vec[0][0])*np.ones(beta_vec.shape[:-1])
         if betaSQ[0][0] == 0.0:
             return four_momentum
         if betaSQ[0][0] < 0.0:
@@ -637,7 +642,8 @@ class QCFunctions:
                           alpha=-1.0, beta=0.0,
                           J_slow=False,
                           three_scheme='relativistic pole',
-                          qc_impl={}):
+                          qc_impl={},
+                          g_rescale=1.0):
         """
         Evaluate single entry of G.
 
@@ -714,7 +720,7 @@ class QCFunctions:
             simple_factor = simple_factor/(2.0*omega3*L**3)
 
         pole_factor = 1.0/(E-omega1-omega2-omega3)
-        return calY1*calY2conj*HH*simple_factor*pole_factor
+        return calY1*calY2conj*HH*simple_factor*pole_factor*g_rescale
 
     @staticmethod
     def get_nvec_data(tbks_entry, row_slicing, col_slicing):
