@@ -329,9 +329,12 @@ class FlavorChannel:
                     )
                     for combined_entry in combined_three_particle_twoisospins:
                         redundant_list.append(combined_entry)
-                        candidate = (combined_entry, combined_pair_twoisospin,
-                                     spectator_flavor, spectator_twoisospin,
-                                     pair_flavors, pair_twoisospins)
+                        candidate = (combined_entry,
+                                     combined_pair_twoisospin,
+                                     spectator_flavor,
+                                     spectator_twoisospin,
+                                     pair_flavors[0], pair_flavors[1],
+                                     pair_twoisospins[0], pair_twoisospins[1])
                         if candidate not in counting_list:
                             counting_list.append(candidate)
             allowed_totals_three_particles\
