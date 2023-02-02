@@ -1002,7 +1002,7 @@ class QCFunctions:
         return YY*full_mat_big*H1_mat*H2_mat*g_rescale
 
     @staticmethod
-    def summand(nP2=np.array([0, 0, 0]), qSQ=1.5, gamSQ=1.0,
+    def summand(nP2=np.array([0, 0, 0]), qSQ=1.5, gamSQ=1.0, alpha_mass=0.5,
                 nvec_arr=np.array([[0, 0, 0]]), alphaKSS=1.0,
                 ell1=0, mazi1=0, ell2=0, mazi2=0,
                 qc_impl={}):
@@ -1050,7 +1050,7 @@ class QCFunctions:
                          1))
                 nP2_hat = nP2/nP2mag
                 npar_vec_arr = nP2_hat*npar_component_arr
-                rpar_vec_arr = (npar_vec_arr - nP2/2.0)/np.sqrt(gamSQ)
+                rpar_vec_arr = (npar_vec_arr-nP2*alpha_mass)/np.sqrt(gamSQ)
                 rperp_vec_arr = nvec_arr - npar_vec_arr
                 rvec_arr = rpar_vec_arr + rperp_vec_arr
                 rSQ_arr = (rvec_arr**2).sum(1)
@@ -1070,13 +1070,14 @@ class QCFunctions:
         return sph_harm_value*np.exp(-alphaKSS*Ds)/Ds
 
     @staticmethod
-    def __T1(nP2=np.array([0, 0, 0]), qSQ=1.5, gamSQ=1.0, C1cut=3,
-             alphaKSS=1.0, ell1=0, mazi1=0, ell2=0, mazi2=0,
+    def __T1(nP2=np.array([0, 0, 0]), qSQ=1.5, gamSQ=1.0, alpha_mass=0.5,
+             C1cut=3, alphaKSS=1.0, ell1=0, mazi1=0, ell2=0, mazi2=0,
              qc_impl={}):
         rng = range(-C1cut, C1cut+1)
         mesh = np.meshgrid(*([rng]*3))
         nvec_arr = np.vstack([y.flat for y in mesh]).T
-        return np.sum(QCFunctions.summand(nP2, qSQ, gamSQ, nvec_arr, alphaKSS,
+        return np.sum(QCFunctions.summand(nP2, qSQ, gamSQ, alpha_mass,
+                                          nvec_arr, alphaKSS,
                                           ell1, mazi1, ell2, mazi2,
                                           qc_impl))/ROOT4PI
 
@@ -1101,11 +1102,11 @@ class QCFunctions:
 
     @staticmethod
     def getZ_single_entry(nP2=np.array([0, 0, 0]), qSQ=1.5, gamSQ=1.0,
-                          C1cut=3, alphaKSS=1.0,
+                          alpha_mass=0.5, C1cut=3, alphaKSS=1.0,
                           ell1=0, mazi1=0, ell2=0, mazi2=0,
                           qc_impl={}):
         r"""Evaluate a single entry of \\(Z\\)."""
-        return QCFunctions.__T1(nP2, qSQ, gamSQ, C1cut, alphaKSS,
+        return QCFunctions.__T1(nP2, qSQ, gamSQ, alpha_mass, C1cut, alphaKSS,
                                 ell1, mazi1, ell2, mazi2, qc_impl)\
             + QCFunctions.__T2(qSQ, gamSQ, alphaKSS, ell1, mazi1, ell2, mazi2)
 
@@ -1132,9 +1133,10 @@ class QCFunctions:
             return 0.0
         E2CM = np.sqrt(E2CMSQ)
         gamma = np.sqrt(gamSQ)
+        alpha_mass = 0.5*(1.+(m1**2-m2**2)/E2CMSQ)
         pre = -2.0/(L*np.sqrt(PI)*16.0*PI*E2CM*gamma)
         return pre*(QCFunctions.getZ_single_entry(nP2, qSQ_dimless, gamSQ,
-                                                  C1cut, alphaKSS,
+                                                  alpha_mass, C1cut, alphaKSS,
                                                   ell1, mazi1, ell2, mazi2,
                                                   qc_impl))
 
@@ -1174,12 +1176,13 @@ class QCFunctions:
             qSQ_dimless = (L**2)*(qSQ)/FOURPI2
         E2CM = np.sqrt(E2CMSQ)
         gamma = np.sqrt(gamSQ)
+        alpha_mass = 0.5*(1.+(m1**2-m2**2)/E2CMSQ)
         Htmp = BKFunctions.H(E2CMSQ, m1+m2, alpha, beta)
         pre = -Htmp*2.0/(L*np.sqrt(PI)*16.0*PI*E2CM*gamma)
         if ('hermitian' not in qc_impl.keys()) or (qc_impl['hermitian']):
             pre = pre/(2.0*omspec*L**3)
         return pre*(QCFunctions.getZ_single_entry(nP2, qSQ_dimless, gamSQ,
-                                                  C1cut, alphaKSS,
+                                                  alpha_mass, C1cut, alphaKSS,
                                                   ell1, mazi1,
                                                   ell2, mazi2, qc_impl))
 
