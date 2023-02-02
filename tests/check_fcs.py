@@ -34,6 +34,7 @@ Created July 2022.
 ###############################################################################
 
 import unittest
+import numpy as np
 from ampyl import FlavorChannel
 
 
@@ -151,6 +152,34 @@ class TestFlavorChannel(unittest.TestCase):
         expected_result = [0, 2, 4, 6]
         result = channel._get_allowed()
         self.assertEqual(expected_result, result)
+
+    def test_get_allowed_three_particles_summary(self):
+        channel = FlavorChannel(3, flavors=['a', 'b', 'c'],
+                                twoisospins=[1, 2, 3])
+        channel._get_allowed()
+        expected_summary = np.array([
+            [0, 1, 'a', 1, ['b', 'c'], [2, 3]],
+            [2, 1, 'a', 1, ['b', 'c'], [2, 3]],
+            [2, 3, 'a', 1, ['b', 'c'], [2, 3]],
+            [4, 3, 'a', 1, ['b', 'c'], [2, 3]],
+            [4, 5, 'a', 1, ['b', 'c'], [2, 3]],
+            [6, 5, 'a', 1, ['b', 'c'], [2, 3]],
+            [0, 2, 'b', 2, ['a', 'c'], [1, 3]],
+            [2, 2, 'b', 2, ['a', 'c'], [1, 3]],
+            [4, 2, 'b', 2, ['a', 'c'], [1, 3]],
+            [2, 4, 'b', 2, ['a', 'c'], [1, 3]],
+            [4, 4, 'b', 2, ['a', 'c'], [1, 3]],
+            [6, 4, 'b', 2, ['a', 'c'], [1, 3]],
+            [2, 1, 'c', 3, ['a', 'b'], [1, 2]],
+            [4, 1, 'c', 3, ['a', 'b'], [1, 2]],
+            [0, 3, 'c', 3, ['a', 'b'], [1, 2]],
+            [2, 3, 'c', 3, ['a', 'b'], [1, 2]],
+            [4, 3, 'c', 3, ['a', 'b'], [1, 2]],
+            [6, 3, 'c', 3, ['a', 'b'], [1, 2]],
+            ], dtype=object)
+
+        self.assertTrue(np.array_equal(channel.summary, expected_summary))
+
 
 
 class Template(unittest.TestCase):
