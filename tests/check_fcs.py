@@ -34,28 +34,123 @@ Created July 2022.
 ###############################################################################
 
 import unittest
-import ampyl
+from ampyl import FlavorChannel
 
 
 class TestFlavorChannel(unittest.TestCase):
-    """Class to test the FlavorChannel class."""
+    """Unit tests for the FlavorChannel class."""
 
-    def setUp(self):
-        """Exectue set-up."""
-        self.fc = ampyl.FlavorChannel(3)
+    def test_n_particles(self):
+        # Test with n_particles as an int
+        channel = FlavorChannel(2)
+        self.assertEqual(channel.n_particles, 2)
 
-    def tearDown(self):
-        """Execute tear-down."""
-        pass
+        # Test with n_particles less than 2
+        with self.assertRaises(ValueError):
+            channel = FlavorChannel(1)
 
-    def test_default_fc(self):
-        """Test default three-particle flavor channel."""
-        self.assertEqual(self.fc.n_particles, 3)
-        self.assertEqual(self.fc.masses, 3*[1.0])
-        self.assertEqual(self.fc.twospins, 3*[0])
-        self.assertEqual(self.fc.flavors, 3*['pi'])
-        self.assertFalse(self.fc.isospin_channel)
-        self.assertIsNone(self.fc.twoisospin_value)
+        # Test with n_particles not being an int
+        with self.assertRaises(ValueError):
+            channel = FlavorChannel("2")
+
+    def test_flavors(self):
+        # Test with flavors provided
+        channel = FlavorChannel(2, flavors=['pi', 'pi'])
+        self.assertEqual(channel.flavors, ['pi', 'pi'])
+
+        # Test with no flavors provided
+        channel = FlavorChannel(2)
+        self.assertEqual(channel.flavors, ['pi', 'pi'])
+
+    def test_isospin_channel(self):
+        # Test with isospin_channel and twoisospins provided
+        channel = FlavorChannel(2, isospin_channel=True, twoisospins=[2, 1])
+        self.assertTrue(channel.isospin_channel)
+        # set back to equal as flavors are matched
+        self.assertEqual(channel.twoisospins, [2, 2])
+
+        channel = FlavorChannel(2, flavors=['K', 'pi'],
+                                isospin_channel=True, twoisospins=[1, 2])
+        self.assertEqual(channel.twoisospins, [1, 2])
+
+        # Test with no isospin_channel and twoisospin_value provided
+        channel = FlavorChannel(2, twoisospin_value=3)
+        self.assertTrue(channel.isospin_channel)
+        # 3 is not allowed, defaults to maximum
+        self.assertEqual(channel.twoisospin_value, 4)
+
+        # Test with no isospin_channel
+        channel = FlavorChannel(2)
+        self.assertFalse(channel.isospin_channel)
+
+    def test_masses(self):
+        # Test with masses provided
+        channel = FlavorChannel(2, masses=[1.0, 2.0])
+        # set back to equal as flavors are matched
+        self.assertEqual(channel.masses, [1.0, 1.0])
+        channel = FlavorChannel(2, masses=[1.0, 2.0], flavors=['pi', 'K'])
+        self.assertEqual(channel.masses, [1.0, 2.0])
+
+        # Test with no masses provided
+        channel = FlavorChannel(2)
+        self.assertEqual(channel.masses, [1.0, 1.0])
+
+    def test_twospins(self):
+        # Test with twospins provided
+        channel = FlavorChannel(2, twospins=[2, 2])
+        self.assertEqual(channel.twospins, [2, 2])
+
+        # Test with no twospins provided
+        channel = FlavorChannel(2)
+        self.assertEqual(channel.twospins, [0, 0])
+
+    def test_with_four_particles(self):
+        # Create a FlavorChannel object with 4 particles
+        channel = FlavorChannel(4)
+
+        # Check that the number of particles is correct
+        self.assertEqual(channel.n_particles, 4)
+
+        # Check that the masses are set to default values
+        self.assertEqual(channel.masses, [1.0, 1.0, 1.0, 1.0])
+
+        # Check that the twospins are set to default values
+        self.assertEqual(channel.twospins, [0, 0, 0, 0])
+
+        # Check that the flavors are set to default values
+        self.assertEqual(channel.flavors, ['pi', 'pi', 'pi', 'pi'])
+
+        # Check that the isospin channel is set to default value
+        self.assertFalse(channel.isospin_channel)
+
+    def test_isospin_channel_setter(self):
+        channel = FlavorChannel(3)
+
+        # test setting isospin_channel to True
+        channel.isospin_channel = True
+        self.assertTrue(channel.isospin_channel)
+        self.assertIsNotNone(channel.twoisospins)
+        self.assertIsNotNone(channel.allowed_total_twoisospins)
+        self.assertIsNotNone(channel.twoisospin_value)
+
+        # test setting isospin_channel to False
+        channel.isospin_channel = False
+        self.assertFalse(channel.isospin_channel)
+        self.assertIsNone(channel.twoisospins)
+        self.assertIsNone(channel.allowed_total_twoisospins)
+        self.assertIsNone(channel.twoisospin_value)
+
+        # test setting isospin_channel to non-bool
+        with self.assertRaises(ValueError):
+            channel.isospin_channel = 'True'
+
+    def test_get_allowed_three_particles(self):
+        twoisospins = [1, 2, 3]
+        channel = FlavorChannel(3, flavors=['K', 'pi', 'Omega'],
+                                twoisospins=twoisospins)
+        expected_result = [0, 2, 4, 6]
+        result = channel._get_allowed()
+        self.assertEqual(expected_result, result)
 
 
 class Template(unittest.TestCase):
@@ -77,4 +172,5 @@ class Template(unittest.TestCase):
         self.assertEqual(10.0, self.__example(10.0))
 
 
-unittest.main()
+if __name__ == '__main__':
+    unittest.main()

@@ -200,7 +200,7 @@ class FlavorChannel:
         self.twospins = self._twospins
         self.n_particles = self._n_particles
 
-    def _get_allowed(self, twoisospins=None):
+    def _get_allowed_deprecated(self, twoisospins=None):
         if twoisospins is None:
             twoisospins = self._twoisospins
         if len(twoisospins) == 1:
@@ -274,6 +274,75 @@ class FlavorChannel:
                         summary_reduced = summary_reduced+[entry]
             summary_reduced = np.array(summary_reduced[1:], dtype=object)
             self.summary_reduced = summary_reduced
+            return allowed_totals_three_particles
+        raise ValueError("n_particles > 3 not supported within FlavorChannel")
+
+    def _get_allowed(self, twoisospins=None):
+        """
+        Get allowed isospin values.
+
+        Calculates the allowed isospin combinations for a given number of
+        particles with given isospins.
+
+        Parameters
+        ----------
+        twoisospins: list, optional
+            List of isospins for each particle. If not provided, use the stored
+            `twoisospins` attribute.
+
+        Returns
+        -------
+        allowed_totals : list
+            List of allowed isospin combinations.
+
+        Raises
+        ------
+        ValueError
+            If the number of particles is greater than 3.
+
+        """
+        if twoisospins is None:
+            twoisospins = self._twoisospins
+        num_particles = len(twoisospins)
+        if num_particles == 1:
+            return twoisospins
+        if num_particles == 2:
+            min_isospin = abs(twoisospins[0] - twoisospins[1])
+            max_isospin = abs(twoisospins[0] + twoisospins[1])
+            return list(range(min_isospin, max_isospin + 2, 2))
+        if num_particles == 3:
+            unique_flavors = np.unique(self.flavors)
+            redundant_list = []
+            counting_list = []
+            for j in range(len(unique_flavors)):
+                spectator_flavor = unique_flavors[j]
+                i = np.where(np.array(self.flavors) == spectator_flavor)[0][0]
+                spectator_twoisospin = twoisospins[i]
+                pair_twoisospins = twoisospins[:i] + twoisospins[i+1:]
+                pair_flavors = self.flavors[:i] + self.flavors[i+1:]
+                combined_pair_twoisospins\
+                    = self._get_allowed(twoisospins=pair_twoisospins)
+                for combined_pair_twoisospin in combined_pair_twoisospins:
+                    combined_three_particle_twoisospins = self._get_allowed(
+                        twoisospins=[combined_pair_twoisospin,
+                                     spectator_twoisospin]
+                    )
+                    for combined_entry in combined_three_particle_twoisospins:
+                        redundant_list.append(combined_entry)
+                        candidate = (combined_entry, combined_pair_twoisospin,
+                                     spectator_flavor, spectator_twoisospin,
+                                     pair_flavors, pair_twoisospins)
+                        if candidate not in counting_list:
+                            counting_list.append(candidate)
+            allowed_totals_three_particles\
+                = list(np.sort(np.unique(redundant_list)))
+            self.summary = np.array([entry for entry in counting_list],
+                                    dtype=object)
+            if self.twoisospin_value is not None:
+                self.summary_reduced\
+                    = np.array([entry for entry in self.summary
+                                if entry[0] == self.twoisospin_value],
+                               dtype=object)
             return allowed_totals_three_particles
         raise ValueError("n_particles > 3 not supported within FlavorChannel")
 
@@ -437,7 +506,8 @@ class FlavorChannel:
     @twoisospin_value.setter
     def twoisospin_value(self, twoisospin_value):
         if ((twoisospin_value is not None)
-           and (not isinstance(twoisospin_value, int))):
+           and (not isinstance(twoisospin_value, int)
+           and (not isinstance(twoisospin_value, np.int64)))):
             raise ValueError("twoisospin_value must be an int")
         if ((twoisospin_value is not None)
            and (self._allowed_total_twoisospins is not None)
