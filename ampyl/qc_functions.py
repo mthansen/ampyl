@@ -1332,14 +1332,15 @@ class QCFunctions:
         nvec_arr_slice = tbks_entry.nvec_arr[slice_entry[0]:slice_entry[1]]
         k_list = []
         for nvec in nvec_arr_slice:
-            k_tmp = QCFunctions.getK_single_entry(pcotdelta_function=pcotdelta_function,
-                                                  pcotdelta_parameters=pcotdelta_parameter_list,
-                                                  E=E, nP=nP, L=L,
-                                                  npspec=nvec,
-                                                  m1=m2, m2=m3, mspec=m1,
-                                                  alpha=alpha, beta=beta,
-                                                  ell=ell,
-                                                  qc_impl=qc_impl)
+            k_tmp = QCFunctions\
+                .getK_single_entry(pcotdelta_function=pcotdelta_function,
+                                   pcotdelta_parameters=pcotdelta_parameter_list,
+                                   E=E, nP=nP, L=L,
+                                   npspec=nvec,
+                                   m1=m2, m2=m3, mspec=m1,
+                                   alpha=alpha, beta=beta,
+                                   ell=ell,
+                                   qc_impl=qc_impl)
             if np.abs(k_tmp.imag) < EPSILON15:
                 k_tmp = k_tmp.real
             if np.abs(k_tmp) < EPSILON15:

@@ -1677,6 +1677,7 @@ class QCIndexSpace:
         self.proj_dict = self.group.get_full_proj_dict(qcis=self)
         self.populate_two_nonint_data()
         self.populate_three_nonint_data()
+        self.nonint_proj_dict = self.group.get_nonint_proj_dict(qcis=self)
 
     def _get_grid_nonzero_nP(self, Emax, Lmax):
         deltaL = DELTA_L_FOR_GRID
@@ -2828,8 +2829,8 @@ class G:
 
         if (not ((irrep is None) and (project is False))
            and (not (irrep in self.qcis.proj_dict.keys()))):
-            raise ValueError('irrep '+str(irrep)+' not in '
-                             + 'qcis.proj_dict.keys()')
+            raise ValueError("irrep "+str(irrep)+" not in "
+                             + "qcis.proj_dict.keys()")
 
         three_compact = self.qcis.fcs.sc_compact[self.qcis.fcs.three_index]
         masses = three_compact[0][1:4]
