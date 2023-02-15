@@ -1677,6 +1677,7 @@ class QCIndexSpace:
         self.proj_dict = self.group.get_full_proj_dict(qcis=self)
         self.populate_two_nonint_data()
         self.populate_three_nonint_data()
+        self.nonint_proj_dict = self.group.get_nonint_proj_dict(qcis=self)
 
     def _get_grid_nonzero_nP(self, Emax, Lmax):
         deltaL = DELTA_L_FOR_GRID
@@ -2281,7 +2282,7 @@ class QCIndexSpace:
             beta = np.sqrt(nP@nP)*TWOPI/Lmax/Emax
             gamma = 1./np.sqrt(1.-beta**2)
             p_cutoff = beta*gamma*omp+gamma*np.sqrt(pSQ)
-            nvec_cutoff = int(p_cutoff*Lmax/TWOPI)
+            nvec_cutoff = int(p_cutoff*Lmax/TWOPI)+1
             rng = range(-nvec_cutoff, nvec_cutoff+1)
             mesh = np.meshgrid(*([rng]*3))
             nvecs = np.vstack([y.flat for y in mesh]).T
@@ -2828,8 +2829,8 @@ class G:
 
         if (not ((irrep is None) and (project is False))
            and (not (irrep in self.qcis.proj_dict.keys()))):
-            raise ValueError('irrep '+str(irrep)+' not in '
-                             + 'qcis.proj_dict.keys()')
+            raise ValueError("irrep "+str(irrep)+" not in "
+                             + "qcis.proj_dict.keys()")
 
         three_compact = self.qcis.fcs.sc_compact[self.qcis.fcs.three_index]
         masses = three_compact[0][1:4]
