@@ -200,83 +200,6 @@ class FlavorChannel:
         self.twospins = self._twospins
         self.n_particles = self._n_particles
 
-    def _get_allowed_deprecated(self, twoisospins=None):
-        if twoisospins is None:
-            twoisospins = self._twoisospins
-        if len(twoisospins) == 1:
-            return twoisospins
-        if len(twoisospins) == 2:
-            min_isospin = int(np.abs(twoisospins[0]-twoisospins[1]))
-            max_isospin = int(np.abs(twoisospins[0]+twoisospins[1]))
-            np_int64_list = list(np.arange(min_isospin, max_isospin+2, 2))
-            allowed_totals_two_particles = []
-            for np_int64_list_entry in np_int64_list:
-                allowed_totals_two_particles =\
-                    allowed_totals_two_particles\
-                    + [int(np_int64_list_entry)]
-            return allowed_totals_two_particles
-        if len(twoisospins) == 3:
-            unique_flavors = np.unique(self.flavors)
-            redundant_list = []
-            counting_list = [[]]
-            for j in range(len(unique_flavors)):
-                spectator_flavor = unique_flavors[j]
-                i = (np.where(np.array(
-                    self.flavors) == spectator_flavor))[0][0]
-                spectator_twoisospin = twoisospins[i]
-                pair_twoisospins = twoisospins[:i]+twoisospins[i+1:]
-                pair_flavors = self.flavors[:i] + self.flavors[i+1:]
-                combined_pair_twoisospins =\
-                    self._get_allowed(twoisospins=pair_twoisospins)
-                for combined_pair_twoisospin in combined_pair_twoisospins:
-                    combined_three_particle_twoisospins =\
-                        self._get_allowed(
-                            twoisospins=[combined_pair_twoisospin,
-                                         spectator_twoisospin]
-                            )
-                    for combined_entry in combined_three_particle_twoisospins:
-                        redundant_list = redundant_list+[combined_entry]
-                        candidate = str([combined_entry,
-                                         combined_pair_twoisospin,
-                                         spectator_flavor,
-                                         spectator_twoisospin,
-                                         pair_flavors,
-                                         pair_twoisospins])
-                        if candidate not in counting_list:
-                            counting_list = counting_list+[candidate]
-            np_int64_list = list(np.sort(np.unique(redundant_list)))
-            allowed_totals_three_particles = []
-            for np_int64_list_entry in np_int64_list:
-                allowed_totals_three_particles =\
-                    allowed_totals_three_particles\
-                    + [int(np_int64_list_entry)]
-            counting_list = counting_list[1:]
-            summary = [[]]
-            for entry in counting_list:
-                entry_list = entry.replace('[', '')\
-                    .replace(']', '')\
-                    .replace(' ', '')\
-                    .replace("'", "")\
-                    .split(',')
-                line = []
-                for entry in entry_list:
-                    try:
-                        line = line+[int(entry)]
-                    except ValueError:
-                        line = line+[entry]
-                summary = summary+[line]
-            summary = np.array(summary[1:], dtype=object)
-            self.summary = summary
-            summary_reduced = [[]]
-            if self.twoisospin_value is not None:
-                for entry in summary:
-                    if entry[0] == self.twoisospin_value:
-                        summary_reduced = summary_reduced+[entry]
-            summary_reduced = np.array(summary_reduced[1:], dtype=object)
-            self.summary_reduced = summary_reduced
-            return allowed_totals_three_particles
-        raise ValueError("n_particles > 3 not supported within FlavorChannel")
-
     def _get_allowed(self, twoisospins=None):
         """
         Get allowed isospin values.
@@ -2121,6 +2044,432 @@ class QCIndexSpace:
             tbks_sub_indices[cindex] = nPmaxintSQ - nPnewintSQ
         return tbks_sub_indices
 
+    def _load_ni_data_three(self, fc):
+        [m1, m2, m3] = fc.masses
+        Emax = self.Emax
+        nP = self.nP
+        Lmax = self.Lmax
+        pSQ = 0.
+        for m in [m1, m2, m3]:
+            pSQ_tmp = ((Emax-m)**2-(nP@nP)*(TWOPI/Lmax)**2)/4.-m**2
+            if pSQ_tmp > pSQ:
+                pSQ = pSQ_tmp
+                omp = np.sqrt(pSQ+m**2)
+        beta = np.sqrt(nP@nP)*TWOPI/Lmax/Emax
+        gamma = 1./np.sqrt(1.-beta**2)
+        p_cutoff = beta*gamma*omp+gamma*np.sqrt(pSQ)
+        nvec_cutoff = int(p_cutoff*Lmax/TWOPI)+1
+        rng = range(-nvec_cutoff, nvec_cutoff+1)
+        mesh = np.meshgrid(*([rng]*3))
+        nvecs = np.vstack([y.flat for y in mesh]).T
+        return [m1, m2, m3, Emax, nP, Lmax, nvec_cutoff, nvecs]
+
+    def _get_nvecset_arr_three(self, nvecset_arr, nmin, nmax,
+                               m1, m2, m3, Emax, nP, Lmax, n1, n2):
+        n3 = nP-n1-n2
+        n1SQ = n1@n1
+        n2SQ = n2@n2
+        n3SQ = n3@n3
+        E = np.sqrt(m1**2+n1SQ*(TWOPI/Lmax)**2)\
+            + np.sqrt(m2**2+n2SQ*(TWOPI/Lmax)**2)\
+            + np.sqrt(m3**2+n3SQ*(TWOPI/Lmax)**2)
+        if E <= Emax:
+            comp_set = [*(list(n1)), *(list(n2)), *(list(n3))]
+            min_candidate = np.min(comp_set)
+            if min_candidate < nmin:
+                nmin = min_candidate
+            max_candidate = np.max(comp_set)
+            if max_candidate > nmax:
+                nmax = max_candidate
+            nvecset_arr = nvecset_arr+[[n1, n2, n3]]
+        return [nvecset_arr, nmin, nmax]
+
+    def _square_and_sort_three(self, nvecset_arr, nmin, nmax,
+                               m1, m2, m3, Lmax):
+        numsys = nmax-nmin+1
+        E_nvecset_compact = []
+        nvecset_SQs = deepcopy([])
+        for i in range(len(nvecset_arr)):
+            n1 = nvecset_arr[i][0]
+            n2 = nvecset_arr[i][1]
+            n3 = nvecset_arr[i][2]
+            n1SQ = n1@n1
+            n2SQ = n2@n2
+            n3SQ = n3@n3
+            E = np.sqrt(m1**2+n1SQ*(TWOPI/Lmax)**2)\
+                + np.sqrt(m2**2+n2SQ*(TWOPI/Lmax)**2)\
+                + np.sqrt(m3**2+n3SQ*(TWOPI/Lmax)**2)
+            n1_as_num = (n1[2]-nmin)\
+                + (n1[1]-nmin)*numsys+(n1[0]-nmin)*numsys**2
+            n2_as_num = (n2[2]-nmin)\
+                + (n2[1]-nmin)*numsys+(n2[0]-nmin)*numsys**2
+            n3_as_num = (n3[2]-nmin)\
+                + (n3[1]-nmin)*numsys+(n3[0]-nmin)*numsys**2
+            E_nvecset_compact = E_nvecset_compact+[[E, n1_as_num,
+                                                    n2_as_num,
+                                                    n3_as_num]]
+            nvecset_SQs = nvecset_SQs+[[n1SQ, n2SQ, n3SQ]]
+        E_nvecset_compact = np.array(E_nvecset_compact)
+        nvecset_SQs = np.array(nvecset_SQs)
+
+        re_indexing = np.arange(len(E_nvecset_compact))
+        for i in range(4):
+            re_indexing = re_indexing[
+                E_nvecset_compact[:, 3-i].argsort(kind='mergesort')]
+            E_nvecset_compact = E_nvecset_compact[
+                E_nvecset_compact[:, 3-i].argsort(kind='mergesort')]
+        nvecset_arr = nvecset_arr[re_indexing]
+        nvecset_SQs = nvecset_SQs[re_indexing]
+        return [nvecset_arr, nvecset_SQs]
+
+    def _get_nvecset_ident_three(self, nvecset_arr, nvecset_SQs):
+        nvecset_ident = []
+        nvecset_ident_SQs = deepcopy([])
+        for i in range(len(nvecset_arr)):
+            [n1, n2, n3] = nvecset_arr[i]
+            candidates = [np.array([n1, n2, n3]),
+                          np.array([n2, n3, n1]),
+                          np.array([n3, n1, n2]),
+                          np.array([n3, n2, n1]),
+                          np.array([n2, n1, n3]),
+                          np.array([n1, n3, n2])]
+
+            include_entry = True
+
+            for candidate in candidates:
+                for nvecset_tmp_entry in nvecset_ident:
+                    nvecset_tmp_entry = np.array(nvecset_tmp_entry)
+                    include_entry = include_entry\
+                        and (not ((candidate == nvecset_tmp_entry)
+                                  .all()))
+            if include_entry:
+                nvecset_ident = nvecset_ident+[[n1, n2, n3]]
+                nvecset_ident_SQs = nvecset_ident_SQs+[nvecset_SQs[i]]
+        nvecset_ident = np.array(nvecset_ident)
+        nvecset_ident_SQs = np.array(nvecset_ident_SQs)
+        return [nvecset_ident, nvecset_ident_SQs]
+
+    def _reps_and_batches_three(self, nvecset_arr, nvecset_SQs,
+                                nvecset_ident, nvecset_ident_SQs,
+                                nP):
+        nvecset_reps = [nvecset_arr[0]]
+        nvecset_ident_reps = deepcopy([nvecset_ident[0]])
+        nvecset_SQreps = [nvecset_SQs[0]]
+        nvecset_ident_SQreps = deepcopy([nvecset_ident_SQs[0]])
+        nvecset_inds = [0]
+        nvecset_ident_inds = deepcopy([0])
+        nvecset_counts = deepcopy([0])
+        nvecset_ident_counts = deepcopy([0])
+
+        G = self.group.get_little_group(nP)
+        for j in range(len(nvecset_arr)):
+            already_included = False
+            for g_elem in G:
+                if not already_included:
+                    for k in range(len(nvecset_reps)):
+                        n_included = nvecset_reps[k]
+                        if (nvecset_arr[j]@g_elem == n_included).all():
+                            already_included = True
+                            nvecset_counts[k] = nvecset_counts[k]+1
+            if not already_included:
+                nvecset_reps = nvecset_reps+[nvecset_arr[j]]
+                nvecset_SQreps = nvecset_SQreps+[nvecset_SQs[j]]
+                nvecset_inds = nvecset_inds+[j]
+                nvecset_counts = nvecset_counts+[1]
+
+        for j in range(len(nvecset_ident)):
+            already_included = False
+            for g_elem in G:
+                if not already_included:
+                    for k in range(len(nvecset_ident_reps)):
+                        n_included = nvecset_ident_reps[k]
+                        n_included = np.array(n_included)
+                        [n1, n2, n3] = nvecset_ident[j]@g_elem
+                        candidates = [np.array([n1, n2, n3]),
+                                      np.array([n2, n3, n1]),
+                                      np.array([n3, n1, n2]),
+                                      np.array([n3, n2, n1]),
+                                      np.array([n2, n1, n3]),
+                                      np.array([n1, n3, n2])]
+                        include_entry = True
+                        for candidate in candidates:
+                            include_entry = include_entry\
+                                and (not ((candidate == n_included)
+                                          .all()))
+                        if not include_entry:
+                            already_included = True
+                            nvecset_ident_counts[k]\
+                                = nvecset_ident_counts[k]+1
+            if not already_included:
+                nvecset_ident_reps = nvecset_ident_reps\
+                    + [nvecset_ident[j]]
+                nvecset_ident_SQreps = nvecset_ident_SQreps\
+                    + [nvecset_ident_SQs[j]]
+                nvecset_ident_inds = nvecset_ident_inds+[j]
+                nvecset_ident_counts = nvecset_ident_counts+[1]
+
+        nvecset_batched = list(np.arange(len(nvecset_ident_reps)))
+        for j in range(len(nvecset_arr)):
+            for k in range(len(nvecset_ident_reps)):
+                include_entry = False
+                n_rep = nvecset_ident_reps[k]
+                n_rep = np.array(n_rep)
+                for g_elem in G:
+                    [n1, n2, n3] = nvecset_arr[j]@g_elem
+                    candidates = [np.array([n1, n2, n3]),
+                                  np.array([n2, n3, n1]),
+                                  np.array([n3, n1, n2]),
+                                  np.array([n3, n2, n1]),
+                                  np.array([n2, n1, n3]),
+                                  np.array([n1, n3, n2])]
+                    for candidate in candidates:
+                        include_entry = include_entry\
+                            or (((candidate == n_rep).all()))
+                if include_entry:
+                    if isinstance(nvecset_batched[k], np.int64):
+                        nvecset_batched[k] = [nvecset_arr[j]]
+                    else:
+                        nvecset_batched[k] = nvecset_batched[k]\
+                            + [nvecset_arr[j]]
+
+        nvecset_ident_batched\
+            = list(np.arange(len(nvecset_ident_reps)))
+        for j in range(len(nvecset_ident)):
+            for k in range(len(nvecset_ident_reps)):
+                include_entry = False
+                n_rep = nvecset_ident_reps[k]
+                n_rep = np.array(n_rep)
+                for g_elem in G:
+                    [n1, n2, n3] = nvecset_ident[j]@g_elem
+                    candidates = [np.array([n1, n2, n3]),
+                                  np.array([n2, n3, n1]),
+                                  np.array([n3, n1, n2]),
+                                  np.array([n3, n2, n1]),
+                                  np.array([n2, n1, n3]),
+                                  np.array([n1, n3, n2])]
+                    for candidate in candidates:
+                        include_entry = include_entry\
+                            or (((candidate == n_rep).all()))
+                if include_entry:
+                    if isinstance(nvecset_ident_batched[k], np.int64):
+                        nvecset_ident_batched[k] = [nvecset_ident[j]]
+                    else:
+                        nvecset_ident_batched[k]\
+                            = nvecset_ident_batched[k]\
+                            + [nvecset_ident[j]]
+
+        for j in range(len(nvecset_batched)):
+            nvecset_batched[j] = np.array(nvecset_batched[j])
+
+        for j in range(len(nvecset_ident_batched)):
+            nvecset_ident_batched[j]\
+                = np.array(nvecset_ident_batched[j])
+        return [nvecset_reps, nvecset_ident_reps,
+                nvecset_SQreps, nvecset_ident_SQreps,
+                nvecset_inds, nvecset_ident_inds,
+                nvecset_counts, nvecset_ident_counts,
+                nvecset_batched, nvecset_ident_batched]
+
+    def _load_ni_data_two(self, fc):
+        Emax = self.Emax
+        nP = self.nP
+        nPSQ = nP@nP
+        Lmax = self.Lmax
+
+        [m1, m2] = fc.masses
+        ECMSQ = Emax**2-FOURPI2*nPSQ/Lmax**2
+        pSQ = (ECMSQ**2-2.0*ECMSQ*m1**2
+               + m1**4-2.0*ECMSQ*m2**2-2.0*m1**2*m2**2+m2**4)\
+            / (4.0*ECMSQ)
+        mmax = np.max([m1, m2])
+        omp = np.sqrt(pSQ+mmax**2)
+        beta = np.sqrt(nPSQ)*TWOPI/Lmax/Emax
+        gamma = 1./np.sqrt(1.-beta**2)
+        p_cutoff = beta*gamma*omp+gamma*np.sqrt(pSQ)
+        nvec_cutoff = int(p_cutoff*Lmax/TWOPI)
+        rng = range(-nvec_cutoff, nvec_cutoff+1)
+        mesh = np.meshgrid(*([rng]*3))
+        nvecs = np.vstack([y.flat for y in mesh]).T
+        return [m1, m2, Emax, nP, Lmax, nvec_cutoff, nvecs]
+
+    def _get_nvecset_arr_two(self, nvecset_arr, nmin, nmax, m1, m2,
+                             Emax, nP, Lmax, n1):
+        n2 = nP-n1
+        n1SQ = n1@n1
+        n2SQ = n2@n2
+        E = np.sqrt(m1**2+n1SQ*(TWOPI/Lmax)**2)\
+            + np.sqrt(m2**2+n2SQ*(TWOPI/Lmax)**2)
+        if E <= Emax:
+            comp_set = [*(list(n1)), *(list(n2))]
+            min_candidate = np.min(comp_set)
+            if min_candidate < nmin:
+                nmin = min_candidate
+            max_candidate = np.max(comp_set)
+            if max_candidate > nmax:
+                nmax = max_candidate
+            nvecset_arr = nvecset_arr+[[n1, n2]]
+        return [nvecset_arr, nmin, nmax]
+
+    def _square_and_sort_two(self, nvecset_arr, nmin, nmax,
+                             m1, m2, Lmax):
+        numsys = nmax-nmin+1
+        E_nvecset_compact = []
+        nvecset_SQs = deepcopy([])
+        for i in range(len(nvecset_arr)):
+            n1 = nvecset_arr[i][0]
+            n2 = nvecset_arr[i][1]
+            n1SQ = n1@n1
+            n2SQ = n2@n2
+            E = np.sqrt(m1**2+n1SQ*(TWOPI/Lmax)**2)\
+                + np.sqrt(m2**2+n2SQ*(TWOPI/Lmax)**2)
+            n1_as_num = (n1[2]-nmin)\
+                + (n1[1]-nmin)*numsys+(n1[0]-nmin)*numsys**2
+            n2_as_num = (n2[2]-nmin)\
+                + (n2[1]-nmin)*numsys+(n2[0]-nmin)*numsys**2
+            E_nvecset_compact = E_nvecset_compact+[[E, n1_as_num,
+                                                    n2_as_num]]
+            nvecset_SQs = nvecset_SQs+[[n1SQ, n2SQ]]
+        E_nvecset_compact = np.array(E_nvecset_compact)
+        nvecset_SQs = np.array(nvecset_SQs)
+
+        re_indexing = np.arange(len(E_nvecset_compact))
+        for i in range(3):
+            re_indexing = re_indexing[
+                E_nvecset_compact[:, 2-i].argsort(kind='mergesort')]
+            E_nvecset_compact = E_nvecset_compact[
+                E_nvecset_compact[:, 2-i].argsort(kind='mergesort')]
+        nvecset_arr = nvecset_arr[re_indexing]
+        nvecset_SQs = nvecset_SQs[re_indexing]
+        return [nvecset_arr, nvecset_SQs]
+
+    def _get_nvecset_ident_two(self, nvecset_arr, nvecset_SQs):
+        nvecset_ident = []
+        nvecset_ident_SQs = deepcopy([])
+        for i in range(len(nvecset_arr)):
+            [n1, n2] = nvecset_arr[i]
+            candidates = [np.array([n1, n2]),
+                          np.array([n2, n1])]
+            include_entry = True
+            for candidate in candidates:
+                for nvecset_tmp_entry in nvecset_ident:
+                    nvecset_tmp_entry = np.array(nvecset_tmp_entry)
+                    include_entry = include_entry\
+                        and (not ((candidate == nvecset_tmp_entry)
+                                  .all()))
+            if include_entry:
+                nvecset_ident = nvecset_ident+[[n1, n2]]
+                nvecset_ident_SQs = nvecset_ident_SQs+[nvecset_SQs[i]]
+        nvecset_ident = np.array(nvecset_ident)
+        nvecset_ident_SQs = np.array(nvecset_ident_SQs)
+        return [nvecset_ident, nvecset_ident_SQs]
+
+    def _reps_and_batches_two(self, nvecset_arr, nvecset_SQs, nvecset_ident,
+                              nvecset_ident_SQs, nP):
+        nvecset_reps = [nvecset_arr[0]]
+        nvecset_ident_reps = deepcopy([nvecset_ident[0]])
+        nvecset_SQreps = [nvecset_SQs[0]]
+        nvecset_ident_SQreps = deepcopy([nvecset_ident_SQs[0]])
+        nvecset_inds = [0]
+        nvecset_ident_inds = deepcopy([0])
+        nvecset_counts = deepcopy([0])
+        nvecset_ident_counts = deepcopy([0])
+
+        G = self.group.get_little_group(nP)
+        for j in range(len(nvecset_arr)):
+            already_included = False
+            for g_elem in G:
+                if not already_included:
+                    for k in range(len(nvecset_reps)):
+                        n_included = nvecset_reps[k]
+                        if (nvecset_arr[j]@g_elem == n_included).all():
+                            already_included = True
+                            nvecset_counts[k] = nvecset_counts[k]+1
+            if not already_included:
+                nvecset_reps = nvecset_reps+[nvecset_arr[j]]
+                nvecset_SQreps = nvecset_SQreps+[nvecset_SQs[j]]
+                nvecset_inds = nvecset_inds+[j]
+                nvecset_counts = nvecset_counts+[1]
+
+        for j in range(len(nvecset_ident)):
+            already_included = False
+            for g_elem in G:
+                if not already_included:
+                    for k in range(len(nvecset_ident_reps)):
+                        n_included = nvecset_ident_reps[k]
+                        n_included = np.array(n_included)
+                        [n1, n2] = nvecset_ident[j]@g_elem
+                        candidates = [np.array([n1, n2]),
+                                      np.array([n2, n1])]
+                        include_entry = True
+                        for candidate in candidates:
+                            include_entry = include_entry\
+                                and (not ((candidate == n_included)
+                                          .all()))
+                        if not include_entry:
+                            already_included = True
+                            nvecset_ident_counts[k]\
+                                = nvecset_ident_counts[k]+1
+            if not already_included:
+                nvecset_ident_reps = nvecset_ident_reps\
+                    + [nvecset_ident[j]]
+                nvecset_ident_SQreps = nvecset_ident_SQreps\
+                    + [nvecset_ident_SQs[j]]
+                nvecset_ident_inds = nvecset_ident_inds+[j]
+                nvecset_ident_counts = nvecset_ident_counts+[1]
+
+        nvecset_batched = list(np.arange(len(nvecset_reps)))
+        for j in range(len(nvecset_arr)):
+            for k in range(len(nvecset_reps)):
+                include_entry = False
+                n_rep = nvecset_reps[k]
+                n_rep = np.array(n_rep)
+                for g_elem in G:
+                    [n1, n2] = nvecset_arr[j]@g_elem
+                    candidates = [np.array([n1, n2])]
+                    for candidate in candidates:
+                        include_entry = include_entry\
+                            or (((candidate == n_rep).all()))
+                if include_entry:
+                    if isinstance(nvecset_batched[k], np.int64):
+                        nvecset_batched[k] = [nvecset_arr[j]]
+                    else:
+                        nvecset_batched[k] = nvecset_batched[k]\
+                            + [nvecset_arr[j]]
+
+        nvecset_ident_batched\
+            = list(np.arange(len(nvecset_ident_reps)))
+        for j in range(len(nvecset_ident)):
+            for k in range(len(nvecset_ident_reps)):
+                include_entry = False
+                n_rep = nvecset_ident_reps[k]
+                n_rep = np.array(n_rep)
+                for g_elem in G:
+                    [n1, n2] = nvecset_ident[j]@g_elem
+                    candidates = [np.array([n1, n2]),
+                                  np.array([n2, n1])]
+                    for candidate in candidates:
+                        include_entry = include_entry\
+                            or (((candidate == n_rep).all()))
+                if include_entry:
+                    if isinstance(nvecset_ident_batched[k], np.int64):
+                        nvecset_ident_batched[k] = [nvecset_ident[j]]
+                    else:
+                        nvecset_ident_batched[k]\
+                            = nvecset_ident_batched[k]\
+                            + [nvecset_ident[j]]
+
+        for j in range(len(nvecset_batched)):
+            nvecset_batched[j] = np.array(nvecset_batched[j])
+
+        for j in range(len(nvecset_ident_batched)):
+            nvecset_ident_batched[j]\
+                = np.array(nvecset_ident_batched[j])
+        return [nvecset_reps, nvecset_ident_reps,
+                nvecset_SQreps, nvecset_ident_SQreps,
+                nvecset_inds, nvecset_ident_inds,
+                nvecset_counts, nvecset_ident_counts,
+                nvecset_batched, nvecset_ident_batched]
+
     def populate_all_nonint_data(self):
         """Get all non-interacting data."""
         nvecset_arr_all = []
@@ -2140,407 +2489,58 @@ class QCIndexSpace:
         ni_list = self.fcs.ni_list
         for fc in ni_list:
             if fc.n_particles == 3:
-                [m1, m2, m3] = fc.masses
-                Emax = self.Emax
-                nP = self.nP
-                Lmax = self.Lmax
-                pSQ = 0.
-                for m in [m1, m2, m3]:
-                    pSQ_tmp = ((Emax-m)**2-(nP@nP)*(TWOPI/Lmax)**2)/4.-m**2
-                    if pSQ_tmp > pSQ:
-                        pSQ = pSQ_tmp
-                        omp = np.sqrt(pSQ+m**2)
-
-                beta = np.sqrt(nP@nP)*TWOPI/Lmax/Emax
-                gamma = 1./np.sqrt(1.-beta**2)
-                p_cutoff = beta*gamma*omp+gamma*np.sqrt(pSQ)
-                nvec_cutoff = int(p_cutoff*Lmax/TWOPI)+1
-                rng = range(-nvec_cutoff, nvec_cutoff+1)
-                mesh = np.meshgrid(*([rng]*3))
-                nvecs = np.vstack([y.flat for y in mesh]).T
-
+                [m1, m2, m3, Emax, nP, Lmax, nvec_cutoff, nvecs]\
+                    = self._load_ni_data_three(fc)
                 nvecset_arr = []
                 nmin = nvec_cutoff
                 nmax = nvec_cutoff
                 for n1 in nvecs:
                     for n2 in nvecs:
-                        n3 = nP-n1-n2
-                        n1SQ = n1@n1
-                        n2SQ = n2@n2
-                        n3SQ = n3@n3
-                        E = np.sqrt(m1**2+n1SQ*(TWOPI/Lmax)**2)\
-                            + np.sqrt(m2**2+n2SQ*(TWOPI/Lmax)**2)\
-                            + np.sqrt(m3**2+n3SQ*(TWOPI/Lmax)**2)
-                        if E <= Emax:
-                            comp_set = [*(list(n1)), *(list(n2)), *(list(n3))]
-                            min_candidate = np.min(comp_set)
-                            if min_candidate < nmin:
-                                nmin = min_candidate
-                            max_candidate = np.max(comp_set)
-                            if max_candidate > nmax:
-                                nmax = max_candidate
-                            nvecset_arr = nvecset_arr+[[n1, n2, n3]]
+                        [nvecset_arr, nmin, nmax]\
+                            = self._get_nvecset_arr_three(nvecset_arr,
+                                                          nmin, nmax,
+                                                          m1, m2, m3,
+                                                          Emax, nP, Lmax,
+                                                          n1, n2)
                 nvecset_arr = np.array(nvecset_arr)
-
-                numsys = nmax-nmin+1
-                E_nvecset_compact = []
-                nvecset_SQs = deepcopy([])
-                for i in range(len(nvecset_arr)):
-                    n1 = nvecset_arr[i][0]
-                    n2 = nvecset_arr[i][1]
-                    n3 = nvecset_arr[i][2]
-                    n1SQ = n1@n1
-                    n2SQ = n2@n2
-                    n3SQ = n3@n3
-                    E = np.sqrt(m1**2+n1SQ*(TWOPI/Lmax)**2)\
-                        + np.sqrt(m2**2+n2SQ*(TWOPI/Lmax)**2)\
-                        + np.sqrt(m3**2+n3SQ*(TWOPI/Lmax)**2)
-                    n1_as_num = (n1[2]-nmin)\
-                        + (n1[1]-nmin)*numsys+(n1[0]-nmin)*numsys**2
-                    n2_as_num = (n2[2]-nmin)\
-                        + (n2[1]-nmin)*numsys+(n2[0]-nmin)*numsys**2
-                    n3_as_num = (n3[2]-nmin)\
-                        + (n3[1]-nmin)*numsys+(n3[0]-nmin)*numsys**2
-                    E_nvecset_compact = E_nvecset_compact+[[E, n1_as_num,
-                                                            n2_as_num,
-                                                            n3_as_num]]
-                    nvecset_SQs = nvecset_SQs+[[n1SQ, n2SQ, n3SQ]]
-                E_nvecset_compact = np.array(E_nvecset_compact)
-                nvecset_SQs = np.array(nvecset_SQs)
-
-                re_indexing = np.arange(len(E_nvecset_compact))
-                for i in range(4):
-                    re_indexing = re_indexing[
-                        E_nvecset_compact[:, 3-i].argsort(kind='mergesort')]
-                    E_nvecset_compact = E_nvecset_compact[
-                        E_nvecset_compact[:, 3-i].argsort(kind='mergesort')]
-                nvecset_arr = nvecset_arr[re_indexing]
-                nvecset_SQs = nvecset_SQs[re_indexing]
-
-                nvecset_ident = []
-                nvecset_ident_SQs = deepcopy([])
-                for i in range(len(nvecset_arr)):
-                    [n1, n2, n3] = nvecset_arr[i]
-                    candidates = [np.array([n1, n2, n3]),
-                                  np.array([n2, n3, n1]),
-                                  np.array([n3, n1, n2]),
-                                  np.array([n3, n2, n1]),
-                                  np.array([n2, n1, n3]),
-                                  np.array([n1, n3, n2])]
-
-                    include_entry = True
-
-                    for candidate in candidates:
-                        for nvecset_tmp_entry in nvecset_ident:
-                            nvecset_tmp_entry = np.array(nvecset_tmp_entry)
-                            include_entry = include_entry\
-                                and (not ((candidate == nvecset_tmp_entry)
-                                          .all()))
-                    if include_entry:
-                        nvecset_ident = nvecset_ident+[[n1, n2, n3]]
-                        nvecset_ident_SQs = nvecset_ident_SQs+[nvecset_SQs[i]]
-                nvecset_ident = np.array(nvecset_ident)
-                nvecset_ident_SQs = np.array(nvecset_ident_SQs)
-
-                nvecset_reps = [nvecset_arr[0]]
-                nvecset_ident_reps = deepcopy([nvecset_ident[0]])
-                nvecset_SQreps = [nvecset_SQs[0]]
-                nvecset_ident_SQreps = deepcopy([nvecset_ident_SQs[0]])
-                nvecset_inds = [0]
-                nvecset_ident_inds = deepcopy([0])
-                nvecset_counts = deepcopy([0])
-                nvecset_ident_counts = deepcopy([0])
-
-                G = self.group.get_little_group(nP)
-                for j in range(len(nvecset_arr)):
-                    already_included = False
-                    for g_elem in G:
-                        if not already_included:
-                            for k in range(len(nvecset_reps)):
-                                n_included = nvecset_reps[k]
-                                if (nvecset_arr[j]@g_elem == n_included).all():
-                                    already_included = True
-                                    nvecset_counts[k] = nvecset_counts[k]+1
-                    if not already_included:
-                        nvecset_reps = nvecset_reps+[nvecset_arr[j]]
-                        nvecset_SQreps = nvecset_SQreps+[nvecset_SQs[j]]
-                        nvecset_inds = nvecset_inds+[j]
-                        nvecset_counts = nvecset_counts+[1]
-
-                for j in range(len(nvecset_ident)):
-                    already_included = False
-                    for g_elem in G:
-                        if not already_included:
-                            for k in range(len(nvecset_ident_reps)):
-                                n_included = nvecset_ident_reps[k]
-                                n_included = np.array(n_included)
-                                [n1, n2, n3] = nvecset_ident[j]@g_elem
-                                candidates = [np.array([n1, n2, n3]),
-                                              np.array([n2, n3, n1]),
-                                              np.array([n3, n1, n2]),
-                                              np.array([n3, n2, n1]),
-                                              np.array([n2, n1, n3]),
-                                              np.array([n1, n3, n2])]
-                                include_entry = True
-                                for candidate in candidates:
-                                    include_entry = include_entry\
-                                        and (not ((candidate == n_included)
-                                                  .all()))
-                                if not include_entry:
-                                    already_included = True
-                                    nvecset_ident_counts[k]\
-                                        = nvecset_ident_counts[k]+1
-                    if not already_included:
-                        nvecset_ident_reps = nvecset_ident_reps\
-                            + [nvecset_ident[j]]
-                        nvecset_ident_SQreps = nvecset_ident_SQreps\
-                            + [nvecset_ident_SQs[j]]
-                        nvecset_ident_inds = nvecset_ident_inds+[j]
-                        nvecset_ident_counts = nvecset_ident_counts+[1]
-
-                nvecset_batched = list(np.arange(len(nvecset_ident_reps)))
-                for j in range(len(nvecset_arr)):
-                    for k in range(len(nvecset_ident_reps)):
-                        include_entry = False
-                        n_rep = nvecset_ident_reps[k]
-                        n_rep = np.array(n_rep)
-                        for g_elem in G:
-                            [n1, n2, n3] = nvecset_arr[j]@g_elem
-                            candidates = [np.array([n1, n2, n3]),
-                                          np.array([n2, n3, n1]),
-                                          np.array([n3, n1, n2]),
-                                          np.array([n3, n2, n1]),
-                                          np.array([n2, n1, n3]),
-                                          np.array([n1, n3, n2])]
-                            for candidate in candidates:
-                                include_entry = include_entry\
-                                    or (((candidate == n_rep).all()))
-                        if include_entry:
-                            if isinstance(nvecset_batched[k], np.int64):
-                                nvecset_batched[k] = [nvecset_arr[j]]
-                            else:
-                                nvecset_batched[k] = nvecset_batched[k]\
-                                    + [nvecset_arr[j]]
-
-                nvecset_ident_batched\
-                    = list(np.arange(len(nvecset_ident_reps)))
-                for j in range(len(nvecset_ident)):
-                    for k in range(len(nvecset_ident_reps)):
-                        include_entry = False
-                        n_rep = nvecset_ident_reps[k]
-                        n_rep = np.array(n_rep)
-                        for g_elem in G:
-                            [n1, n2, n3] = nvecset_ident[j]@g_elem
-                            candidates = [np.array([n1, n2, n3]),
-                                          np.array([n2, n3, n1]),
-                                          np.array([n3, n1, n2]),
-                                          np.array([n3, n2, n1]),
-                                          np.array([n2, n1, n3]),
-                                          np.array([n1, n3, n2])]
-                            for candidate in candidates:
-                                include_entry = include_entry\
-                                    or (((candidate == n_rep).all()))
-                        if include_entry:
-                            if isinstance(nvecset_ident_batched[k], np.int64):
-                                nvecset_ident_batched[k] = [nvecset_ident[j]]
-                            else:
-                                nvecset_ident_batched[k]\
-                                    = nvecset_ident_batched[k]\
-                                    + [nvecset_ident[j]]
-
-                for j in range(len(nvecset_batched)):
-                    nvecset_batched[j] = np.array(nvecset_batched[j])
-
-                for j in range(len(nvecset_ident_batched)):
-                    nvecset_ident_batched[j]\
-                        = np.array(nvecset_ident_batched[j])
+                [nvecset_arr, nvecset_SQs]\
+                    = self._square_and_sort_three(nvecset_arr, nmin, nmax,
+                                                  m1, m2, m3, Lmax)
+                [nvecset_ident, nvecset_ident_SQs]\
+                    = self._get_nvecset_ident_three(nvecset_arr, nvecset_SQs)
+                [nvecset_reps, nvecset_ident_reps,
+                 nvecset_SQreps, nvecset_ident_SQreps,
+                 nvecset_inds, nvecset_ident_inds,
+                 nvecset_counts, nvecset_ident_counts,
+                 nvecset_batched, nvecset_ident_batched]\
+                    = self._reps_and_batches_three(nvecset_arr, nvecset_SQs,
+                                                   nvecset_ident,
+                                                   nvecset_ident_SQs,
+                                                   nP)
             else:
-                Emax = self.Emax
-                nP = self.nP
-                nPSQ = nP@nP
-                Lmax = self.Lmax
-
-                [m1, m2] = fc.masses
-                ECMSQ = Emax**2-FOURPI2*nPSQ/Lmax**2
-                pSQ = (ECMSQ**2-2.0*ECMSQ*m1**2
-                       + m1**4-2.0*ECMSQ*m2**2-2.0*m1**2*m2**2+m2**4)\
-                    / (4.0*ECMSQ)
-                mmax = np.max([m1, m2])
-                omp = np.sqrt(pSQ+mmax**2)
-                beta = np.sqrt(nPSQ)*TWOPI/Lmax/Emax
-                gamma = 1./np.sqrt(1.-beta**2)
-                p_cutoff = beta*gamma*omp+gamma*np.sqrt(pSQ)
-                nvec_cutoff = int(p_cutoff*Lmax/TWOPI)
-                rng = range(-nvec_cutoff, nvec_cutoff+1)
-                mesh = np.meshgrid(*([rng]*3))
-                nvecs = np.vstack([y.flat for y in mesh]).T
+                [m1, m2, Emax, nP, Lmax, nvec_cutoff, nvecs]\
+                    = self._load_ni_data_two(fc)
                 nvecset_arr = []
                 nmin = nvec_cutoff
                 nmax = nvec_cutoff
                 for n1 in nvecs:
-                    n2 = nP-n1
-                    n1SQ = n1@n1
-                    n2SQ = n2@n2
-                    E = np.sqrt(m1**2+n1SQ*(TWOPI/Lmax)**2)\
-                        + np.sqrt(m2**2+n2SQ*(TWOPI/Lmax)**2)
-                    if E <= Emax:
-                        comp_set = [*(list(n1)), *(list(n2))]
-                        min_candidate = np.min(comp_set)
-                        if min_candidate < nmin:
-                            nmin = min_candidate
-                        max_candidate = np.max(comp_set)
-                        if max_candidate > nmax:
-                            nmax = max_candidate
-                        nvecset_arr = nvecset_arr+[[n1, n2]]
+                    [nvecset_arr, nmin, nmax]\
+                        = self._get_nvecset_arr_two(nvecset_arr, nmin, nmax,
+                                                    m1, m2, Emax, nP, Lmax, n1)
                 nvecset_arr = np.array(nvecset_arr)
-
-                numsys = nmax-nmin+1
-                E_nvecset_compact = []
-                nvecset_SQs = deepcopy([])
-                for i in range(len(nvecset_arr)):
-                    n1 = nvecset_arr[i][0]
-                    n2 = nvecset_arr[i][1]
-                    n1SQ = n1@n1
-                    n2SQ = n2@n2
-                    E = np.sqrt(m1**2+n1SQ*(TWOPI/Lmax)**2)\
-                        + np.sqrt(m2**2+n2SQ*(TWOPI/Lmax)**2)
-                    n1_as_num = (n1[2]-nmin)\
-                        + (n1[1]-nmin)*numsys+(n1[0]-nmin)*numsys**2
-                    n2_as_num = (n2[2]-nmin)\
-                        + (n2[1]-nmin)*numsys+(n2[0]-nmin)*numsys**2
-                    E_nvecset_compact = E_nvecset_compact+[[E, n1_as_num,
-                                                            n2_as_num]]
-                    nvecset_SQs = nvecset_SQs+[[n1SQ, n2SQ]]
-                E_nvecset_compact = np.array(E_nvecset_compact)
-                nvecset_SQs = np.array(nvecset_SQs)
-
-                re_indexing = np.arange(len(E_nvecset_compact))
-                for i in range(3):
-                    re_indexing = re_indexing[
-                        E_nvecset_compact[:, 2-i].argsort(kind='mergesort')]
-                    E_nvecset_compact = E_nvecset_compact[
-                        E_nvecset_compact[:, 2-i].argsort(kind='mergesort')]
-                nvecset_arr = nvecset_arr[re_indexing]
-                nvecset_SQs = nvecset_SQs[re_indexing]
-
-                nvecset_ident = []
-                nvecset_ident_SQs = deepcopy([])
-                for i in range(len(nvecset_arr)):
-                    [n1, n2] = nvecset_arr[i]
-                    candidates = [np.array([n1, n2]),
-                                  np.array([n2, n1])]
-                    include_entry = True
-                    for candidate in candidates:
-                        for nvecset_tmp_entry in nvecset_ident:
-                            nvecset_tmp_entry = np.array(nvecset_tmp_entry)
-                            include_entry = include_entry\
-                                and (not ((candidate == nvecset_tmp_entry)
-                                          .all()))
-                    if include_entry:
-                        nvecset_ident = nvecset_ident+[[n1, n2]]
-                        nvecset_ident_SQs = nvecset_ident_SQs+[nvecset_SQs[i]]
-                nvecset_ident = np.array(nvecset_ident)
-                nvecset_ident_SQs = np.array(nvecset_ident_SQs)
-
-                nvecset_reps = [nvecset_arr[0]]
-                nvecset_ident_reps = deepcopy([nvecset_ident[0]])
-                nvecset_SQreps = [nvecset_SQs[0]]
-                nvecset_ident_SQreps = deepcopy([nvecset_ident_SQs[0]])
-                nvecset_inds = [0]
-                nvecset_ident_inds = deepcopy([0])
-                nvecset_counts = deepcopy([0])
-                nvecset_ident_counts = deepcopy([0])
-
-                G = self.group.get_little_group(nP)
-                for j in range(len(nvecset_arr)):
-                    already_included = False
-                    for g_elem in G:
-                        if not already_included:
-                            for k in range(len(nvecset_reps)):
-                                n_included = nvecset_reps[k]
-                                if (nvecset_arr[j]@g_elem == n_included).all():
-                                    already_included = True
-                                    nvecset_counts[k] = nvecset_counts[k]+1
-                    if not already_included:
-                        nvecset_reps = nvecset_reps+[nvecset_arr[j]]
-                        nvecset_SQreps = nvecset_SQreps+[nvecset_SQs[j]]
-                        nvecset_inds = nvecset_inds+[j]
-                        nvecset_counts = nvecset_counts+[1]
-
-                for j in range(len(nvecset_ident)):
-                    already_included = False
-                    for g_elem in G:
-                        if not already_included:
-                            for k in range(len(nvecset_ident_reps)):
-                                n_included = nvecset_ident_reps[k]
-                                n_included = np.array(n_included)
-                                [n1, n2] = nvecset_ident[j]@g_elem
-                                candidates = [np.array([n1, n2]),
-                                              np.array([n2, n1])]
-                                include_entry = True
-                                for candidate in candidates:
-                                    include_entry = include_entry\
-                                        and (not ((candidate == n_included)
-                                                  .all()))
-                                if not include_entry:
-                                    already_included = True
-                                    nvecset_ident_counts[k]\
-                                        = nvecset_ident_counts[k]+1
-                    if not already_included:
-                        nvecset_ident_reps = nvecset_ident_reps\
-                            + [nvecset_ident[j]]
-                        nvecset_ident_SQreps = nvecset_ident_SQreps\
-                            + [nvecset_ident_SQs[j]]
-                        nvecset_ident_inds = nvecset_ident_inds+[j]
-                        nvecset_ident_counts = nvecset_ident_counts+[1]
-
-                nvecset_batched = list(np.arange(len(nvecset_reps)))
-                for j in range(len(nvecset_arr)):
-                    for k in range(len(nvecset_reps)):
-                        include_entry = False
-                        n_rep = nvecset_reps[k]
-                        n_rep = np.array(n_rep)
-                        for g_elem in G:
-                            [n1, n2] = nvecset_arr[j]@g_elem
-                            candidates = [np.array([n1, n2])]
-                            for candidate in candidates:
-                                include_entry = include_entry\
-                                    or (((candidate == n_rep).all()))
-                        if include_entry:
-                            if isinstance(nvecset_batched[k], np.int64):
-                                nvecset_batched[k] = [nvecset_arr[j]]
-                            else:
-                                nvecset_batched[k] = nvecset_batched[k]\
-                                    + [nvecset_arr[j]]
-
-                nvecset_ident_batched\
-                    = list(np.arange(len(nvecset_ident_reps)))
-                for j in range(len(nvecset_ident)):
-                    for k in range(len(nvecset_ident_reps)):
-                        include_entry = False
-                        n_rep = nvecset_ident_reps[k]
-                        n_rep = np.array(n_rep)
-                        for g_elem in G:
-                            [n1, n2] = nvecset_ident[j]@g_elem
-                            candidates = [np.array([n1, n2]),
-                                          np.array([n2, n1])]
-                            for candidate in candidates:
-                                include_entry = include_entry\
-                                    or (((candidate == n_rep).all()))
-                        if include_entry:
-                            if isinstance(nvecset_ident_batched[k], np.int64):
-                                nvecset_ident_batched[k] = [nvecset_ident[j]]
-                            else:
-                                nvecset_ident_batched[k]\
-                                    = nvecset_ident_batched[k]\
-                                    + [nvecset_ident[j]]
-
-                for j in range(len(nvecset_batched)):
-                    nvecset_batched[j] = np.array(nvecset_batched[j])
-
-                for j in range(len(nvecset_ident_batched)):
-                    nvecset_ident_batched[j]\
-                        = np.array(nvecset_ident_batched[j])
+                [nvecset_arr, nvecset_SQs]\
+                    = self._square_and_sort_two(nvecset_arr, nmin, nmax,
+                                                m1, m2, Lmax)
+                [nvecset_ident, nvecset_ident_SQs]\
+                    = self._get_nvecset_ident_two(nvecset_arr, nvecset_SQs)
+                [nvecset_reps, nvecset_ident_reps,
+                 nvecset_SQreps, nvecset_ident_SQreps,
+                 nvecset_inds, nvecset_ident_inds,
+                 nvecset_counts, nvecset_ident_counts,
+                 nvecset_batched, nvecset_ident_batched]\
+                    = self._reps_and_batches_two(nvecset_arr, nvecset_SQs,
+                                                 nvecset_ident,
+                                                 nvecset_ident_SQs, nP)
 
             nvecset_arr_all = nvecset_arr_all+[nvecset_arr]
             nvecset_SQs_all = nvecset_SQs_all+[nvecset_SQs]
