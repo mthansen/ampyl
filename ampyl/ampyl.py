@@ -1604,7 +1604,7 @@ class QCIndexSpace:
     """
 
     def __init__(self, fcs=None, fvs=None, tbis=None,
-                 Emax=5.0, Lmax=5.0, verbosity=0, ell_max=0):
+                 Emax=5.0, Lmax=5.0, verbosity=0, ell_max=4):
         self.verbosity = verbosity
         self.Emax = Emax
         self.Lmax = Lmax
