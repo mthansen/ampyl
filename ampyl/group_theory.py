@@ -934,8 +934,8 @@ class Groups:
         """Get the iso-projector for non-interacting vectors."""
         if qcis is None:
             raise ValueError("qcis cannot be None")
-        identical_arr = qcis.n1n2n3_ident_batched[cindex][shell_index]
-        nonidentical_arr = qcis.n1n2n3_batched[cindex][shell_index]
+        identical_arr = qcis.nvecset_ident_batched[cindex][shell_index]
+        nonidentical_arr = qcis.nvecset_batched[cindex][shell_index]
         iso_projector = ISO_PROJECTORS[iso_index]
         iso_prepare_sets = []
         id_sub_len = len(identical_arr)
@@ -983,8 +983,8 @@ class Groups:
             raise ValueError("qcis cannot be None")
         nP = qcis.nP
         irrep_set = Irreps(nP=nP).set
-        identical_arr = qcis.n1n2n3_ident_batched[cindex][shell_index]
-        nonidentical_arr = qcis.n1n2n3_batched[cindex][shell_index]
+        identical_arr = qcis.nvecset_ident_batched[cindex][shell_index]
+        nonidentical_arr = qcis.nvecset_batched[cindex][shell_index]
 
         if (nP@nP != 0) and (nP@nP != 1) and (nP@nP != 2):
             raise ValueError("momentum = ", nP, " is not yet supported")
@@ -1040,7 +1040,7 @@ class Groups:
             raise ValueError("qcis cannot be None")
         nP = qcis.nP
         irrep_set = Irreps(nP=nP).set
-        nonidentical_arr = qcis.n1n2_batched[cindex][shell_index]
+        nonidentical_arr = qcis.nvecset_batched[cindex][shell_index]
 
         if (nP@nP != 0) and (nP@nP != 1) and (nP@nP != 2):
             raise ValueError("momentum = ", nP, " is not yet supported")
@@ -1129,19 +1129,24 @@ class Groups:
                              + "identical flavors")
         row_zero_value = 0
         summary_string = ''
-        nshells = len(qcis.n1n2n3_ident_reps[cindex])
+        # n_two_channels = 0
+        # for cindex in range(len(qcis.fcs.ni_list)):
+        #     if qcis.fcs.ni_list[cindex].n_particles == 2:
+        #         n_two_channels = n_two_channels+1
+        # cindex = cindex-n_two_channels
+        nshells = len(qcis.nvecset_ident_reps[cindex])
         for shell_index in range(nshells):
             shell_total = 0
             if definite_iso:
-                nstates = len(qcis.n1n2n3_ident_batched[cindex][shell_index])\
-                    + len(qcis.n1n2n3_batched[cindex][shell_index])
+                nstates = len(qcis.nvecset_ident_batched[cindex][shell_index])\
+                    + len(qcis.nvecset_batched[cindex][shell_index])
             else:
-                nstates = len(qcis.n1n2n3_ident_batched[cindex][shell_index])
+                nstates = len(qcis.nvecset_ident_batched[cindex][shell_index])
             summary_string = summary_string\
                 + f'shell_index = {shell_index} ({nstates} states):\n'
             summary_string = summary_string\
                 + (f'representative momenta '
-                   f'= \n{qcis.n1n2n3_ident_reps[cindex][shell_index]}\n')
+                   f'= \n{qcis.nvecset_ident_reps[cindex][shell_index]}\n')
             if definite_iso:
                 isoset = range(4)
             else:
@@ -1218,22 +1223,22 @@ class Groups:
             raise ValueError("qcis cannot be None")
         row_zero_value = 0
         summary_string = ''
-        nshells = len(qcis.n1n2_reps[cindex])
+        nshells = len(qcis.nvecset_reps[cindex])
         for shell_index in range(nshells):
             shell_total = 0
-            nstates = len(qcis.n1n2_batched[cindex][shell_index])*3
+            nstates = len(qcis.nvecset_batched[cindex][shell_index])*3
             summary_string = summary_string\
                 + f'shell_index = {shell_index} ({nstates} states):\n'
             summary_string = summary_string\
                 + (f'representative momenta '
-                   f'= \n{qcis.n1n2_reps[cindex][shell_index]}\n')
+                   f'= \n{qcis.nvecset_reps[cindex][shell_index]}\n')
             if definite_iso:
                 isoset = [2]
             else:
                 isoset = range(1)
             for isovalue in isoset:
                 non_proj_dict = self\
-                    .get_noninttwo_proj_dict_shell(qcis, 0,
+                    .get_noninttwo_proj_dict_shell(qcis, cindex,
                                                    definite_iso,
                                                    isovalue,
                                                    shell_index)
@@ -1275,9 +1280,10 @@ class Groups:
                                f'(appears {n_embedded} time{s}), '
                                f'covered {shell_covered}/{nstates} '
                                f'({iso_shell_covered} for this isospin)\n')
-                    if shell_total == nstates:
-                        summary_string = summary_string\
-                            + 'The shell is covered!\n\n'
+                    # if shell_total == nstates:
+                    #     summary_string = summary_string\
+                    #         + 'The shell is covered!\n\n'
+            assert shell_total == nstates
         summary_string = summary_string[:-1]
         master_dict['summary'] = summary_string
         return master_dict
