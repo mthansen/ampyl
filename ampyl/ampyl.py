@@ -43,53 +43,21 @@ from .group_theory import Groups
 from .group_theory import Irreps
 from .qc_functions import QCFunctions
 from .qc_functions import BKFunctions
-from .qc_functions import QC_IMPL_DEFAULTS
+from .global_constants import QC_IMPL_DEFAULTS
+from .global_constants import PI
+from .global_constants import TWOPI
+from .global_constants import FOURPI2
+from .global_constants import EPSILON20
+from .global_constants import DELTA_L_FOR_GRID
+from .global_constants import DELTA_E_FOR_GRID
+from .global_constants import L_GRID_SHIFT
+from .global_constants import E_GRID_SHIFT
+from .global_constants import G_TEMPLATE_DICT
+from .global_constants import ISO_PROJECTORS
+from .global_constants import CAL_C_ISO
 warnings.simplefilter('always')
 
-PI = np.pi
-TWOPI = 2.*PI
-FOURPI2 = 4.0*PI**2
-EPSILON20 = 1.0e-20
 PRINT_THRESHOLD_DEFAULT = np.get_printoptions()['threshold']
-
-DELTA_L_FOR_GRID = 0.9
-DELTA_E_FOR_GRID = 0.9
-L_GRID_SHIFT = 2.0
-E_GRID_SHIFT = 3.0
-
-G_TEMPLATE_DICT = {}
-G_TEMPLATE_DICT[0] = np.array([[-1.]])
-G_TEMPLATE_DICT[2] = np.array([[1./3., -1./np.sqrt(3.), np.sqrt(5.)/3.],
-                               [-1./np.sqrt(3.), 0.5, np.sqrt(15.)/6.],
-                               [np.sqrt(5.)/3., np.sqrt(15.)/6., 1./6.]])
-G_TEMPLATE_DICT[4] = np.array([[0.5, -np.sqrt(3.)/2.],
-                               [-np.sqrt(3.)/2., -0.5]])
-G_TEMPLATE_DICT[6] = np.array([[1.]])
-
-ISO_PROJECTOR_THREE = np.array([[1., 0., 0., 0., 0., 0., 0.]])
-ISO_PROJECTOR_TWO = np.array([[0., 1., 0., 0., 0., 0., 0.],
-                              [0., 0., 1., 0., 0., 0., 0.]])
-ISO_PROJECTOR_ONE = np.array([[0., 0., 0., 1., 0., 0., 0.],
-                              [0., 0., 0., 0., 1., 0., 0.],
-                              [0., 0., 0., 0., 0., 1., 0.]])
-ISO_PROJECTOR_ZERO = np.array([[0., 0., 0., 0., 0., 0., 1.]])
-ISO_PROJECTORS = [ISO_PROJECTOR_ZERO, ISO_PROJECTOR_ONE,
-                  ISO_PROJECTOR_TWO, ISO_PROJECTOR_THREE]
-
-CAL_C_ISO = np.array([[1./np.sqrt(10.), 1./np.sqrt(10.), 1./np.sqrt(10.),
-                       np.sqrt(2./5.), 1./np.sqrt(10.), 1./np.sqrt(10.),
-                       1./np.sqrt(10.)],
-                      [-0.5, -0.5, 0., 0., 0., 0.5, 0.5],
-                      [-1./np.sqrt(12.), 1./np.sqrt(12.), -1./np.sqrt(3.), 0.,
-                       1./np.sqrt(3.), -1./np.sqrt(12.), 1./np.sqrt(12.)],
-                      [np.sqrt(3./20.), np.sqrt(3./20.), -1./np.sqrt(15.),
-                       -2./np.sqrt(15.), -1./np.sqrt(15.), np.sqrt(3./20.),
-                       np.sqrt(3./20.)],
-                      [0.5, -0.5, 0., 0., 0., -0.5, 0.5],
-                      [0., 0., 1./np.sqrt(3.), -1./np.sqrt(3.), 1./np.sqrt(3.),
-                       0., 0.],
-                      [-1./np.sqrt(6.), 1./np.sqrt(6.), 1./np.sqrt(6.), 0.,
-                       -1./np.sqrt(6.), -1./np.sqrt(6.), 1./np.sqrt(6.)]])
 
 
 class bcolors:
@@ -967,6 +935,78 @@ class FlavorChannelSpace:
             self.n_three_slices = 0
 
     def _build_g_templates(self):
+        self.g_templates = [[]]
+        for slice_row in self.three_slices:
+            len_row = slice_row[1]-slice_row[0]
+            g_templates_row = []
+            for slice_col in self.three_slices:
+                len_col = slice_col[1]-slice_col[0]
+                g_template_tmp = np.zeros((len_row, len_col))
+                for i in range(len_row):
+                    for j in range(len_col):
+                        flav_loc_start = 7
+                        flav_loc_end = 10
+                        i_flavs = self.sc_compact[self.three_index][
+                            slice_row[0]+i][flav_loc_start:flav_loc_end]
+                        j_flavs = self.sc_compact[self.three_index][
+                            slice_col[0]+j][flav_loc_start:flav_loc_end]
+                        if (
+                                ((i_flavs[0] == j_flavs[2])
+                                 and (np.sort(i_flavs[1:])
+                                      == np.sort(j_flavs[:-1])).all())
+                                or
+                                ((i_flavs[0] == j_flavs[1])
+                                 and (np.sort(i_flavs[1:])
+                                      == np.sort([j_flavs[0]]
+                                                 + [j_flavs[2]])).all())
+                                ):
+                            iso_bool_loc = 10
+                            isospin_channel_i\
+                                = self.sc_compact[self.three_index][
+                                    slice_row[0]+i][iso_bool_loc]
+                            isospin_channel_j\
+                                = self.sc_compact[self.three_index][
+                                    slice_col[0]+j][iso_bool_loc]
+                            if ((not isospin_channel_i)
+                               and (not isospin_channel_j)):
+                                g_template_tmp[i][j] = 1.0
+                            elif isospin_channel_i and isospin_channel_j:
+                                iso_val_loc = 14
+                                iso_val_i\
+                                    = self.sc_compact[self.three_index][
+                                        slice_row[0]+i][iso_val_loc]
+                                iso_val_j\
+                                    = self.sc_compact[self.three_index][
+                                        slice_col[0]+j][iso_val_loc]
+                                if iso_val_i == iso_val_j:
+                                    g_iso_template_tmp\
+                                        = G_TEMPLATE_DICT[int(iso_val_i/2)]
+                                    sub_iso_loc = 15
+                                    sub_iso_i\
+                                        = self.sc_compact[self.three_index][
+                                            slice_row[0]+i][sub_iso_loc]
+                                    sub_iso_j\
+                                        = self.sc_compact[self.three_index][
+                                            slice_col[0]+j][sub_iso_loc]
+                                    if iso_val_i == 6:
+                                        ind_i = sub_iso_i-4
+                                        ind_j = sub_iso_j-4
+                                    elif iso_val_i == 4:
+                                        ind_i = int((sub_iso_i-2)/2)
+                                        ind_j = int((sub_iso_j-2)/2)
+                                    elif iso_val_i == 2:
+                                        ind_i = int(sub_iso_i/2)
+                                        ind_j = int(sub_iso_j/2)
+                                    elif iso_val_i == 0:
+                                        ind_i = sub_iso_i-2
+                                        ind_j = sub_iso_j-2
+                                g_template_tmp[i][j]\
+                                    = g_iso_template_tmp[ind_i][ind_j]
+                g_templates_row = g_templates_row+[g_template_tmp]
+            self.g_templates = self.g_templates+[g_templates_row]
+        self.g_templates = self.g_templates[1:]
+
+    def _build_g_templates_deprecated(self):
         g_templates_tmp = [[]]
         if self.sc_list[0].fc.isospin_channel:
             for three_slice in self.three_slices:
@@ -1671,9 +1711,12 @@ class QCIndexSpace:
                 raise ValueError("QCIndexSpace currently only supports "
                                  + "two- and three-particle channels")
         tbks_list_tmp = []
-        for i in range(self.n_two_channels):
+        if self.n_two_channels > 0:
             tbks_list_tmp = tbks_list_tmp\
                 + [ThreeBodyKinematicSpace(nP=self.nP)]
+        # for i in range(self.n_two_channels):
+        #     tbks_list_tmp = tbks_list_tmp\
+        #         + [ThreeBodyKinematicSpace(nP=self.nP)]
         for i in range(self.fcs.n_three_slices):
             tbks_list_tmp = tbks_list_tmp\
                 + [ThreeBodyKinematicSpace(nP=self.nP)]
@@ -1714,12 +1757,16 @@ class QCIndexSpace:
     def populate_nvec_arr_slot(self, slot_index, three_particle_channel=True):
         """Populate a given nvec_arr slot."""
         if three_particle_channel:
-            three_slice_index = slot_index-self.n_two_channels
-            if self.fcs.n_three_slices != 1:
-                raise ValueError("n_three_slices different from one not yet "
-                                 + "supported")
-            if three_slice_index != 0:
-                raise ValueError("three_slice_index != 0 not yet supported")
+            if self.n_two_channels > 0:
+                three_slice_index = slot_index-1
+            else:
+                three_slice_index = slot_index
+            # three_slice_index = slot_index-self.n_two_channels
+            # if self.fcs.n_three_slices != 1:
+            #     raise ValueError("n_three_slices different from one not yet "
+            #                      + "supported")
+            # if three_slice_index != 0:
+            #     raise ValueError("three_slice_index != 0 not yet supported")
             if (self.nP == np.array([0, 0, 0])).all():
                 if self.verbosity >= 2:
                     print("populating nvec array, three_slice_index = ",
@@ -1858,11 +1905,19 @@ class QCIndexSpace:
 
     def populate_all_nvec_arr(self):
         """Populate all nvec_arr slots."""
-        for slot_index in range(self.n_two_channels):
+        if self.n_two_channels > 0:
+            slot_index = 0
             self.populate_nvec_arr_slot(slot_index,
                                         three_particle_channel=False)
+        # for slot_index in range(self.n_two_channels):
+        #     self.populate_nvec_arr_slot(slot_index,
+        #                                 three_particle_channel=False)
         for three_slice_index in range(self.fcs.n_three_slices):
-            slot_index = three_slice_index+self.n_two_channels
+            # slot_index = three_slice_index+self.n_two_channels
+            if self.n_two_channels > 0:
+                slot_index = three_slice_index+1
+            else:
+                slot_index = three_slice_index
             self.populate_nvec_arr_slot(slot_index)
 
     def _get_ell_sets(self):
@@ -1904,13 +1959,24 @@ class QCIndexSpace:
         kellm_slices = [[]]
         kellm_spaces = [[]]
         for cindex in range(self.n_channels):
-            if self.fcs.n_three_slices > 1:
-                raise ValueError("only one three-slice currently supported "
-                                 + "in populate_all_kellm_spaces")
+            # if self.fcs.n_three_slices > 1:
+            #     raise ValueError("only one three-slice currently supported "
+            #                      + "in populate_all_kellm_spaces")
             if cindex < self.n_two_channels:
-                slot_index = cindex
+                slot_index = 0
             else:
-                slot_index = self.n_two_channels
+                cindex_shift = cindex-self.n_two_channels
+                slot_index = -1
+                for k in range(len(self.fcs.three_slices)):
+                    three_slice = self.fcs.three_slices[k]
+                    if three_slice[0] <= cindex_shift < three_slice[1]:
+                        slot_index = k
+                if self.n_two_channels > 0:
+                    slot_index = slot_index+1
+                # if self.fcs.n_three_slices > 1:
+                #     raise ValueError("only one three-slice currently supported "
+                #                     + "in populate_all_kellm_spaces")
+                # slot_index = self.n_two_channels
             tbks_list_tmp = self.tbks_list[slot_index]
             ellm_set = self.ellm_sets[cindex]
             kellm_slices_single = [[]]

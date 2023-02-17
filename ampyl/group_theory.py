@@ -38,41 +38,12 @@ import numpy as np
 from scipy.linalg import block_diag
 import quaternionic
 import spherical
-
-ROOT_THREE = np.sqrt(3.0)
-ROOT_TWO = np.sqrt(2.0)
-EPSPROJ = 1.0e-8
-PION_ORDERS = [[0, 1, 2],
-               [1, 0, 2],
-               [0, 2, 1],
-               [1, 2, 0],
-               [2, 0, 1],
-               [2, 1, 0]]
-
-ISO_PROJECTOR_ZERO = np.diag([0.]*6+[1.])
-ISO_PROJECTOR_ONE = np.diag([0.]*3+[1.]*3+[0.])
-ISO_PROJECTOR_TWO = np.diag([0.]+[1.]*2+[0.]*4)
-ISO_PROJECTOR_THREE = np.diag([1.]+[0.]*6)
-
-ISO_PROJECTORS = [ISO_PROJECTOR_ZERO,
-                  ISO_PROJECTOR_ONE,
-                  ISO_PROJECTOR_TWO,
-                  ISO_PROJECTOR_THREE]
-
-CAL_C_ISO = np.array([[1./np.sqrt(10.), 1./np.sqrt(10.), 1./np.sqrt(10.),
-                       np.sqrt(2./5.), 1./np.sqrt(10.), 1./np.sqrt(10.),
-                       1./np.sqrt(10.)],
-                      [-0.5, -0.5, 0., 0., 0., 0.5, 0.5],
-                      [-1./np.sqrt(12.), 1./np.sqrt(12.), -1./np.sqrt(3.), 0.,
-                       1./np.sqrt(3.), -1./np.sqrt(12.), 1./np.sqrt(12.)],
-                      [np.sqrt(3./20.), np.sqrt(3./20.), -1./np.sqrt(15.),
-                       -2./np.sqrt(15.), -1./np.sqrt(15.), np.sqrt(3./20.),
-                       np.sqrt(3./20.)],
-                      [0.5, -0.5, 0., 0., 0., -0.5, 0.5],
-                      [0., 0., 1./np.sqrt(3.), -1./np.sqrt(3.), 1./np.sqrt(3.),
-                       0., 0.],
-                      [-1./np.sqrt(6.), 1./np.sqrt(6.), 1./np.sqrt(6.), 0.,
-                       -1./np.sqrt(6.), -1./np.sqrt(6.), 1./np.sqrt(6.)]])
+from .global_constants import ROOT_THREE
+from .global_constants import ROOT_TWO
+from .global_constants import EPSPROJ
+from .global_constants import ISO_PROJECTORS
+from .global_constants import CAL_C_ISO
+from .global_constants import PION_ORDERS
 
 
 class Irreps:
