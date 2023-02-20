@@ -250,29 +250,29 @@ class FlavorChannel:
         if self._n_particles == len(var):
             return var
         if self._n_particles < len(var):
-            warnings.warn("\n"+bcolors.WARNING
-                          + "length of "+varstr+" must equal n_particles. "
-                          + "Last entries will be dropped."
-                          + f"{bcolors.ENDC}", stacklevel=2)
+            warnings.warn(f"\n{bcolors.WARNING}"
+                          f"Length of {varstr} must equal n_particles; "
+                          f"last entries will be dropped"
+                          f"{bcolors.ENDC}", stacklevel=2)
             return var[:self._n_particles]
-        warnings.warn("\n"+bcolors.WARNING
-                      + "length of "+varstr+" must equal n_particles. "
-                      + "Last entry will be duplicated."
-                      + f"{bcolors.ENDC}", stacklevel=2)
+        warnings.warn(f"\n{bcolors.WARNING}"
+                      f"Length of {varstr} must equal n_particles; "
+                      f"last entry will be duplicated"
+                      f"{bcolors.ENDC}", stacklevel=2)
         return var+[var[-1]]*(self._n_particles-len(var))
 
     @property
     def flavors(self):
-        """Get explicit flavors (list of strs)."""
+        """Get flavors (list of strs)."""
         return self._flavors
 
     @flavors.setter
     def flavors(self, flavors):
         if flavors is None:
-            warnings.warn("\n"+bcolors.WARNING
-                          + "flavors is being set to None but this is not "
-                          + "allowed. Setting it to a list of pi strings."
-                          + f"{bcolors.ENDC}", stacklevel=2)
+            warnings.warn(f"\n{bcolors.WARNING}"
+                          f"flavors is being set to None but this is not "
+                          f"allowed; setting it to a list of pi strings"
+                          f"{bcolors.ENDC}", stacklevel=2)
             self._flavors = (self.n_particles)*['pi']
         else:
             self._flavors = self._generic_setter(flavors, 'flavors',
@@ -289,19 +289,19 @@ class FlavorChannel:
             raise ValueError("isospin_channel must be a boolean")
         self._isospin_channel = isospin_channel
         if isospin_channel and (self._twoisospins is None):
-            warnings.warn("\n"+bcolors.WARNING
-                          + "isospin_channel is being set to True but "
-                          + "twoisospins is None. Setting it to default."
-                          + f"{bcolors.ENDC}", stacklevel=2)
+            warnings.warn(f"\n{bcolors.WARNING}"
+                          f"isospin_channel is being set to True but "
+                          f"twoisospins is None; setting it to default"
+                          f"{bcolors.ENDC}", stacklevel=2)
             self._twoisospins = self.n_particles*[2]
             self._allowed_total_twoisospins = self._get_allowed()
         if isospin_channel and (self._allowed_total_twoisospins is None):
             self._allowed_total_twoisospins = self._get_allowed()
         if isospin_channel and (self._twoisospin_value is None):
-            warnings.warn("\n"+bcolors.WARNING
-                          + "isospin_channel is being set to True but "
-                          + "twoisospin_value is None. Setting it to default."
-                          + f"{bcolors.ENDC}", stacklevel=2)
+            warnings.warn(f"\n{bcolors.WARNING}"
+                          f"isospin_channel is being set to True but "
+                          f"twoisospin_value is None; setting it to default"
+                          f"{bcolors.ENDC}", stacklevel=2)
             self._twoisospin_value = self._allowed_total_twoisospins[-1]
             if self.summary is not None:
                 summary_reduced = [[]]
@@ -312,29 +312,29 @@ class FlavorChannel:
                 summary_reduced = np.array(summary_reduced[1:], dtype=object)
                 self.summary_reduced = summary_reduced
         if (not isospin_channel) and (self._twoisospins is not None):
-            warnings.warn("\n"+bcolors.WARNING
-                          + "isospin_channel is being set to False but "
-                          + "_twoisospins is not None. Setting it to None."
-                          + f"{bcolors.ENDC}", stacklevel=2)
+            warnings.warn(f"\n{bcolors.WARNING}"
+                          f"isospin_channel is being set to False but "
+                          f"twoisospins is not None; setting it to None"
+                          f"{bcolors.ENDC}", stacklevel=2)
             self._twoisospins = None
         if ((not isospin_channel)
            and (self._allowed_total_twoisospins is not None)):
-            warnings.warn("\n"+bcolors.WARNING
-                          + "isospin_channel is being set to False but "
-                          + "allowed_total_twoisospins is not None. Setting "
-                          + "it to None."
-                          + f"{bcolors.ENDC}", stacklevel=2)
+            warnings.warn(f"\n{bcolors.WARNING}"
+                          f"isospin_channel is being set to False but "
+                          f"allowed_total_twoisospins is not None; setting "
+                          f"it to None"
+                          f"{bcolors.ENDC}", stacklevel=2)
             self._allowed_total_twoisospins = None
         if (not isospin_channel) and (self._twoisospin_value is not None):
-            warnings.warn("\n"+bcolors.WARNING
-                          + "isospin_channel is being set to False but "
-                          + "twoisospin_value is not None. Setting it to None."
-                          + f"{bcolors.ENDC}", stacklevel=2)
+            warnings.warn(f"\n{bcolors.WARNING}"
+                          f"isospin_channel is being set to False but "
+                          f"twoisospin_value is not None; setting it to None."
+                          f"{bcolors.ENDC}", stacklevel=2)
             self._twoisospin_value = None
 
     @property
     def twoisospins(self):
-        """Get twice the isospin of each particle."""
+        """Get twice the isospin of each particle (list of ints)."""
         return self._twoisospins
 
     @twoisospins.setter
@@ -349,21 +349,21 @@ class FlavorChannel:
                     ti1 = self._twoisospins[i]
                     ti2 = self._twoisospins[j]
                     if (f1 == f2) and (ti1 != ti2):
-                        warnings.warn("\n"+bcolors.WARNING
-                                      + "isospins must be equal when flavors "
-                                      + "are equal. Changing one of the "
-                                      + "twoisospins."
-                                      + f"{bcolors.ENDC}", stacklevel=2)
+                        warnings.warn(f"\n{bcolors.WARNING}"
+                                      f"isospins must be equal when flavors "
+                                      f"are equal; changing one of the "
+                                      f"twoisospins"
+                                      f"{bcolors.ENDC}", stacklevel=2)
                         self._twoisospins[j] = ti1
             self._allowed_total_twoisospins = self._get_allowed()
             if ((self._twoisospin_value is not None)
                and (self._twoisospin_value not in
                     self._allowed_total_twoisospins)):
-                warnings.warn("\n"+bcolors.WARNING
-                              + "twoisospin_value currently not in "
-                              + "allowed_total_twoisospins. Setting it to "
-                              + "maximum allowed value."
-                              + f"{bcolors.ENDC}", stacklevel=2)
+                warnings.warn(f"\n{bcolors.WARNING}"
+                              f"twoisospin_value currently not in "
+                              f"allowed_total_twoisospins; setting it to "
+                              f"maximum allowed value"
+                              f"{bcolors.ENDC}", stacklevel=2)
                 self._twoisospin_value = self._allowed_total_twoisospins[-1]
                 if self.summary is not None:
                     summary_reduced = [[]]
@@ -375,16 +375,16 @@ class FlavorChannel:
                                                dtype=object)
                     self.summary_reduced = summary_reduced
         if self.isospin_channel and (twoisospins is None):
-            warnings.warn("\n"+bcolors.WARNING
-                          + "twoisospins is being set to None "
-                          + "but isospin_channel is true. Setting it to False."
-                          + f"{bcolors.ENDC}", stacklevel=2)
+            warnings.warn(f"\n{bcolors.WARNING}"
+                          f"twoisospins is being set to None "
+                          f"but isospin_channel is True; setting it to False"
+                          f"{bcolors.ENDC}", stacklevel=2)
             self.isospin_channel = False
         if (not self.isospin_channel) and (twoisospins is not None):
-            warnings.warn("\n"+bcolors.WARNING
-                          + "twoisospins is being set but isospin_channel is "
-                          + "False. Setting it to True."
-                          + f"{bcolors.ENDC}", stacklevel=2)
+            warnings.warn(f"\n{bcolors.WARNING}"
+                          f"twoisospins is being set but isospin_channel is "
+                          f"False; setting it to True"
+                          f"{bcolors.ENDC}", stacklevel=2)
             self.isospin_channel = True
 
     @property
@@ -406,11 +406,11 @@ class FlavorChannel:
         if ((twoisospin_value is not None)
            and (self._allowed_total_twoisospins is not None)
            and (twoisospin_value not in self._allowed_total_twoisospins)):
-            warnings.warn("\n"+bcolors.WARNING
-                          + "twoisospin_value currently not in "
-                          + "allowed_total_twoisospins. Setting it to "
-                          + "maximum allowed value."
-                          + f"{bcolors.ENDC}", stacklevel=2)
+            warnings.warn(f"\n{bcolors.WARNING}"
+                          f"twoisospin_value currently not in "
+                          f"allowed_total_twoisospins; setting it to "
+                          f"maximum allowed value"
+                          f"{bcolors.ENDC}", stacklevel=2)
             self._twoisospin_value = self._allowed_total_twoisospins[-1]
         else:
             self._twoisospin_value = twoisospin_value
@@ -423,22 +423,22 @@ class FlavorChannel:
             summary_reduced = np.array(summary_reduced[1:], dtype=object)
             self.summary_reduced = summary_reduced
         if (not self.isospin_channel) and (twoisospin_value is not None):
-            warnings.warn("\n"+bcolors.WARNING
-                          + "twoisospin_value is being set but "
-                          + "isospin_channel is False. Setting it to True."
-                          + f"{bcolors.ENDC}", stacklevel=2)
+            warnings.warn(f"\n{bcolors.WARNING}"
+                          f"twoisospin_value is being set but "
+                          f"isospin_channel is False; setting it to True"
+                          f"{bcolors.ENDC}", stacklevel=2)
             self.isospin_channel = True
         if self.isospin_channel and (twoisospin_value is None):
-            warnings.warn("\n"+bcolors.WARNING
-                          + "twoisospin_value is being set to None but "
-                          + "isospin_channel is True. Setting it to False."
-                          + f"{bcolors.ENDC}", stacklevel=2)
+            warnings.warn(f"\n{bcolors.WARNING}"
+                          f"twoisospin_value is being set to None but "
+                          f"isospin_channel is True; setting it to False"
+                          f"{bcolors.ENDC}", stacklevel=2)
             self.isospin_channel = False
             self.isospin_flavor = None
 
     @property
     def masses(self):
-        """Get masses (list of floats)."""
+        """Get the masses (list of floats)."""
         return self._masses
 
     @masses.setter
@@ -451,15 +451,15 @@ class FlavorChannel:
                 m1 = self._masses[i]
                 m2 = self._masses[j]
                 if (f1 == f2) and (m1 != m2):
-                    warnings.warn("\n"+bcolors.WARNING
-                                  + "masses must be equal when flavors are "
-                                  + "equal. Changing one of the masses."
-                                  + f"{bcolors.ENDC}", stacklevel=2)
+                    warnings.warn(f"\n{bcolors.WARNING}"
+                                  f"masses must be equal when flavors are "
+                                  f"equal; changing one of the masses."
+                                  f"{bcolors.ENDC}", stacklevel=2)
                     self._masses[j] = m1
 
     @property
     def twospins(self):
-        """Get twoice the spins (list of ints)."""
+        """Get twice the spins (list of ints)."""
         return self._twospins
 
     @twospins.setter
@@ -472,10 +472,10 @@ class FlavorChannel:
                 s1 = self._twospins[i]
                 s2 = self._twospins[j]
                 if (f1 == f2) and (s1 != s2):
-                    warnings.warn("\n"+bcolors.WARNING
-                                  + "twospins must be equal when flavors are "
-                                  + "equal. Changing one of the twospins."
-                                  + f"{bcolors.ENDC}", stacklevel=2)
+                    warnings.warn(f"\n{bcolors.WARNING}"
+                                  f"twospins must be equal when flavors are "
+                                  f"equal; changing one of the twospins"
+                                  f"{bcolors.ENDC}", stacklevel=2)
                     self._twospins[j] = s1
 
     @property
@@ -606,10 +606,10 @@ class SpectatorChannel:
     @indexing.setter
     def indexing(self, indexing):
         if (self.fc.n_particles == 2) and (indexing is not None):
-            warnings.warn("\n"+bcolors.WARNING
-                          + "n_particles == 2 and indexing is not None. "
-                          + "Setting it to None."
-                          + f"{bcolors.ENDC}", stacklevel=2)
+            warnings.warn(f"\n{bcolors.WARNING}"
+                          f"n_particles == 2 and indexing is not None; "
+                          f"setting it to None"
+                          f"{bcolors.ENDC}", stacklevel=2)
             self._indexing = None
         elif (self.fc.n_particles == 2) and (indexing is None):
             self._indexing = None
@@ -1006,101 +1006,6 @@ class FlavorChannelSpace:
             self.g_templates = self.g_templates+[g_templates_row]
         self.g_templates = self.g_templates[1:]
 
-    def _build_g_templates_deprecated(self):
-        g_templates_tmp = [[]]
-        if self.sc_list[0].fc.isospin_channel:
-            for three_slice in self.three_slices:
-                iso_slices = [[]]
-                len_tmp = three_slice[1]-three_slice[0]
-                zero_point = 0
-                i = 0
-                iso_pos = 14
-                while i < len_tmp:
-                    iso_val_tmp = int(self.sc_compact[self.three_index][
-                        three_slice[0]+i][iso_pos])
-                    twoisospins = self.sc_compact[self.three_index][
-                        three_slice[0]+i][[11, 12, 13]]
-                    three_pions = (twoisospins == np.array([2, 2, 2])).all()
-                    if three_pions and (iso_val_tmp == 0):
-                        iso_dim_tmp = 1
-                    elif three_pions and (iso_val_tmp == 2):
-                        iso_dim_tmp = 3
-                    elif three_pions and (iso_val_tmp == 4):
-                        iso_dim_tmp = 2
-                    elif three_pions and (iso_val_tmp == 6):
-                        iso_dim_tmp = 1
-                    else:
-                        k = 0
-                        iso_val_k_tmp = int(self.sc_compact[self.three_index][
-                            three_slice[0]+i+k][iso_pos])
-                        inbounds = True
-                        while inbounds and iso_val_k_tmp == iso_val_tmp:
-                            k = k+1
-                            try:
-                                iso_val_k_tmp = int(self.sc_compact[
-                                    self.three_index][
-                                    three_slice[0]+i+k][iso_pos])
-                            except IndexError:
-                                inbounds = False
-                        iso_dim_tmp = k
-                    iso_slices = iso_slices+[[zero_point,
-                                              zero_point+iso_dim_tmp,
-                                              three_pions,
-                                              iso_val_tmp]]
-                    zero_point = zero_point+iso_dim_tmp
-                    i = i+iso_dim_tmp
-                iso_slices = iso_slices[1:]
-                g_template_tmp = np.zeros((len_tmp, len_tmp))
-                for iso_slice in iso_slices:
-                    if iso_slice[2]:
-                        ((g_template_tmp[iso_slice[0]:iso_slice[1]]).T)[
-                            iso_slice[0]:iso_slice[1]]\
-                            = G_TEMPLATE_DICT[iso_slice[3]]
-                g_templates_tmp = g_templates_tmp+[g_template_tmp]
-            g_templates_tmp = g_templates_tmp[1:]
-            self.g_templates = [[]]
-            for i in range(len(g_templates_tmp)):
-                g_templates_row = []
-                for j in range(len(g_templates_tmp)):
-                    if i == j:
-                        g_templates_row = g_templates_row+[g_templates_tmp[i]]
-                    else:
-                        g_templates_row = g_templates_row+[np.zeros(
-                            (len(g_templates_tmp[i]), len(g_templates_tmp[j]))
-                            )]
-                self.g_templates = self.g_templates+[g_templates_row]
-            self.g_templates = self.g_templates[1:]
-        else:
-            self.g_templates = [[]]
-            for slice_row in self.three_slices:
-                len_row = slice_row[1]-slice_row[0]
-                g_templates_row = []
-                for slice_col in self.three_slices:
-                    len_col = slice_col[1]-slice_col[0]
-                    g_template_tmp = np.zeros((len_row, len_col))
-                    for i in range(len_row):
-                        for j in range(len_col):
-                            f_min = 7
-                            f_max = 10
-                            i_flavs = self.sc_compact[self.three_index][
-                                slice_row[0]+i][f_min:f_max]
-                            j_flavs = self.sc_compact[self.three_index][
-                                slice_col[0]+j][f_min:f_max]
-                            if (
-                                    ((i_flavs[0] == j_flavs[2])
-                                     and (np.sort(i_flavs[1:])
-                                          == np.sort(j_flavs[:-1])).all())
-                                    or
-                                    ((i_flavs[0] == j_flavs[1])
-                                     and (np.sort(i_flavs[1:])
-                                          == np.sort([j_flavs[0]]
-                                                     + [j_flavs[2]])).all())
-                                    ):
-                                g_template_tmp[i][j] = 1.0
-                    g_templates_row = g_templates_row+[g_template_tmp]
-                self.g_templates = self.g_templates+[g_templates_row]
-            self.g_templates = self.g_templates[1:]
-
     def __str__(self):
         """Summary of the flavor-channel space."""
         strtmp = "FlavorChannelSpace with the following SpectatorChannels:\n"
@@ -1155,7 +1060,7 @@ class FiniteVolumeSetup:
 
     @property
     def nP(self):
-        """Get the total three-momentum (np.ndarray, shape is (3,))."""
+        """Get the total three-momentum (np.ndarray with shape (3,))."""
         return self._nP
 
     @nP.setter
@@ -1176,7 +1081,7 @@ class FiniteVolumeSetup:
     @property
     def qc_impl(self):
         """
-        Get the qc implementation (dict).
+        Get the quantization condition implementation (dict).
 
         See FiniteVolumeSetup for documentation of possible keys included in
         qc_impl.
@@ -1187,26 +1092,13 @@ class FiniteVolumeSetup:
     def qc_impl(self, qc_impl):
         if not isinstance(qc_impl, dict):
             raise ValueError("qc_impl must be a dict")
-
         for key in qc_impl.keys():
-            if key not in ['hermitian', 'real harmonics',
-                           'Zinterp', 'YYCG']:
+            if key not in QC_IMPL_DEFAULTS.keys():
                 raise ValueError("key", key, "not recognized")
-
-        if (('hermitian' in qc_impl.keys())
-           and (not isinstance(qc_impl['hermitian'], bool))):
-            raise ValueError("qc_impl entry 'hermitian' must be a bool")
-        if (('real harmonics' in qc_impl.keys())
-           and (not isinstance(qc_impl['real harmonics'], bool))):
-            raise ValueError("qc_impl entry real harmonics must"
-                             + " be a bool")
-        if (('Zinterp' in qc_impl.keys())
-           and (not isinstance(qc_impl['Zinterp'], bool))):
-            raise ValueError("qc_impl entry 'Zinterp' must be a bool")
-        if (('YYCG' in qc_impl.keys())
-           and (not isinstance(qc_impl['YYCG'], bool))):
-            raise ValueError("qc_impl entry 'YYCG' must be a bool")
-
+        for key in QC_IMPL_DEFAULTS.keys():
+            if (key in qc_impl.keys()
+               and (not isinstance(qc_impl[key], type(QC_IMPL_DEFAULTS[key])))):
+                raise ValueError(f"qc_impl entry {key} mest be a {type(QC_IMPL_DEFAULTS[key])}")
         self._qc_impl = qc_impl
 
     def __str__(self):
@@ -1326,7 +1218,7 @@ class ThreeBodyKinematicSpace:
 
     @property
     def nP(self):
-        """Get the total three-momentum (np.ndarray, shape is (3,))."""
+        """Get the total three-momentum (np.ndarray with shape (3,))."""
         return self._nP
 
     @nP.setter
@@ -1366,8 +1258,8 @@ class ThreeBodyKinematicSpace:
         return (arrtmp.T)[2:].T
 
     def _get_slice_sort(self, nvec_arr_first_sort):
-        g = Groups(ell_max=0)
-        little_group = g.get_little_group(self._nP)
+        group = Groups(ell_max=0)
+        little_group = group.get_little_group(self._nP)
         nvec_arr_copy = np.copy(nvec_arr_first_sort)
         slicedict_nvec_arr = {}
         slicedict_index = 0
@@ -1567,7 +1459,7 @@ class QCIndexSpace:
     """
 
     def __init__(self, fcs=None, fvs=None, tbis=None,
-                 Emax=5.0, Lmax=5.0, verbosity=0, ell_max=4):
+                 Emax=5.0, Lmax=5.0, verbosity=0):
         self.verbosity = verbosity
         self.Emax = Emax
         self.Lmax = Lmax
@@ -1605,6 +1497,12 @@ class QCIndexSpace:
             print('setting nP to '+str(self.fvs.nP))
         self.nP = self.fvs.nP
         self.fcs = self._fcs
+
+        ell_max = 0
+        if fcs is not None:
+            for sc in fcs.sc_list:
+                if np.max(sc.ell_set) > ell_max:
+                    ell_max = np.max(sc.ell_set)
         self.group = Groups(ell_max=ell_max)
 
         if self.nPSQ != 0:
@@ -1637,6 +1535,7 @@ class QCIndexSpace:
         self.ell_sets = self._get_ell_sets()
         self.populate_all_kellm_spaces()
         self.populate_all_proj_dicts()
+        # Made it to here
         self.proj_dict = self.group.get_full_proj_dict(qcis=self)
         self.populate_all_nonint_data()
         self.nonint_proj_dict = []
@@ -1671,7 +1570,7 @@ class QCIndexSpace:
 
     @property
     def nP(self):
-        """Get the total three-momentum (np.ndarray, shape is (3,))."""
+        """Get the total three-momentum (np.ndarray with shape (3,))."""
         return self._nP
 
     @nP.setter
@@ -1691,7 +1590,7 @@ class QCIndexSpace:
 
     @property
     def fcs(self):
-        """Get the flavor-channel space (FlavorChannelSpace())."""
+        """Get the flavor-channel space (FlavorChannelSpace)."""
         return self._fcs
 
     @fcs.setter
@@ -1929,7 +1828,7 @@ class QCIndexSpace:
 
     @property
     def ell_sets(self):
-        """Get the angular-momentum values (list)."""
+        """Get the set of angular-momentum value sets."""
         return self._ell_sets
 
     @ell_sets.setter
@@ -2073,11 +1972,11 @@ class QCIndexSpace:
                                            )))**2\
                     - FOURPI2/L**2*((nP-nvec_arr)**2).sum(axis=1)
                 tbks_sub_indices[cindex] = i
-            warnings.warn("\n"+bcolors.WARNING
-                          + "get_tbks_sub_indices is being called with "
-                          + "non_zero nP. This can lead to shells being"
-                          + "missed! result is = "+str(tbks_sub_indices)
-                          + f"{bcolors.ENDC}", stacklevel=1)
+            warnings.warn(f"\n{bcolors.WARNING}"
+                          f"get_tbks_sub_indices is being called with "
+                          f"non_zero nP; this can lead to shells being"
+                          f"missed! result is = {str(tbks_sub_indices)}"
+                          f"{bcolors.ENDC}", stacklevel=1)
             return tbks_sub_indices
         for slice_index in range(self.fcs.n_three_slices):
             cindex = self.fcs.three_slices[slice_index][0]
