@@ -38,41 +38,12 @@ import numpy as np
 from scipy.linalg import block_diag
 import quaternionic
 import spherical
-
-ROOT_THREE = np.sqrt(3.0)
-ROOT_TWO = np.sqrt(2.0)
-EPSPROJ = 1.0e-8
-PION_ORDERS = [[0, 1, 2],
-               [1, 0, 2],
-               [0, 2, 1],
-               [1, 2, 0],
-               [2, 0, 1],
-               [2, 1, 0]]
-
-ISO_PROJECTOR_ZERO = np.diag([0.]*6+[1.])
-ISO_PROJECTOR_ONE = np.diag([0.]*3+[1.]*3+[0.])
-ISO_PROJECTOR_TWO = np.diag([0.]+[1.]*2+[0.]*4)
-ISO_PROJECTOR_THREE = np.diag([1.]+[0.]*6)
-
-ISO_PROJECTORS = [ISO_PROJECTOR_ZERO,
-                  ISO_PROJECTOR_ONE,
-                  ISO_PROJECTOR_TWO,
-                  ISO_PROJECTOR_THREE]
-
-CAL_C_ISO = np.array([[1./np.sqrt(10.), 1./np.sqrt(10.), 1./np.sqrt(10.),
-                       np.sqrt(2./5.), 1./np.sqrt(10.), 1./np.sqrt(10.),
-                       1./np.sqrt(10.)],
-                      [-0.5, -0.5, 0., 0., 0., 0.5, 0.5],
-                      [-1./np.sqrt(12.), 1./np.sqrt(12.), -1./np.sqrt(3.), 0.,
-                       1./np.sqrt(3.), -1./np.sqrt(12.), 1./np.sqrt(12.)],
-                      [np.sqrt(3./20.), np.sqrt(3./20.), -1./np.sqrt(15.),
-                       -2./np.sqrt(15.), -1./np.sqrt(15.), np.sqrt(3./20.),
-                       np.sqrt(3./20.)],
-                      [0.5, -0.5, 0., 0., 0., -0.5, 0.5],
-                      [0., 0., 1./np.sqrt(3.), -1./np.sqrt(3.), 1./np.sqrt(3.),
-                       0., 0.],
-                      [-1./np.sqrt(6.), 1./np.sqrt(6.), 1./np.sqrt(6.), 0.,
-                       -1./np.sqrt(6.), -1./np.sqrt(6.), 1./np.sqrt(6.)]])
+from .global_constants import ROOT_THREE
+from .global_constants import ROOT_TWO
+from .global_constants import EPSPROJ
+from .global_constants import ISO_PROJECTORS
+from .global_constants import CAL_C_ISO
+from .global_constants import PION_ORDERS
 
 
 class Irreps:
@@ -123,7 +94,7 @@ class Groups:
     """Class for finite-volume group-theory relevant for three particles."""
 
     def __init__(self, ell_max):
-        self.wigner = spherical.Wigner(ell_max)
+        self.wigner = spherical.Wigner(ell_max=ell_max)
 
         self.OhP = np.array(
             [[[1, 0, 0], [0, 1, 0], [0, 0, 1]],
@@ -1129,11 +1100,6 @@ class Groups:
                              + "identical flavors")
         row_zero_value = 0
         summary_string = ''
-        # n_two_channels = 0
-        # for cindex in range(len(qcis.fcs.ni_list)):
-        #     if qcis.fcs.ni_list[cindex].n_particles == 2:
-        #         n_two_channels = n_two_channels+1
-        # cindex = cindex-n_two_channels
         nshells = len(qcis.nvecset_ident_reps[cindex])
         for shell_index in range(nshells):
             shell_total = 0
@@ -1208,9 +1174,6 @@ class Groups:
                                 + (f'       {irrep} '
                                    f'(appears {n_embedded} time{s}), '
                                    f'covered {shell_covered}/{nstates}\n')
-                    # if shell_total == nstates:
-                    #     summary_string = summary_string\
-                    #         + 'The shell is covered!\n\n'
             assert shell_total == nstates
         summary_string = summary_string[:-1]
         master_dict['summary'] = summary_string
@@ -1280,9 +1243,6 @@ class Groups:
                                f'(appears {n_embedded} time{s}), '
                                f'covered {shell_covered}/{nstates} '
                                f'({iso_shell_covered} for this isospin)\n')
-                    # if shell_total == nstates:
-                    #     summary_string = summary_string\
-                    #         + 'The shell is covered!\n\n'
             assert shell_total == nstates
         summary_string = summary_string[:-1]
         master_dict['summary'] = summary_string
@@ -1308,17 +1268,22 @@ class Groups:
         for i in range(len(irrep_set)):
             irrep = irrep_set[i]
             for irow in range(len(self.bTdict[group_str+'_'+irrep])):
-                if qcis.fcs.n_three_slices > 1:
-                    raise ValueError("only one three-slice currently "
-                                     + "supported in get_channel_proj_dict")
                 if cindex < qcis.n_two_channels:
-                    slot_index = cindex
+                    slot_index = 0
                 else:
-                    slot_index = qcis.n_two_channels
+                    cindex_shift = cindex-qcis.n_two_channels
+                    slot_index = -1
+                    for k in range(len(qcis.fcs.three_slices)):
+                        three_slice = qcis.fcs.three_slices[k]
+                        if three_slice[0] <= cindex_shift < three_slice[1]:
+                            slot_index = k
+                    if qcis.n_two_channels > 0:
+                        slot_index = slot_index+1
                 slice_index = 0
-                for three_slice in qcis.fcs.three_slices:
-                    if slot_index-qcis.n_two_channels > three_slice[1]:
-                        slice_index = slice_index+1
+                # Check issue in following slice code
+                # for three_slice in qcis.fcs.three_slices:
+                #     if slot_index-qcis.n_two_channels > three_slice[1]:
+                #         slice_index = slice_index+1
                 nvec_arr = qcis.tbks_list[slot_index][slice_index].nvec_arr
                 ellm_set = qcis.ellm_sets[cindex]
                 proj = self.get_large_proj(nP=nP, irrep=irrep,
@@ -1363,18 +1328,25 @@ class Groups:
             for irow in range(len(self.bTdict[group_str+'_'+irrep])):
                 if slice_index is None:
                     slice_index = 0
-                if qcis.fcs.n_three_slices > 1:
-                    raise ValueError("only one three-slice currently "
-                                     + "supported in get_slice_proj_dict")
                 if cindex < qcis.n_two_channels:
-                    slot_index = cindex
+                    slot_index = 0
                 else:
-                    slot_index = qcis.n_two_channels
-                # for three_slice in qcis.fcs.three_slices:
-                #     if slot_index-qcis.n_two_channels > three_slice[1]:
-                #         slice_index = slice_index+1
-                nslice = [int(kellm_slice[0]/len(qcis.ellm_sets[cindex])),
-                          int(kellm_slice[1]/len(qcis.ellm_sets[cindex]))]
+                    cindex_shift = cindex-qcis.n_two_channels
+                    slot_index = -1
+                    for k in range(len(qcis.fcs.three_slices)):
+                        three_slice = qcis.fcs.three_slices[k]
+                        if three_slice[0] <= cindex_shift < three_slice[1]:
+                            slot_index = k
+                    if qcis.n_two_channels > 0:
+                        slot_index = slot_index+1
+                nvec_arr = qcis.tbks_list[slot_index][slice_index].nvec_arr
+                ellm_set = qcis.ellm_sets[cindex]
+                nslice = [int(kellm_slice[0]/len(ellm_set)),
+                          int(kellm_slice[1]/len(ellm_set))]
+                assert np.abs(int(kellm_slice[0]/len(ellm_set))
+                              - kellm_slice[0]/len(ellm_set)) < EPSPROJ
+                assert np.abs(int(kellm_slice[1]/len(ellm_set))
+                              - kellm_slice[1]/len(ellm_set)) < EPSPROJ
                 nvec_arr = qcis.tbks_list[slot_index][slice_index].nvec_arr[
                     nslice[0]:nslice[1]]
                 ellm_set = qcis.ellm_sets[cindex]
@@ -1409,17 +1381,18 @@ class Groups:
             for irow in range(len(self.bTdict[group_str+'_'+irrep])):
                 proj_list = []
                 for cindex in range(qcis.n_channels):
-                    if qcis.fcs.n_three_slices > 1:
-                        raise ValueError("only one three-slice currently "
-                                         + "supported in get_full_proj_dict")
                     if cindex < qcis.n_two_channels:
-                        slot_index = cindex
+                        slot_index = 0
                     else:
-                        slot_index = qcis.n_two_channels
+                        cindex_shift = cindex-qcis.n_two_channels
+                        slot_index = -1
+                        for k in range(len(qcis.fcs.three_slices)):
+                            three_slice = qcis.fcs.three_slices[k]
+                            if three_slice[0] <= cindex_shift < three_slice[1]:
+                                slot_index = k
+                        if qcis.n_two_channels > 0:
+                            slot_index = slot_index+1
                     slice_index = 0
-                    for three_slice in qcis.fcs.three_slices:
-                        if slot_index-qcis.n_two_channels > three_slice[1]:
-                            slice_index = slice_index+1
                     nvec_arr = qcis.tbks_list[slot_index][slice_index].nvec_arr
                     ellm_set = qcis.ellm_sets[cindex]
                     proj_tmp = self.get_large_proj(nP=nP, irrep=irrep,

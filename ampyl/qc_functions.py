@@ -41,17 +41,13 @@ from scipy.special import sph_harm
 from scipy.special import erfi
 from scipy.special import erf
 from scipy.linalg import block_diag
+from .global_constants import PI
+from .global_constants import TWOPI
+from .global_constants import FOURPI2
+from .global_constants import ROOT4PI
+from .global_constants import EPSILON15
+from .global_constants import QC_IMPL_DEFAULTS
 import functools
-
-PI = np.pi
-TWOPI = 2.*PI
-FOURPI2 = 4.0*PI**2
-ROOT4PI = np.sqrt(4.*PI)
-EPSILON15 = 1.0e-15
-QC_IMPL_DEFAULTS = {'hermitian': True,
-                    'real harmonics': True,
-                    'Zinterp': False,
-                    'YYCG': False}
 
 
 class bcolors:

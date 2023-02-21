@@ -8,7 +8,7 @@ Created July 2022.
 
 ###############################################################################
 #
-# ampyl.py
+# check_ni.py
 #
 # MIT License
 # Copyright (c) 2022 Maxwell T. Hansen
