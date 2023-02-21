@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+
+    <title>AmPyL Classes &#8212; ampyl 0.1.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/basic.css" />
+    <link rel="stylesheet" href="../_static/bootswatch-3.3.4/spacelab/bootstrap.min.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/bootstrap-sphinx.css" type="text/css" />
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/sphinx_highlight.js"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="../_static/js/jquery-1.11.0.min.js"></script>
+    <script src="../_static/js/jquery-fix.js"></script>
+    <script src="../_static/bootstrap-3.3.4/js/bootstrap.min.js"></script>
+    <script src="../_static/bootstrap-sphinx.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+<meta charset='utf-8'>
+<meta http-equiv='X-UA-Compatible' content='IE=edge,chrome=1'>
+<meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1'>
+<meta name="apple-mobile-web-app-capable" content="yes">
+
+  </head><body>
+
+<div id="navbar" class="navbar navbar-inverse navbar-default navbar-fixed-top">
+  <div class="container">
+    <div class="navbar-header">
+      <!-- .btn-navbar is used as the toggle for collapsed navbar content -->
+      <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".nav-collapse">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="../index.html">
+         </a>
+      <span class="navbar-text navbar-version pull-left"><b></b></span>
+    </div>
+
+      <div class="collapse navbar-collapse nav-collapse">
+        <ul class="nav navbar-nav">
+          
+              <li><a href="../intro/index.html">Introduction</a></li>
+              <li><a href="index.html">Documentation</a></li>
+          
+          
+          
+          
+        </ul>
+
+        
+          
+<form class="navbar-form navbar-right" action="../search.html" method="get">
+ <div class="form-group">
+  <input type="text" name="q" class="form-control" placeholder="Search" />
+ </div>
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+        
+        
+      </div>
+  </div>
+</div>
+
+<div class="container">
+  <div class="row">
+      <div class="col-md-3">
+        <div id="sidebar" class="bs-sidenav" role="complementary"><ul>
+<li><a class="reference internal" href="#">AmPyL Classes</a><ul>
+<li><a class="reference internal" href="#ampyl.FlavorChannel"><code class="docutils literal notranslate"><span class="pre">FlavorChannel</span></code></a></li>
+<li><a class="reference internal" href="#ampyl.SpectatorChannel"><code class="docutils literal notranslate"><span class="pre">SpectatorChannel</span></code></a></li>
+<li><a class="reference internal" href="#ampyl.FlavorChannelSpace"><code class="docutils literal notranslate"><span class="pre">FlavorChannelSpace</span></code></a></li>
+<li><a class="reference internal" href="#ampyl.FiniteVolumeSetup"><code class="docutils literal notranslate"><span class="pre">FiniteVolumeSetup</span></code></a></li>
+<li><a class="reference internal" href="#ampyl.ThreeBodyInteractionScheme"><code class="docutils literal notranslate"><span class="pre">ThreeBodyInteractionScheme</span></code></a></li>
+<li><a class="reference internal" href="#ampyl.ThreeBodyKinematicSpace"><code class="docutils literal notranslate"><span class="pre">ThreeBodyKinematicSpace</span></code></a></li>
+<li><a class="reference internal" href="#ampyl.QCIndexSpace"><code class="docutils literal notranslate"><span class="pre">QCIndexSpace</span></code></a></li>
+<li><a class="reference internal" href="#ampyl.G"><code class="docutils literal notranslate"><span class="pre">G</span></code></a></li>
+<li><a class="reference internal" href="#ampyl.F"><code class="docutils literal notranslate"><span class="pre">F</span></code></a></li>
+<li><a class="reference internal" href="#ampyl.K"><code class="docutils literal notranslate"><span class="pre">K</span></code></a></li>
+<li><a class="reference internal" href="#ampyl.QC"><code class="docutils literal notranslate"><span class="pre">QC</span></code></a></li>
+</ul>
+</li>
+</ul>
+
+<form action="../search.html" method="get">
+ <div class="form-group">
+  <input type="text" name="q" class="form-control" placeholder="Search" />
+ </div>
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form><div id="navbar-logo" style="margin:auto;text-align:center">
+	<img src="/ampyl/_images/ampyl-logo.png" alt="" width="200" />
+</div>
+        </div>
+      </div>
+    <div class="col-md-9 content">
+      
+  <section id="ampyl-classes">
+<h1>AmPyL Classes<a class="headerlink" href="#ampyl-classes" title="Permalink to this heading">¶</a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="ampyl.FlavorChannel">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ampyl.</span></span><span class="sig-name descname"><span class="pre">FlavorChannel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n_particles</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">masses</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">twospins</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">flavors</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">isospin_channel</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">twoisospins</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">twoisospin_value</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ampyl.FlavorChannel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Class used to represent a particular flavor channel.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>n_particles</strong> (<em>int</em>) – number of particles in the channel (no default)</p></li>
+<li><p><strong>masses</strong> (<em>list</em><em> of </em><em>floats</em>) – mass of each particle in the channel (default is
+<code class="docutils literal notranslate"><span class="pre">[1.0]*n_particles</span></code>)</p></li>
+<li><p><strong>twospins</strong> (<em>list</em><em> of </em><em>ints</em>) – twice the spin of each particle in the channel (default
+is <code class="docutils literal notranslate"><span class="pre">[0]*n_particles</span></code>)</p></li>
+<li><p><strong>flavors</strong> (<em>list</em><em> of </em><em>strs</em>) – flavor of each particle (default is <code class="docutils literal notranslate"><span class="pre">['pi']*n_particles</span></code>)</p></li>
+<li><p><strong>isospin_channel</strong> (<em>bool</em>) – specifies whether this is an isospin channel
+(default is <code class="docutils literal notranslate"><span class="pre">False</span></code>)</p></li>
+<li><p><strong>twoisospins</strong> (<em>list</em><em> of </em><em>ints</em>) – twice the isospin of each particle in the channel
+(is <code class="docutils literal notranslate"><span class="pre">None</span></code> if <code class="docutils literal notranslate"><span class="pre">isospin_channel</span></code> is <code class="docutils literal notranslate"><span class="pre">False</span></code>, default is <code class="docutils literal notranslate"><span class="pre">None</span></code>
+but if <code class="docutils literal notranslate"><span class="pre">isospin_channel</span></code> is <code class="docutils literal notranslate"><span class="pre">True</span></code> then default to
+<code class="docutils literal notranslate"><span class="pre">[2]*n_particles</span></code>, i.e. pion isospins)</p></li>
+<li><p><strong>allowed_total_twoisospins</strong> (<em>list</em><em> of </em><em>ints</em>) – twice the allowed total isospins for the
+channel (is <code class="docutils literal notranslate"><span class="pre">None</span></code> if <code class="docutils literal notranslate"><span class="pre">isospin_channel</span></code> is <code class="docutils literal notranslate"><span class="pre">False</span></code>, default is
+<code class="docutils literal notranslate"><span class="pre">None</span></code> but if <code class="docutils literal notranslate"><span class="pre">isospin_channel</span></code> is <code class="docutils literal notranslate"><span class="pre">True</span></code> then set is constructed
+from <code class="docutils literal notranslate"><span class="pre">twoisospins</span></code>)</p></li>
+<li><p><strong>twoisospin_value</strong> (<em>int</em>) – twice the isospin of the channel (is None if
+<code class="docutils literal notranslate"><span class="pre">isospin_channel</span></code> is <code class="docutils literal notranslate"><span class="pre">False</span></code>, default is <code class="docutils literal notranslate"><span class="pre">None</span></code> but if
+<code class="docutils literal notranslate"><span class="pre">isospin_channel</span></code> is <code class="docutils literal notranslate"><span class="pre">True</span></code> then default to largest value in
+<code class="docutils literal notranslate"><span class="pre">allowed_total_twoisospins</span></code>)</p></li>
+<li><p><strong>summary</strong> (<em>np.ndarray</em>) – <p>compact collection of the relevant data for an isospin
+channel. Each row is a possible combination of spectator and isospin
+assignments. The multiple rows ignore <code class="docutils literal notranslate"><span class="pre">twoisospin_value</span></code> and are
+populated with all possible values based on <code class="docutils literal notranslate"><span class="pre">twoisospins</span></code>. Each row
+contains seven entries:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">isospin</span> <span class="n">value</span> <span class="p">(</span><span class="n">x2</span><span class="p">),</span> <span class="n">two</span><span class="o">-</span><span class="n">particle</span> <span class="n">sub</span><span class="o">-</span><span class="n">isospin</span> <span class="p">(</span><span class="n">x2</span><span class="p">),</span>
+ <span class="n">spectator</span> <span class="n">flavor</span><span class="p">,</span> <span class="n">spectator</span> <span class="n">isospin</span> <span class="p">(</span><span class="n">x2</span><span class="p">),</span>
+ <span class="n">first</span> <span class="n">non</span><span class="o">-</span><span class="n">spectator</span> <span class="n">flavor</span><span class="p">,</span> <span class="n">second</span> <span class="n">non</span><span class="o">-</span><span class="n">spectator</span> <span class="n">flavor</span><span class="p">,</span>
+ <span class="n">first</span> <span class="n">non</span><span class="o">-</span><span class="n">spectator</span> <span class="n">isospin</span> <span class="p">(</span><span class="n">x2</span><span class="p">),</span> <span class="n">second</span> <span class="n">non</span><span class="o">-</span><span class="n">spectator</span> <span class="n">isospin</span> <span class="p">(</span><span class="n">x2</span><span class="p">)]</span>
+</pre></div>
+</div>
+<p>For example, for three pions with total isospin 0 the unique entry is
+<code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">2,</span> <span class="pre">'pi',</span> <span class="pre">2,</span> <span class="pre">'pi',</span> <span class="pre">'pi',</span> <span class="pre">2,</span> <span class="pre">2]</span></code>.</p>
+</p></li>
+<li><p><strong>summary_reduced</strong> (<em>np.ndarray</em>) – as with <code class="docutils literal notranslate"><span class="pre">summary</span></code> but reduced to only include
+entries with the correct <code class="docutils literal notranslate"><span class="pre">twoisospin_value</span></code>.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ampyl.SpectatorChannel">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ampyl.</span></span><span class="sig-name descname"><span class="pre">SpectatorChannel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">fc=&lt;ampyl.ampyl.FlavorChannel</span> <span class="pre">object&gt;,</span> <span class="pre">indexing=[0,</span> <span class="pre">1,</span> <span class="pre">2],</span> <span class="pre">sub_twoisospin=None,</span> <span class="pre">ell_set=[0],</span> <span class="pre">p_cot_deltas=None,</span> <span class="pre">n_params_set=[1]</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ampyl.SpectatorChannel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Class used to represent a particular spectator channel.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>fc</strong> (<a class="reference internal" href="#ampyl.FlavorChannel" title="ampyl.FlavorChannel"><em>FlavorChannel</em></a>) – instance of FlavorChannel, a key property of the spectator
+channel</p></li>
+<li><p><strong>indexing</strong> (<em>list</em><em> of </em><em>ints</em>) – permutation of [0, 1, 2], the first entry is the spectator
+particle (indexing is None for a two-particle channel)</p></li>
+<li><p><strong>allowed_sub_twoisospins</strong> – twice the possible values of isospins for
+the two-particle subsystems, given the total isospin and the spectator
+flavor</p></li>
+<li><p><strong>allowed_sub_twoisospins</strong> – list</p></li>
+<li><p><strong>sub_twoisospin</strong> (<em>int</em>) – twice the value of the two-particle isospin for the
+spectator channel (is None if the flavor channel is not an isospin
+channel)</p></li>
+<li><p><strong>ell_set</strong> (<em>list</em><em> of </em><em>ints</em>) – specifies the allowed values of orbital angular momentum</p></li>
+<li><p><strong>p_cot_deltas</strong> (<em>list</em><em> of </em><em>functions</em>) – specifies the two-particle scattering phase shifts
+(same length as ell_set, default is scattering length only)</p></li>
+<li><p><strong>n_params_set</strong> (<em>list</em><em> of </em><em>ints</em>) – specifies the number of parameters for each
+p_cot_deltas entry (same length as ell_set and p_cot_deltas)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ampyl.FlavorChannelSpace">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ampyl.</span></span><span class="sig-name descname"><span class="pre">FlavorChannelSpace</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fc_list</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ni_list</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ampyl.FlavorChannelSpace" title="Permalink to this definition">¶</a></dt>
+<dd><p>Class used to represent a space of multi-hadron channels.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>fc_list</strong> (<em>list</em><em> of </em><em>instances</em><em> of </em><a class="reference internal" href="#ampyl.FlavorChannel" title="ampyl.FlavorChannel"><em>FlavorChannel</em></a>) – flavor-channel list</p></li>
+<li><p><strong>ni_list</strong> (<em>list</em><em> of </em><em>instances</em><em> of </em><a class="reference internal" href="#ampyl.FlavorChannel" title="ampyl.FlavorChannel"><em>FlavorChannel</em></a>) – non-interacting flavor-channel list</p></li>
+<li><p><strong>sc_list</strong> (<em>list</em><em> of </em><em>instances</em><em> of </em><a class="reference internal" href="#ampyl.SpectatorChannel" title="ampyl.SpectatorChannel"><em>SpectatorChannel</em></a>) – spectator-channel list
+(SpectatorChannel is a class to be used predominantly within
+FlavorChannelSpace. It includes extra information relevative to
+FlavorChannel as summarized in the SpectatorChannel documentation.)</p></li>
+<li><p><strong>sc_compact</strong> (<em>list</em>) – <p>Compact summary of the relevant spectator-channel
+properties:</p>
+<p>sc_compact is a list of rank-two np.ndarrays, one for each value of
+n_particles included in the entries of fc_list. If only three-particle
+channels are included, then <code class="docutils literal notranslate"><span class="pre">len(sc_compact)</span></code> is 1 and it contains a
+single rank-two np.ndarray. Focus on this case. Then
+<code class="docutils literal notranslate"><span class="pre">len(sc_compact[0])</span></code> is the total number of three-particle spectator
+channels and each entry <code class="docutils literal notranslate"><span class="pre">sc_compact[0][i]</span></code> (for non-negative integer
+<code class="docutils literal notranslate"><span class="pre">i</span> <span class="pre">&lt;</span> <span class="pre">len(sc_compact[0])</span></code>) is the data for a given channel, has
+length 16, and is populated as follows:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="mf">3.0</span><span class="p">,</span> <span class="n">mass1</span><span class="p">,</span> <span class="n">mass2</span><span class="p">,</span> <span class="n">mass3</span><span class="p">,</span> <span class="n">twospin1</span><span class="p">,</span> <span class="n">twospin2</span><span class="p">,</span> <span class="n">twospin3</span><span class="p">,</span>
+ <span class="n">flavor1</span><span class="p">,</span> <span class="n">flavor2</span><span class="p">,</span> <span class="n">flavor3</span><span class="p">,</span> <span class="n">isospin_channel</span><span class="p">,</span>
+ <span class="n">twoisospin1</span><span class="p">,</span> <span class="n">twoisospin2</span><span class="p">,</span> <span class="n">twoisospin3</span><span class="p">,</span> <span class="n">twoisospin_value</span>
+ <span class="n">sub_twoisospin</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>where the first entry is the number of particles. In the case that
+<code class="docutils literal notranslate"><span class="pre">isospin_channel</span></code> is <code class="docutils literal notranslate"><span class="pre">False</span></code>, all subsequent entries are <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p>
+</p></li>
+<li><p><strong>three_index</strong> (<em>int</em>) – <p>location of the three-particle subspace</p>
+<p>If the fc_list includes multiple values of n_particles, three_index
+is used to specify the location of the sc_compact entry for the
+three-particle subspace. For the case of only three-particle
+channels, three_index is 0.</p>
+</p></li>
+<li><p><strong>three_slices</strong> (<em>list</em>) – <p>list of two-entry (doublet) lists of integers</p>
+<p>Each doublet specifies a slice of <code class="docutils literal notranslate"><span class="pre">sc_compact[three_index]</span></code> according
+to mass values. So, for a non-negative integer
+<code class="docutils literal notranslate"><span class="pre">i</span> <span class="pre">&lt;</span> <span class="pre">len(three_slices)</span></code> we can evaluate:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sc_compact</span><span class="p">[</span><span class="n">three_index</span><span class="p">][</span><span class="n">three_slices</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">0</span><span class="p">]:</span><span class="n">three_slices</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">1</span><span class="p">]]</span>
+</pre></div>
+</div>
+<p>to get a three-particle subspace with fixed mass values.</p>
+</p></li>
+<li><p><strong>n_three_slices</strong> (<em>int</em>) – length of three_slices
+This is equal to the number of different mass values.</p></li>
+<li><p><strong>g_templates</strong> (<em>list</em><em> of </em><em>lists</em><em> of </em><em>np.ndarrays</em>) – <p>flavor structure of g</p>
+<p><code class="docutils literal notranslate"><span class="pre">len(g_templates)</span></code> is equal to <code class="docutils literal notranslate"><span class="pre">len(g_templates[i])</span></code> for any
+non-negative integer <code class="docutils literal notranslate"><span class="pre">i</span> <span class="pre">&lt;</span> <span class="pre">len(g_templates)</span></code>. Thus the list of lists
+is interpreted as a square array, with the number of rows and columns
+also equal to n_three_slices. Each entry in g_template gives a template
+for the finite-volume G matrix within each pair of mass-identical
+subspaces. Off diaongal entries are all zeroes if the sorted set of
+masses is distinct but can be non-zero if, for example masses
+2.0, 2.0, 1.0 swap into masses 1.0, 2.0, 2.0 (where the first
+entry is the spectator in both cases).</p>
+</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ampyl.FiniteVolumeSetup">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ampyl.</span></span><span class="sig-name descname"><span class="pre">FiniteVolumeSetup</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">formalism</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'RFT'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nP</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">array([0,</span> <span class="pre">0,</span> <span class="pre">0])</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">qc_impl</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ampyl.FiniteVolumeSetup" title="Permalink to this definition">¶</a></dt>
+<dd><p>Class used to represent the finite-volume set-up.</p>
+<p>The provided data includes the formalism to be used, the total spatial
+momentum, the finite-volume irrep and the qc implementation (qc_impl).</p>
+<dl class="simple">
+<dt>qc_impl is a dict that can include the following:</dt><dd><p>qc_impl[‘hermitian’] (bool)
+qc_impl[‘real harmonics’] (bool)
+qc_impl[‘Zinterp’] (bool)
+qc_impl[‘YYCG’] (bool)</p>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>formalism</strong> (<em>str</em>) – indicates the formalism used. (Currently only ‘RFT’
+(relatvistic-field theory approach) is supported.)</p></li>
+<li><p><strong>nP</strong> (<em>np.ndarray</em><em> of </em><em>ints</em><em>, </em><em>shape</em><em> (</em><em>3</em><em>,</em><em>)</em>) – three-vector as a numpy array, indicating the total spatial
+momentum in units of 2*PI/L, where L is the box length</p></li>
+<li><p><strong>nPSQ</strong> (<em>int</em>) – magnitude squared of nP</p></li>
+<li><p><strong>nPmag</strong> (<em>float</em>) – magnitude of nP</p></li>
+<li><p><strong>irreps</strong> (<em>instance</em><em> of </em><em>Irreps</em>) – encodes the possible irreducible representations of the
+finite-volume symmetry group for a given value of nP</p></li>
+<li><p><strong>qc_impl</strong> (<em>dict</em>) – all settings for the implementation of the quantization
+condition</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ampyl.ThreeBodyInteractionScheme">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ampyl.</span></span><span class="sig-name descname"><span class="pre">ThreeBodyInteractionScheme</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fcs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Emin</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">three_scheme</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'relativistic</span> <span class="pre">pole'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scheme_data</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[-1.0,</span> <span class="pre">0.0]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kdf_functions</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ampyl.ThreeBodyInteractionScheme" title="Permalink to this definition">¶</a></dt>
+<dd><p>Class for the meaning and parametrization of the three-body interaction.</p>
+<p>Specifes the cutoff function and the exact meaning of finite-volume
+functions as these affect the exact meaning of the three-body interaction.
+Also specifies the parametrization of the three body interaction on the
+FlavorChannelSpace.</p>
+<dl class="simple">
+<dt>three_scheme is drawn from the following:</dt><dd><p>‘relativistic pole’
+‘original pole’</p>
+</dd>
+</dl>
+<p>This refers to the type of pole used within the finite-volume G function.
+This choice affects the meaning of the three-body interaction.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>fcs</strong> (<a class="reference internal" href="#ampyl.FlavorChannelSpace" title="ampyl.FlavorChannelSpace"><em>FlavorChannelSpace</em></a>) – flavor-channel space, required for building the space of
+kdf_functions</p></li>
+<li><p><strong>three_scheme</strong> (<em>str</em>) – specifies the scheme for kdf, see options above above</p></li>
+<li><p><strong>scheme_data</strong> (<em>list</em><em> of </em><em>floats</em><em>, </em><em>length 2</em>) – two parameters, <cite>[alpha, beta]</cite>, specifying the shape
+of the cutoff function; Ddfault is <cite>[alpha, beta]=[-1.0, 0.0]</cite></p></li>
+<li><p><strong>kdf_functions</strong> (<em>list</em><em> of </em><em>lists</em><em> of </em><em>functions</em>) – square array of functions specifying the square
+kdf matrix (length is the number of flavor channels)</p></li>
+<li><p><strong>kdf_iso_constant</strong> (<em>builtin_function_or_method</em>) – simplest choice for kdf, a single coupling called
+beta_0, independent of all kinematics</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ampyl.ThreeBodyKinematicSpace">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ampyl.</span></span><span class="sig-name descname"><span class="pre">ThreeBodyKinematicSpace</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nP</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">array([0,</span> <span class="pre">0,</span> <span class="pre">0])</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nvec_arr</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">array([],</span> <span class="pre">dtype=float64)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">build_shell_acc</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbosity</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ampyl.ThreeBodyKinematicSpace" title="Permalink to this definition">¶</a></dt>
+<dd><p>Class encoding spectator-momentum kinematics.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>nP</strong> (<em>np.ndarray</em><em> of </em><em>ints</em><em>, </em><em>shape</em><em> (</em><em>3</em><em>,</em><em>)</em>) – three-vector as a numpy array, indicating the total spatial
+momentum in units of 2*PI/L, where L is the box length</p></li>
+<li><p><strong>build_shell_acc</strong> (<em>bool</em>) – determines whether data is prepared to accelerate
+evaluations of the qc</p></li>
+<li><p><strong>nvec_arry</strong> (<em>np.ndarray</em><em> of </em><em>ints</em><em>, </em><em>shape</em><em> (</em><em>n</em><em>, </em><em>3</em><em>)</em>) – gives the defining list of three-vectors</p></li>
+<li><p><strong>verbosity</strong> (<em>int</em>) – determines how verbose the output is</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ampyl.QCIndexSpace">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ampyl.</span></span><span class="sig-name descname"><span class="pre">QCIndexSpace</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fcs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fvs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tbis</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Emax</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Lmax</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbosity</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ampyl.QCIndexSpace" title="Permalink to this definition">¶</a></dt>
+<dd><p>Class encoding the quantizaiton condition index space.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>fcs</strong> (<a class="reference internal" href="#ampyl.FlavorChannelSpace" title="ampyl.FlavorChannelSpace"><em>FlavorChannelSpace</em></a>) – flavor-channel space defining the index space</p></li>
+<li><p><strong>fvs</strong> (<a class="reference internal" href="#ampyl.FiniteVolumeSetup" title="ampyl.FiniteVolumeSetup"><em>FiniteVolumeSetup</em></a>) – finite-volume set-up defining the index space</p></li>
+<li><p><strong>tbis</strong> (<a class="reference internal" href="#ampyl.ThreeBodyInteractionScheme" title="ampyl.ThreeBodyInteractionScheme"><em>ThreeBodyInteractionScheme</em></a>) – three-body interaction scheme defining the index space</p></li>
+<li><p><strong>Emax</strong> (<em>float</em>) – maximum energy for building the space</p></li>
+<li><p><strong>Lmax</strong> (<em>float</em>) – maximum volume for building the space</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ampyl.G">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ampyl.</span></span><span class="sig-name descname"><span class="pre">G</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">qcis=&lt;ampyl.ampyl.QCIndexSpace</span> <span class="pre">object&gt;</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ampyl.G" title="Permalink to this definition">¶</a></dt>
+<dd><p>Class for the finite-volume G matrix (responsible for exchanges).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>qcis</strong> (<a class="reference internal" href="#ampyl.QCIndexSpace" title="ampyl.QCIndexSpace"><em>QCIndexSpace</em></a>) – quantization-condition index space, specifying all data for
+the class</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ampyl.F">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ampyl.</span></span><span class="sig-name descname"><span class="pre">F</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">qcis</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alphaKSS</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">C1cut</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ampyl.F" title="Permalink to this definition">¶</a></dt>
+<dd><p>Class for the finite-volume F matrix.</p>
+<p>Warning: It is up to the user to select values of alphaKSS and C1cut that
+lead to a sufficient estimate of the F matrix.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>qcis</strong> (<a class="reference internal" href="#ampyl.QCIndexSpace" title="ampyl.QCIndexSpace"><em>QCIndexSpace</em></a>) – quantization-condition index space, specifying all data for
+the class</p></li>
+<li><p><strong>alphaKSS</strong> (<em>float</em>) – damping factor entering the zeta functions</p></li>
+<li><p><strong>C1cut</strong> (<em>int</em>) – hard cutoff used in the zeta functions</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ampyl.K">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ampyl.</span></span><span class="sig-name descname"><span class="pre">K</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">qcis</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ampyl.K" title="Permalink to this definition">¶</a></dt>
+<dd><p>Class for the two-to-two k matrix.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>qcis</strong> (<a class="reference internal" href="#ampyl.QCIndexSpace" title="ampyl.QCIndexSpace"><em>QCIndexSpace</em></a>) – quantization-condition index space, specifying all data for
+the class</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ampyl.QC">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ampyl.</span></span><span class="sig-name descname"><span class="pre">QC</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">qcis</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">C1cut</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alphaKSS</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ampyl.QC" title="Permalink to this definition">¶</a></dt>
+<dd><p>Class for the quantization condition.</p>
+<p>Warning: It is up to the user to select values of alphaKSS and C1cut that
+lead to a sufficient estimate of the F matrix.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>qcis</strong> (<a class="reference internal" href="#ampyl.QCIndexSpace" title="ampyl.QCIndexSpace"><em>QCIndexSpace</em></a>) – quantization-condition index space, specifying all data for
+the class</p></li>
+<li><p><strong>alphaKSS</strong> (<em>float</em>) – damping factor entering the zeta functions</p></li>
+<li><p><strong>C1cut</strong> (<em>int</em>) – hard cutoff used in the zeta functions</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+
+
+    </div>
+      
+  </div>
+</div>
+<footer class="footer">
+  <div class="container">
+    <p class="pull-right">
+      <a href="#">Back to top</a>
+      
+    </p>
+    <p>
+        &copy; Copyright 2022, Maxwell T. Hansen.<br/>
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 6.1.3.<br/>
+    </p>
+  </div>
+</footer>
+  </body>
+</html>
