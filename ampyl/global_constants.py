@@ -39,7 +39,8 @@ import numpy as np
 QC_IMPL_DEFAULTS = {'hermitian': True,
                     'real harmonics': True,
                     'Zinterp': False,
-                    'YYCG': False}
+                    'YYCG': False,
+                    'g_uses_prep_mat': False}
 
 PI = np.pi
 TWOPI = 2.*PI
@@ -51,6 +52,7 @@ EPSPROJ = 1.0e-8
 EPSILON10 = 1.0e-10
 EPSILON15 = 1.0e-15
 EPSILON20 = 1.0e-20
+SPARSE_CUT = 1.5
 
 DELTA_L_FOR_GRID = 0.9
 DELTA_E_FOR_GRID = 0.9

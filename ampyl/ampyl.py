@@ -56,6 +56,7 @@ from .global_constants import E_GRID_SHIFT
 from .global_constants import G_TEMPLATE_DICT
 from .global_constants import ISO_PROJECTORS
 from .global_constants import CAL_C_ISO
+from .global_constants import SPARSE_CUT
 warnings.simplefilter('always')
 
 PRINT_THRESHOLD_DEFAULT = np.get_printoptions()['threshold']
@@ -1050,10 +1051,7 @@ class FiniteVolumeSetup:
 
     def __init__(self, formalism='RFT', nP=np.array([0, 0, 0]), qc_impl=None):
         if qc_impl is None:
-            qc_impl = {'hermitian': QC_IMPL_DEFAULTS['hermitian'],
-                       'real harmonics': QC_IMPL_DEFAULTS['real harmonics'],
-                       'Zinterp': QC_IMPL_DEFAULTS['Zinterp'],
-                       'YYCG': QC_IMPL_DEFAULTS['YYCG']}
+            qc_impl = QC_IMPL_DEFAULTS
         self.formalism = formalism
         self.qc_impl = qc_impl
         self.nP = nP
@@ -1203,9 +1201,9 @@ class ThreeBodyKinematicSpace:
     :param nP: three-vector as a numpy array, indicating the total spatial
         momentum in units of 2*PI/L, where L is the box length
     :type nP: np.ndarray of ints, shape (3,)
-    :param build_slice_acc: determines whether data is prepared to accelerate
+    :param build_shell_acc: determines whether data is prepared to accelerate
         evaluations of the qc
-    :type build_slice_acc: bool
+    :type build_shell_acc: bool
     :param nvec_arry: gives the defining list of three-vectors
     :type nvec_arry: np.ndarray of ints, shape (n, 3)
     :param verbosity: determines how verbose the output is
@@ -1213,8 +1211,8 @@ class ThreeBodyKinematicSpace:
     """
 
     def __init__(self, nP=np.array([0, 0, 0]), nvec_arr=np.array([]),
-                 build_slice_acc=True, verbosity=0):
-        self.build_slice_acc = build_slice_acc
+                 build_shell_acc=True, verbosity=0):
+        self.build_shell_acc = build_shell_acc
         self.nP = nP
         self.nvec_arr = nvec_arr
         self.verbosity = verbosity
@@ -1260,18 +1258,18 @@ class ThreeBodyKinematicSpace:
             arrtmp = arrtmp[arrtmp[:, 4-i].argsort(kind='mergesort')]
         return (arrtmp.T)[2:].T
 
-    def _get_slice_sort(self, nvec_arr_first_sort):
+    def _get_shell_sort(self, nvec_arr_first_sort):
         group = Groups(ell_max=0)
         little_group = group.get_little_group(self._nP)
         nvec_arr_copy = np.copy(nvec_arr_first_sort)
-        slicedict_nvec_arr = {}
-        slicedict_index = 0
+        shell_dict_nvec_arr = {}
+        shell_dict_index = 0
         while len(nvec_arr_copy) > 0:
             nvec_tmp = nvec_arr_copy[0].reshape((3, 1))
             nvec_rotations = (little_group*nvec_tmp).sum(1)
             nvec_rotations_unique = np.unique(nvec_rotations, axis=0)
-            slicedict_nvec_arr[slicedict_index] = nvec_rotations_unique
-            slicedict_index = slicedict_index+1
+            shell_dict_nvec_arr[shell_dict_index] = nvec_rotations_unique
+            shell_dict_index = shell_dict_index+1
             mins = np.minimum(nvec_rotations_unique.min(0),
                               nvec_arr_copy.min(0))
             nvec_rotations_shifted = nvec_rotations_unique-mins
@@ -1287,90 +1285,90 @@ class ThreeBodyKinematicSpace:
                     )
                 )]
             nvec_arr_copy = nvec_arr_shifted_purged+mins
-        nvec_arr_slicesort = None
-        slices = [[]]
-        slices_counter = 0
-        for i in range(len(slicedict_nvec_arr)):
-            if nvec_arr_slicesort is None:
-                nvec_arr_slicesort = slicedict_nvec_arr[i]
+        nvec_arr_shell_sort = None
+        shells = [[]]
+        shells_counter = 0
+        for i in range(len(shell_dict_nvec_arr)):
+            if nvec_arr_shell_sort is None:
+                nvec_arr_shell_sort = shell_dict_nvec_arr[i]
             else:
-                nvec_arr_slicesort = np.concatenate((nvec_arr_slicesort,
-                                                     slicedict_nvec_arr[i]))
-            slices = slices+[[slices_counter,
-                              slices_counter+len(slicedict_nvec_arr[i])]]
-            slices_counter = slices_counter+len(slicedict_nvec_arr[i])
-        return nvec_arr_slicesort, slices[1:]
+                nvec_arr_shell_sort = np.concatenate((nvec_arr_shell_sort,
+                                                     shell_dict_nvec_arr[i]))
+            shells = shells+[[shells_counter,
+                              shells_counter+len(shell_dict_nvec_arr[i])]]
+            shells_counter = shells_counter+len(shell_dict_nvec_arr[i])
+        return nvec_arr_shell_sort, shells[1:]
 
     def _get_stacks(self):
         n1vec_stackdict = {}
         n2vec_stackdict = {}
         n3vec_stackdict = {}
         stackdict_multiplicities = {}
-        for i in self.slices:
-            for j in self.slices:
-                stri = str(i[0])+'_'+str(i[1])
-                strj = str(j[0])+'_'+str(j[1])
+        for i1 in self.shells:
+            for j1 in self.shells:
+                stri = str(i1[0])+'_'+str(i1[1])
+                strj = str(j1[0])+'_'+str(j1[1])
                 n1vec_stackdict[stri+'_'+strj] = 0.0
                 n2vec_stackdict[stri+'_'+strj] = 0.0
                 n3vec_stackdict[stri+'_'+strj] = 0.0
                 stackdict_multiplicities[stri+'_'+strj]\
-                    = (i[1]-i[0])*(j[1]-j[0])
+                    = (i1[1]-i1[0])*(j1[1]-j1[0])
 
-        for i in range(len(self.nvecSQ_arr)):
-            for j in range(len(self.nvecSQ_arr)):
+        for i1 in range(len(self.nvecSQ_arr)):
+            for j1 in range(len(self.nvecSQ_arr)):
                 shell_index_i = 0
                 shell_index_j = 0
-                for itmp in range(len(self.slices)):
-                    rtmp = self.slices[itmp]
-                    if rtmp[0] <= i < rtmp[1]:
-                        shell_index_i = itmp
-                for jtmp in range(len(self.slices)):
-                    rtmp = self.slices[jtmp]
-                    if rtmp[0] <= j < rtmp[1]:
-                        shell_index_j = jtmp
-                stri = str(self.slices[shell_index_i][0])+'_'\
-                    + str(self.slices[shell_index_i][1])
-                strj = str(self.slices[shell_index_j][0])+'_'\
-                    + str(self.slices[shell_index_j][1])
-                sizei = self.slices[shell_index_i][1]\
-                    - self.slices[shell_index_i][0]
-                sizej = self.slices[shell_index_j][1]\
-                    - self.slices[shell_index_j][0]
-                if (sizei >= sizej and i == self.slices[shell_index_i][0])\
-                   or (sizej > sizei and j == self.slices[shell_index_j][0]):
+                for i2 in range(len(self.shells)):
+                    shell_tmp = self.shells[i2]
+                    if shell_tmp[0] <= i1 < shell_tmp[1]:
+                        shell_index_i = i2
+                for j2 in range(len(self.shells)):
+                    shell_tmp = self.shells[j2]
+                    if shell_tmp[0] <= j1 < shell_tmp[1]:
+                        shell_index_j = j2
+                stri = str(self.shells[shell_index_i][0])+'_'\
+                    + str(self.shells[shell_index_i][1])
+                strj = str(self.shells[shell_index_j][0])+'_'\
+                    + str(self.shells[shell_index_j][1])
+                sizei = self.shells[shell_index_i][1]\
+                    - self.shells[shell_index_i][0]
+                sizej = self.shells[shell_index_j][1]\
+                    - self.shells[shell_index_j][0]
+                if (sizei >= sizej and i1 == self.shells[shell_index_i][0])\
+                   or (sizej > sizei and j1 == self.shells[shell_index_j][0]):
                     if n1vec_stackdict[stri+'_'+strj] == 0.0:
                         n1vec_stackdict[stri+'_'+strj]\
-                            = [self.n1vec_mat[i][j]]
+                            = [self.n1vec_mat[i1][j1]]
                     else:
                         n1vec_stackdict[stri+'_'+strj] =\
                             n1vec_stackdict[stri+'_'+strj]\
-                            + [self.n1vec_mat[i][j]]
+                            + [self.n1vec_mat[i1][j1]]
                     if n2vec_stackdict[stri+'_'+strj] == 0.0:
                         n2vec_stackdict[stri+'_'+strj]\
-                            = [self.n2vec_mat[i][j]]
+                            = [self.n2vec_mat[i1][j1]]
                     else:
                         n2vec_stackdict[stri+'_'+strj]\
                             = n2vec_stackdict[stri+'_'+strj]\
-                            + [self.n2vec_mat[i][j]]
+                            + [self.n2vec_mat[i1][j1]]
                     if n3vec_stackdict[stri+'_'+strj] == 0.0:
                         n3vec_stackdict[stri+'_'+strj]\
-                            = [self.n3vec_mat[i][j]]
+                            = [self.n3vec_mat[i1][j1]]
                     else:
                         n3vec_stackdict[stri+'_'+strj] =\
                             n3vec_stackdict[stri+'_'+strj]\
-                            + [self.n3vec_mat[i][j]]
+                            + [self.n3vec_mat[i1][j1]]
         n1vec_stacked = [[]]
         n2vec_stacked = [[]]
         n3vec_stacked = [[]]
         stack_multiplicities = [[]]
-        for i in self.slices:
+        for i1 in self.shells:
             n1row = []
             n2row = []
             n3row = []
             mrow = []
-            for j in self.slices:
-                stri = str(i[0])+'_'+str(i[1])
-                strj = str(j[0])+'_'+str(j[1])
+            for j1 in self.shells:
+                stri = str(i1[0])+'_'+str(i1[1])
+                strj = str(j1[0])+'_'+str(j1[1])
                 n1row = n1row + [np.array(n1vec_stackdict[stri+'_'+strj])]
                 n2row = n2row + [np.array(n2vec_stackdict[stri+'_'+strj])]
                 n3row = n3row + [np.array(n3vec_stackdict[stri+'_'+strj])]
@@ -1386,13 +1384,13 @@ class ThreeBodyKinematicSpace:
 
     @nvec_arr.setter
     def nvec_arr(self, nvec_arr):
-        if self.build_slice_acc:
+        if self.build_shell_acc:
             if len(nvec_arr) == 0:
                 self._nvec_arr = nvec_arr
             else:
                 nvec_arr_first_sort = self._get_first_sort(nvec_arr)
-                self._nvec_arr, self.slices\
-                    = self._get_slice_sort(nvec_arr_first_sort)
+                self._nvec_arr, self.shells\
+                    = self._get_shell_sort(nvec_arr_first_sort)
                 self.nvecSQ_arr = (self._nvec_arr*self._nvec_arr).sum(1)
                 self.nP_minus_nvec_arr = self.nP - self._nvec_arr
                 self.nP_minus_nvec_SQ_arr = (self.nP_minus_nvec_arr
@@ -1433,141 +1431,141 @@ class ThreeBodyKinematicSpace:
                     n3vecSQ_stacked = n3vecSQ_stacked+[n3vecSQ_row]
                 self.n3vecSQ_stacked = n3vecSQ_stacked[1:]
 
-                n1vec_arr_all_slices = [[]]
-                n1vecSQ_arr_all_slices = [[]]
-                n2vec_arr_all_slices = [[]]
-                n2vecSQ_arr_all_slices = [[]]
-                n1vec_mat_all_slices = [[]]
-                n2vec_mat_all_slices = [[]]
-                n3vec_mat_all_slices = [[]]
-                n1vecSQ_mat_all_slices = [[]]
-                n2vecSQ_mat_all_slices = [[]]
-                n3vecSQ_mat_all_slices = [[]]
-                for row_slicing in self.slices:
-                    n1vec_arr_row_slices = []
-                    n1vecSQ_arr_row_slices = []
-                    n2vec_arr_row_slices = []
-                    n2vecSQ_arr_row_slices = []
-                    n1vec_mat_row_slices = []
-                    n2vec_mat_row_slices = []
-                    n3vec_mat_row_slices = []
-                    n1vecSQ_mat_row_slices = []
-                    n2vecSQ_mat_row_slices = []
-                    n3vecSQ_mat_row_slices = []
-                    for col_slicing in self.slices:
-                        n1vec_arr_slice = self.nvec_arr[
-                            row_slicing[0]:row_slicing[1]]
-                        n1vecSQ_arr_slice = self.nvecSQ_arr[
-                            row_slicing[0]:row_slicing[1]]
-                        n2vec_arr_slice = self.nvec_arr[
-                            col_slicing[0]:col_slicing[1]]
-                        n2vecSQ_arr_slice = self.nvecSQ_arr[
-                            col_slicing[0]:col_slicing[1]]
+                n1vec_arr_all_shells = [[]]
+                n1vecSQ_arr_all_shells = [[]]
+                n2vec_arr_all_shells = [[]]
+                n2vecSQ_arr_all_shells = [[]]
+                n1vec_mat_all_shells = [[]]
+                n2vec_mat_all_shells = [[]]
+                n3vec_mat_all_shells = [[]]
+                n1vecSQ_mat_all_shells = [[]]
+                n2vecSQ_mat_all_shells = [[]]
+                n3vecSQ_mat_all_shells = [[]]
+                for row_shell in self.shells:
+                    n1vec_arr_row_shells = []
+                    n1vecSQ_arr_row_shells = []
+                    n2vec_arr_row_shells = []
+                    n2vecSQ_arr_row_shells = []
+                    n1vec_mat_row_shells = []
+                    n2vec_mat_row_shells = []
+                    n3vec_mat_row_shells = []
+                    n1vecSQ_mat_row_shells = []
+                    n2vecSQ_mat_row_shells = []
+                    n3vecSQ_mat_row_shells = []
+                    for col_shell in self.shells:
+                        n1vec_arr_shell = self.nvec_arr[
+                            row_shell[0]:row_shell[1]]
+                        n1vecSQ_arr_shell = self.nvecSQ_arr[
+                            row_shell[0]:row_shell[1]]
+                        n2vec_arr_shell = self.nvec_arr[
+                            col_shell[0]:col_shell[1]]
+                        n2vecSQ_arr_shell = self.nvecSQ_arr[
+                            col_shell[0]:col_shell[1]]
 
                         # Awkward swap here
-                        n1vec_mat_slice = np.swapaxes(
+                        n1vec_mat_shell = np.swapaxes(
                             np.swapaxes(
                                 ((self.n2vec_mat)[
-                                    row_slicing[0]:row_slicing[1]]),
+                                    row_shell[0]:row_shell[1]]),
                                 0, 1
-                                )[col_slicing[0]:col_slicing[1]],
+                                )[col_shell[0]:col_shell[1]],
                             0, 1
                             )
 
-                        n2vec_mat_slice = np.swapaxes(
+                        n2vec_mat_shell = np.swapaxes(
                             np.swapaxes(
                                 ((self.n1vec_mat)[
-                                    row_slicing[0]:row_slicing[1]]),
+                                    row_shell[0]:row_shell[1]]),
                                 0, 1
-                                )[col_slicing[0]:col_slicing[1]],
+                                )[col_shell[0]:col_shell[1]],
                             0, 1
                             )
 
-                        n3vec_mat_slice = np.swapaxes(
+                        n3vec_mat_shell = np.swapaxes(
                             np.swapaxes(
                                 ((self.n3vec_mat)[
-                                    row_slicing[0]:row_slicing[1]]),
+                                    row_shell[0]:row_shell[1]]),
                                 0, 1
-                                )[col_slicing[0]:col_slicing[1]],
+                                )[col_shell[0]:col_shell[1]],
                             0, 1
                             )
 
-                        n1vecSQ_mat_slice = np.swapaxes(
+                        n1vecSQ_mat_shell = np.swapaxes(
                             np.swapaxes(
                                 ((self.n2vecSQ_mat)[
-                                    row_slicing[0]:row_slicing[1]]),
+                                    row_shell[0]:row_shell[1]]),
                                 0, 1
-                                )[col_slicing[0]:col_slicing[1]],
+                                )[col_shell[0]:col_shell[1]],
                             0, 1
                             )
 
-                        n2vecSQ_mat_slice = np.swapaxes(
+                        n2vecSQ_mat_shell = np.swapaxes(
                             np.swapaxes(
                                 ((self.n1vecSQ_mat)[
-                                    row_slicing[0]:row_slicing[1]]),
+                                    row_shell[0]:row_shell[1]]),
                                 0, 1
-                                )[col_slicing[0]:col_slicing[1]],
+                                )[col_shell[0]:col_shell[1]],
                             0, 1
                             )
 
-                        n3vecSQ_mat_slice = np.swapaxes(
+                        n3vecSQ_mat_shell = np.swapaxes(
                             np.swapaxes(
                                 ((self.n3vecSQ_mat)[
-                                    row_slicing[0]:row_slicing[1]]),
+                                    row_shell[0]:row_shell[1]]),
                                 0, 1
-                                )[col_slicing[0]:col_slicing[1]],
+                                )[col_shell[0]:col_shell[1]],
                             0, 1
                             )
-                        n1vec_arr_row_slices\
-                            = n1vec_arr_row_slices+[n1vec_arr_slice]
-                        n1vecSQ_arr_row_slices\
-                            = n1vecSQ_arr_row_slices+[n1vecSQ_arr_slice]
-                        n2vec_arr_row_slices\
-                            = n2vec_arr_row_slices+[n2vec_arr_slice]
-                        n2vecSQ_arr_row_slices\
-                            = n2vecSQ_arr_row_slices+[n2vecSQ_arr_slice]
-                        n1vec_mat_row_slices\
-                            = n1vec_mat_row_slices+[n1vec_mat_slice]
-                        n2vec_mat_row_slices\
-                            = n2vec_mat_row_slices+[n2vec_mat_slice]
-                        n3vec_mat_row_slices\
-                            = n3vec_mat_row_slices+[n3vec_mat_slice]
-                        n1vecSQ_mat_row_slices\
-                            = n1vecSQ_mat_row_slices+[n1vecSQ_mat_slice]
-                        n2vecSQ_mat_row_slices\
-                            = n2vecSQ_mat_row_slices+[n2vecSQ_mat_slice]
-                        n3vecSQ_mat_row_slices\
-                            = n3vecSQ_mat_row_slices+[n3vecSQ_mat_slice]
-                    n1vec_arr_all_slices\
-                        = n1vec_arr_all_slices+[n1vec_arr_row_slices]
-                    n1vecSQ_arr_all_slices\
-                        = n1vecSQ_arr_all_slices+[n1vecSQ_arr_row_slices]
-                    n2vec_arr_all_slices\
-                        = n2vec_arr_all_slices+[n2vec_arr_row_slices]
-                    n2vecSQ_arr_all_slices\
-                        = n2vecSQ_arr_all_slices+[n2vecSQ_arr_row_slices]
-                    n1vec_mat_all_slices\
-                        = n1vec_mat_all_slices+[n1vec_mat_row_slices]
-                    n2vec_mat_all_slices\
-                        = n2vec_mat_all_slices+[n2vec_mat_row_slices]
-                    n3vec_mat_all_slices\
-                        = n3vec_mat_all_slices+[n3vec_mat_row_slices]
-                    n1vecSQ_mat_all_slices\
-                        = n1vecSQ_mat_all_slices+[n1vecSQ_mat_row_slices]
-                    n2vecSQ_mat_all_slices\
-                        = n2vecSQ_mat_all_slices+[n2vecSQ_mat_row_slices]
-                    n3vecSQ_mat_all_slices\
-                        = n3vecSQ_mat_all_slices+[n3vecSQ_mat_row_slices]
-                    self.n1vec_arr_all_slices = n1vec_arr_all_slices[1:]
-                    self.n1vecSQ_arr_all_slices = n1vecSQ_arr_all_slices[1:]
-                    self.n2vec_arr_all_slices = n2vec_arr_all_slices[1:]
-                    self.n2vecSQ_arr_all_slices = n2vecSQ_arr_all_slices[1:]
-                    self.n1vec_mat_all_slices = n1vec_mat_all_slices[1:]
-                    self.n2vec_mat_all_slices = n2vec_mat_all_slices[1:]
-                    self.n3vec_mat_all_slices = n3vec_mat_all_slices[1:]
-                    self.n1vecSQ_mat_all_slices = n1vecSQ_mat_all_slices[1:]
-                    self.n2vecSQ_mat_all_slices = n2vecSQ_mat_all_slices[1:]
-                    self.n3vecSQ_mat_all_slices = n3vecSQ_mat_all_slices[1:]
+                        n1vec_arr_row_shells\
+                            = n1vec_arr_row_shells+[n1vec_arr_shell]
+                        n1vecSQ_arr_row_shells\
+                            = n1vecSQ_arr_row_shells+[n1vecSQ_arr_shell]
+                        n2vec_arr_row_shells\
+                            = n2vec_arr_row_shells+[n2vec_arr_shell]
+                        n2vecSQ_arr_row_shells\
+                            = n2vecSQ_arr_row_shells+[n2vecSQ_arr_shell]
+                        n1vec_mat_row_shells\
+                            = n1vec_mat_row_shells+[n1vec_mat_shell]
+                        n2vec_mat_row_shells\
+                            = n2vec_mat_row_shells+[n2vec_mat_shell]
+                        n3vec_mat_row_shells\
+                            = n3vec_mat_row_shells+[n3vec_mat_shell]
+                        n1vecSQ_mat_row_shells\
+                            = n1vecSQ_mat_row_shells+[n1vecSQ_mat_shell]
+                        n2vecSQ_mat_row_shells\
+                            = n2vecSQ_mat_row_shells+[n2vecSQ_mat_shell]
+                        n3vecSQ_mat_row_shells\
+                            = n3vecSQ_mat_row_shells+[n3vecSQ_mat_shell]
+                    n1vec_arr_all_shells\
+                        = n1vec_arr_all_shells+[n1vec_arr_row_shells]
+                    n1vecSQ_arr_all_shells\
+                        = n1vecSQ_arr_all_shells+[n1vecSQ_arr_row_shells]
+                    n2vec_arr_all_shells\
+                        = n2vec_arr_all_shells+[n2vec_arr_row_shells]
+                    n2vecSQ_arr_all_shells\
+                        = n2vecSQ_arr_all_shells+[n2vecSQ_arr_row_shells]
+                    n1vec_mat_all_shells\
+                        = n1vec_mat_all_shells+[n1vec_mat_row_shells]
+                    n2vec_mat_all_shells\
+                        = n2vec_mat_all_shells+[n2vec_mat_row_shells]
+                    n3vec_mat_all_shells\
+                        = n3vec_mat_all_shells+[n3vec_mat_row_shells]
+                    n1vecSQ_mat_all_shells\
+                        = n1vecSQ_mat_all_shells+[n1vecSQ_mat_row_shells]
+                    n2vecSQ_mat_all_shells\
+                        = n2vecSQ_mat_all_shells+[n2vecSQ_mat_row_shells]
+                    n3vecSQ_mat_all_shells\
+                        = n3vecSQ_mat_all_shells+[n3vecSQ_mat_row_shells]
+                    self.n1vec_arr_all_shells = n1vec_arr_all_shells[1:]
+                    self.n1vecSQ_arr_all_shells = n1vecSQ_arr_all_shells[1:]
+                    self.n2vec_arr_all_shells = n2vec_arr_all_shells[1:]
+                    self.n2vecSQ_arr_all_shells = n2vecSQ_arr_all_shells[1:]
+                    self.n1vec_mat_all_shells = n1vec_mat_all_shells[1:]
+                    self.n2vec_mat_all_shells = n2vec_mat_all_shells[1:]
+                    self.n3vec_mat_all_shells = n3vec_mat_all_shells[1:]
+                    self.n1vecSQ_mat_all_shells = n1vecSQ_mat_all_shells[1:]
+                    self.n2vecSQ_mat_all_shells = n2vecSQ_mat_all_shells[1:]
+                    self.n3vecSQ_mat_all_shells = n3vecSQ_mat_all_shells[1:]
         else:
             self._nvec_arr = nvec_arr
 
@@ -1980,6 +1978,8 @@ class QCIndexSpace:
         for three_slice in self.fcs.three_slices:
             if cindex > three_slice[1]:
                 slice_index = slice_index+1
+        if self.n_two_channels > 0:
+            slice_index = slice_index+1
         return slice_index
 
     def populate_all_kellm_spaces(self):
@@ -1987,7 +1987,7 @@ class QCIndexSpace:
         if self.verbosity >= 2:
             print("populating kellm spaces")
             print(self.n_channels, "channels to populate")
-        kellm_slices = [[]]
+        kellm_shells = [[]]
         kellm_spaces = [[]]
         for cindex in range(self.n_channels):
             if cindex < self.n_two_channels:
@@ -2003,13 +2003,13 @@ class QCIndexSpace:
                     slot_index = slot_index+1
             tbks_list_tmp = self.tbks_list[slot_index]
             ellm_set = self.ellm_sets[cindex]
-            kellm_slices_single = [[]]
+            kellm_shells_single = [[]]
             kellm_spaces_single = [[]]
             for tbks_tmp in tbks_list_tmp:
                 nvec_arr = tbks_tmp.nvec_arr
-                kellm_slice = (len(ellm_set)*np.array(tbks_tmp.slices
+                kellm_shell = (len(ellm_set)*np.array(tbks_tmp.shells
                                                       )).tolist()
-                kellm_slices_single = kellm_slices_single+[kellm_slice]
+                kellm_shells_single = kellm_shells_single+[kellm_shell]
                 ellm_set_extended = np.tile(ellm_set, (len(nvec_arr), 1))
                 nvec_arr_extended = np.repeat(nvec_arr, len(ellm_set),
                                               axis=0)
@@ -2017,10 +2017,10 @@ class QCIndexSpace:
                                               ellm_set_extended),
                                              axis=1)
                 kellm_spaces_single = kellm_spaces_single+[kellm_space]
-            kellm_slices = kellm_slices+[kellm_slices_single[1:]]
+            kellm_shells = kellm_shells+[kellm_shells_single[1:]]
             kellm_spaces = kellm_spaces+[kellm_spaces_single[1:]]
         self.kellm_spaces = kellm_spaces[1:]
-        self.kellm_slices = kellm_slices[1:]
+        self.kellm_shells = kellm_shells[1:]
         if self.verbosity >= 2:
             print("result for kellm spaces")
             print("location: channel index, nvec-space index")
@@ -2035,31 +2035,31 @@ class QCIndexSpace:
         """Populate all projector dictionaries."""
         group = self.group
         sc_proj_dicts = []
-        sc_proj_dicts_sliced = [[]]
+        sc_proj_dicts_by_shell = [[]]
         if self.verbosity >= 2:
             print("getting the dict for following qcis:")
             print(self)
         for cindex in range(self.n_channels):
             proj_dict = group.get_channel_proj_dict(qcis=self, cindex=cindex)
             sc_proj_dicts = sc_proj_dicts+[proj_dict]
-            sc_proj_dict_single_slice = [[]]
-            for ibest_tmp in range(len(self.kellm_slices[cindex])):
-                best_kellm_slices = self.kellm_slices[cindex][ibest_tmp]
-                sc_proj_dict_single_best = []
-                for kellm_slice in best_kellm_slices:
-                    sc_proj_dict_single_best = sc_proj_dict_single_best\
-                        + [group.get_slice_proj_dict(
+            sc_proj_dict_channel_by_shell = [[]]
+            for kellm_shell_index in range(len(self.kellm_shells[cindex])):
+                kellm_shell_set = self.kellm_shells[cindex][kellm_shell_index]
+                sc_proj_dict_shell_set = []
+                for kellm_shell in kellm_shell_set:
+                    sc_proj_dict_shell_set = sc_proj_dict_shell_set\
+                        + [group.get_shell_proj_dict(
                             qcis=self,
                             cindex=cindex,
-                            kellm_slice=kellm_slice,
-                            slice_index=ibest_tmp)]
-                sc_proj_dict_single_slice = sc_proj_dict_single_slice\
-                    + [sc_proj_dict_single_best]
-            sc_proj_dict_single_slice = sc_proj_dict_single_slice[1:]
-            sc_proj_dicts_sliced = sc_proj_dicts_sliced\
-                + [sc_proj_dict_single_slice]
+                            kellm_shell=kellm_shell,
+                            shell_index=kellm_shell_index)]
+                sc_proj_dict_channel_by_shell = sc_proj_dict_channel_by_shell\
+                    + [sc_proj_dict_shell_set]
+            sc_proj_dict_channel_by_shell = sc_proj_dict_channel_by_shell[1:]
+            sc_proj_dicts_by_shell = sc_proj_dicts_by_shell\
+                + [sc_proj_dict_channel_by_shell]
         self.sc_proj_dicts = sc_proj_dicts
-        self.sc_proj_dicts_sliced = sc_proj_dicts_sliced[1:]
+        self.sc_proj_dicts_by_shell = sc_proj_dicts_by_shell[1:]
 
     def get_tbks_sub_indices(self, E, L):
         """Get the indices of the relevant three-body kinematics spaces."""
@@ -2778,11 +2778,11 @@ class G:
            or (ts == 'relativistic pole'):
             [self.alpha, self.beta] = self.qcis.tbis.scheme_data
 
-    def _get_masks_and_slices(self, E, nP, L, tbks_entry,
+    def _get_masks_and_shells(self, E, nP, L, tbks_entry,
                               cindex_row, cindex_col,
-                              row_slice_index, col_slice_index):
-        mask_row_slices = None
-        mask_col_slices = None
+                              row_shell_index, col_shell_index):
+        mask_row_shells = None
+        mask_col_shells = None
         three_slice_index_row\
             = self.qcis._get_three_slice_index(cindex_row)
         three_slice_index_col\
@@ -2791,8 +2791,8 @@ class G:
             raise ValueError("only one mass slice is supported in G")
         three_slice_index = three_slice_index_row
         if nP@nP == 0:
-            row_slice = tbks_entry.slices[row_slice_index]
-            col_slice = tbks_entry.slices[col_slice_index]
+            row_shell = tbks_entry.shells[row_shell_index]
+            col_shell = tbks_entry.shells[col_shell_index]
         else:
             sc_compact_three_subspace\
                 = self.qcis.fcs.sc_compact[self.qcis.fcs.three_index]
@@ -2804,13 +2804,13 @@ class G:
             Pvec = TWOPI*nP/L
             PmkSQ_arr = ((Pvec-kvec_arr)**2).sum(axis=1)
             mask_row = (E-omk_arr)**2-PmkSQ_arr > 0.0
-            row_slices = tbks_entry.slices
-            mask_row_slices = []
-            for row_slice in row_slices:
-                mask_row_slices = mask_row_slices\
-                    + [mask_row[row_slice[0]:row_slice[1]].all()]
-            row_slices = list(np.array(row_slices)[mask_row_slices])
-            row_slice = row_slices[row_slice_index]
+            row_shells = tbks_entry.shells
+            mask_row_shells = []
+            for row_shell in row_shells:
+                mask_row_shells = mask_row_shells\
+                    + [mask_row[row_shell[0]:row_shell[1]].all()]
+            row_shells = list(np.array(row_shells)[mask_row_shells])
+            row_shell = row_shells[row_shell_index]
 
             sc_compact_three_subspace\
                 = self.qcis.fcs.sc_compact[self.qcis.fcs.three_index]
@@ -2822,22 +2822,23 @@ class G:
             Pvec = TWOPI*nP/L
             PmkSQ_arr = ((Pvec-kvec_arr)**2).sum(axis=1)
             mask_col = (E-omk_arr)**2-PmkSQ_arr > 0.0
-            col_slices = tbks_entry.slices
-            mask_col_slices = []
-            for col_slice in col_slices:
-                mask_col_slices = mask_col_slices\
-                    + [mask_col[col_slice[0]:col_slice[1]].all()]
-            col_slices = list(np.array(col_slices)[mask_col_slices])
-            col_slice = col_slices[col_slice_index]
-        return mask_row_slices, mask_col_slices, row_slice, col_slice
+            col_shells = tbks_entry.shells
+            mask_col_shells = []
+            for col_shell in col_shells:
+                mask_col_shells = mask_col_shells\
+                    + [mask_col[col_shell[0]:col_shell[1]].all()]
+            col_shells = list(np.array(col_shells)[mask_col_shells])
+            col_shell = col_shells[col_shell_index]
+        return mask_row_shells, mask_col_shells, row_shell, col_shell,\
+            row_shell_index, col_shell_index
 
     def get_shell(self, E=5.0, L=5.0, m1=1.0, m2=1.0, m3=1.0,
                   cindex_row=None, cindex_col=None,  # only for non-zero P
-                  sc_row_ind=None, sc_col_ind=None,
+                  sc_index_row=None, sc_index_col=None,
                   ell1=0, ell2=0,
                   g_rescale=1.0, tbks_entry=None,
-                  row_slice_index=None,
-                  col_slice_index=None,
+                  row_shell_index=None,
+                  col_shell_index=None,
                   project=False, irrep=None):
         """Build the G matrix on a single shell."""
         ts = self.qcis.tbis.three_scheme
@@ -2846,27 +2847,31 @@ class G:
         alpha = self.alpha
         beta = self.beta
 
-        mask_row_slices, mask_col_slices, row_slice, col_slice\
-            = self._get_masks_and_slices(E, nP, L, tbks_entry,
+        mask_row_shells, mask_col_shells, row_shell, col_shell,\
+            row_shell_index, col_shell_index\
+            = self._get_masks_and_shells(E, nP, L, tbks_entry,
                                          cindex_row, cindex_col,
-                                         row_slice_index, col_slice_index)
+                                         row_shell_index, col_shell_index)
         if project:
             try:
                 if nP@nP != 0:
                     ibest = self.qcis._get_ibest(E, L)
-                    proj_tmp_right = np.array(self.qcis.sc_proj_dicts_sliced[
-                        sc_col_ind][ibest])[mask_col_slices][col_slice_index][
-                            irrep]
+                    proj_tmp_right = np.array(self.qcis
+                                              .sc_proj_dicts_by_shell[
+                                                  sc_index_col][ibest]
+                                              )[mask_col_shells][
+                                                  col_shell_index][irrep]
                     proj_tmp_left = np.conjugate((
-                        np.array(self.qcis.sc_proj_dicts_sliced[sc_row_ind][
-                            ibest])[mask_row_slices][row_slice_index][irrep]
+                        np.array(self.qcis.
+                                 sc_proj_dicts_by_shell[sc_index_row][ibest]
+                                 )[mask_row_shells][row_shell_index][irrep]
                     ).T)
                 else:
-                    proj_tmp_right = self.qcis.sc_proj_dicts_sliced[
-                        sc_col_ind][0][col_slice_index][irrep]
+                    proj_tmp_right = self.qcis.sc_proj_dicts_by_shell[
+                        sc_index_col][0][col_shell_index][irrep]
                     proj_tmp_left = np.conjugate((
-                        self.qcis.sc_proj_dicts_sliced[
-                            sc_row_ind][0][row_slice_index][irrep]
+                        self.qcis.sc_proj_dicts_by_shell[
+                            sc_index_row][0][row_shell_index][irrep]
                         ).T)
             except KeyError:
                 return np.array([])
@@ -2878,37 +2883,48 @@ class G:
             zero_frac_left = float(np.count_nonzero(proj_support_left
                                                     == 0.))\
                 / float(len(proj_support_left))
-            sparse = (zero_frac_right > 1.5) and (zero_frac_left > 1.5)
+            sparse = ((zero_frac_right > SPARSE_CUT)
+                      and (zero_frac_left > SPARSE_CUT))
         else:
             sparse = False
 
         if not sparse:
-            Gshell = QCFunctions.getG_array(E, nP, L, m1, m2, m3,
-                                            tbks_entry,
-                                            row_slice, col_slice,
-                                            ell1, ell2,
-                                            alpha, beta,
-                                            qc_impl, ts,
-                                            g_rescale)
+            if self.qcis.fvs.qc_impl['g_uses_prep_mat'] and (nP@nP == 0):
+                Gshell = QCFunctions.getG_array_prep_mat(E, nP, L, m1, m2, m3,
+                                                         tbks_entry,
+                                                         row_shell_index,
+                                                         col_shell_index,
+                                                         ell1, ell2,
+                                                         alpha, beta,
+                                                         qc_impl, ts,
+                                                         g_rescale)
+            else:
+                Gshell = QCFunctions.getG_array(E, nP, L, m1, m2, m3,
+                                                tbks_entry,
+                                                row_shell, col_shell,
+                                                ell1, ell2,
+                                                alpha, beta,
+                                                qc_impl, ts,
+                                                g_rescale)
         else:
-            n1vec_arr_slice = tbks_entry.nvec_arr[row_slice[0]:row_slice[1]]
-            n1vecSQ_arr_slice = tbks_entry.nvecSQ_arr[
-                row_slice[0]:row_slice[1]]
+            n1vec_arr_shell = tbks_entry.nvec_arr[row_shell[0]:row_shell[1]]
+            n1vecSQ_arr_shell = tbks_entry.nvecSQ_arr[
+                row_shell[0]:row_shell[1]]
 
-            n2vec_arr_slice = tbks_entry.nvec_arr[col_slice[0]:col_slice[1]]
-            n2vecSQ_arr_slice = tbks_entry.nvecSQ_arr[
-                col_slice[0]:col_slice[1]]
-            Gshell = np.zeros((len(n1vecSQ_arr_slice)*(2*ell1+1),
-                               len(n2vecSQ_arr_slice)*(2*ell2+1)))
-            for i1 in range(len(n1vecSQ_arr_slice)):
+            n2vec_arr_shell = tbks_entry.nvec_arr[col_shell[0]:col_shell[1]]
+            n2vecSQ_arr_shell = tbks_entry.nvecSQ_arr[
+                col_shell[0]:col_shell[1]]
+            Gshell = np.zeros((len(n1vecSQ_arr_shell)*(2*ell1+1),
+                               len(n2vecSQ_arr_shell)*(2*ell2+1)))
+            for i1 in range(len(n1vecSQ_arr_shell)):
                 for i2 in range(2*ell1+1):
                     ifull = i1*(2*ell1+1)+i2
-                    np1spec = n1vec_arr_slice[i1]
+                    np1spec = n1vec_arr_shell[i1]
                     mazi1 = i2-ell1
-                    for j1 in range(len(n2vecSQ_arr_slice)):
+                    for j1 in range(len(n2vecSQ_arr_shell)):
                         for j2 in range(2*ell2+1):
                             jfull = j1*(2*ell2+1)+j2
-                            np2spec = n2vec_arr_slice[j1]
+                            np2spec = n2vec_arr_shell[j1]
                             mazi2 = j2-ell2
                             if ((proj_support_left[ifull] != 0.0)
                                and (proj_support_right[jfull] != 0.0)):
@@ -3003,7 +3019,7 @@ class G:
                                  + "length one.")
             tbks_entry = self.qcis.tbks_list[0][
                 tbks_sub_indices[0]]
-            slices = tbks_entry.slices
+            slices = tbks_entry.shells
             if self.qcis.verbosity >= 2:
                 print('tbks_sub_indices =', tbks_sub_indices)
                 print('tbks_entry =', tbks_entry)
@@ -3028,7 +3044,7 @@ class G:
                 print(mask)
 
             mask_slices = []
-            slices = tbks_entry.slices
+            slices = tbks_entry.shells
             for slice_entry in slices:
                 mask_slices = mask_slices\
                     + [mask[slice_entry[0]:slice_entry[1]].all()]
@@ -3056,9 +3072,9 @@ class G:
                     sc_row_ind][sc_col_ind]
 
                 g_inner = [[]]
-                for row_slice_index in range(len(slices)):
+                for row_shell_index in range(len(slices)):
                     g_inner_row = []
-                    for col_slice_index in range(len(slices)):
+                    for col_shell_index in range(len(slices)):
                         g_tmp = self.get_shell(E, L,
                                                m1, m2, m3,
                                                cindex_row, cindex_col,
@@ -3067,8 +3083,8 @@ class G:
                                                ell1, ell2,
                                                g_rescale,
                                                tbks_entry,
-                                               row_slice_index,
-                                               col_slice_index,
+                                               row_shell_index,
+                                               col_shell_index,
                                                project, irrep)
                         g_inner_row = g_inner_row+[g_tmp]
                     g_inner = g_inner+[g_inner_row]
@@ -3111,14 +3127,14 @@ class F:
         self.C1cut = C1cut
         self.alphaKSS = alphaKSS
 
-    def _get_masks_and_slices(self, E, nP, L, tbks_entry,
+    def _get_masks_and_shells(self, E, nP, L, tbks_entry,
                               cindex, slice_index):
         mask_slices = None
         three_slice_index\
             = self.qcis._get_three_slice_index(cindex)
 
         if nP@nP == 0:
-            slice_entry = tbks_entry.slices[slice_index]
+            slice_entry = tbks_entry.shells[slice_index]
         else:
             sc_compact_three_subspace\
                 = self.qcis.fcs.sc_compact[self.qcis.fcs.three_index]
@@ -3130,7 +3146,7 @@ class F:
             Pvec = TWOPI*nP/L
             PmkSQ_arr = ((Pvec-kvec_arr)**2).sum(axis=1)
             mask = (E-omk_arr)**2-PmkSQ_arr > 0.0
-            slices = tbks_entry.slices
+            slices = tbks_entry.shells
             mask_slices = []
             for slice_entry in slices:
                 mask_slices = mask_slices\
@@ -3153,7 +3169,7 @@ class F:
         alphaKSS = self.alphaKSS
 
         mask_slices, slice_entry\
-            = self._get_masks_and_slices(E, nP, L, tbks_entry,
+            = self._get_masks_and_shells(E, nP, L, tbks_entry,
                                          cindex, slice_index)
 
         Fshell = QCFunctions.getF_array(E, nP, L, m1, m2, m3,
@@ -3167,11 +3183,11 @@ class F:
             try:
                 if nP@nP != 0:
                     ibest = self.qcis._get_ibest(E, L)
-                    proj_tmp_right = np.array(self.qcis.sc_proj_dicts_sliced[
+                    proj_tmp_right = np.array(self.qcis.sc_proj_dicts_by_shell[
                         sc_ind][ibest])[mask_slices][slice_index][irrep]
                     proj_tmp_left = np.conjugate(((proj_tmp_right)).T)
                 else:
-                    proj_tmp_right = self.qcis.sc_proj_dicts_sliced[
+                    proj_tmp_right = self.qcis.sc_proj_dicts_by_shell[
                         sc_ind][0][slice_index][irrep]
                     proj_tmp_left = np.conjugate((proj_tmp_right).T)
             except KeyError:
@@ -3209,7 +3225,7 @@ class F:
                                  + "length one.")
             tbks_entry = self.qcis.tbks_list[0][
                 tbks_sub_indices[0]]
-            slices = tbks_entry.slices
+            slices = tbks_entry.shells
             mask = None
         else:
             mspec = m1
@@ -3229,7 +3245,7 @@ class F:
                 print(mask)
 
             mask_slices = []
-            slices = tbks_entry.slices
+            slices = tbks_entry.shells
             if self.qcis.verbosity >= 2:
                 print('slices =')
                 print(slices)
@@ -3292,14 +3308,14 @@ class K:
            or (ts == 'relativistic pole'):
             [self.alpha, self.beta] = self.qcis.tbis.scheme_data
 
-    def _get_masks_and_slices(self, E, nP, L, tbks_entry,
+    def _get_masks_and_shells(self, E, nP, L, tbks_entry,
                               cindex, slice_index):
         mask_slices = None
         three_slice_index\
             = self.qcis._get_three_slice_index(cindex)
 
         if nP@nP == 0:
-            slice_entry = tbks_entry.slices[slice_index]
+            slice_entry = tbks_entry.shells[slice_index]
         else:
             sc_compact_three_subspace\
                 = self.qcis.fcs.sc_compact[self.qcis.fcs.three_index]
@@ -3311,7 +3327,7 @@ class K:
             Pvec = TWOPI*nP/L
             PmkSQ_arr = ((Pvec-kvec_arr)**2).sum(axis=1)
             mask = (E-omk_arr)**2-PmkSQ_arr > 0.0
-            slices = tbks_entry.slices
+            slices = tbks_entry.shells
             mask_slices = []
             for slice_entry in slices:
                 mask_slices = mask_slices\
@@ -3333,7 +3349,7 @@ class K:
         beta = self.beta
 
         mask_slices, slice_entry\
-            = self._get_masks_and_slices(E, nP, L, tbks_entry,
+            = self._get_masks_and_shells(E, nP, L, tbks_entry,
                                          cindex, slice_index)
 
         Kshell = QCFunctions.getK_array(E, nP, L, m1, m2, m3,
@@ -3349,11 +3365,11 @@ class K:
             try:
                 if nP@nP != 0:
                     ibest = self.qcis._get_ibest(E, L)
-                    proj_tmp_right = np.array(self.qcis.sc_proj_dicts_sliced[
+                    proj_tmp_right = np.array(self.qcis.sc_proj_dicts_by_shell[
                         sc_ind][ibest])[mask_slices][slice_index][irrep]
                     proj_tmp_left = np.conjugate(((proj_tmp_right)).T)
                 else:
-                    proj_tmp_right = self.qcis.sc_proj_dicts_sliced[
+                    proj_tmp_right = self.qcis.sc_proj_dicts_by_shell[
                         sc_ind][0][slice_index][irrep]
                     proj_tmp_left = np.conjugate((proj_tmp_right).T)
             except KeyError:
@@ -3393,7 +3409,7 @@ class K:
                                  + "length one.")
             tbks_entry = self.qcis.tbks_list[0][
                 tbks_sub_indices[0]]
-            slices = tbks_entry.slices
+            slices = tbks_entry.shells
         else:
             mspec = m1
             ibest = self.qcis._get_ibest(E, L)
@@ -3412,7 +3428,7 @@ class K:
                 print(mask)
 
             mask_slices = []
-            slices = tbks_entry.slices
+            slices = tbks_entry.shells
             for slice_entry in slices:
                 mask_slices = mask_slices\
                     + [mask[slice_entry[0]:slice_entry[1]].all()]
