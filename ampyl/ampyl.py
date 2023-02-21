@@ -1499,7 +1499,7 @@ class QCIndexSpace:
         self.nP = self.fvs.nP
         self.fcs = self._fcs
 
-        ell_max = 0
+        ell_max = 4
         if fcs is not None:
             for sc in fcs.sc_list:
                 if np.max(sc.ell_set) > ell_max:
