@@ -1100,11 +1100,6 @@ class Groups:
                              + "identical flavors")
         row_zero_value = 0
         summary_string = ''
-        # n_two_channels = 0
-        # for cindex in range(len(qcis.fcs.ni_list)):
-        #     if qcis.fcs.ni_list[cindex].n_particles == 2:
-        #         n_two_channels = n_two_channels+1
-        # cindex = cindex-n_two_channels
         nshells = len(qcis.nvecset_ident_reps[cindex])
         for shell_index in range(nshells):
             shell_total = 0
@@ -1179,9 +1174,6 @@ class Groups:
                                 + (f'       {irrep} '
                                    f'(appears {n_embedded} time{s}), '
                                    f'covered {shell_covered}/{nstates}\n')
-                    # if shell_total == nstates:
-                    #     summary_string = summary_string\
-                    #         + 'The shell is covered!\n\n'
             assert shell_total == nstates
         summary_string = summary_string[:-1]
         master_dict['summary'] = summary_string
@@ -1251,9 +1243,6 @@ class Groups:
                                f'(appears {n_embedded} time{s}), '
                                f'covered {shell_covered}/{nstates} '
                                f'({iso_shell_covered} for this isospin)\n')
-                    # if shell_total == nstates:
-                    #     summary_string = summary_string\
-                    #         + 'The shell is covered!\n\n'
             assert shell_total == nstates
         summary_string = summary_string[:-1]
         master_dict['summary'] = summary_string
@@ -1350,31 +1339,14 @@ class Groups:
                             slot_index = k
                     if qcis.n_two_channels > 0:
                         slot_index = slot_index+1
-                # slice_index = 0
-                # for three_slice in qcis.fcs.three_slices:
-                #     if slot_index-qcis.n_two_channels > three_slice[1]:
-                #         slice_index = slice_index+1
                 nvec_arr = qcis.tbks_list[slot_index][slice_index].nvec_arr
                 ellm_set = qcis.ellm_sets[cindex]
-                # if qcis.fcs.n_three_slices > 1:
-                #     raise ValueError("only one three-slice currently "
-                #                      + "supported in get_slice_proj_dict")
-                # if cindex < qcis.n_two_channels:
-                #     slot_index = cindex
-                # else:
-                #     slot_index = qcis.n_two_channels
-                # for three_slice in qcis.fcs.three_slices:
-                #     if slot_index-qcis.n_two_channels > three_slice[1]:
-                #         slice_index = slice_index+1
                 nslice = [int(kellm_slice[0]/len(ellm_set)),
                           int(kellm_slice[1]/len(ellm_set))]
                 assert np.abs(int(kellm_slice[0]/len(ellm_set))
                               - kellm_slice[0]/len(ellm_set)) < EPSPROJ
                 assert np.abs(int(kellm_slice[1]/len(ellm_set))
                               - kellm_slice[1]/len(ellm_set)) < EPSPROJ
-                # print(ellm_set)
-                # print(kellm_slice[0]/len(ellm_set))
-                # print(kellm_slice[1]/len(ellm_set))
                 nvec_arr = qcis.tbks_list[slot_index][slice_index].nvec_arr[
                     nslice[0]:nslice[1]]
                 ellm_set = qcis.ellm_sets[cindex]
@@ -1409,17 +1381,18 @@ class Groups:
             for irow in range(len(self.bTdict[group_str+'_'+irrep])):
                 proj_list = []
                 for cindex in range(qcis.n_channels):
-                    if qcis.fcs.n_three_slices > 1:
-                        raise ValueError("only one three-slice currently "
-                                         + "supported in get_full_proj_dict")
                     if cindex < qcis.n_two_channels:
-                        slot_index = cindex
+                        slot_index = 0
                     else:
-                        slot_index = qcis.n_two_channels
+                        cindex_shift = cindex-qcis.n_two_channels
+                        slot_index = -1
+                        for k in range(len(qcis.fcs.three_slices)):
+                            three_slice = qcis.fcs.three_slices[k]
+                            if three_slice[0] <= cindex_shift < three_slice[1]:
+                                slot_index = k
+                        if qcis.n_two_channels > 0:
+                            slot_index = slot_index+1
                     slice_index = 0
-                    for three_slice in qcis.fcs.three_slices:
-                        if slot_index-qcis.n_two_channels > three_slice[1]:
-                            slice_index = slice_index+1
                     nvec_arr = qcis.tbks_list[slot_index][slice_index].nvec_arr
                     ellm_set = qcis.ellm_sets[cindex]
                     proj_tmp = self.get_large_proj(nP=nP, irrep=irrep,

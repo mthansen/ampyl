@@ -47,6 +47,7 @@ from .global_constants import QC_IMPL_DEFAULTS
 from .global_constants import PI
 from .global_constants import TWOPI
 from .global_constants import FOURPI2
+from .global_constants import EPSILON10
 from .global_constants import EPSILON20
 from .global_constants import DELTA_L_FOR_GRID
 from .global_constants import DELTA_E_FOR_GRID
@@ -1503,6 +1504,13 @@ class QCIndexSpace:
             for sc in fcs.sc_list:
                 if np.max(sc.ell_set) > ell_max:
                     ell_max = np.max(sc.ell_set)
+            for nic in fcs.ni_list:
+                maxspin_float = np.max(nic.twospins)*0.5
+                maxspin = int(maxspin_float)
+                if np.abs(maxspin_float-maxspin) > EPSILON10:
+                    raise ValueError("only integer spin currently supported")
+                if maxspin > ell_max:
+                    ell_max = maxspin
         self.group = Groups(ell_max=ell_max)
 
         if self.nPSQ != 0:
