@@ -1305,13 +1305,13 @@ class Groups:
 
         return proj_dict
 
-    def get_slice_proj_dict(self, qcis=None, cindex=0, kellm_slice=None,
-                            slice_index=None):
-        """Get the dictionary of small projectors for one kellm_slice."""
+    def get_shell_proj_dict(self, qcis=None, cindex=0, kellm_shell=None,
+                            shell_index=None):
+        """Get the dictionary of small projectors for one kellm_shell."""
         if qcis is None:
             raise ValueError("qcis cannot be None")
-        if kellm_slice is None:
-            raise ValueError("kellm_slice cannot be None")
+        if kellm_shell is None:
+            raise ValueError("kellm_shell cannot be None")
         nP = qcis.nP
         irrep_set = Irreps(nP=nP).set
         if (nP@nP != 0) and (nP@nP != 1) and (nP@nP != 2):
@@ -1326,8 +1326,8 @@ class Groups:
         for i in range(len(irrep_set)):
             irrep = irrep_set[i]
             for irow in range(len(self.bTdict[group_str+'_'+irrep])):
-                if slice_index is None:
-                    slice_index = 0
+                if shell_index is None:
+                    shell_index = 0
                 if cindex < qcis.n_two_channels:
                     slot_index = 0
                 else:
@@ -1339,16 +1339,16 @@ class Groups:
                             slot_index = k
                     if qcis.n_two_channels > 0:
                         slot_index = slot_index+1
-                nvec_arr = qcis.tbks_list[slot_index][slice_index].nvec_arr
+                nvec_arr = qcis.tbks_list[slot_index][shell_index].nvec_arr
                 ellm_set = qcis.ellm_sets[cindex]
-                nslice = [int(kellm_slice[0]/len(ellm_set)),
-                          int(kellm_slice[1]/len(ellm_set))]
-                assert np.abs(int(kellm_slice[0]/len(ellm_set))
-                              - kellm_slice[0]/len(ellm_set)) < EPSPROJ
-                assert np.abs(int(kellm_slice[1]/len(ellm_set))
-                              - kellm_slice[1]/len(ellm_set)) < EPSPROJ
-                nvec_arr = qcis.tbks_list[slot_index][slice_index].nvec_arr[
-                    nslice[0]:nslice[1]]
+                nshell = [int(kellm_shell[0]/len(ellm_set)),
+                          int(kellm_shell[1]/len(ellm_set))]
+                assert np.abs(int(kellm_shell[0]/len(ellm_set))
+                              - kellm_shell[0]/len(ellm_set)) < EPSPROJ
+                assert np.abs(int(kellm_shell[1]/len(ellm_set))
+                              - kellm_shell[1]/len(ellm_set)) < EPSPROJ
+                nvec_arr = qcis.tbks_list[slot_index][shell_index].nvec_arr[
+                    nshell[0]:nshell[1]]
                 ellm_set = qcis.ellm_sets[cindex]
                 proj = self.get_large_proj(nP=nP, irrep=irrep,
                                            irow=irow,

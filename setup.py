@@ -8,7 +8,7 @@ Created July 2022.
 
 from setuptools import setup
 
-VERSION = (0, 0, 4)
+VERSION = (0, 1, 0)
 
 
 def version():
