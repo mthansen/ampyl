@@ -1635,25 +1635,26 @@ class QCIndexSpace:
         self.nP = self.fvs.nP
         self.fcs = self._fcs
 
+    def populate(self):
         ell_max = 4
-        if fcs is not None:
-            for sc in fcs.sc_list:
-                if np.max(sc.ell_set) > ell_max:
-                    ell_max = np.max(sc.ell_set)
-            for nic in fcs.ni_list:
-                maxspin_float = np.max(nic.twospins)*0.5
-                maxspin = int(maxspin_float)
-                if np.abs(maxspin_float-maxspin) > EPSILON10:
-                    raise ValueError("only integer spin currently supported")
-                if maxspin > ell_max:
-                    ell_max = maxspin
+        for sc in self.fcs.sc_list:
+            if np.max(sc.ell_set) > ell_max:
+                ell_max = np.max(sc.ell_set)
+        for nic in self.fcs.ni_list:
+            maxspin_float = np.max(nic.twospins)*0.5
+            maxspin = int(maxspin_float)
+            if np.abs(maxspin_float-maxspin) > EPSILON10:
+                raise ValueError("only integer spin currently supported")
+            if maxspin > ell_max:
+                ell_max = maxspin
         self.group = Groups(ell_max=ell_max)
 
         if self.nPSQ != 0:
-            if verbosity == 2:
+            if self.verbosity == 2:
                 print('nPSQ is nonzero, will use grid')
-            [self.Evals, self.Lvals] = self._get_grid_nonzero_nP(Emax, Lmax)
-            if verbosity == 2:
+            [self.Evals, self.Lvals] = self._get_grid_nonzero_nP(self.Emax,
+                                                                 self.Lmax)
+            if self.verbosity == 2:
                 print('Lvals =', self.Lvals)
                 print('Evals =', self.Evals)
         else:
@@ -1682,19 +1683,18 @@ class QCIndexSpace:
         self.proj_dict = self.group.get_full_proj_dict(qcis=self)
         self.populate_all_nonint_data()
         self.nonint_proj_dict = []
-        if fcs is not None:
-            for cindex in range(len(fcs.ni_list)):
-                if fcs.ni_list[cindex].n_particles == 2:
-                    self.nonint_proj_dict = self.nonint_proj_dict\
-                        + [self.group.get_noninttwo_proj_dict(qcis=self,
-                                                              cindex=cindex)]
-                elif fcs.ni_list[cindex].n_particles == 3:
-                    self.nonint_proj_dict = self.nonint_proj_dict\
-                        + [self.group.get_nonint_proj_dict(qcis=self,
-                                                           cindex=cindex)]
-                else:
-                    raise ValueError("only two and three particles supported "
-                                     + "by nonint_proj_dict")
+        for cindex in range(len(self.fcs.ni_list)):
+            if self.fcs.ni_list[cindex].n_particles == 2:
+                self.nonint_proj_dict = self.nonint_proj_dict\
+                    + [self.group.get_noninttwo_proj_dict(qcis=self,
+                                                          cindex=cindex)]
+            elif self.fcs.ni_list[cindex].n_particles == 3:
+                self.nonint_proj_dict = self.nonint_proj_dict\
+                    + [self.group.get_nonint_proj_dict(qcis=self,
+                                                       cindex=cindex)]
+            else:
+                raise ValueError("only two and three particles supported "
+                                 + "by nonint_proj_dict")
 
     def _get_grid_nonzero_nP(self, Emax, Lmax):
         deltaL = DELTA_L_FOR_GRID

@@ -46,6 +46,7 @@ class TestEnergyPrediction(unittest.TestCase):
     def test_weakly_interacting_groundstate(self):
         """A method that tests the simplest prediction."""
         qcis = QCIndexSpace()
+        qcis.populate()
         qcis.fvs.qc_impl['g_uses_prep_mat'] = True
         qc = QC(qcis=qcis)
         L = 5.0
