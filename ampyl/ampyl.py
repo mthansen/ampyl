@@ -1098,8 +1098,10 @@ class FiniteVolumeSetup:
                 raise ValueError("key", key, "not recognized")
         for key in QC_IMPL_DEFAULTS.keys():
             if (key in qc_impl.keys()
-               and (not isinstance(qc_impl[key], type(QC_IMPL_DEFAULTS[key])))):
-                raise ValueError(f"qc_impl entry {key} mest be a {type(QC_IMPL_DEFAULTS[key])}")
+               and (not isinstance(qc_impl[key],
+                                   type(QC_IMPL_DEFAULTS[key])))):
+                raise ValueError(f"qc_impl entry {key} mest be a "
+                                 f"{type(QC_IMPL_DEFAULTS[key])}")
         self._qc_impl = qc_impl
 
     def __str__(self):
@@ -1430,6 +1432,142 @@ class ThreeBodyKinematicSpace:
                         n3vecSQ_row = n3vecSQ_row+[(ent*ent).sum(1)]
                     n3vecSQ_stacked = n3vecSQ_stacked+[n3vecSQ_row]
                 self.n3vecSQ_stacked = n3vecSQ_stacked[1:]
+
+                n1vec_arr_all_slices = [[]]
+                n1vecSQ_arr_all_slices = [[]]
+                n2vec_arr_all_slices = [[]]
+                n2vecSQ_arr_all_slices = [[]]
+                n1vec_mat_all_slices = [[]]
+                n2vec_mat_all_slices = [[]]
+                n3vec_mat_all_slices = [[]]
+                n1vecSQ_mat_all_slices = [[]]
+                n2vecSQ_mat_all_slices = [[]]
+                n3vecSQ_mat_all_slices = [[]]
+                for row_slicing in self.slices:
+                    n1vec_arr_row_slices = []
+                    n1vecSQ_arr_row_slices = []
+                    n2vec_arr_row_slices = []
+                    n2vecSQ_arr_row_slices = []
+                    n1vec_mat_row_slices = []
+                    n2vec_mat_row_slices = []
+                    n3vec_mat_row_slices = []
+                    n1vecSQ_mat_row_slices = []
+                    n2vecSQ_mat_row_slices = []
+                    n3vecSQ_mat_row_slices = []
+                    for col_slicing in self.slices:
+                        n1vec_arr_slice = self.nvec_arr[
+                            row_slicing[0]:row_slicing[1]]
+                        n1vecSQ_arr_slice = self.nvecSQ_arr[
+                            row_slicing[0]:row_slicing[1]]
+                        n2vec_arr_slice = self.nvec_arr[
+                            col_slicing[0]:col_slicing[1]]
+                        n2vecSQ_arr_slice = self.nvecSQ_arr[
+                            col_slicing[0]:col_slicing[1]]
+
+                        # Awkward swap here
+                        n1vec_mat_slice = np.swapaxes(
+                            np.swapaxes(
+                                ((self.n2vec_mat)[
+                                    row_slicing[0]:row_slicing[1]]),
+                                0, 1
+                                )[col_slicing[0]:col_slicing[1]],
+                            0, 1
+                            )
+
+                        n2vec_mat_slice = np.swapaxes(
+                            np.swapaxes(
+                                ((self.n1vec_mat)[
+                                    row_slicing[0]:row_slicing[1]]),
+                                0, 1
+                                )[col_slicing[0]:col_slicing[1]],
+                            0, 1
+                            )
+
+                        n3vec_mat_slice = np.swapaxes(
+                            np.swapaxes(
+                                ((self.n3vec_mat)[
+                                    row_slicing[0]:row_slicing[1]]),
+                                0, 1
+                                )[col_slicing[0]:col_slicing[1]],
+                            0, 1
+                            )
+
+                        n1vecSQ_mat_slice = np.swapaxes(
+                            np.swapaxes(
+                                ((self.n2vecSQ_mat)[
+                                    row_slicing[0]:row_slicing[1]]),
+                                0, 1
+                                )[col_slicing[0]:col_slicing[1]],
+                            0, 1
+                            )
+
+                        n2vecSQ_mat_slice = np.swapaxes(
+                            np.swapaxes(
+                                ((self.n1vecSQ_mat)[
+                                    row_slicing[0]:row_slicing[1]]),
+                                0, 1
+                                )[col_slicing[0]:col_slicing[1]],
+                            0, 1
+                            )
+
+                        n3vecSQ_mat_slice = np.swapaxes(
+                            np.swapaxes(
+                                ((self.n3vecSQ_mat)[
+                                    row_slicing[0]:row_slicing[1]]),
+                                0, 1
+                                )[col_slicing[0]:col_slicing[1]],
+                            0, 1
+                            )
+                        n1vec_arr_row_slices\
+                            = n1vec_arr_row_slices+[n1vec_arr_slice]
+                        n1vecSQ_arr_row_slices\
+                            = n1vecSQ_arr_row_slices+[n1vecSQ_arr_slice]
+                        n2vec_arr_row_slices\
+                            = n2vec_arr_row_slices+[n2vec_arr_slice]
+                        n2vecSQ_arr_row_slices\
+                            = n2vecSQ_arr_row_slices+[n2vecSQ_arr_slice]
+                        n1vec_mat_row_slices\
+                            = n1vec_mat_row_slices+[n1vec_mat_slice]
+                        n2vec_mat_row_slices\
+                            = n2vec_mat_row_slices+[n2vec_mat_slice]
+                        n3vec_mat_row_slices\
+                            = n3vec_mat_row_slices+[n3vec_mat_slice]
+                        n1vecSQ_mat_row_slices\
+                            = n1vecSQ_mat_row_slices+[n1vecSQ_mat_slice]
+                        n2vecSQ_mat_row_slices\
+                            = n2vecSQ_mat_row_slices+[n2vecSQ_mat_slice]
+                        n3vecSQ_mat_row_slices\
+                            = n3vecSQ_mat_row_slices+[n3vecSQ_mat_slice]
+                    n1vec_arr_all_slices\
+                        = n1vec_arr_all_slices+[n1vec_arr_row_slices]
+                    n1vecSQ_arr_all_slices\
+                        = n1vecSQ_arr_all_slices+[n1vecSQ_arr_row_slices]
+                    n2vec_arr_all_slices\
+                        = n2vec_arr_all_slices+[n2vec_arr_row_slices]
+                    n2vecSQ_arr_all_slices\
+                        = n2vecSQ_arr_all_slices+[n2vecSQ_arr_row_slices]
+                    n1vec_mat_all_slices\
+                        = n1vec_mat_all_slices+[n1vec_mat_row_slices]
+                    n2vec_mat_all_slices\
+                        = n2vec_mat_all_slices+[n2vec_mat_row_slices]
+                    n3vec_mat_all_slices\
+                        = n3vec_mat_all_slices+[n3vec_mat_row_slices]
+                    n1vecSQ_mat_all_slices\
+                        = n1vecSQ_mat_all_slices+[n1vecSQ_mat_row_slices]
+                    n2vecSQ_mat_all_slices\
+                        = n2vecSQ_mat_all_slices+[n2vecSQ_mat_row_slices]
+                    n3vecSQ_mat_all_slices\
+                        = n3vecSQ_mat_all_slices+[n3vecSQ_mat_row_slices]
+                    self.n1vec_arr_all_slices = n1vec_arr_all_slices[1:]
+                    self.n1vecSQ_arr_all_slices = n1vecSQ_arr_all_slices[1:]
+                    self.n2vec_arr_all_slices = n2vec_arr_all_slices[1:]
+                    self.n2vecSQ_arr_all_slices = n2vecSQ_arr_all_slices[1:]
+                    self.n1vec_mat_all_slices = n1vec_mat_all_slices[1:]
+                    self.n2vec_mat_all_slices = n2vec_mat_all_slices[1:]
+                    self.n3vec_mat_all_slices = n3vec_mat_all_slices[1:]
+                    self.n1vecSQ_mat_all_slices = n1vecSQ_mat_all_slices[1:]
+                    self.n2vecSQ_mat_all_slices = n2vecSQ_mat_all_slices[1:]
+                    self.n3vecSQ_mat_all_slices = n3vecSQ_mat_all_slices[1:]
         else:
             self._nvec_arr = nvec_arr
 
@@ -2923,7 +3061,8 @@ class G:
                     for col_slice_index in range(len(slices)):
                         g_tmp = self.get_shell(E, L,
                                                m1, m2, m3,
-                                               cindex_row, cindex_col,  # only for non-zero P
+                                               cindex_row, cindex_col,
+                                               # only for non-zero P
                                                sc_row_ind, sc_col_ind,
                                                ell1, ell2,
                                                g_rescale,
