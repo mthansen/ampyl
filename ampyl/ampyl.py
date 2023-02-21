@@ -1543,7 +1543,6 @@ class QCIndexSpace:
         self.ell_sets = self._get_ell_sets()
         self.populate_all_kellm_spaces()
         self.populate_all_proj_dicts()
-        # Made it to here
         self.proj_dict = self.group.get_full_proj_dict(qcis=self)
         self.populate_all_nonint_data()
         self.nonint_proj_dict = []
@@ -1621,9 +1620,6 @@ class QCIndexSpace:
         if self.n_two_channels > 0:
             tbks_list_tmp = tbks_list_tmp\
                 + [ThreeBodyKinematicSpace(nP=self.nP)]
-        # for i in range(self.n_two_channels):
-        #     tbks_list_tmp = tbks_list_tmp\
-        #         + [ThreeBodyKinematicSpace(nP=self.nP)]
         for i in range(self.fcs.n_three_slices):
             tbks_list_tmp = tbks_list_tmp\
                 + [ThreeBodyKinematicSpace(nP=self.nP)]
@@ -1668,12 +1664,6 @@ class QCIndexSpace:
                 three_slice_index = slot_index-1
             else:
                 three_slice_index = slot_index
-            # three_slice_index = slot_index-self.n_two_channels
-            # if self.fcs.n_three_slices != 1:
-            #     raise ValueError("n_three_slices different from one not yet "
-            #                      + "supported")
-            # if three_slice_index != 0:
-            #     raise ValueError("three_slice_index != 0 not yet supported")
             if (self.nP == np.array([0, 0, 0])).all():
                 if self.verbosity >= 2:
                     print("populating nvec array, three_slice_index = ",
@@ -1816,11 +1806,7 @@ class QCIndexSpace:
             slot_index = 0
             self.populate_nvec_arr_slot(slot_index,
                                         three_particle_channel=False)
-        # for slot_index in range(self.n_two_channels):
-        #     self.populate_nvec_arr_slot(slot_index,
-        #                                 three_particle_channel=False)
         for three_slice_index in range(self.fcs.n_three_slices):
-            # slot_index = three_slice_index+self.n_two_channels
             if self.n_two_channels > 0:
                 slot_index = three_slice_index+1
             else:
@@ -1866,9 +1852,6 @@ class QCIndexSpace:
         kellm_slices = [[]]
         kellm_spaces = [[]]
         for cindex in range(self.n_channels):
-            # if self.fcs.n_three_slices > 1:
-            #     raise ValueError("only one three-slice currently supported "
-            #                      + "in populate_all_kellm_spaces")
             if cindex < self.n_two_channels:
                 slot_index = 0
             else:
@@ -1880,10 +1863,6 @@ class QCIndexSpace:
                         slot_index = k
                 if self.n_two_channels > 0:
                     slot_index = slot_index+1
-                # if self.fcs.n_three_slices > 1:
-                #     raise ValueError("only one three-slice currently supported "
-                #                     + "in populate_all_kellm_spaces")
-                # slot_index = self.n_two_channels
             tbks_list_tmp = self.tbks_list[slot_index]
             ellm_set = self.ellm_sets[cindex]
             kellm_slices_single = [[]]
@@ -2944,9 +2923,9 @@ class G:
                     for col_slice_index in range(len(slices)):
                         g_tmp = self.get_shell(E, L,
                                                m1, m2, m3,
-                                               cindex_row, cindex_col,  # for P
+                                               cindex_row, cindex_col,  # only for non-zero P
                                                sc_row_ind, sc_col_ind,
-                                               ell1, ell2,  # ell vals
+                                               ell1, ell2,
                                                g_rescale,
                                                tbks_entry,
                                                row_slice_index,
@@ -3146,7 +3125,7 @@ class F:
                     print(project, irrep)
                 f_tmp = self.get_shell(E, L,
                                        m1, m2, m3,
-                                       cindex,  # for P
+                                       cindex,  # only for non-zero P
                                        sc_ind,
                                        ell1, ell2,
                                        tbks_entry,
@@ -3312,7 +3291,7 @@ class K:
                 sc_ind].p_cot_deltas[0]
             for slice_index in range(len(slices)):
                 k_tmp = self.get_shell(E, L, m1, m2, m3,
-                                       cindex,  # for P
+                                       cindex,  # only for non-zero P
                                        sc_ind, ell,
                                        pcotdelta_function,
                                        pcotdelta_parameter_list,
