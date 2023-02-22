@@ -8,7 +8,7 @@ Created July 2022.
 
 ###############################################################################
 #
-# ampyl.py
+# check_f.py
 #
 # MIT License
 # Copyright (c) 2022 Maxwell T. Hansen
@@ -116,6 +116,7 @@ class TestFlavorChannel(unittest.TestCase):
         tbis = ampyl.ThreeBodyInteractionScheme()
         qcis = ampyl.QCIndexSpace(fcs=fcs, fvs=fvs, tbis=tbis,
                                   Emax=5., Lmax=7.)
+        qcis.populate()
 
         self.epsilon = 1.0e-15
 
@@ -127,6 +128,7 @@ class TestFlavorChannel(unittest.TestCase):
         tbis = ampyl.ThreeBodyInteractionScheme()
         qcis_001 = ampyl.QCIndexSpace(fcs=fcs, fvs=fvs, tbis=tbis,
                                       Emax=5., Lmax=7.)
+        qcis_001.populate()
         self.qcis_001 = qcis_001
         self.f_001 = ampyl.F(qcis=qcis_001)
 
@@ -135,7 +137,7 @@ class TestFlavorChannel(unittest.TestCase):
         pass
 
     def test_f_one(self):
-        """Test G, first test."""
+        """Test F, first test."""
         C1cut = 3
         alphaKSS = 1.
         F = self.f.get_value(5., 7.)
@@ -145,7 +147,7 @@ class TestFlavorChannel(unittest.TestCase):
         self.assertTrue((F-F_direct < self.epsilon).all())
 
     def test_f_two(self):
-        """Test G, second test."""
+        """Test F, second test."""
         C1cut = 3
         alphaKSS = 1.
         F = self.f_001.get_value(5., 7.)

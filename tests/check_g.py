@@ -87,6 +87,7 @@ class TestG(unittest.TestCase):
         tbis = ampyl.ThreeBodyInteractionScheme()
         qcis = ampyl.QCIndexSpace(fcs=fcs, fvs=fvs, tbis=tbis,
                                   Emax=5., Lmax=7.)
+        qcis.populate()
 
         self.epsilon = 1.0e-15
 
@@ -97,12 +98,14 @@ class TestG(unittest.TestCase):
         fvs = ampyl.FiniteVolumeSetup(nP=np.array([0, 0, 1]))
         qcis_001 = ampyl.QCIndexSpace(fcs=fcs, fvs=fvs, tbis=tbis,
                                       Emax=5., Lmax=7.)
+        qcis_001.populate()
         self.qcis_001 = qcis_001
         self.g_001 = ampyl.G(qcis=qcis_001)
 
         fvs = ampyl.FiniteVolumeSetup(nP=np.array([0, 1, 1]))
         qcis_011 = ampyl.QCIndexSpace(fcs=fcs, fvs=fvs, tbis=tbis,
                                       Emax=5., Lmax=7.)
+        qcis_011.populate()
         self.qcis_011 = qcis_011
         self.g_011 = ampyl.G(qcis=qcis_011)
 

@@ -37,31 +37,29 @@ import ampyl
 ```python
 import numpy as np
 import ampyl
+from scipy.optimize import root_scalar
 
 # single 3-particle channel
 fc = ampyl.FlavorChannel(3)
 fcs = ampyl.FlavorChannelSpace(fc_list=[fc])
-fvs = ampyl.FiniteVolumeSetup()
-tbis = ampyl.ThreeBodyInteractionScheme()
-
-qcis = ampyl.QCIndexSpace(fcs=fcs, fvs=fvs,
-                          tbis=tbis,
+qcis = ampyl.QCIndexSpace(fcs=fcs,
                           Emax=5.0, Lmax=6.0)
+qcis.populate()
 qc = ampyl.QC(qcis=qcis)
-
 k_params = qcis.default_k_params()
 # k_params default is [[[0.0]], [0.0]]
 # first entry is the scattering length
 # second entry is kdf (3-body
 # interaction):
-k_params[0][0][0] = 0.1
-qc.get_value(E=3.03181, L=5.0,
-             k_params=k_params,
-             irrep=('A1PLUS', 0))
-qc.get_value(E=3.03182, L=5.0,
-             k_params=k_params,
-             irrep=('A1PLUS', 0))
-# Returns small values with opposite signs,
-# indicating the solution is between the
-# energies provided.
+L = 5.
+k_params[0][0][0] = 0.1  # scattering length
+project = True
+irrep = ('A1PLUS', 0)
+args = (L, k_params, project, irrep)
+bracket = [3.001, 3.1]
+print(root_scalar(qc.get_value, args=args,
+                  bracket=bracket).root
+     )
+# Returns ground state energy
+# around 3.031816
 ```

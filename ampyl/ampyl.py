@@ -43,53 +43,23 @@ from .group_theory import Groups
 from .group_theory import Irreps
 from .qc_functions import QCFunctions
 from .qc_functions import BKFunctions
-from .qc_functions import QC_IMPL_DEFAULTS
+from .global_constants import QC_IMPL_DEFAULTS
+from .global_constants import PI
+from .global_constants import TWOPI
+from .global_constants import FOURPI2
+from .global_constants import EPSILON10
+from .global_constants import EPSILON20
+from .global_constants import DELTA_L_FOR_GRID
+from .global_constants import DELTA_E_FOR_GRID
+from .global_constants import L_GRID_SHIFT
+from .global_constants import E_GRID_SHIFT
+from .global_constants import G_TEMPLATE_DICT
+from .global_constants import ISO_PROJECTORS
+from .global_constants import CAL_C_ISO
+from .global_constants import SPARSE_CUT
 warnings.simplefilter('always')
 
-PI = np.pi
-TWOPI = 2.*PI
-FOURPI2 = 4.0*PI**2
-EPSILON20 = 1.0e-20
 PRINT_THRESHOLD_DEFAULT = np.get_printoptions()['threshold']
-
-DELTA_L_FOR_GRID = 0.9
-DELTA_E_FOR_GRID = 0.9
-L_GRID_SHIFT = 2.0
-E_GRID_SHIFT = 3.0
-
-G_TEMPLATE_DICT = {}
-G_TEMPLATE_DICT[0] = np.array([[-1.]])
-G_TEMPLATE_DICT[2] = np.array([[1./3., -1./np.sqrt(3.), np.sqrt(5.)/3.],
-                               [-1./np.sqrt(3.), 0.5, np.sqrt(15.)/6.],
-                               [np.sqrt(5.)/3., np.sqrt(15.)/6., 1./6.]])
-G_TEMPLATE_DICT[4] = np.array([[0.5, -np.sqrt(3.)/2.],
-                               [-np.sqrt(3.)/2., -0.5]])
-G_TEMPLATE_DICT[6] = np.array([[1.]])
-
-ISO_PROJECTOR_THREE = np.array([[1., 0., 0., 0., 0., 0., 0.]])
-ISO_PROJECTOR_TWO = np.array([[0., 1., 0., 0., 0., 0., 0.],
-                              [0., 0., 1., 0., 0., 0., 0.]])
-ISO_PROJECTOR_ONE = np.array([[0., 0., 0., 1., 0., 0., 0.],
-                              [0., 0., 0., 0., 1., 0., 0.],
-                              [0., 0., 0., 0., 0., 1., 0.]])
-ISO_PROJECTOR_ZERO = np.array([[0., 0., 0., 0., 0., 0., 1.]])
-ISO_PROJECTORS = [ISO_PROJECTOR_ZERO, ISO_PROJECTOR_ONE,
-                  ISO_PROJECTOR_TWO, ISO_PROJECTOR_THREE]
-
-CAL_C_ISO = np.array([[1./np.sqrt(10.), 1./np.sqrt(10.), 1./np.sqrt(10.),
-                       np.sqrt(2./5.), 1./np.sqrt(10.), 1./np.sqrt(10.),
-                       1./np.sqrt(10.)],
-                      [-0.5, -0.5, 0., 0., 0., 0.5, 0.5],
-                      [-1./np.sqrt(12.), 1./np.sqrt(12.), -1./np.sqrt(3.), 0.,
-                       1./np.sqrt(3.), -1./np.sqrt(12.), 1./np.sqrt(12.)],
-                      [np.sqrt(3./20.), np.sqrt(3./20.), -1./np.sqrt(15.),
-                       -2./np.sqrt(15.), -1./np.sqrt(15.), np.sqrt(3./20.),
-                       np.sqrt(3./20.)],
-                      [0.5, -0.5, 0., 0., 0., -0.5, 0.5],
-                      [0., 0., 1./np.sqrt(3.), -1./np.sqrt(3.), 1./np.sqrt(3.),
-                       0., 0.],
-                      [-1./np.sqrt(6.), 1./np.sqrt(6.), 1./np.sqrt(6.), 0.,
-                       -1./np.sqrt(6.), -1./np.sqrt(6.), 1./np.sqrt(6.)]])
 
 
 class bcolors:
@@ -200,83 +170,6 @@ class FlavorChannel:
         self.twospins = self._twospins
         self.n_particles = self._n_particles
 
-    def _get_allowed_deprecated(self, twoisospins=None):
-        if twoisospins is None:
-            twoisospins = self._twoisospins
-        if len(twoisospins) == 1:
-            return twoisospins
-        if len(twoisospins) == 2:
-            min_isospin = int(np.abs(twoisospins[0]-twoisospins[1]))
-            max_isospin = int(np.abs(twoisospins[0]+twoisospins[1]))
-            np_int64_list = list(np.arange(min_isospin, max_isospin+2, 2))
-            allowed_totals_two_particles = []
-            for np_int64_list_entry in np_int64_list:
-                allowed_totals_two_particles =\
-                    allowed_totals_two_particles\
-                    + [int(np_int64_list_entry)]
-            return allowed_totals_two_particles
-        if len(twoisospins) == 3:
-            unique_flavors = np.unique(self.flavors)
-            redundant_list = []
-            counting_list = [[]]
-            for j in range(len(unique_flavors)):
-                spectator_flavor = unique_flavors[j]
-                i = (np.where(np.array(
-                    self.flavors) == spectator_flavor))[0][0]
-                spectator_twoisospin = twoisospins[i]
-                pair_twoisospins = twoisospins[:i]+twoisospins[i+1:]
-                pair_flavors = self.flavors[:i] + self.flavors[i+1:]
-                combined_pair_twoisospins =\
-                    self._get_allowed(twoisospins=pair_twoisospins)
-                for combined_pair_twoisospin in combined_pair_twoisospins:
-                    combined_three_particle_twoisospins =\
-                        self._get_allowed(
-                            twoisospins=[combined_pair_twoisospin,
-                                         spectator_twoisospin]
-                            )
-                    for combined_entry in combined_three_particle_twoisospins:
-                        redundant_list = redundant_list+[combined_entry]
-                        candidate = str([combined_entry,
-                                         combined_pair_twoisospin,
-                                         spectator_flavor,
-                                         spectator_twoisospin,
-                                         pair_flavors,
-                                         pair_twoisospins])
-                        if candidate not in counting_list:
-                            counting_list = counting_list+[candidate]
-            np_int64_list = list(np.sort(np.unique(redundant_list)))
-            allowed_totals_three_particles = []
-            for np_int64_list_entry in np_int64_list:
-                allowed_totals_three_particles =\
-                    allowed_totals_three_particles\
-                    + [int(np_int64_list_entry)]
-            counting_list = counting_list[1:]
-            summary = [[]]
-            for entry in counting_list:
-                entry_list = entry.replace('[', '')\
-                    .replace(']', '')\
-                    .replace(' ', '')\
-                    .replace("'", "")\
-                    .split(',')
-                line = []
-                for entry in entry_list:
-                    try:
-                        line = line+[int(entry)]
-                    except ValueError:
-                        line = line+[entry]
-                summary = summary+[line]
-            summary = np.array(summary[1:], dtype=object)
-            self.summary = summary
-            summary_reduced = [[]]
-            if self.twoisospin_value is not None:
-                for entry in summary:
-                    if entry[0] == self.twoisospin_value:
-                        summary_reduced = summary_reduced+[entry]
-            summary_reduced = np.array(summary_reduced[1:], dtype=object)
-            self.summary_reduced = summary_reduced
-            return allowed_totals_three_particles
-        raise ValueError("n_particles > 3 not supported within FlavorChannel")
-
     def _get_allowed(self, twoisospins=None):
         """
         Get allowed isospin values.
@@ -359,29 +252,29 @@ class FlavorChannel:
         if self._n_particles == len(var):
             return var
         if self._n_particles < len(var):
-            warnings.warn("\n"+bcolors.WARNING
-                          + "length of "+varstr+" must equal n_particles. "
-                          + "Last entries will be dropped."
-                          + f"{bcolors.ENDC}", stacklevel=2)
+            warnings.warn(f"\n{bcolors.WARNING}"
+                          f"Length of {varstr} must equal n_particles; "
+                          f"last entries will be dropped"
+                          f"{bcolors.ENDC}", stacklevel=2)
             return var[:self._n_particles]
-        warnings.warn("\n"+bcolors.WARNING
-                      + "length of "+varstr+" must equal n_particles. "
-                      + "Last entry will be duplicated."
-                      + f"{bcolors.ENDC}", stacklevel=2)
+        warnings.warn(f"\n{bcolors.WARNING}"
+                      f"Length of {varstr} must equal n_particles; "
+                      f"last entry will be duplicated"
+                      f"{bcolors.ENDC}", stacklevel=2)
         return var+[var[-1]]*(self._n_particles-len(var))
 
     @property
     def flavors(self):
-        """Get explicit flavors (list of strs)."""
+        """Get flavors (list of strs)."""
         return self._flavors
 
     @flavors.setter
     def flavors(self, flavors):
         if flavors is None:
-            warnings.warn("\n"+bcolors.WARNING
-                          + "flavors is being set to None but this is not "
-                          + "allowed. Setting it to a list of pi strings."
-                          + f"{bcolors.ENDC}", stacklevel=2)
+            warnings.warn(f"\n{bcolors.WARNING}"
+                          f"flavors is being set to None but this is not "
+                          f"allowed; setting it to a list of pi strings"
+                          f"{bcolors.ENDC}", stacklevel=2)
             self._flavors = (self.n_particles)*['pi']
         else:
             self._flavors = self._generic_setter(flavors, 'flavors',
@@ -398,19 +291,19 @@ class FlavorChannel:
             raise ValueError("isospin_channel must be a boolean")
         self._isospin_channel = isospin_channel
         if isospin_channel and (self._twoisospins is None):
-            warnings.warn("\n"+bcolors.WARNING
-                          + "isospin_channel is being set to True but "
-                          + "twoisospins is None. Setting it to default."
-                          + f"{bcolors.ENDC}", stacklevel=2)
+            warnings.warn(f"\n{bcolors.WARNING}"
+                          f"isospin_channel is being set to True but "
+                          f"twoisospins is None; setting it to default"
+                          f"{bcolors.ENDC}", stacklevel=2)
             self._twoisospins = self.n_particles*[2]
             self._allowed_total_twoisospins = self._get_allowed()
         if isospin_channel and (self._allowed_total_twoisospins is None):
             self._allowed_total_twoisospins = self._get_allowed()
         if isospin_channel and (self._twoisospin_value is None):
-            warnings.warn("\n"+bcolors.WARNING
-                          + "isospin_channel is being set to True but "
-                          + "twoisospin_value is None. Setting it to default."
-                          + f"{bcolors.ENDC}", stacklevel=2)
+            warnings.warn(f"\n{bcolors.WARNING}"
+                          f"isospin_channel is being set to True but "
+                          f"twoisospin_value is None; setting it to default"
+                          f"{bcolors.ENDC}", stacklevel=2)
             self._twoisospin_value = self._allowed_total_twoisospins[-1]
             if self.summary is not None:
                 summary_reduced = [[]]
@@ -421,29 +314,29 @@ class FlavorChannel:
                 summary_reduced = np.array(summary_reduced[1:], dtype=object)
                 self.summary_reduced = summary_reduced
         if (not isospin_channel) and (self._twoisospins is not None):
-            warnings.warn("\n"+bcolors.WARNING
-                          + "isospin_channel is being set to False but "
-                          + "_twoisospins is not None. Setting it to None."
-                          + f"{bcolors.ENDC}", stacklevel=2)
+            warnings.warn(f"\n{bcolors.WARNING}"
+                          f"isospin_channel is being set to False but "
+                          f"twoisospins is not None; setting it to None"
+                          f"{bcolors.ENDC}", stacklevel=2)
             self._twoisospins = None
         if ((not isospin_channel)
            and (self._allowed_total_twoisospins is not None)):
-            warnings.warn("\n"+bcolors.WARNING
-                          + "isospin_channel is being set to False but "
-                          + "allowed_total_twoisospins is not None. Setting "
-                          + "it to None."
-                          + f"{bcolors.ENDC}", stacklevel=2)
+            warnings.warn(f"\n{bcolors.WARNING}"
+                          f"isospin_channel is being set to False but "
+                          f"allowed_total_twoisospins is not None; setting "
+                          f"it to None"
+                          f"{bcolors.ENDC}", stacklevel=2)
             self._allowed_total_twoisospins = None
         if (not isospin_channel) and (self._twoisospin_value is not None):
-            warnings.warn("\n"+bcolors.WARNING
-                          + "isospin_channel is being set to False but "
-                          + "twoisospin_value is not None. Setting it to None."
-                          + f"{bcolors.ENDC}", stacklevel=2)
+            warnings.warn(f"\n{bcolors.WARNING}"
+                          f"isospin_channel is being set to False but "
+                          f"twoisospin_value is not None; setting it to None."
+                          f"{bcolors.ENDC}", stacklevel=2)
             self._twoisospin_value = None
 
     @property
     def twoisospins(self):
-        """Get twice the isospin of each particle."""
+        """Get twice the isospin of each particle (list of ints)."""
         return self._twoisospins
 
     @twoisospins.setter
@@ -458,21 +351,21 @@ class FlavorChannel:
                     ti1 = self._twoisospins[i]
                     ti2 = self._twoisospins[j]
                     if (f1 == f2) and (ti1 != ti2):
-                        warnings.warn("\n"+bcolors.WARNING
-                                      + "isospins must be equal when flavors "
-                                      + "are equal. Changing one of the "
-                                      + "twoisospins."
-                                      + f"{bcolors.ENDC}", stacklevel=2)
+                        warnings.warn(f"\n{bcolors.WARNING}"
+                                      f"isospins must be equal when flavors "
+                                      f"are equal; changing one of the "
+                                      f"twoisospins"
+                                      f"{bcolors.ENDC}", stacklevel=2)
                         self._twoisospins[j] = ti1
             self._allowed_total_twoisospins = self._get_allowed()
             if ((self._twoisospin_value is not None)
                and (self._twoisospin_value not in
                     self._allowed_total_twoisospins)):
-                warnings.warn("\n"+bcolors.WARNING
-                              + "twoisospin_value currently not in "
-                              + "allowed_total_twoisospins. Setting it to "
-                              + "maximum allowed value."
-                              + f"{bcolors.ENDC}", stacklevel=2)
+                warnings.warn(f"\n{bcolors.WARNING}"
+                              f"twoisospin_value currently not in "
+                              f"allowed_total_twoisospins; setting it to "
+                              f"maximum allowed value"
+                              f"{bcolors.ENDC}", stacklevel=2)
                 self._twoisospin_value = self._allowed_total_twoisospins[-1]
                 if self.summary is not None:
                     summary_reduced = [[]]
@@ -484,16 +377,16 @@ class FlavorChannel:
                                                dtype=object)
                     self.summary_reduced = summary_reduced
         if self.isospin_channel and (twoisospins is None):
-            warnings.warn("\n"+bcolors.WARNING
-                          + "twoisospins is being set to None "
-                          + "but isospin_channel is true. Setting it to False."
-                          + f"{bcolors.ENDC}", stacklevel=2)
+            warnings.warn(f"\n{bcolors.WARNING}"
+                          f"twoisospins is being set to None "
+                          f"but isospin_channel is True; setting it to False"
+                          f"{bcolors.ENDC}", stacklevel=2)
             self.isospin_channel = False
         if (not self.isospin_channel) and (twoisospins is not None):
-            warnings.warn("\n"+bcolors.WARNING
-                          + "twoisospins is being set but isospin_channel is "
-                          + "False. Setting it to True."
-                          + f"{bcolors.ENDC}", stacklevel=2)
+            warnings.warn(f"\n{bcolors.WARNING}"
+                          f"twoisospins is being set but isospin_channel is "
+                          f"False; setting it to True"
+                          f"{bcolors.ENDC}", stacklevel=2)
             self.isospin_channel = True
 
     @property
@@ -515,11 +408,11 @@ class FlavorChannel:
         if ((twoisospin_value is not None)
            and (self._allowed_total_twoisospins is not None)
            and (twoisospin_value not in self._allowed_total_twoisospins)):
-            warnings.warn("\n"+bcolors.WARNING
-                          + "twoisospin_value currently not in "
-                          + "allowed_total_twoisospins. Setting it to "
-                          + "maximum allowed value."
-                          + f"{bcolors.ENDC}", stacklevel=2)
+            warnings.warn(f"\n{bcolors.WARNING}"
+                          f"twoisospin_value currently not in "
+                          f"allowed_total_twoisospins; setting it to "
+                          f"maximum allowed value"
+                          f"{bcolors.ENDC}", stacklevel=2)
             self._twoisospin_value = self._allowed_total_twoisospins[-1]
         else:
             self._twoisospin_value = twoisospin_value
@@ -532,22 +425,22 @@ class FlavorChannel:
             summary_reduced = np.array(summary_reduced[1:], dtype=object)
             self.summary_reduced = summary_reduced
         if (not self.isospin_channel) and (twoisospin_value is not None):
-            warnings.warn("\n"+bcolors.WARNING
-                          + "twoisospin_value is being set but "
-                          + "isospin_channel is False. Setting it to True."
-                          + f"{bcolors.ENDC}", stacklevel=2)
+            warnings.warn(f"\n{bcolors.WARNING}"
+                          f"twoisospin_value is being set but "
+                          f"isospin_channel is False; setting it to True"
+                          f"{bcolors.ENDC}", stacklevel=2)
             self.isospin_channel = True
         if self.isospin_channel and (twoisospin_value is None):
-            warnings.warn("\n"+bcolors.WARNING
-                          + "twoisospin_value is being set to None but "
-                          + "isospin_channel is True. Setting it to False."
-                          + f"{bcolors.ENDC}", stacklevel=2)
+            warnings.warn(f"\n{bcolors.WARNING}"
+                          f"twoisospin_value is being set to None but "
+                          f"isospin_channel is True; setting it to False"
+                          f"{bcolors.ENDC}", stacklevel=2)
             self.isospin_channel = False
             self.isospin_flavor = None
 
     @property
     def masses(self):
-        """Get masses (list of floats)."""
+        """Get the masses (list of floats)."""
         return self._masses
 
     @masses.setter
@@ -560,15 +453,15 @@ class FlavorChannel:
                 m1 = self._masses[i]
                 m2 = self._masses[j]
                 if (f1 == f2) and (m1 != m2):
-                    warnings.warn("\n"+bcolors.WARNING
-                                  + "masses must be equal when flavors are "
-                                  + "equal. Changing one of the masses."
-                                  + f"{bcolors.ENDC}", stacklevel=2)
+                    warnings.warn(f"\n{bcolors.WARNING}"
+                                  f"masses must be equal when flavors are "
+                                  f"equal; changing one of the masses."
+                                  f"{bcolors.ENDC}", stacklevel=2)
                     self._masses[j] = m1
 
     @property
     def twospins(self):
-        """Get twoice the spins (list of ints)."""
+        """Get twice the spins (list of ints)."""
         return self._twospins
 
     @twospins.setter
@@ -581,10 +474,10 @@ class FlavorChannel:
                 s1 = self._twospins[i]
                 s2 = self._twospins[j]
                 if (f1 == f2) and (s1 != s2):
-                    warnings.warn("\n"+bcolors.WARNING
-                                  + "twospins must be equal when flavors are "
-                                  + "equal. Changing one of the twospins."
-                                  + f"{bcolors.ENDC}", stacklevel=2)
+                    warnings.warn(f"\n{bcolors.WARNING}"
+                                  f"twospins must be equal when flavors are "
+                                  f"equal; changing one of the twospins"
+                                  f"{bcolors.ENDC}", stacklevel=2)
                     self._twospins[j] = s1
 
     @property
@@ -715,10 +608,10 @@ class SpectatorChannel:
     @indexing.setter
     def indexing(self, indexing):
         if (self.fc.n_particles == 2) and (indexing is not None):
-            warnings.warn("\n"+bcolors.WARNING
-                          + "n_particles == 2 and indexing is not None. "
-                          + "Setting it to None."
-                          + f"{bcolors.ENDC}", stacklevel=2)
+            warnings.warn(f"\n{bcolors.WARNING}"
+                          f"n_particles == 2 and indexing is not None; "
+                          f"setting it to None"
+                          f"{bcolors.ENDC}", stacklevel=2)
             self._indexing = None
         elif (self.fc.n_particles == 2) and (indexing is None):
             self._indexing = None
@@ -1044,99 +937,76 @@ class FlavorChannelSpace:
             self.n_three_slices = 0
 
     def _build_g_templates(self):
-        g_templates_tmp = [[]]
-        if self.sc_list[0].fc.isospin_channel:
-            for three_slice in self.three_slices:
-                iso_slices = [[]]
-                len_tmp = three_slice[1]-three_slice[0]
-                zero_point = 0
-                i = 0
-                iso_pos = 14
-                while i < len_tmp:
-                    iso_val_tmp = int(self.sc_compact[self.three_index][
-                        three_slice[0]+i][iso_pos])
-                    twoisospins = self.sc_compact[self.three_index][
-                        three_slice[0]+i][[11, 12, 13]]
-                    three_pions = (twoisospins == np.array([2, 2, 2])).all()
-                    if three_pions and (iso_val_tmp == 0):
-                        iso_dim_tmp = 1
-                    elif three_pions and (iso_val_tmp == 2):
-                        iso_dim_tmp = 3
-                    elif three_pions and (iso_val_tmp == 4):
-                        iso_dim_tmp = 2
-                    elif three_pions and (iso_val_tmp == 6):
-                        iso_dim_tmp = 1
-                    else:
-                        k = 0
-                        iso_val_k_tmp = int(self.sc_compact[self.three_index][
-                            three_slice[0]+i+k][iso_pos])
-                        inbounds = True
-                        while inbounds and iso_val_k_tmp == iso_val_tmp:
-                            k = k+1
-                            try:
-                                iso_val_k_tmp = int(self.sc_compact[
-                                    self.three_index][
-                                    three_slice[0]+i+k][iso_pos])
-                            except IndexError:
-                                inbounds = False
-                        iso_dim_tmp = k
-                    iso_slices = iso_slices+[[zero_point,
-                                              zero_point+iso_dim_tmp,
-                                              three_pions,
-                                              iso_val_tmp]]
-                    zero_point = zero_point+iso_dim_tmp
-                    i = i+iso_dim_tmp
-                iso_slices = iso_slices[1:]
-                g_template_tmp = np.zeros((len_tmp, len_tmp))
-                for iso_slice in iso_slices:
-                    if iso_slice[2]:
-                        ((g_template_tmp[iso_slice[0]:iso_slice[1]]).T)[
-                            iso_slice[0]:iso_slice[1]]\
-                            = G_TEMPLATE_DICT[iso_slice[3]]
-                g_templates_tmp = g_templates_tmp+[g_template_tmp]
-            g_templates_tmp = g_templates_tmp[1:]
-            self.g_templates = [[]]
-            for i in range(len(g_templates_tmp)):
-                g_templates_row = []
-                for j in range(len(g_templates_tmp)):
-                    if i == j:
-                        g_templates_row = g_templates_row+[g_templates_tmp[i]]
-                    else:
-                        g_templates_row = g_templates_row+[np.zeros(
-                            (len(g_templates_tmp[i]), len(g_templates_tmp[j]))
-                            )]
-                self.g_templates = self.g_templates+[g_templates_row]
-            self.g_templates = self.g_templates[1:]
-        else:
-            self.g_templates = [[]]
-            for slice_row in self.three_slices:
-                len_row = slice_row[1]-slice_row[0]
-                g_templates_row = []
-                for slice_col in self.three_slices:
-                    len_col = slice_col[1]-slice_col[0]
-                    g_template_tmp = np.zeros((len_row, len_col))
-                    for i in range(len_row):
-                        for j in range(len_col):
-                            f_min = 7
-                            f_max = 10
-                            i_flavs = self.sc_compact[self.three_index][
-                                slice_row[0]+i][f_min:f_max]
-                            j_flavs = self.sc_compact[self.three_index][
-                                slice_col[0]+j][f_min:f_max]
-                            if (
-                                    ((i_flavs[0] == j_flavs[2])
-                                     and (np.sort(i_flavs[1:])
-                                          == np.sort(j_flavs[:-1])).all())
-                                    or
-                                    ((i_flavs[0] == j_flavs[1])
-                                     and (np.sort(i_flavs[1:])
-                                          == np.sort([j_flavs[0]]
-                                                     + [j_flavs[2]])).all())
-                                    ):
+        self.g_templates = [[]]
+        for slice_row in self.three_slices:
+            len_row = slice_row[1]-slice_row[0]
+            g_templates_row = []
+            for slice_col in self.three_slices:
+                len_col = slice_col[1]-slice_col[0]
+                g_template_tmp = np.zeros((len_row, len_col))
+                for i in range(len_row):
+                    for j in range(len_col):
+                        flav_loc_start = 7
+                        flav_loc_end = 10
+                        i_flavs = self.sc_compact[self.three_index][
+                            slice_row[0]+i][flav_loc_start:flav_loc_end]
+                        j_flavs = self.sc_compact[self.three_index][
+                            slice_col[0]+j][flav_loc_start:flav_loc_end]
+                        if (
+                                ((i_flavs[0] == j_flavs[2])
+                                 and (np.sort(i_flavs[1:])
+                                      == np.sort(j_flavs[:-1])).all())
+                                or
+                                ((i_flavs[0] == j_flavs[1])
+                                 and (np.sort(i_flavs[1:])
+                                      == np.sort([j_flavs[0]]
+                                                 + [j_flavs[2]])).all())
+                                ):
+                            iso_bool_loc = 10
+                            isospin_channel_i\
+                                = self.sc_compact[self.three_index][
+                                    slice_row[0]+i][iso_bool_loc]
+                            isospin_channel_j\
+                                = self.sc_compact[self.three_index][
+                                    slice_col[0]+j][iso_bool_loc]
+                            if ((not isospin_channel_i)
+                               and (not isospin_channel_j)):
                                 g_template_tmp[i][j] = 1.0
-                    g_templates_row = g_templates_row+[g_template_tmp]
-                self.g_templates = self.g_templates+[g_templates_row]
-            self.g_templates = self.g_templates[1:]
+                            elif isospin_channel_i and isospin_channel_j:
+                                iso_val_loc = 14
+                                iso_val_i\
+                                    = self.sc_compact[self.three_index][
+                                        slice_row[0]+i][iso_val_loc]
+                                iso_val_j\
+                                    = self.sc_compact[self.three_index][
+                                        slice_col[0]+j][iso_val_loc]
+                                if iso_val_i == iso_val_j:
+                                    g_iso_template_tmp\
+                                        = G_TEMPLATE_DICT[int(iso_val_i/2)]
+                                    sub_iso_loc = 15
+                                    sub_iso_i\
+                                        = self.sc_compact[self.three_index][
+                                            slice_row[0]+i][sub_iso_loc]
+                                    sub_iso_j\
+                                        = self.sc_compact[self.three_index][
+                                            slice_col[0]+j][sub_iso_loc]
+                                    if iso_val_i == 6:
+                                        ind_i = sub_iso_i-4
+                                        ind_j = sub_iso_j-4
+                                    elif iso_val_i == 4:
+                                        ind_i = int((sub_iso_i-2)/2)
+                                        ind_j = int((sub_iso_j-2)/2)
+                                    elif iso_val_i == 2:
+                                        ind_i = int(sub_iso_i/2)
+                                        ind_j = int(sub_iso_j/2)
+                                    elif iso_val_i == 0:
+                                        ind_i = sub_iso_i-2
+                                        ind_j = sub_iso_j-2
+                                g_template_tmp[i][j]\
+                                    = g_iso_template_tmp[ind_i][ind_j]
+                g_templates_row = g_templates_row+[g_template_tmp]
+            self.g_templates = self.g_templates+[g_templates_row]
+        self.g_templates = self.g_templates[1:]
 
     def __str__(self):
         """Summary of the flavor-channel space."""
@@ -1181,10 +1051,7 @@ class FiniteVolumeSetup:
 
     def __init__(self, formalism='RFT', nP=np.array([0, 0, 0]), qc_impl=None):
         if qc_impl is None:
-            qc_impl = {'hermitian': QC_IMPL_DEFAULTS['hermitian'],
-                       'real harmonics': QC_IMPL_DEFAULTS['real harmonics'],
-                       'Zinterp': QC_IMPL_DEFAULTS['Zinterp'],
-                       'YYCG': QC_IMPL_DEFAULTS['YYCG']}
+            qc_impl = QC_IMPL_DEFAULTS
         self.formalism = formalism
         self.qc_impl = qc_impl
         self.nP = nP
@@ -1192,7 +1059,7 @@ class FiniteVolumeSetup:
 
     @property
     def nP(self):
-        """Get the total three-momentum (np.ndarray, shape is (3,))."""
+        """Get the total three-momentum (np.ndarray with shape (3,))."""
         return self._nP
 
     @nP.setter
@@ -1213,7 +1080,7 @@ class FiniteVolumeSetup:
     @property
     def qc_impl(self):
         """
-        Get the qc implementation (dict).
+        Get the quantization condition implementation (dict).
 
         See FiniteVolumeSetup for documentation of possible keys included in
         qc_impl.
@@ -1224,26 +1091,15 @@ class FiniteVolumeSetup:
     def qc_impl(self, qc_impl):
         if not isinstance(qc_impl, dict):
             raise ValueError("qc_impl must be a dict")
-
         for key in qc_impl.keys():
-            if key not in ['hermitian', 'real harmonics',
-                           'Zinterp', 'YYCG']:
+            if key not in QC_IMPL_DEFAULTS.keys():
                 raise ValueError("key", key, "not recognized")
-
-        if (('hermitian' in qc_impl.keys())
-           and (not isinstance(qc_impl['hermitian'], bool))):
-            raise ValueError("qc_impl entry 'hermitian' must be a bool")
-        if (('real harmonics' in qc_impl.keys())
-           and (not isinstance(qc_impl['real harmonics'], bool))):
-            raise ValueError("qc_impl entry real harmonics must"
-                             + " be a bool")
-        if (('Zinterp' in qc_impl.keys())
-           and (not isinstance(qc_impl['Zinterp'], bool))):
-            raise ValueError("qc_impl entry 'Zinterp' must be a bool")
-        if (('YYCG' in qc_impl.keys())
-           and (not isinstance(qc_impl['YYCG'], bool))):
-            raise ValueError("qc_impl entry 'YYCG' must be a bool")
-
+        for key in QC_IMPL_DEFAULTS.keys():
+            if (key in qc_impl.keys()
+               and (not isinstance(qc_impl[key],
+                                   type(QC_IMPL_DEFAULTS[key])))):
+                raise ValueError(f"qc_impl entry {key} mest be a "
+                                 f"{type(QC_IMPL_DEFAULTS[key])}")
         self._qc_impl = qc_impl
 
     def __str__(self):
@@ -1345,9 +1201,9 @@ class ThreeBodyKinematicSpace:
     :param nP: three-vector as a numpy array, indicating the total spatial
         momentum in units of 2*PI/L, where L is the box length
     :type nP: np.ndarray of ints, shape (3,)
-    :param build_slice_acc: determines whether data is prepared to accelerate
+    :param build_shell_acc: determines whether data is prepared to accelerate
         evaluations of the qc
-    :type build_slice_acc: bool
+    :type build_shell_acc: bool
     :param nvec_arry: gives the defining list of three-vectors
     :type nvec_arry: np.ndarray of ints, shape (n, 3)
     :param verbosity: determines how verbose the output is
@@ -1355,15 +1211,15 @@ class ThreeBodyKinematicSpace:
     """
 
     def __init__(self, nP=np.array([0, 0, 0]), nvec_arr=np.array([]),
-                 build_slice_acc=True, verbosity=0):
-        self.build_slice_acc = build_slice_acc
+                 build_shell_acc=True, verbosity=0):
+        self.build_shell_acc = build_shell_acc
         self.nP = nP
         self.nvec_arr = nvec_arr
         self.verbosity = verbosity
 
     @property
     def nP(self):
-        """Get the total three-momentum (np.ndarray, shape is (3,))."""
+        """Get the total three-momentum (np.ndarray with shape (3,))."""
         return self._nP
 
     @nP.setter
@@ -1402,18 +1258,18 @@ class ThreeBodyKinematicSpace:
             arrtmp = arrtmp[arrtmp[:, 4-i].argsort(kind='mergesort')]
         return (arrtmp.T)[2:].T
 
-    def _get_slice_sort(self, nvec_arr_first_sort):
-        g = Groups(ell_max=0)
-        little_group = g.get_little_group(self._nP)
+    def _get_shell_sort(self, nvec_arr_first_sort):
+        group = Groups(ell_max=0)
+        little_group = group.get_little_group(self._nP)
         nvec_arr_copy = np.copy(nvec_arr_first_sort)
-        slicedict_nvec_arr = {}
-        slicedict_index = 0
+        shell_dict_nvec_arr = {}
+        shell_dict_index = 0
         while len(nvec_arr_copy) > 0:
             nvec_tmp = nvec_arr_copy[0].reshape((3, 1))
             nvec_rotations = (little_group*nvec_tmp).sum(1)
             nvec_rotations_unique = np.unique(nvec_rotations, axis=0)
-            slicedict_nvec_arr[slicedict_index] = nvec_rotations_unique
-            slicedict_index = slicedict_index+1
+            shell_dict_nvec_arr[shell_dict_index] = nvec_rotations_unique
+            shell_dict_index = shell_dict_index+1
             mins = np.minimum(nvec_rotations_unique.min(0),
                               nvec_arr_copy.min(0))
             nvec_rotations_shifted = nvec_rotations_unique-mins
@@ -1429,90 +1285,90 @@ class ThreeBodyKinematicSpace:
                     )
                 )]
             nvec_arr_copy = nvec_arr_shifted_purged+mins
-        nvec_arr_slicesort = None
-        slices = [[]]
-        slices_counter = 0
-        for i in range(len(slicedict_nvec_arr)):
-            if nvec_arr_slicesort is None:
-                nvec_arr_slicesort = slicedict_nvec_arr[i]
+        nvec_arr_shell_sort = None
+        shells = [[]]
+        shells_counter = 0
+        for i in range(len(shell_dict_nvec_arr)):
+            if nvec_arr_shell_sort is None:
+                nvec_arr_shell_sort = shell_dict_nvec_arr[i]
             else:
-                nvec_arr_slicesort = np.concatenate((nvec_arr_slicesort,
-                                                     slicedict_nvec_arr[i]))
-            slices = slices+[[slices_counter,
-                              slices_counter+len(slicedict_nvec_arr[i])]]
-            slices_counter = slices_counter+len(slicedict_nvec_arr[i])
-        return nvec_arr_slicesort, slices[1:]
+                nvec_arr_shell_sort = np.concatenate((nvec_arr_shell_sort,
+                                                     shell_dict_nvec_arr[i]))
+            shells = shells+[[shells_counter,
+                              shells_counter+len(shell_dict_nvec_arr[i])]]
+            shells_counter = shells_counter+len(shell_dict_nvec_arr[i])
+        return nvec_arr_shell_sort, shells[1:]
 
     def _get_stacks(self):
         n1vec_stackdict = {}
         n2vec_stackdict = {}
         n3vec_stackdict = {}
         stackdict_multiplicities = {}
-        for i in self.slices:
-            for j in self.slices:
-                stri = str(i[0])+'_'+str(i[1])
-                strj = str(j[0])+'_'+str(j[1])
+        for i1 in self.shells:
+            for j1 in self.shells:
+                stri = str(i1[0])+'_'+str(i1[1])
+                strj = str(j1[0])+'_'+str(j1[1])
                 n1vec_stackdict[stri+'_'+strj] = 0.0
                 n2vec_stackdict[stri+'_'+strj] = 0.0
                 n3vec_stackdict[stri+'_'+strj] = 0.0
                 stackdict_multiplicities[stri+'_'+strj]\
-                    = (i[1]-i[0])*(j[1]-j[0])
+                    = (i1[1]-i1[0])*(j1[1]-j1[0])
 
-        for i in range(len(self.nvecSQ_arr)):
-            for j in range(len(self.nvecSQ_arr)):
+        for i1 in range(len(self.nvecSQ_arr)):
+            for j1 in range(len(self.nvecSQ_arr)):
                 shell_index_i = 0
                 shell_index_j = 0
-                for itmp in range(len(self.slices)):
-                    rtmp = self.slices[itmp]
-                    if rtmp[0] <= i < rtmp[1]:
-                        shell_index_i = itmp
-                for jtmp in range(len(self.slices)):
-                    rtmp = self.slices[jtmp]
-                    if rtmp[0] <= j < rtmp[1]:
-                        shell_index_j = jtmp
-                stri = str(self.slices[shell_index_i][0])+'_'\
-                    + str(self.slices[shell_index_i][1])
-                strj = str(self.slices[shell_index_j][0])+'_'\
-                    + str(self.slices[shell_index_j][1])
-                sizei = self.slices[shell_index_i][1]\
-                    - self.slices[shell_index_i][0]
-                sizej = self.slices[shell_index_j][1]\
-                    - self.slices[shell_index_j][0]
-                if (sizei >= sizej and i == self.slices[shell_index_i][0])\
-                   or (sizej > sizei and j == self.slices[shell_index_j][0]):
+                for i2 in range(len(self.shells)):
+                    shell_tmp = self.shells[i2]
+                    if shell_tmp[0] <= i1 < shell_tmp[1]:
+                        shell_index_i = i2
+                for j2 in range(len(self.shells)):
+                    shell_tmp = self.shells[j2]
+                    if shell_tmp[0] <= j1 < shell_tmp[1]:
+                        shell_index_j = j2
+                stri = str(self.shells[shell_index_i][0])+'_'\
+                    + str(self.shells[shell_index_i][1])
+                strj = str(self.shells[shell_index_j][0])+'_'\
+                    + str(self.shells[shell_index_j][1])
+                sizei = self.shells[shell_index_i][1]\
+                    - self.shells[shell_index_i][0]
+                sizej = self.shells[shell_index_j][1]\
+                    - self.shells[shell_index_j][0]
+                if (sizei >= sizej and i1 == self.shells[shell_index_i][0])\
+                   or (sizej > sizei and j1 == self.shells[shell_index_j][0]):
                     if n1vec_stackdict[stri+'_'+strj] == 0.0:
                         n1vec_stackdict[stri+'_'+strj]\
-                            = [self.n1vec_mat[i][j]]
+                            = [self.n1vec_mat[i1][j1]]
                     else:
                         n1vec_stackdict[stri+'_'+strj] =\
                             n1vec_stackdict[stri+'_'+strj]\
-                            + [self.n1vec_mat[i][j]]
+                            + [self.n1vec_mat[i1][j1]]
                     if n2vec_stackdict[stri+'_'+strj] == 0.0:
                         n2vec_stackdict[stri+'_'+strj]\
-                            = [self.n2vec_mat[i][j]]
+                            = [self.n2vec_mat[i1][j1]]
                     else:
                         n2vec_stackdict[stri+'_'+strj]\
                             = n2vec_stackdict[stri+'_'+strj]\
-                            + [self.n2vec_mat[i][j]]
+                            + [self.n2vec_mat[i1][j1]]
                     if n3vec_stackdict[stri+'_'+strj] == 0.0:
                         n3vec_stackdict[stri+'_'+strj]\
-                            = [self.n3vec_mat[i][j]]
+                            = [self.n3vec_mat[i1][j1]]
                     else:
                         n3vec_stackdict[stri+'_'+strj] =\
                             n3vec_stackdict[stri+'_'+strj]\
-                            + [self.n3vec_mat[i][j]]
+                            + [self.n3vec_mat[i1][j1]]
         n1vec_stacked = [[]]
         n2vec_stacked = [[]]
         n3vec_stacked = [[]]
         stack_multiplicities = [[]]
-        for i in self.slices:
+        for i1 in self.shells:
             n1row = []
             n2row = []
             n3row = []
             mrow = []
-            for j in self.slices:
-                stri = str(i[0])+'_'+str(i[1])
-                strj = str(j[0])+'_'+str(j[1])
+            for j1 in self.shells:
+                stri = str(i1[0])+'_'+str(i1[1])
+                strj = str(j1[0])+'_'+str(j1[1])
                 n1row = n1row + [np.array(n1vec_stackdict[stri+'_'+strj])]
                 n2row = n2row + [np.array(n2vec_stackdict[stri+'_'+strj])]
                 n3row = n3row + [np.array(n3vec_stackdict[stri+'_'+strj])]
@@ -1528,13 +1384,13 @@ class ThreeBodyKinematicSpace:
 
     @nvec_arr.setter
     def nvec_arr(self, nvec_arr):
-        if self.build_slice_acc:
+        if self.build_shell_acc:
             if len(nvec_arr) == 0:
                 self._nvec_arr = nvec_arr
             else:
                 nvec_arr_first_sort = self._get_first_sort(nvec_arr)
-                self._nvec_arr, self.slices\
-                    = self._get_slice_sort(nvec_arr_first_sort)
+                self._nvec_arr, self.shells\
+                    = self._get_shell_sort(nvec_arr_first_sort)
                 self.nvecSQ_arr = (self._nvec_arr*self._nvec_arr).sum(1)
                 self.nP_minus_nvec_arr = self.nP - self._nvec_arr
                 self.nP_minus_nvec_SQ_arr = (self.nP_minus_nvec_arr
@@ -1574,6 +1430,142 @@ class ThreeBodyKinematicSpace:
                         n3vecSQ_row = n3vecSQ_row+[(ent*ent).sum(1)]
                     n3vecSQ_stacked = n3vecSQ_stacked+[n3vecSQ_row]
                 self.n3vecSQ_stacked = n3vecSQ_stacked[1:]
+
+                n1vec_arr_all_shells = [[]]
+                n1vecSQ_arr_all_shells = [[]]
+                n2vec_arr_all_shells = [[]]
+                n2vecSQ_arr_all_shells = [[]]
+                n1vec_mat_all_shells = [[]]
+                n2vec_mat_all_shells = [[]]
+                n3vec_mat_all_shells = [[]]
+                n1vecSQ_mat_all_shells = [[]]
+                n2vecSQ_mat_all_shells = [[]]
+                n3vecSQ_mat_all_shells = [[]]
+                for row_shell in self.shells:
+                    n1vec_arr_row_shells = []
+                    n1vecSQ_arr_row_shells = []
+                    n2vec_arr_row_shells = []
+                    n2vecSQ_arr_row_shells = []
+                    n1vec_mat_row_shells = []
+                    n2vec_mat_row_shells = []
+                    n3vec_mat_row_shells = []
+                    n1vecSQ_mat_row_shells = []
+                    n2vecSQ_mat_row_shells = []
+                    n3vecSQ_mat_row_shells = []
+                    for col_shell in self.shells:
+                        n1vec_arr_shell = self.nvec_arr[
+                            row_shell[0]:row_shell[1]]
+                        n1vecSQ_arr_shell = self.nvecSQ_arr[
+                            row_shell[0]:row_shell[1]]
+                        n2vec_arr_shell = self.nvec_arr[
+                            col_shell[0]:col_shell[1]]
+                        n2vecSQ_arr_shell = self.nvecSQ_arr[
+                            col_shell[0]:col_shell[1]]
+
+                        # Awkward swap here
+                        n1vec_mat_shell = np.swapaxes(
+                            np.swapaxes(
+                                ((self.n2vec_mat)[
+                                    row_shell[0]:row_shell[1]]),
+                                0, 1
+                                )[col_shell[0]:col_shell[1]],
+                            0, 1
+                            )
+
+                        n2vec_mat_shell = np.swapaxes(
+                            np.swapaxes(
+                                ((self.n1vec_mat)[
+                                    row_shell[0]:row_shell[1]]),
+                                0, 1
+                                )[col_shell[0]:col_shell[1]],
+                            0, 1
+                            )
+
+                        n3vec_mat_shell = np.swapaxes(
+                            np.swapaxes(
+                                ((self.n3vec_mat)[
+                                    row_shell[0]:row_shell[1]]),
+                                0, 1
+                                )[col_shell[0]:col_shell[1]],
+                            0, 1
+                            )
+
+                        n1vecSQ_mat_shell = np.swapaxes(
+                            np.swapaxes(
+                                ((self.n2vecSQ_mat)[
+                                    row_shell[0]:row_shell[1]]),
+                                0, 1
+                                )[col_shell[0]:col_shell[1]],
+                            0, 1
+                            )
+
+                        n2vecSQ_mat_shell = np.swapaxes(
+                            np.swapaxes(
+                                ((self.n1vecSQ_mat)[
+                                    row_shell[0]:row_shell[1]]),
+                                0, 1
+                                )[col_shell[0]:col_shell[1]],
+                            0, 1
+                            )
+
+                        n3vecSQ_mat_shell = np.swapaxes(
+                            np.swapaxes(
+                                ((self.n3vecSQ_mat)[
+                                    row_shell[0]:row_shell[1]]),
+                                0, 1
+                                )[col_shell[0]:col_shell[1]],
+                            0, 1
+                            )
+                        n1vec_arr_row_shells\
+                            = n1vec_arr_row_shells+[n1vec_arr_shell]
+                        n1vecSQ_arr_row_shells\
+                            = n1vecSQ_arr_row_shells+[n1vecSQ_arr_shell]
+                        n2vec_arr_row_shells\
+                            = n2vec_arr_row_shells+[n2vec_arr_shell]
+                        n2vecSQ_arr_row_shells\
+                            = n2vecSQ_arr_row_shells+[n2vecSQ_arr_shell]
+                        n1vec_mat_row_shells\
+                            = n1vec_mat_row_shells+[n1vec_mat_shell]
+                        n2vec_mat_row_shells\
+                            = n2vec_mat_row_shells+[n2vec_mat_shell]
+                        n3vec_mat_row_shells\
+                            = n3vec_mat_row_shells+[n3vec_mat_shell]
+                        n1vecSQ_mat_row_shells\
+                            = n1vecSQ_mat_row_shells+[n1vecSQ_mat_shell]
+                        n2vecSQ_mat_row_shells\
+                            = n2vecSQ_mat_row_shells+[n2vecSQ_mat_shell]
+                        n3vecSQ_mat_row_shells\
+                            = n3vecSQ_mat_row_shells+[n3vecSQ_mat_shell]
+                    n1vec_arr_all_shells\
+                        = n1vec_arr_all_shells+[n1vec_arr_row_shells]
+                    n1vecSQ_arr_all_shells\
+                        = n1vecSQ_arr_all_shells+[n1vecSQ_arr_row_shells]
+                    n2vec_arr_all_shells\
+                        = n2vec_arr_all_shells+[n2vec_arr_row_shells]
+                    n2vecSQ_arr_all_shells\
+                        = n2vecSQ_arr_all_shells+[n2vecSQ_arr_row_shells]
+                    n1vec_mat_all_shells\
+                        = n1vec_mat_all_shells+[n1vec_mat_row_shells]
+                    n2vec_mat_all_shells\
+                        = n2vec_mat_all_shells+[n2vec_mat_row_shells]
+                    n3vec_mat_all_shells\
+                        = n3vec_mat_all_shells+[n3vec_mat_row_shells]
+                    n1vecSQ_mat_all_shells\
+                        = n1vecSQ_mat_all_shells+[n1vecSQ_mat_row_shells]
+                    n2vecSQ_mat_all_shells\
+                        = n2vecSQ_mat_all_shells+[n2vecSQ_mat_row_shells]
+                    n3vecSQ_mat_all_shells\
+                        = n3vecSQ_mat_all_shells+[n3vecSQ_mat_row_shells]
+                    self.n1vec_arr_all_shells = n1vec_arr_all_shells[1:]
+                    self.n1vecSQ_arr_all_shells = n1vecSQ_arr_all_shells[1:]
+                    self.n2vec_arr_all_shells = n2vec_arr_all_shells[1:]
+                    self.n2vecSQ_arr_all_shells = n2vecSQ_arr_all_shells[1:]
+                    self.n1vec_mat_all_shells = n1vec_mat_all_shells[1:]
+                    self.n2vec_mat_all_shells = n2vec_mat_all_shells[1:]
+                    self.n3vec_mat_all_shells = n3vec_mat_all_shells[1:]
+                    self.n1vecSQ_mat_all_shells = n1vecSQ_mat_all_shells[1:]
+                    self.n2vecSQ_mat_all_shells = n2vecSQ_mat_all_shells[1:]
+                    self.n3vecSQ_mat_all_shells = n3vecSQ_mat_all_shells[1:]
         else:
             self._nvec_arr = nvec_arr
 
@@ -1604,7 +1596,7 @@ class QCIndexSpace:
     """
 
     def __init__(self, fcs=None, fvs=None, tbis=None,
-                 Emax=5.0, Lmax=5.0, verbosity=0, ell_max=4):
+                 Emax=5.0, Lmax=5.0, verbosity=0):
         self.verbosity = verbosity
         self.Emax = Emax
         self.Lmax = Lmax
@@ -1642,13 +1634,27 @@ class QCIndexSpace:
             print('setting nP to '+str(self.fvs.nP))
         self.nP = self.fvs.nP
         self.fcs = self._fcs
+
+    def populate(self):
+        ell_max = 4
+        for sc in self.fcs.sc_list:
+            if np.max(sc.ell_set) > ell_max:
+                ell_max = np.max(sc.ell_set)
+        for nic in self.fcs.ni_list:
+            maxspin_float = np.max(nic.twospins)*0.5
+            maxspin = int(maxspin_float)
+            if np.abs(maxspin_float-maxspin) > EPSILON10:
+                raise ValueError("only integer spin currently supported")
+            if maxspin > ell_max:
+                ell_max = maxspin
         self.group = Groups(ell_max=ell_max)
 
         if self.nPSQ != 0:
-            if verbosity == 2:
+            if self.verbosity == 2:
                 print('nPSQ is nonzero, will use grid')
-            [self.Evals, self.Lvals] = self._get_grid_nonzero_nP(Emax, Lmax)
-            if verbosity == 2:
+            [self.Evals, self.Lvals] = self._get_grid_nonzero_nP(self.Emax,
+                                                                 self.Lmax)
+            if self.verbosity == 2:
                 print('Lvals =', self.Lvals)
                 print('Evals =', self.Evals)
         else:
@@ -1675,8 +1681,20 @@ class QCIndexSpace:
         self.populate_all_kellm_spaces()
         self.populate_all_proj_dicts()
         self.proj_dict = self.group.get_full_proj_dict(qcis=self)
-        self.populate_two_nonint_data()
-        self.populate_three_nonint_data()
+        self.populate_all_nonint_data()
+        self.nonint_proj_dict = []
+        for cindex in range(len(self.fcs.ni_list)):
+            if self.fcs.ni_list[cindex].n_particles == 2:
+                self.nonint_proj_dict = self.nonint_proj_dict\
+                    + [self.group.get_noninttwo_proj_dict(qcis=self,
+                                                          cindex=cindex)]
+            elif self.fcs.ni_list[cindex].n_particles == 3:
+                self.nonint_proj_dict = self.nonint_proj_dict\
+                    + [self.group.get_nonint_proj_dict(qcis=self,
+                                                       cindex=cindex)]
+            else:
+                raise ValueError("only two and three particles supported "
+                                 + "by nonint_proj_dict")
 
     def _get_grid_nonzero_nP(self, Emax, Lmax):
         deltaL = DELTA_L_FOR_GRID
@@ -1695,7 +1713,7 @@ class QCIndexSpace:
 
     @property
     def nP(self):
-        """Get the total three-momentum (np.ndarray, shape is (3,))."""
+        """Get the total three-momentum (np.ndarray with shape (3,))."""
         return self._nP
 
     @nP.setter
@@ -1715,7 +1733,7 @@ class QCIndexSpace:
 
     @property
     def fcs(self):
-        """Get the flavor-channel space (FlavorChannelSpace())."""
+        """Get the flavor-channel space (FlavorChannelSpace)."""
         return self._fcs
 
     @fcs.setter
@@ -1735,7 +1753,7 @@ class QCIndexSpace:
                 raise ValueError("QCIndexSpace currently only supports "
                                  + "two- and three-particle channels")
         tbks_list_tmp = []
-        for i in range(self.n_two_channels):
+        if self.n_two_channels > 0:
             tbks_list_tmp = tbks_list_tmp\
                 + [ThreeBodyKinematicSpace(nP=self.nP)]
         for i in range(self.fcs.n_three_slices):
@@ -1778,12 +1796,10 @@ class QCIndexSpace:
     def populate_nvec_arr_slot(self, slot_index, three_particle_channel=True):
         """Populate a given nvec_arr slot."""
         if three_particle_channel:
-            three_slice_index = slot_index-self.n_two_channels
-            if self.fcs.n_three_slices != 1:
-                raise ValueError("n_three_slices different from one not yet "
-                                 + "supported")
-            if three_slice_index != 0:
-                raise ValueError("three_slice_index != 0 not yet supported")
+            if self.n_two_channels > 0:
+                three_slice_index = slot_index-1
+            else:
+                three_slice_index = slot_index
             if (self.nP == np.array([0, 0, 0])).all():
                 if self.verbosity >= 2:
                     print("populating nvec array, three_slice_index = ",
@@ -1922,11 +1938,15 @@ class QCIndexSpace:
 
     def populate_all_nvec_arr(self):
         """Populate all nvec_arr slots."""
-        for slot_index in range(self.n_two_channels):
+        if self.n_two_channels > 0:
+            slot_index = 0
             self.populate_nvec_arr_slot(slot_index,
                                         three_particle_channel=False)
         for three_slice_index in range(self.fcs.n_three_slices):
-            slot_index = three_slice_index+self.n_two_channels
+            if self.n_two_channels > 0:
+                slot_index = three_slice_index+1
+            else:
+                slot_index = three_slice_index
             self.populate_nvec_arr_slot(slot_index)
 
     def _get_ell_sets(self):
@@ -1938,7 +1958,7 @@ class QCIndexSpace:
 
     @property
     def ell_sets(self):
-        """Get the angular-momentum values (list)."""
+        """Get the set of angular-momentum value sets."""
         return self._ell_sets
 
     @ell_sets.setter
@@ -1958,6 +1978,8 @@ class QCIndexSpace:
         for three_slice in self.fcs.three_slices:
             if cindex > three_slice[1]:
                 slice_index = slice_index+1
+        if self.n_two_channels > 0:
+            slice_index = slice_index+1
         return slice_index
 
     def populate_all_kellm_spaces(self):
@@ -1965,25 +1987,29 @@ class QCIndexSpace:
         if self.verbosity >= 2:
             print("populating kellm spaces")
             print(self.n_channels, "channels to populate")
-        kellm_slices = [[]]
+        kellm_shells = [[]]
         kellm_spaces = [[]]
         for cindex in range(self.n_channels):
-            if self.fcs.n_three_slices > 1:
-                raise ValueError("only one three-slice currently supported "
-                                 + "in populate_all_kellm_spaces")
             if cindex < self.n_two_channels:
-                slot_index = cindex
+                slot_index = 0
             else:
-                slot_index = self.n_two_channels
+                cindex_shift = cindex-self.n_two_channels
+                slot_index = -1
+                for k in range(len(self.fcs.three_slices)):
+                    three_slice = self.fcs.three_slices[k]
+                    if three_slice[0] <= cindex_shift < three_slice[1]:
+                        slot_index = k
+                if self.n_two_channels > 0:
+                    slot_index = slot_index+1
             tbks_list_tmp = self.tbks_list[slot_index]
             ellm_set = self.ellm_sets[cindex]
-            kellm_slices_single = [[]]
+            kellm_shells_single = [[]]
             kellm_spaces_single = [[]]
             for tbks_tmp in tbks_list_tmp:
                 nvec_arr = tbks_tmp.nvec_arr
-                kellm_slice = (len(ellm_set)*np.array(tbks_tmp.slices
+                kellm_shell = (len(ellm_set)*np.array(tbks_tmp.shells
                                                       )).tolist()
-                kellm_slices_single = kellm_slices_single+[kellm_slice]
+                kellm_shells_single = kellm_shells_single+[kellm_shell]
                 ellm_set_extended = np.tile(ellm_set, (len(nvec_arr), 1))
                 nvec_arr_extended = np.repeat(nvec_arr, len(ellm_set),
                                               axis=0)
@@ -1991,10 +2017,10 @@ class QCIndexSpace:
                                               ellm_set_extended),
                                              axis=1)
                 kellm_spaces_single = kellm_spaces_single+[kellm_space]
-            kellm_slices = kellm_slices+[kellm_slices_single[1:]]
+            kellm_shells = kellm_shells+[kellm_shells_single[1:]]
             kellm_spaces = kellm_spaces+[kellm_spaces_single[1:]]
         self.kellm_spaces = kellm_spaces[1:]
-        self.kellm_slices = kellm_slices[1:]
+        self.kellm_shells = kellm_shells[1:]
         if self.verbosity >= 2:
             print("result for kellm spaces")
             print("location: channel index, nvec-space index")
@@ -2009,31 +2035,31 @@ class QCIndexSpace:
         """Populate all projector dictionaries."""
         group = self.group
         sc_proj_dicts = []
-        sc_proj_dicts_sliced = [[]]
+        sc_proj_dicts_by_shell = [[]]
         if self.verbosity >= 2:
             print("getting the dict for following qcis:")
             print(self)
         for cindex in range(self.n_channels):
             proj_dict = group.get_channel_proj_dict(qcis=self, cindex=cindex)
             sc_proj_dicts = sc_proj_dicts+[proj_dict]
-            sc_proj_dict_single_slice = [[]]
-            for ibest_tmp in range(len(self.kellm_slices[cindex])):
-                best_kellm_slices = self.kellm_slices[cindex][ibest_tmp]
-                sc_proj_dict_single_best = []
-                for kellm_slice in best_kellm_slices:
-                    sc_proj_dict_single_best = sc_proj_dict_single_best\
-                        + [group.get_slice_proj_dict(
+            sc_proj_dict_channel_by_shell = [[]]
+            for kellm_shell_index in range(len(self.kellm_shells[cindex])):
+                kellm_shell_set = self.kellm_shells[cindex][kellm_shell_index]
+                sc_proj_dict_shell_set = []
+                for kellm_shell in kellm_shell_set:
+                    sc_proj_dict_shell_set = sc_proj_dict_shell_set\
+                        + [group.get_shell_proj_dict(
                             qcis=self,
                             cindex=cindex,
-                            kellm_slice=kellm_slice,
-                            slice_index=ibest_tmp)]
-                sc_proj_dict_single_slice = sc_proj_dict_single_slice\
-                    + [sc_proj_dict_single_best]
-            sc_proj_dict_single_slice = sc_proj_dict_single_slice[1:]
-            sc_proj_dicts_sliced = sc_proj_dicts_sliced\
-                + [sc_proj_dict_single_slice]
+                            kellm_shell=kellm_shell,
+                            shell_index=kellm_shell_index)]
+                sc_proj_dict_channel_by_shell = sc_proj_dict_channel_by_shell\
+                    + [sc_proj_dict_shell_set]
+            sc_proj_dict_channel_by_shell = sc_proj_dict_channel_by_shell[1:]
+            sc_proj_dicts_by_shell = sc_proj_dicts_by_shell\
+                + [sc_proj_dict_channel_by_shell]
         self.sc_proj_dicts = sc_proj_dicts
-        self.sc_proj_dicts_sliced = sc_proj_dicts_sliced[1:]
+        self.sc_proj_dicts_by_shell = sc_proj_dicts_by_shell[1:]
 
     def get_tbks_sub_indices(self, E, L):
         """Get the indices of the relevant three-body kinematics spaces."""
@@ -2071,11 +2097,11 @@ class QCIndexSpace:
                                            )))**2\
                     - FOURPI2/L**2*((nP-nvec_arr)**2).sum(axis=1)
                 tbks_sub_indices[cindex] = i
-            warnings.warn("\n"+bcolors.WARNING
-                          + "get_tbks_sub_indices is being called with "
-                          + "non_zero nP. This can lead to shells being"
-                          + "missed! result is = "+str(tbks_sub_indices)
-                          + f"{bcolors.ENDC}", stacklevel=1)
+            warnings.warn(f"\n{bcolors.WARNING}"
+                          f"get_tbks_sub_indices is being called with "
+                          f"non_zero nP; this can lead to shells being"
+                          f"missed! result is = {str(tbks_sub_indices)}"
+                          f"{bcolors.ENDC}", stacklevel=1)
             return tbks_sub_indices
         for slice_index in range(self.fcs.n_three_slices):
             cindex = self.fcs.three_slices[slice_index][0]
@@ -2108,407 +2134,540 @@ class QCIndexSpace:
             tbks_sub_indices[cindex] = nPmaxintSQ - nPnewintSQ
         return tbks_sub_indices
 
-    def populate_two_nonint_data(self):
-        """Get two-particle non-interacting data."""
-        n1n2_arr_all = []
-        n1n2_SQs_all = []
-        n1n2_reps_all = []
-        n1n2_SQreps_all = []
-        n1n2_inds_all = []
-        n1n2_counts_all = []
-        n1n2_batched_all = []
-        ni_list = self.fcs.ni_list
-        fc_two_set = []
-        for fc in ni_list:
-            if fc.n_particles == 2:
-                fc_two_set = fc_two_set+[fc]
-        for fc_two in fc_two_set:
-            Emax = self.Emax
-            nP = self.nP
-            nPSQ = nP@nP
-            Lmax = self.Lmax
+    def _load_ni_data_three(self, fc):
+        [m1, m2, m3] = fc.masses
+        Emax = self.Emax
+        nP = self.nP
+        Lmax = self.Lmax
+        pSQ = 0.
+        for m in [m1, m2, m3]:
+            pSQ_tmp = ((Emax-m)**2-(nP@nP)*(TWOPI/Lmax)**2)/4.-m**2
+            if pSQ_tmp > pSQ:
+                pSQ = pSQ_tmp
+                omp = np.sqrt(pSQ+m**2)
+        beta = np.sqrt(nP@nP)*TWOPI/Lmax/Emax
+        gamma = 1./np.sqrt(1.-beta**2)
+        p_cutoff = beta*gamma*omp+gamma*np.sqrt(pSQ)
+        nvec_cutoff = int(p_cutoff*Lmax/TWOPI)+1
+        rng = range(-nvec_cutoff, nvec_cutoff+1)
+        mesh = np.meshgrid(*([rng]*3))
+        nvecs = np.vstack([y.flat for y in mesh]).T
+        return [m1, m2, m3, Emax, nP, Lmax, nvec_cutoff, nvecs]
 
-            [m1, m2] = fc_two.masses
-            ECMSQ = Emax**2-FOURPI2*nPSQ/Lmax**2
-            pSQ = (ECMSQ**2-2.0*ECMSQ*m1**2
-                   + m1**4-2.0*ECMSQ*m2**2-2.0*m1**2*m2**2+m2**4)\
-                / (4.0*ECMSQ)
-            mmax = np.max([m1, m2])
-            omp = np.sqrt(pSQ+mmax**2)
-            beta = np.sqrt(nPSQ)*TWOPI/Lmax/Emax
-            gamma = 1./np.sqrt(1.-beta**2)
-            p_cutoff = beta*gamma*omp+gamma*np.sqrt(pSQ)
-            nvec_cutoff = int(p_cutoff*Lmax/TWOPI)
-            rng = range(-nvec_cutoff, nvec_cutoff+1)
-            mesh = np.meshgrid(*([rng]*3))
-            nvecs = np.vstack([y.flat for y in mesh]).T
-            n1n2_arr = []
-            nmin = nvec_cutoff
-            nmax = nvec_cutoff
-            for n1 in nvecs:
-                n2 = nP-n1
-                n1SQ = n1@n1
-                n2SQ = n2@n2
-                E = np.sqrt(m1**2+n1SQ*(TWOPI/Lmax)**2)\
-                    + np.sqrt(m2**2+n2SQ*(TWOPI/Lmax)**2)
-                if E <= Emax:
-                    comp_set = [*(list(n1)), *(list(n2))]
-                    min_candidate = np.min(comp_set)
-                    if min_candidate < nmin:
-                        nmin = min_candidate
-                    max_candidate = np.max(comp_set)
-                    if max_candidate > nmax:
-                        nmax = max_candidate
-                    n1n2_arr = n1n2_arr+[[n1, n2]]
-            n1n2_arr = np.array(n1n2_arr)
+    def _get_nvecset_arr_three(self, nvecset_arr, nmin, nmax,
+                               m1, m2, m3, Emax, nP, Lmax, n1, n2):
+        n3 = nP-n1-n2
+        n1SQ = n1@n1
+        n2SQ = n2@n2
+        n3SQ = n3@n3
+        E = np.sqrt(m1**2+n1SQ*(TWOPI/Lmax)**2)\
+            + np.sqrt(m2**2+n2SQ*(TWOPI/Lmax)**2)\
+            + np.sqrt(m3**2+n3SQ*(TWOPI/Lmax)**2)
+        if E <= Emax:
+            comp_set = [*(list(n1)), *(list(n2)), *(list(n3))]
+            min_candidate = np.min(comp_set)
+            if min_candidate < nmin:
+                nmin = min_candidate
+            max_candidate = np.max(comp_set)
+            if max_candidate > nmax:
+                nmax = max_candidate
+            nvecset_arr = nvecset_arr+[[n1, n2, n3]]
+        return [nvecset_arr, nmin, nmax]
 
-            numsys = nmax-nmin+1
-            E_n1n2_compact = []
-            n1n2_SQs = deepcopy([])
-            for i in range(len(n1n2_arr)):
-                n1 = n1n2_arr[i][0]
-                n2 = n1n2_arr[i][1]
-                n1SQ = n1@n1
-                n2SQ = n2@n2
-                E = np.sqrt(m1**2+n1SQ*(TWOPI/Lmax)**2)\
-                    + np.sqrt(m2**2+n2SQ*(TWOPI/Lmax)**2)
-                n1_as_num = (n1[2]-nmin)\
-                    + (n1[1]-nmin)*numsys+(n1[0]-nmin)*numsys**2
-                n2_as_num = (n2[2]-nmin)\
-                    + (n2[1]-nmin)*numsys+(n2[0]-nmin)*numsys**2
-                E_n1n2_compact = E_n1n2_compact+[[E, n1_as_num,
-                                                  n2_as_num]]
-                n1n2_SQs = n1n2_SQs+[[n1SQ, n2SQ]]
-            E_n1n2_compact = np.array(E_n1n2_compact)
-            n1n2_SQs = np.array(n1n2_SQs)
+    def _square_and_sort_three(self, nvecset_arr, nmin, nmax,
+                               m1, m2, m3, Lmax):
+        numsys = nmax-nmin+1
+        E_nvecset_compact = []
+        nvecset_SQs = deepcopy([])
+        for i in range(len(nvecset_arr)):
+            n1 = nvecset_arr[i][0]
+            n2 = nvecset_arr[i][1]
+            n3 = nvecset_arr[i][2]
+            n1SQ = n1@n1
+            n2SQ = n2@n2
+            n3SQ = n3@n3
+            E = np.sqrt(m1**2+n1SQ*(TWOPI/Lmax)**2)\
+                + np.sqrt(m2**2+n2SQ*(TWOPI/Lmax)**2)\
+                + np.sqrt(m3**2+n3SQ*(TWOPI/Lmax)**2)
+            n1_as_num = (n1[2]-nmin)\
+                + (n1[1]-nmin)*numsys+(n1[0]-nmin)*numsys**2
+            n2_as_num = (n2[2]-nmin)\
+                + (n2[1]-nmin)*numsys+(n2[0]-nmin)*numsys**2
+            n3_as_num = (n3[2]-nmin)\
+                + (n3[1]-nmin)*numsys+(n3[0]-nmin)*numsys**2
+            E_nvecset_compact = E_nvecset_compact+[[E, n1_as_num,
+                                                    n2_as_num,
+                                                    n3_as_num]]
+            nvecset_SQs = nvecset_SQs+[[n1SQ, n2SQ, n3SQ]]
+        E_nvecset_compact = np.array(E_nvecset_compact)
+        nvecset_SQs = np.array(nvecset_SQs)
 
-            re_indexing = np.arange(len(E_n1n2_compact))
-            for i in range(3):
-                re_indexing = re_indexing[
-                    E_n1n2_compact[:, 2-i].argsort(kind='mergesort')]
-                E_n1n2_compact = E_n1n2_compact[
-                    E_n1n2_compact[:, 2-i].argsort(kind='mergesort')]
-            n1n2_arr = n1n2_arr[re_indexing]
-            n1n2_SQs = n1n2_SQs[re_indexing]
+        re_indexing = np.arange(len(E_nvecset_compact))
+        for i in range(4):
+            re_indexing = re_indexing[
+                E_nvecset_compact[:, 3-i].argsort(kind='mergesort')]
+            E_nvecset_compact = E_nvecset_compact[
+                E_nvecset_compact[:, 3-i].argsort(kind='mergesort')]
+        nvecset_arr = nvecset_arr[re_indexing]
+        nvecset_SQs = nvecset_SQs[re_indexing]
+        return [nvecset_arr, nvecset_SQs]
 
-            n1n2_reps = [n1n2_arr[0]]
-            n1n2_SQreps = [n1n2_SQs[0]]
-            n1n2_inds = [0]
-            n1n2_counts = deepcopy([0])
+    def _get_nvecset_ident_three(self, nvecset_arr, nvecset_SQs):
+        nvecset_ident = []
+        nvecset_ident_SQs = deepcopy([])
+        for i in range(len(nvecset_arr)):
+            [n1, n2, n3] = nvecset_arr[i]
+            candidates = [np.array([n1, n2, n3]),
+                          np.array([n2, n3, n1]),
+                          np.array([n3, n1, n2]),
+                          np.array([n3, n2, n1]),
+                          np.array([n2, n1, n3]),
+                          np.array([n1, n3, n2])]
 
-            G = self.group.get_little_group(nP)
-            for j in range(len(n1n2_arr)):
-                already_included = False
-                for g_elem in G:
-                    if not already_included:
-                        for k in range(len(n1n2_reps)):
-                            n_included = n1n2_reps[k]
-                            if (n1n2_arr[j]@g_elem == n_included).all():
-                                already_included = True
-                                n1n2_counts[k] = n1n2_counts[k]+1
+            include_entry = True
+
+            for candidate in candidates:
+                for nvecset_tmp_entry in nvecset_ident:
+                    nvecset_tmp_entry = np.array(nvecset_tmp_entry)
+                    include_entry = include_entry\
+                        and (not ((candidate == nvecset_tmp_entry)
+                                  .all()))
+            if include_entry:
+                nvecset_ident = nvecset_ident+[[n1, n2, n3]]
+                nvecset_ident_SQs = nvecset_ident_SQs+[nvecset_SQs[i]]
+        nvecset_ident = np.array(nvecset_ident)
+        nvecset_ident_SQs = np.array(nvecset_ident_SQs)
+        return [nvecset_ident, nvecset_ident_SQs]
+
+    def _reps_and_batches_three(self, nvecset_arr, nvecset_SQs,
+                                nvecset_ident, nvecset_ident_SQs,
+                                nP):
+        nvecset_reps = [nvecset_arr[0]]
+        nvecset_ident_reps = deepcopy([nvecset_ident[0]])
+        nvecset_SQreps = [nvecset_SQs[0]]
+        nvecset_ident_SQreps = deepcopy([nvecset_ident_SQs[0]])
+        nvecset_inds = [0]
+        nvecset_ident_inds = deepcopy([0])
+        nvecset_counts = deepcopy([0])
+        nvecset_ident_counts = deepcopy([0])
+
+        G = self.group.get_little_group(nP)
+        for j in range(len(nvecset_arr)):
+            already_included = False
+            for g_elem in G:
                 if not already_included:
-                    n1n2_reps = n1n2_reps+[n1n2_arr[j]]
-                    n1n2_SQreps = n1n2_SQreps+[n1n2_SQs[j]]
-                    n1n2_inds = n1n2_inds+[j]
-                    n1n2_counts = n1n2_counts+[1]
+                    for k in range(len(nvecset_reps)):
+                        n_included = nvecset_reps[k]
+                        if (nvecset_arr[j]@g_elem == n_included).all():
+                            already_included = True
+                            nvecset_counts[k] = nvecset_counts[k]+1
+            if not already_included:
+                nvecset_reps = nvecset_reps+[nvecset_arr[j]]
+                nvecset_SQreps = nvecset_SQreps+[nvecset_SQs[j]]
+                nvecset_inds = nvecset_inds+[j]
+                nvecset_counts = nvecset_counts+[1]
 
-            n1n2_batched = list(np.arange(len(n1n2_reps)))
-            for j in range(len(n1n2_arr)):
-                for k in range(len(n1n2_reps)):
-                    include_entry = False
-                    n_rep = n1n2_reps[k]
-                    n_rep = np.array(n_rep)
-                    for g_elem in G:
-                        [n1, n2] = n1n2_arr[j]@g_elem
-                        candidates = [np.array([n1, n2])]
+        for j in range(len(nvecset_ident)):
+            already_included = False
+            for g_elem in G:
+                if not already_included:
+                    for k in range(len(nvecset_ident_reps)):
+                        n_included = nvecset_ident_reps[k]
+                        n_included = np.array(n_included)
+                        [n1, n2, n3] = nvecset_ident[j]@g_elem
+                        candidates = [np.array([n1, n2, n3]),
+                                      np.array([n2, n3, n1]),
+                                      np.array([n3, n1, n2]),
+                                      np.array([n3, n2, n1]),
+                                      np.array([n2, n1, n3]),
+                                      np.array([n1, n3, n2])]
+                        include_entry = True
                         for candidate in candidates:
                             include_entry = include_entry\
-                                or (((candidate == n_rep).all()))
-                    if include_entry:
-                        if isinstance(n1n2_batched[k], np.int64):
-                            n1n2_batched[k] = [n1n2_arr[j]]
-                        else:
-                            n1n2_batched[k] = n1n2_batched[k]\
-                                + [n1n2_arr[j]]
-            n1n2_arr_all = n1n2_arr_all+[n1n2_arr]
-            n1n2_SQs_all = n1n2_SQs_all+[n1n2_SQs]
-            n1n2_reps_all = n1n2_reps_all+[n1n2_reps]
-            n1n2_SQreps_all = n1n2_SQreps_all+[n1n2_SQreps]
-            n1n2_inds_all = n1n2_inds_all+[n1n2_inds]
-            n1n2_counts_all = n1n2_counts_all+[n1n2_counts]
-            n1n2_batched_all = n1n2_batched_all+[n1n2_batched]
-        self.n1n2_arr = n1n2_arr_all
-        self.n1n2_SQs = n1n2_SQs_all
-        self.n1n2_reps = n1n2_reps_all
-        self.n1n2_SQreps = n1n2_SQreps_all
-        self.n1n2_inds = n1n2_inds_all
-        self.n1n2_counts = n1n2_counts_all
-        self.n1n2_batched = n1n2_batched_all
+                                and (not ((candidate == n_included)
+                                          .all()))
+                        if not include_entry:
+                            already_included = True
+                            nvecset_ident_counts[k]\
+                                = nvecset_ident_counts[k]+1
+            if not already_included:
+                nvecset_ident_reps = nvecset_ident_reps\
+                    + [nvecset_ident[j]]
+                nvecset_ident_SQreps = nvecset_ident_SQreps\
+                    + [nvecset_ident_SQs[j]]
+                nvecset_ident_inds = nvecset_ident_inds+[j]
+                nvecset_ident_counts = nvecset_ident_counts+[1]
 
-    def populate_three_nonint_data(self):
-        """Get three-particle non-interacting data."""
-        n1n2n3_arr_all = []
-        n1n2n3_SQs_all = []
-        n1n2n3_reps_all = []
-        n1n2n3_SQreps_all = []
-        n1n2n3_inds_all = []
-        n1n2n3_counts_all = []
-        n1n2n3_batched_all = []
-        n1n2n3_ident_all = []
-        n1n2n3_ident_SQs_all = []
-        n1n2n3_ident_reps_all = []
-        n1n2n3_ident_SQreps_all = []
-        n1n2n3_ident_inds_all = []
-        n1n2n3_ident_counts_all = []
-        n1n2n3_ident_batched_all = []
+        nvecset_batched = list(np.arange(len(nvecset_ident_reps)))
+        for j in range(len(nvecset_arr)):
+            for k in range(len(nvecset_ident_reps)):
+                include_entry = False
+                n_rep = nvecset_ident_reps[k]
+                n_rep = np.array(n_rep)
+                for g_elem in G:
+                    [n1, n2, n3] = nvecset_arr[j]@g_elem
+                    candidates = [np.array([n1, n2, n3]),
+                                  np.array([n2, n3, n1]),
+                                  np.array([n3, n1, n2]),
+                                  np.array([n3, n2, n1]),
+                                  np.array([n2, n1, n3]),
+                                  np.array([n1, n3, n2])]
+                    for candidate in candidates:
+                        include_entry = include_entry\
+                            or (((candidate == n_rep).all()))
+                if include_entry:
+                    if isinstance(nvecset_batched[k], np.int64):
+                        nvecset_batched[k] = [nvecset_arr[j]]
+                    else:
+                        nvecset_batched[k] = nvecset_batched[k]\
+                            + [nvecset_arr[j]]
+
+        nvecset_ident_batched\
+            = list(np.arange(len(nvecset_ident_reps)))
+        for j in range(len(nvecset_ident)):
+            for k in range(len(nvecset_ident_reps)):
+                include_entry = False
+                n_rep = nvecset_ident_reps[k]
+                n_rep = np.array(n_rep)
+                for g_elem in G:
+                    [n1, n2, n3] = nvecset_ident[j]@g_elem
+                    candidates = [np.array([n1, n2, n3]),
+                                  np.array([n2, n3, n1]),
+                                  np.array([n3, n1, n2]),
+                                  np.array([n3, n2, n1]),
+                                  np.array([n2, n1, n3]),
+                                  np.array([n1, n3, n2])]
+                    for candidate in candidates:
+                        include_entry = include_entry\
+                            or (((candidate == n_rep).all()))
+                if include_entry:
+                    if isinstance(nvecset_ident_batched[k], np.int64):
+                        nvecset_ident_batched[k] = [nvecset_ident[j]]
+                    else:
+                        nvecset_ident_batched[k]\
+                            = nvecset_ident_batched[k]\
+                            + [nvecset_ident[j]]
+
+        for j in range(len(nvecset_batched)):
+            nvecset_batched[j] = np.array(nvecset_batched[j])
+
+        for j in range(len(nvecset_ident_batched)):
+            nvecset_ident_batched[j]\
+                = np.array(nvecset_ident_batched[j])
+        return [nvecset_reps, nvecset_ident_reps,
+                nvecset_SQreps, nvecset_ident_SQreps,
+                nvecset_inds, nvecset_ident_inds,
+                nvecset_counts, nvecset_ident_counts,
+                nvecset_batched, nvecset_ident_batched]
+
+    def _load_ni_data_two(self, fc):
+        Emax = self.Emax
+        nP = self.nP
+        nPSQ = nP@nP
+        Lmax = self.Lmax
+
+        [m1, m2] = fc.masses
+        ECMSQ = Emax**2-FOURPI2*nPSQ/Lmax**2
+        pSQ = (ECMSQ**2-2.0*ECMSQ*m1**2
+               + m1**4-2.0*ECMSQ*m2**2-2.0*m1**2*m2**2+m2**4)\
+            / (4.0*ECMSQ)
+        mmax = np.max([m1, m2])
+        omp = np.sqrt(pSQ+mmax**2)
+        beta = np.sqrt(nPSQ)*TWOPI/Lmax/Emax
+        gamma = 1./np.sqrt(1.-beta**2)
+        p_cutoff = beta*gamma*omp+gamma*np.sqrt(pSQ)
+        nvec_cutoff = int(p_cutoff*Lmax/TWOPI)
+        rng = range(-nvec_cutoff, nvec_cutoff+1)
+        mesh = np.meshgrid(*([rng]*3))
+        nvecs = np.vstack([y.flat for y in mesh]).T
+        return [m1, m2, Emax, nP, Lmax, nvec_cutoff, nvecs]
+
+    def _get_nvecset_arr_two(self, nvecset_arr, nmin, nmax, m1, m2,
+                             Emax, nP, Lmax, n1):
+        n2 = nP-n1
+        n1SQ = n1@n1
+        n2SQ = n2@n2
+        E = np.sqrt(m1**2+n1SQ*(TWOPI/Lmax)**2)\
+            + np.sqrt(m2**2+n2SQ*(TWOPI/Lmax)**2)
+        if E <= Emax:
+            comp_set = [*(list(n1)), *(list(n2))]
+            min_candidate = np.min(comp_set)
+            if min_candidate < nmin:
+                nmin = min_candidate
+            max_candidate = np.max(comp_set)
+            if max_candidate > nmax:
+                nmax = max_candidate
+            nvecset_arr = nvecset_arr+[[n1, n2]]
+        return [nvecset_arr, nmin, nmax]
+
+    def _square_and_sort_two(self, nvecset_arr, nmin, nmax,
+                             m1, m2, Lmax):
+        numsys = nmax-nmin+1
+        E_nvecset_compact = []
+        nvecset_SQs = deepcopy([])
+        for i in range(len(nvecset_arr)):
+            n1 = nvecset_arr[i][0]
+            n2 = nvecset_arr[i][1]
+            n1SQ = n1@n1
+            n2SQ = n2@n2
+            E = np.sqrt(m1**2+n1SQ*(TWOPI/Lmax)**2)\
+                + np.sqrt(m2**2+n2SQ*(TWOPI/Lmax)**2)
+            n1_as_num = (n1[2]-nmin)\
+                + (n1[1]-nmin)*numsys+(n1[0]-nmin)*numsys**2
+            n2_as_num = (n2[2]-nmin)\
+                + (n2[1]-nmin)*numsys+(n2[0]-nmin)*numsys**2
+            E_nvecset_compact = E_nvecset_compact+[[E, n1_as_num,
+                                                    n2_as_num]]
+            nvecset_SQs = nvecset_SQs+[[n1SQ, n2SQ]]
+        E_nvecset_compact = np.array(E_nvecset_compact)
+        nvecset_SQs = np.array(nvecset_SQs)
+
+        re_indexing = np.arange(len(E_nvecset_compact))
+        for i in range(3):
+            re_indexing = re_indexing[
+                E_nvecset_compact[:, 2-i].argsort(kind='mergesort')]
+            E_nvecset_compact = E_nvecset_compact[
+                E_nvecset_compact[:, 2-i].argsort(kind='mergesort')]
+        nvecset_arr = nvecset_arr[re_indexing]
+        nvecset_SQs = nvecset_SQs[re_indexing]
+        return [nvecset_arr, nvecset_SQs]
+
+    def _get_nvecset_ident_two(self, nvecset_arr, nvecset_SQs):
+        nvecset_ident = []
+        nvecset_ident_SQs = deepcopy([])
+        for i in range(len(nvecset_arr)):
+            [n1, n2] = nvecset_arr[i]
+            candidates = [np.array([n1, n2]),
+                          np.array([n2, n1])]
+            include_entry = True
+            for candidate in candidates:
+                for nvecset_tmp_entry in nvecset_ident:
+                    nvecset_tmp_entry = np.array(nvecset_tmp_entry)
+                    include_entry = include_entry\
+                        and (not ((candidate == nvecset_tmp_entry)
+                                  .all()))
+            if include_entry:
+                nvecset_ident = nvecset_ident+[[n1, n2]]
+                nvecset_ident_SQs = nvecset_ident_SQs+[nvecset_SQs[i]]
+        nvecset_ident = np.array(nvecset_ident)
+        nvecset_ident_SQs = np.array(nvecset_ident_SQs)
+        return [nvecset_ident, nvecset_ident_SQs]
+
+    def _reps_and_batches_two(self, nvecset_arr, nvecset_SQs, nvecset_ident,
+                              nvecset_ident_SQs, nP):
+        nvecset_reps = [nvecset_arr[0]]
+        nvecset_ident_reps = deepcopy([nvecset_ident[0]])
+        nvecset_SQreps = [nvecset_SQs[0]]
+        nvecset_ident_SQreps = deepcopy([nvecset_ident_SQs[0]])
+        nvecset_inds = [0]
+        nvecset_ident_inds = deepcopy([0])
+        nvecset_counts = deepcopy([0])
+        nvecset_ident_counts = deepcopy([0])
+
+        G = self.group.get_little_group(nP)
+        for j in range(len(nvecset_arr)):
+            already_included = False
+            for g_elem in G:
+                if not already_included:
+                    for k in range(len(nvecset_reps)):
+                        n_included = nvecset_reps[k]
+                        if (nvecset_arr[j]@g_elem == n_included).all():
+                            already_included = True
+                            nvecset_counts[k] = nvecset_counts[k]+1
+            if not already_included:
+                nvecset_reps = nvecset_reps+[nvecset_arr[j]]
+                nvecset_SQreps = nvecset_SQreps+[nvecset_SQs[j]]
+                nvecset_inds = nvecset_inds+[j]
+                nvecset_counts = nvecset_counts+[1]
+
+        for j in range(len(nvecset_ident)):
+            already_included = False
+            for g_elem in G:
+                if not already_included:
+                    for k in range(len(nvecset_ident_reps)):
+                        n_included = nvecset_ident_reps[k]
+                        n_included = np.array(n_included)
+                        [n1, n2] = nvecset_ident[j]@g_elem
+                        candidates = [np.array([n1, n2]),
+                                      np.array([n2, n1])]
+                        include_entry = True
+                        for candidate in candidates:
+                            include_entry = include_entry\
+                                and (not ((candidate == n_included)
+                                          .all()))
+                        if not include_entry:
+                            already_included = True
+                            nvecset_ident_counts[k]\
+                                = nvecset_ident_counts[k]+1
+            if not already_included:
+                nvecset_ident_reps = nvecset_ident_reps\
+                    + [nvecset_ident[j]]
+                nvecset_ident_SQreps = nvecset_ident_SQreps\
+                    + [nvecset_ident_SQs[j]]
+                nvecset_ident_inds = nvecset_ident_inds+[j]
+                nvecset_ident_counts = nvecset_ident_counts+[1]
+
+        nvecset_batched = list(np.arange(len(nvecset_reps)))
+        for j in range(len(nvecset_arr)):
+            for k in range(len(nvecset_reps)):
+                include_entry = False
+                n_rep = nvecset_reps[k]
+                n_rep = np.array(n_rep)
+                for g_elem in G:
+                    [n1, n2] = nvecset_arr[j]@g_elem
+                    candidates = [np.array([n1, n2])]
+                    for candidate in candidates:
+                        include_entry = include_entry\
+                            or (((candidate == n_rep).all()))
+                if include_entry:
+                    if isinstance(nvecset_batched[k], np.int64):
+                        nvecset_batched[k] = [nvecset_arr[j]]
+                    else:
+                        nvecset_batched[k] = nvecset_batched[k]\
+                            + [nvecset_arr[j]]
+
+        nvecset_ident_batched\
+            = list(np.arange(len(nvecset_ident_reps)))
+        for j in range(len(nvecset_ident)):
+            for k in range(len(nvecset_ident_reps)):
+                include_entry = False
+                n_rep = nvecset_ident_reps[k]
+                n_rep = np.array(n_rep)
+                for g_elem in G:
+                    [n1, n2] = nvecset_ident[j]@g_elem
+                    candidates = [np.array([n1, n2]),
+                                  np.array([n2, n1])]
+                    for candidate in candidates:
+                        include_entry = include_entry\
+                            or (((candidate == n_rep).all()))
+                if include_entry:
+                    if isinstance(nvecset_ident_batched[k], np.int64):
+                        nvecset_ident_batched[k] = [nvecset_ident[j]]
+                    else:
+                        nvecset_ident_batched[k]\
+                            = nvecset_ident_batched[k]\
+                            + [nvecset_ident[j]]
+
+        for j in range(len(nvecset_batched)):
+            nvecset_batched[j] = np.array(nvecset_batched[j])
+
+        for j in range(len(nvecset_ident_batched)):
+            nvecset_ident_batched[j]\
+                = np.array(nvecset_ident_batched[j])
+        return [nvecset_reps, nvecset_ident_reps,
+                nvecset_SQreps, nvecset_ident_SQreps,
+                nvecset_inds, nvecset_ident_inds,
+                nvecset_counts, nvecset_ident_counts,
+                nvecset_batched, nvecset_ident_batched]
+
+    def populate_all_nonint_data(self):
+        """Get all non-interacting data."""
+        nvecset_arr_all = []
+        nvecset_SQs_all = []
+        nvecset_reps_all = []
+        nvecset_SQreps_all = []
+        nvecset_inds_all = []
+        nvecset_counts_all = []
+        nvecset_batched_all = []
+        nvecset_ident_all = []
+        nvecset_ident_SQs_all = []
+        nvecset_ident_reps_all = []
+        nvecset_ident_SQreps_all = []
+        nvecset_ident_inds_all = []
+        nvecset_ident_counts_all = []
+        nvecset_ident_batched_all = []
         ni_list = self.fcs.ni_list
-        fc_three_set = []
         for fc in ni_list:
             if fc.n_particles == 3:
-                fc_three_set = fc_three_set+[fc]
-        for fc_three in fc_three_set:
-            [m1, m2, m3] = fc_three.masses
-            Emax = self.Emax
-            nP = self.nP
-            Lmax = self.Lmax
-            pSQ = 0.
-            for m in [m1, m2, m3]:
-                pSQ_tmp = ((Emax-m)**2-(nP@nP)*(TWOPI/Lmax)**2)/4.-m**2
-                if pSQ_tmp > pSQ:
-                    pSQ = pSQ_tmp
-                    omp = np.sqrt(pSQ+m**2)
+                [m1, m2, m3, Emax, nP, Lmax, nvec_cutoff, nvecs]\
+                    = self._load_ni_data_three(fc)
+                nvecset_arr = []
+                nmin = nvec_cutoff
+                nmax = nvec_cutoff
+                for n1 in nvecs:
+                    for n2 in nvecs:
+                        [nvecset_arr, nmin, nmax]\
+                            = self._get_nvecset_arr_three(nvecset_arr,
+                                                          nmin, nmax,
+                                                          m1, m2, m3,
+                                                          Emax, nP, Lmax,
+                                                          n1, n2)
+                nvecset_arr = np.array(nvecset_arr)
+                [nvecset_arr, nvecset_SQs]\
+                    = self._square_and_sort_three(nvecset_arr, nmin, nmax,
+                                                  m1, m2, m3, Lmax)
+                [nvecset_ident, nvecset_ident_SQs]\
+                    = self._get_nvecset_ident_three(nvecset_arr, nvecset_SQs)
+                [nvecset_reps, nvecset_ident_reps,
+                 nvecset_SQreps, nvecset_ident_SQreps,
+                 nvecset_inds, nvecset_ident_inds,
+                 nvecset_counts, nvecset_ident_counts,
+                 nvecset_batched, nvecset_ident_batched]\
+                    = self._reps_and_batches_three(nvecset_arr, nvecset_SQs,
+                                                   nvecset_ident,
+                                                   nvecset_ident_SQs,
+                                                   nP)
+            else:
+                [m1, m2, Emax, nP, Lmax, nvec_cutoff, nvecs]\
+                    = self._load_ni_data_two(fc)
+                nvecset_arr = []
+                nmin = nvec_cutoff
+                nmax = nvec_cutoff
+                for n1 in nvecs:
+                    [nvecset_arr, nmin, nmax]\
+                        = self._get_nvecset_arr_two(nvecset_arr, nmin, nmax,
+                                                    m1, m2, Emax, nP, Lmax, n1)
+                nvecset_arr = np.array(nvecset_arr)
+                [nvecset_arr, nvecset_SQs]\
+                    = self._square_and_sort_two(nvecset_arr, nmin, nmax,
+                                                m1, m2, Lmax)
+                [nvecset_ident, nvecset_ident_SQs]\
+                    = self._get_nvecset_ident_two(nvecset_arr, nvecset_SQs)
+                [nvecset_reps, nvecset_ident_reps,
+                 nvecset_SQreps, nvecset_ident_SQreps,
+                 nvecset_inds, nvecset_ident_inds,
+                 nvecset_counts, nvecset_ident_counts,
+                 nvecset_batched, nvecset_ident_batched]\
+                    = self._reps_and_batches_two(nvecset_arr, nvecset_SQs,
+                                                 nvecset_ident,
+                                                 nvecset_ident_SQs, nP)
 
-            beta = np.sqrt(nP@nP)*TWOPI/Lmax/Emax
-            gamma = 1./np.sqrt(1.-beta**2)
-            p_cutoff = beta*gamma*omp+gamma*np.sqrt(pSQ)
-            nvec_cutoff = int(p_cutoff*Lmax/TWOPI)
-            rng = range(-nvec_cutoff, nvec_cutoff+1)
-            mesh = np.meshgrid(*([rng]*3))
-            nvecs = np.vstack([y.flat for y in mesh]).T
+            nvecset_arr_all = nvecset_arr_all+[nvecset_arr]
+            nvecset_SQs_all = nvecset_SQs_all+[nvecset_SQs]
+            nvecset_reps_all = nvecset_reps_all+[nvecset_reps]
+            nvecset_SQreps_all = nvecset_SQreps_all+[nvecset_SQreps]
+            nvecset_inds_all = nvecset_inds_all+[nvecset_inds]
+            nvecset_counts_all = nvecset_counts_all+[nvecset_counts]
+            nvecset_batched_all = nvecset_batched_all+[nvecset_batched]
 
-            n1n2n3_arr = []
-            nmin = nvec_cutoff
-            nmax = nvec_cutoff
-            for n1 in nvecs:
-                for n2 in nvecs:
-                    n3 = nP-n1-n2
-                    n1SQ = n1@n1
-                    n2SQ = n2@n2
-                    n3SQ = n3@n3
-                    E = np.sqrt(m1**2+n1SQ*(TWOPI/Lmax)**2)\
-                        + np.sqrt(m2**2+n2SQ*(TWOPI/Lmax)**2)\
-                        + np.sqrt(m3**2+n3SQ*(TWOPI/Lmax)**2)
-                    if E <= Emax:
-                        comp_set = [*(list(n1)), *(list(n2)), *(list(n3))]
-                        min_candidate = np.min(comp_set)
-                        if min_candidate < nmin:
-                            nmin = min_candidate
-                        max_candidate = np.max(comp_set)
-                        if max_candidate > nmax:
-                            nmax = max_candidate
-                        n1n2n3_arr = n1n2n3_arr+[[n1, n2, n3]]
-            n1n2n3_arr = np.array(n1n2n3_arr)
+            nvecset_ident_all = nvecset_ident_all\
+                + [nvecset_ident]
+            nvecset_ident_SQs_all = nvecset_ident_SQs_all+[nvecset_ident_SQs]
+            nvecset_ident_reps_all = nvecset_ident_reps_all\
+                + [nvecset_ident_reps]
+            nvecset_ident_SQreps_all = nvecset_ident_SQreps_all\
+                + [nvecset_ident_SQreps]
+            nvecset_ident_inds_all = nvecset_ident_inds_all\
+                + [nvecset_ident_inds]
+            nvecset_ident_counts_all = nvecset_ident_counts_all\
+                + [nvecset_ident_counts]
+            nvecset_ident_batched_all = nvecset_ident_batched_all\
+                + [nvecset_ident_batched]
+        self.nvecset_arr = nvecset_arr_all
+        self.nvecset_SQs = nvecset_SQs_all
+        self.nvecset_reps = nvecset_reps_all
+        self.nvecset_SQreps = nvecset_SQreps_all
+        self.nvecset_inds = nvecset_inds_all
+        self.nvecset_counts = nvecset_counts_all
+        self.nvecset_batched = nvecset_batched_all
 
-            numsys = nmax-nmin+1
-            E_n1n2n3_compact = []
-            n1n2n3_SQs = deepcopy([])
-            for i in range(len(n1n2n3_arr)):
-                n1 = n1n2n3_arr[i][0]
-                n2 = n1n2n3_arr[i][1]
-                n3 = n1n2n3_arr[i][2]
-                n1SQ = n1@n1
-                n2SQ = n2@n2
-                n3SQ = n3@n3
-                E = np.sqrt(m1**2+n1SQ*(TWOPI/Lmax)**2)\
-                    + np.sqrt(m2**2+n2SQ*(TWOPI/Lmax)**2)\
-                    + np.sqrt(m3**2+n3SQ*(TWOPI/Lmax)**2)
-                n1_as_num = (n1[2]-nmin)\
-                    + (n1[1]-nmin)*numsys+(n1[0]-nmin)*numsys**2
-                n2_as_num = (n2[2]-nmin)\
-                    + (n2[1]-nmin)*numsys+(n2[0]-nmin)*numsys**2
-                n3_as_num = (n3[2]-nmin)\
-                    + (n3[1]-nmin)*numsys+(n3[0]-nmin)*numsys**2
-                E_n1n2n3_compact = E_n1n2n3_compact+[[E, n1_as_num,
-                                                      n2_as_num,
-                                                      n3_as_num]]
-                n1n2n3_SQs = n1n2n3_SQs+[[n1SQ, n2SQ, n3SQ]]
-            E_n1n2n3_compact = np.array(E_n1n2n3_compact)
-            n1n2n3_SQs = np.array(n1n2n3_SQs)
-
-            re_indexing = np.arange(len(E_n1n2n3_compact))
-            for i in range(4):
-                re_indexing = re_indexing[
-                    E_n1n2n3_compact[:, 3-i].argsort(kind='mergesort')]
-                E_n1n2n3_compact = E_n1n2n3_compact[
-                    E_n1n2n3_compact[:, 3-i].argsort(kind='mergesort')]
-            n1n2n3_arr = n1n2n3_arr[re_indexing]
-            n1n2n3_SQs = n1n2n3_SQs[re_indexing]
-
-            n1n2n3_ident = []
-            n1n2n3_ident_SQs = deepcopy([])
-            for i in range(len(n1n2n3_arr)):
-                [n1, n2, n3] = n1n2n3_arr[i]
-                candidates = [np.array([n1, n2, n3]),
-                              np.array([n2, n3, n1]),
-                              np.array([n3, n1, n2]),
-                              np.array([n3, n2, n1]),
-                              np.array([n2, n1, n3]),
-                              np.array([n1, n3, n2])]
-
-                include_entry = True
-
-                for candidate in candidates:
-                    for n1n2n3_tmp_entry in n1n2n3_ident:
-                        n1n2n3_tmp_entry = np.array(n1n2n3_tmp_entry)
-                        include_entry = include_entry\
-                            and (not ((candidate == n1n2n3_tmp_entry).all()))
-                if include_entry:
-                    n1n2n3_ident = n1n2n3_ident+[[n1, n2, n3]]
-                    n1n2n3_ident_SQs = n1n2n3_ident_SQs+[n1n2n3_SQs[i]]
-            n1n2n3_ident = np.array(n1n2n3_ident)
-            n1n2n3_ident_SQs = np.array(n1n2n3_ident_SQs)
-
-            n1n2n3_reps = [n1n2n3_arr[0]]
-            n1n2n3_ident_reps = deepcopy([n1n2n3_ident[0]])
-            n1n2n3_SQreps = [n1n2n3_SQs[0]]
-            n1n2n3_ident_SQreps = deepcopy([n1n2n3_ident_SQs[0]])
-            n1n2n3_inds = [0]
-            n1n2n3_ident_inds = deepcopy([0])
-            n1n2n3_counts = deepcopy([0])
-            n1n2n3_ident_counts = deepcopy([0])
-
-            G = self.group.get_little_group(nP)
-            for j in range(len(n1n2n3_arr)):
-                already_included = False
-                for g_elem in G:
-                    if not already_included:
-                        for k in range(len(n1n2n3_reps)):
-                            n_included = n1n2n3_reps[k]
-                            if (n1n2n3_arr[j]@g_elem == n_included).all():
-                                already_included = True
-                                n1n2n3_counts[k] = n1n2n3_counts[k]+1
-                if not already_included:
-                    n1n2n3_reps = n1n2n3_reps+[n1n2n3_arr[j]]
-                    n1n2n3_SQreps = n1n2n3_SQreps+[n1n2n3_SQs[j]]
-                    n1n2n3_inds = n1n2n3_inds+[j]
-                    n1n2n3_counts = n1n2n3_counts+[1]
-
-            for j in range(len(n1n2n3_ident)):
-                already_included = False
-                for g_elem in G:
-                    if not already_included:
-                        for k in range(len(n1n2n3_ident_reps)):
-                            n_included = n1n2n3_ident_reps[k]
-                            n_included = np.array(n_included)
-                            [n1, n2, n3] = n1n2n3_ident[j]@g_elem
-                            candidates = [np.array([n1, n2, n3]),
-                                          np.array([n2, n3, n1]),
-                                          np.array([n3, n1, n2]),
-                                          np.array([n3, n2, n1]),
-                                          np.array([n2, n1, n3]),
-                                          np.array([n1, n3, n2])]
-                            include_entry = True
-                            for candidate in candidates:
-                                include_entry = include_entry\
-                                    and (not ((candidate == n_included).all()))
-                            if not include_entry:
-                                already_included = True
-                                n1n2n3_ident_counts[k]\
-                                    = n1n2n3_ident_counts[k]+1
-                if not already_included:
-                    n1n2n3_ident_reps = n1n2n3_ident_reps+[n1n2n3_ident[j]]
-                    n1n2n3_ident_SQreps = n1n2n3_ident_SQreps\
-                        + [n1n2n3_ident_SQs[j]]
-                    n1n2n3_ident_inds = n1n2n3_ident_inds+[j]
-                    n1n2n3_ident_counts = n1n2n3_ident_counts+[1]
-
-            n1n2n3_batched = list(np.arange(len(n1n2n3_ident_reps)))
-            for j in range(len(n1n2n3_arr)):
-                for k in range(len(n1n2n3_ident_reps)):
-                    include_entry = False
-                    n_rep = n1n2n3_ident_reps[k]
-                    n_rep = np.array(n_rep)
-                    for g_elem in G:
-                        [n1, n2, n3] = n1n2n3_arr[j]@g_elem
-                        candidates = [np.array([n1, n2, n3]),
-                                      np.array([n2, n3, n1]),
-                                      np.array([n3, n1, n2]),
-                                      np.array([n3, n2, n1]),
-                                      np.array([n2, n1, n3]),
-                                      np.array([n1, n3, n2])]
-                        for candidate in candidates:
-                            include_entry = include_entry\
-                                or (((candidate == n_rep).all()))
-                    if include_entry:
-                        if isinstance(n1n2n3_batched[k], np.int64):
-                            n1n2n3_batched[k] = [n1n2n3_arr[j]]
-                        else:
-                            n1n2n3_batched[k] = n1n2n3_batched[k]\
-                                + [n1n2n3_arr[j]]
-
-            n1n2n3_ident_batched = list(np.arange(len(n1n2n3_ident_reps)))
-            for j in range(len(n1n2n3_ident)):
-                for k in range(len(n1n2n3_ident_reps)):
-                    include_entry = False
-                    n_rep = n1n2n3_ident_reps[k]
-                    n_rep = np.array(n_rep)
-                    for g_elem in G:
-                        [n1, n2, n3] = n1n2n3_ident[j]@g_elem
-                        candidates = [np.array([n1, n2, n3]),
-                                      np.array([n2, n3, n1]),
-                                      np.array([n3, n1, n2]),
-                                      np.array([n3, n2, n1]),
-                                      np.array([n2, n1, n3]),
-                                      np.array([n1, n3, n2])]
-                        for candidate in candidates:
-                            include_entry = include_entry\
-                                or (((candidate == n_rep).all()))
-                    if include_entry:
-                        if isinstance(n1n2n3_ident_batched[k], np.int64):
-                            n1n2n3_ident_batched[k] = [n1n2n3_ident[j]]
-                        else:
-                            n1n2n3_ident_batched[k] = n1n2n3_ident_batched[k]\
-                                + [n1n2n3_ident[j]]
-
-            for j in range(len(n1n2n3_batched)):
-                n1n2n3_batched[j] = np.array(n1n2n3_batched[j])
-
-            for j in range(len(n1n2n3_ident_batched)):
-                n1n2n3_ident_batched[j] = np.array(n1n2n3_ident_batched[j])
-
-            n1n2n3_arr_all = n1n2n3_arr_all+[n1n2n3_arr]
-            n1n2n3_SQs_all = n1n2n3_SQs_all+[n1n2n3_SQs]
-            n1n2n3_reps_all = n1n2n3_reps_all+[n1n2n3_reps]
-            n1n2n3_SQreps_all = n1n2n3_SQreps_all+[n1n2n3_SQreps]
-            n1n2n3_inds_all = n1n2n3_inds_all+[n1n2n3_inds]
-            n1n2n3_counts_all = n1n2n3_counts_all+[n1n2n3_counts]
-            n1n2n3_batched_all = n1n2n3_batched_all+[n1n2n3_batched]
-
-            n1n2n3_ident_all = n1n2n3_ident_all+[n1n2n3_ident]
-            n1n2n3_ident_SQs_all = n1n2n3_ident_SQs_all+[n1n2n3_ident_SQs]
-            n1n2n3_ident_reps_all = n1n2n3_ident_reps_all+[n1n2n3_ident_reps]
-            n1n2n3_ident_SQreps_all = n1n2n3_ident_SQreps_all\
-                + [n1n2n3_ident_SQreps]
-            n1n2n3_ident_inds_all = n1n2n3_ident_inds_all+[n1n2n3_ident_inds]
-            n1n2n3_ident_counts_all = n1n2n3_ident_counts_all\
-                + [n1n2n3_ident_counts]
-            n1n2n3_ident_batched_all = n1n2n3_ident_batched_all\
-                + [n1n2n3_ident_batched]
-        self.n1n2n3_arr = n1n2n3_arr_all
-        self.n1n2n3_SQs = n1n2n3_SQs_all
-        self.n1n2n3_reps = n1n2n3_reps_all
-        self.n1n2n3_SQreps = n1n2n3_SQreps_all
-        self.n1n2n3_inds = n1n2n3_inds_all
-        self.n1n2n3_counts = n1n2n3_counts_all
-        self.n1n2n3_batched = n1n2n3_batched_all
-
-        self.n1n2n3_ident = n1n2n3_ident_all
-        self.n1n2n3_ident_SQs = n1n2n3_ident_SQs_all
-        self.n1n2n3_ident_reps = n1n2n3_ident_reps_all
-        self.n1n2n3_ident_SQreps = n1n2n3_ident_SQreps_all
-        self.n1n2n3_ident_inds = n1n2n3_ident_inds_all
-        self.n1n2n3_ident_counts = n1n2n3_ident_counts_all
-        self.n1n2n3_ident_batched = n1n2n3_ident_batched_all
+        self.nvecset_ident = nvecset_ident_all
+        self.nvecset_ident_SQs = nvecset_ident_SQs_all
+        self.nvecset_ident_reps = nvecset_ident_reps_all
+        self.nvecset_ident_SQreps = nvecset_ident_SQreps_all
+        self.nvecset_ident_inds = nvecset_ident_inds_all
+        self.nvecset_ident_counts = nvecset_ident_counts_all
+        self.nvecset_ident_batched = nvecset_ident_batched_all
 
     @staticmethod
     def count_by_isospin(flavor_basis):
@@ -2619,11 +2778,11 @@ class G:
            or (ts == 'relativistic pole'):
             [self.alpha, self.beta] = self.qcis.tbis.scheme_data
 
-    def _get_masks_and_slices(self, E, nP, L, tbks_entry,
+    def _get_masks_and_shells(self, E, nP, L, tbks_entry,
                               cindex_row, cindex_col,
-                              row_slice_index, col_slice_index):
-        mask_row_slices = None
-        mask_col_slices = None
+                              row_shell_index, col_shell_index):
+        mask_row_shells = None
+        mask_col_shells = None
         three_slice_index_row\
             = self.qcis._get_three_slice_index(cindex_row)
         three_slice_index_col\
@@ -2632,8 +2791,8 @@ class G:
             raise ValueError("only one mass slice is supported in G")
         three_slice_index = three_slice_index_row
         if nP@nP == 0:
-            row_slice = tbks_entry.slices[row_slice_index]
-            col_slice = tbks_entry.slices[col_slice_index]
+            row_shell = tbks_entry.shells[row_shell_index]
+            col_shell = tbks_entry.shells[col_shell_index]
         else:
             sc_compact_three_subspace\
                 = self.qcis.fcs.sc_compact[self.qcis.fcs.three_index]
@@ -2645,13 +2804,13 @@ class G:
             Pvec = TWOPI*nP/L
             PmkSQ_arr = ((Pvec-kvec_arr)**2).sum(axis=1)
             mask_row = (E-omk_arr)**2-PmkSQ_arr > 0.0
-            row_slices = tbks_entry.slices
-            mask_row_slices = []
-            for row_slice in row_slices:
-                mask_row_slices = mask_row_slices\
-                    + [mask_row[row_slice[0]:row_slice[1]].all()]
-            row_slices = list(np.array(row_slices)[mask_row_slices])
-            row_slice = row_slices[row_slice_index]
+            row_shells = tbks_entry.shells
+            mask_row_shells = []
+            for row_shell in row_shells:
+                mask_row_shells = mask_row_shells\
+                    + [mask_row[row_shell[0]:row_shell[1]].all()]
+            row_shells = list(np.array(row_shells)[mask_row_shells])
+            row_shell = row_shells[row_shell_index]
 
             sc_compact_three_subspace\
                 = self.qcis.fcs.sc_compact[self.qcis.fcs.three_index]
@@ -2663,22 +2822,23 @@ class G:
             Pvec = TWOPI*nP/L
             PmkSQ_arr = ((Pvec-kvec_arr)**2).sum(axis=1)
             mask_col = (E-omk_arr)**2-PmkSQ_arr > 0.0
-            col_slices = tbks_entry.slices
-            mask_col_slices = []
-            for col_slice in col_slices:
-                mask_col_slices = mask_col_slices\
-                    + [mask_col[col_slice[0]:col_slice[1]].all()]
-            col_slices = list(np.array(col_slices)[mask_col_slices])
-            col_slice = col_slices[col_slice_index]
-        return mask_row_slices, mask_col_slices, row_slice, col_slice
+            col_shells = tbks_entry.shells
+            mask_col_shells = []
+            for col_shell in col_shells:
+                mask_col_shells = mask_col_shells\
+                    + [mask_col[col_shell[0]:col_shell[1]].all()]
+            col_shells = list(np.array(col_shells)[mask_col_shells])
+            col_shell = col_shells[col_shell_index]
+        return mask_row_shells, mask_col_shells, row_shell, col_shell,\
+            row_shell_index, col_shell_index
 
     def get_shell(self, E=5.0, L=5.0, m1=1.0, m2=1.0, m3=1.0,
                   cindex_row=None, cindex_col=None,  # only for non-zero P
-                  sc_row_ind=None, sc_col_ind=None,
+                  sc_index_row=None, sc_index_col=None,
                   ell1=0, ell2=0,
                   g_rescale=1.0, tbks_entry=None,
-                  row_slice_index=None,
-                  col_slice_index=None,
+                  row_shell_index=None,
+                  col_shell_index=None,
                   project=False, irrep=None):
         """Build the G matrix on a single shell."""
         ts = self.qcis.tbis.three_scheme
@@ -2687,27 +2847,31 @@ class G:
         alpha = self.alpha
         beta = self.beta
 
-        mask_row_slices, mask_col_slices, row_slice, col_slice\
-            = self._get_masks_and_slices(E, nP, L, tbks_entry,
+        mask_row_shells, mask_col_shells, row_shell, col_shell,\
+            row_shell_index, col_shell_index\
+            = self._get_masks_and_shells(E, nP, L, tbks_entry,
                                          cindex_row, cindex_col,
-                                         row_slice_index, col_slice_index)
+                                         row_shell_index, col_shell_index)
         if project:
             try:
                 if nP@nP != 0:
                     ibest = self.qcis._get_ibest(E, L)
-                    proj_tmp_right = np.array(self.qcis.sc_proj_dicts_sliced[
-                        sc_col_ind][ibest])[mask_col_slices][col_slice_index][
-                            irrep]
+                    proj_tmp_right = np.array(self.qcis
+                                              .sc_proj_dicts_by_shell[
+                                                  sc_index_col][ibest]
+                                              )[mask_col_shells][
+                                                  col_shell_index][irrep]
                     proj_tmp_left = np.conjugate((
-                        np.array(self.qcis.sc_proj_dicts_sliced[sc_row_ind][
-                            ibest])[mask_row_slices][row_slice_index][irrep]
+                        np.array(self.qcis.
+                                 sc_proj_dicts_by_shell[sc_index_row][ibest]
+                                 )[mask_row_shells][row_shell_index][irrep]
                     ).T)
                 else:
-                    proj_tmp_right = self.qcis.sc_proj_dicts_sliced[
-                        sc_col_ind][0][col_slice_index][irrep]
+                    proj_tmp_right = self.qcis.sc_proj_dicts_by_shell[
+                        sc_index_col][0][col_shell_index][irrep]
                     proj_tmp_left = np.conjugate((
-                        self.qcis.sc_proj_dicts_sliced[
-                            sc_row_ind][0][row_slice_index][irrep]
+                        self.qcis.sc_proj_dicts_by_shell[
+                            sc_index_row][0][row_shell_index][irrep]
                         ).T)
             except KeyError:
                 return np.array([])
@@ -2719,37 +2883,48 @@ class G:
             zero_frac_left = float(np.count_nonzero(proj_support_left
                                                     == 0.))\
                 / float(len(proj_support_left))
-            sparse = (zero_frac_right > 1.5) and (zero_frac_left > 1.5)
+            sparse = ((zero_frac_right > SPARSE_CUT)
+                      and (zero_frac_left > SPARSE_CUT))
         else:
             sparse = False
 
         if not sparse:
-            Gshell = QCFunctions.getG_array(E, nP, L, m1, m2, m3,
-                                            tbks_entry,
-                                            row_slice, col_slice,
-                                            ell1, ell2,
-                                            alpha, beta,
-                                            qc_impl, ts,
-                                            g_rescale)
+            if self.qcis.fvs.qc_impl['g_uses_prep_mat'] and (nP@nP == 0):
+                Gshell = QCFunctions.getG_array_prep_mat(E, nP, L, m1, m2, m3,
+                                                         tbks_entry,
+                                                         row_shell_index,
+                                                         col_shell_index,
+                                                         ell1, ell2,
+                                                         alpha, beta,
+                                                         qc_impl, ts,
+                                                         g_rescale)
+            else:
+                Gshell = QCFunctions.getG_array(E, nP, L, m1, m2, m3,
+                                                tbks_entry,
+                                                row_shell, col_shell,
+                                                ell1, ell2,
+                                                alpha, beta,
+                                                qc_impl, ts,
+                                                g_rescale)
         else:
-            n1vec_arr_slice = tbks_entry.nvec_arr[row_slice[0]:row_slice[1]]
-            n1vecSQ_arr_slice = tbks_entry.nvecSQ_arr[
-                row_slice[0]:row_slice[1]]
+            n1vec_arr_shell = tbks_entry.nvec_arr[row_shell[0]:row_shell[1]]
+            n1vecSQ_arr_shell = tbks_entry.nvecSQ_arr[
+                row_shell[0]:row_shell[1]]
 
-            n2vec_arr_slice = tbks_entry.nvec_arr[col_slice[0]:col_slice[1]]
-            n2vecSQ_arr_slice = tbks_entry.nvecSQ_arr[
-                col_slice[0]:col_slice[1]]
-            Gshell = np.zeros((len(n1vecSQ_arr_slice)*(2*ell1+1),
-                               len(n2vecSQ_arr_slice)*(2*ell2+1)))
-            for i1 in range(len(n1vecSQ_arr_slice)):
+            n2vec_arr_shell = tbks_entry.nvec_arr[col_shell[0]:col_shell[1]]
+            n2vecSQ_arr_shell = tbks_entry.nvecSQ_arr[
+                col_shell[0]:col_shell[1]]
+            Gshell = np.zeros((len(n1vecSQ_arr_shell)*(2*ell1+1),
+                               len(n2vecSQ_arr_shell)*(2*ell2+1)))
+            for i1 in range(len(n1vecSQ_arr_shell)):
                 for i2 in range(2*ell1+1):
                     ifull = i1*(2*ell1+1)+i2
-                    np1spec = n1vec_arr_slice[i1]
+                    np1spec = n1vec_arr_shell[i1]
                     mazi1 = i2-ell1
-                    for j1 in range(len(n2vecSQ_arr_slice)):
+                    for j1 in range(len(n2vecSQ_arr_shell)):
                         for j2 in range(2*ell2+1):
                             jfull = j1*(2*ell2+1)+j2
-                            np2spec = n2vec_arr_slice[j1]
+                            np2spec = n2vec_arr_shell[j1]
                             mazi2 = j2-ell2
                             if ((proj_support_left[ifull] != 0.0)
                                and (proj_support_right[jfull] != 0.0)):
@@ -2828,8 +3003,8 @@ class G:
 
         if (not ((irrep is None) and (project is False))
            and (not (irrep in self.qcis.proj_dict.keys()))):
-            raise ValueError('irrep '+str(irrep)+' not in '
-                             + 'qcis.proj_dict.keys()')
+            raise ValueError("irrep "+str(irrep)+" not in "
+                             + "qcis.proj_dict.keys()")
 
         three_compact = self.qcis.fcs.sc_compact[self.qcis.fcs.three_index]
         masses = three_compact[0][1:4]
@@ -2844,7 +3019,7 @@ class G:
                                  + "length one.")
             tbks_entry = self.qcis.tbks_list[0][
                 tbks_sub_indices[0]]
-            slices = tbks_entry.slices
+            slices = tbks_entry.shells
             if self.qcis.verbosity >= 2:
                 print('tbks_sub_indices =', tbks_sub_indices)
                 print('tbks_entry =', tbks_entry)
@@ -2869,7 +3044,7 @@ class G:
                 print(mask)
 
             mask_slices = []
-            slices = tbks_entry.slices
+            slices = tbks_entry.shells
             for slice_entry in slices:
                 mask_slices = mask_slices\
                     + [mask[slice_entry[0]:slice_entry[1]].all()]
@@ -2897,18 +3072,19 @@ class G:
                     sc_row_ind][sc_col_ind]
 
                 g_inner = [[]]
-                for row_slice_index in range(len(slices)):
+                for row_shell_index in range(len(slices)):
                     g_inner_row = []
-                    for col_slice_index in range(len(slices)):
+                    for col_shell_index in range(len(slices)):
                         g_tmp = self.get_shell(E, L,
                                                m1, m2, m3,
-                                               cindex_row, cindex_col,  # for P
+                                               cindex_row, cindex_col,
+                                               # only for non-zero P
                                                sc_row_ind, sc_col_ind,
-                                               ell1, ell2,  # ell vals
+                                               ell1, ell2,
                                                g_rescale,
                                                tbks_entry,
-                                               row_slice_index,
-                                               col_slice_index,
+                                               row_shell_index,
+                                               col_shell_index,
                                                project, irrep)
                         g_inner_row = g_inner_row+[g_tmp]
                     g_inner = g_inner+[g_inner_row]
@@ -2951,14 +3127,14 @@ class F:
         self.C1cut = C1cut
         self.alphaKSS = alphaKSS
 
-    def _get_masks_and_slices(self, E, nP, L, tbks_entry,
+    def _get_masks_and_shells(self, E, nP, L, tbks_entry,
                               cindex, slice_index):
         mask_slices = None
         three_slice_index\
             = self.qcis._get_three_slice_index(cindex)
 
         if nP@nP == 0:
-            slice_entry = tbks_entry.slices[slice_index]
+            slice_entry = tbks_entry.shells[slice_index]
         else:
             sc_compact_three_subspace\
                 = self.qcis.fcs.sc_compact[self.qcis.fcs.three_index]
@@ -2970,7 +3146,7 @@ class F:
             Pvec = TWOPI*nP/L
             PmkSQ_arr = ((Pvec-kvec_arr)**2).sum(axis=1)
             mask = (E-omk_arr)**2-PmkSQ_arr > 0.0
-            slices = tbks_entry.slices
+            slices = tbks_entry.shells
             mask_slices = []
             for slice_entry in slices:
                 mask_slices = mask_slices\
@@ -2993,7 +3169,7 @@ class F:
         alphaKSS = self.alphaKSS
 
         mask_slices, slice_entry\
-            = self._get_masks_and_slices(E, nP, L, tbks_entry,
+            = self._get_masks_and_shells(E, nP, L, tbks_entry,
                                          cindex, slice_index)
 
         Fshell = QCFunctions.getF_array(E, nP, L, m1, m2, m3,
@@ -3007,11 +3183,11 @@ class F:
             try:
                 if nP@nP != 0:
                     ibest = self.qcis._get_ibest(E, L)
-                    proj_tmp_right = np.array(self.qcis.sc_proj_dicts_sliced[
+                    proj_tmp_right = np.array(self.qcis.sc_proj_dicts_by_shell[
                         sc_ind][ibest])[mask_slices][slice_index][irrep]
                     proj_tmp_left = np.conjugate(((proj_tmp_right)).T)
                 else:
-                    proj_tmp_right = self.qcis.sc_proj_dicts_sliced[
+                    proj_tmp_right = self.qcis.sc_proj_dicts_by_shell[
                         sc_ind][0][slice_index][irrep]
                     proj_tmp_left = np.conjugate((proj_tmp_right).T)
             except KeyError:
@@ -3049,7 +3225,7 @@ class F:
                                  + "length one.")
             tbks_entry = self.qcis.tbks_list[0][
                 tbks_sub_indices[0]]
-            slices = tbks_entry.slices
+            slices = tbks_entry.shells
             mask = None
         else:
             mspec = m1
@@ -3069,7 +3245,7 @@ class F:
                 print(mask)
 
             mask_slices = []
-            slices = tbks_entry.slices
+            slices = tbks_entry.shells
             if self.qcis.verbosity >= 2:
                 print('slices =')
                 print(slices)
@@ -3104,7 +3280,7 @@ class F:
                     print(project, irrep)
                 f_tmp = self.get_shell(E, L,
                                        m1, m2, m3,
-                                       cindex,  # for P
+                                       cindex,  # only for non-zero P
                                        sc_ind,
                                        ell1, ell2,
                                        tbks_entry,
@@ -3132,14 +3308,14 @@ class K:
            or (ts == 'relativistic pole'):
             [self.alpha, self.beta] = self.qcis.tbis.scheme_data
 
-    def _get_masks_and_slices(self, E, nP, L, tbks_entry,
+    def _get_masks_and_shells(self, E, nP, L, tbks_entry,
                               cindex, slice_index):
         mask_slices = None
         three_slice_index\
             = self.qcis._get_three_slice_index(cindex)
 
         if nP@nP == 0:
-            slice_entry = tbks_entry.slices[slice_index]
+            slice_entry = tbks_entry.shells[slice_index]
         else:
             sc_compact_three_subspace\
                 = self.qcis.fcs.sc_compact[self.qcis.fcs.three_index]
@@ -3151,7 +3327,7 @@ class K:
             Pvec = TWOPI*nP/L
             PmkSQ_arr = ((Pvec-kvec_arr)**2).sum(axis=1)
             mask = (E-omk_arr)**2-PmkSQ_arr > 0.0
-            slices = tbks_entry.slices
+            slices = tbks_entry.shells
             mask_slices = []
             for slice_entry in slices:
                 mask_slices = mask_slices\
@@ -3173,7 +3349,7 @@ class K:
         beta = self.beta
 
         mask_slices, slice_entry\
-            = self._get_masks_and_slices(E, nP, L, tbks_entry,
+            = self._get_masks_and_shells(E, nP, L, tbks_entry,
                                          cindex, slice_index)
 
         Kshell = QCFunctions.getK_array(E, nP, L, m1, m2, m3,
@@ -3189,11 +3365,11 @@ class K:
             try:
                 if nP@nP != 0:
                     ibest = self.qcis._get_ibest(E, L)
-                    proj_tmp_right = np.array(self.qcis.sc_proj_dicts_sliced[
+                    proj_tmp_right = np.array(self.qcis.sc_proj_dicts_by_shell[
                         sc_ind][ibest])[mask_slices][slice_index][irrep]
                     proj_tmp_left = np.conjugate(((proj_tmp_right)).T)
                 else:
-                    proj_tmp_right = self.qcis.sc_proj_dicts_sliced[
+                    proj_tmp_right = self.qcis.sc_proj_dicts_by_shell[
                         sc_ind][0][slice_index][irrep]
                     proj_tmp_left = np.conjugate((proj_tmp_right).T)
             except KeyError:
@@ -3233,7 +3409,7 @@ class K:
                                  + "length one.")
             tbks_entry = self.qcis.tbks_list[0][
                 tbks_sub_indices[0]]
-            slices = tbks_entry.slices
+            slices = tbks_entry.shells
         else:
             mspec = m1
             ibest = self.qcis._get_ibest(E, L)
@@ -3252,7 +3428,7 @@ class K:
                 print(mask)
 
             mask_slices = []
-            slices = tbks_entry.slices
+            slices = tbks_entry.shells
             for slice_entry in slices:
                 mask_slices = mask_slices\
                     + [mask[slice_entry[0]:slice_entry[1]].all()]
@@ -3270,7 +3446,7 @@ class K:
                 sc_ind].p_cot_deltas[0]
             for slice_index in range(len(slices)):
                 k_tmp = self.get_shell(E, L, m1, m2, m3,
-                                       cindex,  # for P
+                                       cindex,  # only for non-zero P
                                        sc_ind, ell,
                                        pcotdelta_function,
                                        pcotdelta_parameter_list,

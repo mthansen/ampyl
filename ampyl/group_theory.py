@@ -38,41 +38,12 @@ import numpy as np
 from scipy.linalg import block_diag
 import quaternionic
 import spherical
-
-ROOT_THREE = np.sqrt(3.0)
-ROOT_TWO = np.sqrt(2.0)
-EPSPROJ = 1.0e-8
-PION_ORDERS = [[0, 1, 2],
-               [1, 0, 2],
-               [0, 2, 1],
-               [1, 2, 0],
-               [2, 0, 1],
-               [2, 1, 0]]
-
-ISO_PROJECTOR_ZERO = np.diag([0.]*6+[1.])
-ISO_PROJECTOR_ONE = np.diag([0.]*3+[1.]*3+[0.])
-ISO_PROJECTOR_TWO = np.diag([0.]+[1.]*2+[0.]*4)
-ISO_PROJECTOR_THREE = np.diag([1.]+[0.]*6)
-
-ISO_PROJECTORS = [ISO_PROJECTOR_ZERO,
-                  ISO_PROJECTOR_ONE,
-                  ISO_PROJECTOR_TWO,
-                  ISO_PROJECTOR_THREE]
-
-CAL_C_ISO = np.array([[1./np.sqrt(10.), 1./np.sqrt(10.), 1./np.sqrt(10.),
-                       np.sqrt(2./5.), 1./np.sqrt(10.), 1./np.sqrt(10.),
-                       1./np.sqrt(10.)],
-                      [-0.5, -0.5, 0., 0., 0., 0.5, 0.5],
-                      [-1./np.sqrt(12.), 1./np.sqrt(12.), -1./np.sqrt(3.), 0.,
-                       1./np.sqrt(3.), -1./np.sqrt(12.), 1./np.sqrt(12.)],
-                      [np.sqrt(3./20.), np.sqrt(3./20.), -1./np.sqrt(15.),
-                       -2./np.sqrt(15.), -1./np.sqrt(15.), np.sqrt(3./20.),
-                       np.sqrt(3./20.)],
-                      [0.5, -0.5, 0., 0., 0., -0.5, 0.5],
-                      [0., 0., 1./np.sqrt(3.), -1./np.sqrt(3.), 1./np.sqrt(3.),
-                       0., 0.],
-                      [-1./np.sqrt(6.), 1./np.sqrt(6.), 1./np.sqrt(6.), 0.,
-                       -1./np.sqrt(6.), -1./np.sqrt(6.), 1./np.sqrt(6.)]])
+from .global_constants import ROOT_THREE
+from .global_constants import ROOT_TWO
+from .global_constants import EPSPROJ
+from .global_constants import ISO_PROJECTORS
+from .global_constants import CAL_C_ISO
+from .global_constants import PION_ORDERS
 
 
 class Irreps:
@@ -123,7 +94,7 @@ class Groups:
     """Class for finite-volume group-theory relevant for three particles."""
 
     def __init__(self, ell_max):
-        self.wigner = spherical.Wigner(ell_max)
+        self.wigner = spherical.Wigner(ell_max=ell_max)
 
         self.OhP = np.array(
             [[[1, 0, 0], [0, 1, 0], [0, 0, 1]],
@@ -710,7 +681,8 @@ class Groups:
 
     def generate_induced_rep_nonint(self, identical_arr=np.zeros((1, 3, 3)),
                                     nonidentical_arr=np.zeros((1, 3, 3)),
-                                    g_elem=np.identity(3)):
+                                    g_elem=np.identity(3),
+                                    definite_iso=True):
         """Generate the non-interacting induced representation matrix."""
         loc_inds = []
         identical_arr_rot = np.moveaxis(
@@ -729,16 +701,17 @@ class Groups:
             assert len(loc_ind) == 1
             loc_inds = loc_inds+[loc_ind[0]]
 
-        nonidentical_arr_rot = np.moveaxis(
-            g_elem@np.moveaxis(nonidentical_arr, 0, 2), 2, 0)
-        for i in range(len(nonidentical_arr)):
-            nonidentical_arr_rot_entry = nonidentical_arr_rot[i]
-            loc_ind = np.where(
-                np.all(nonidentical_arr
-                       == nonidentical_arr_rot_entry, axis=(1, 2))
-                )[0]
-            assert len(loc_ind) == 1
-            loc_inds = loc_inds+[loc_ind[0]+len(identical_arr)]
+        if definite_iso:
+            nonidentical_arr_rot = np.moveaxis(
+                g_elem@np.moveaxis(nonidentical_arr, 0, 2), 2, 0)
+            for i in range(len(nonidentical_arr)):
+                nonidentical_arr_rot_entry = nonidentical_arr_rot[i]
+                loc_ind = np.where(
+                    np.all(nonidentical_arr
+                           == nonidentical_arr_rot_entry, axis=(1, 2))
+                    )[0]
+                assert len(loc_ind) == 1
+                loc_inds = loc_inds+[loc_ind[0]+len(identical_arr)]
 
         nonint_rot_matrix = [[]]
         for loc_ind in loc_inds:
@@ -778,7 +751,8 @@ class Groups:
     def get_large_proj_nonint(self, nP=np.array([0, 0, 0]), irrep='A1PLUS',
                               irow=0,
                               identical_arr=np.zeros((1, 3, 3)),
-                              nonidentical_arr=np.zeros((1, 3, 3))):
+                              nonidentical_arr=np.zeros((1, 3, 3)),
+                              definite_iso=True):
         """Get a particular large projector."""
         if (nP == np.array([0, 0, 0])).all():
             group_str = 'OhP'
@@ -794,13 +768,17 @@ class Groups:
             bT = self.chardict[group_str+'_'+irrep][irow]
         else:
             return ValueError("group not yet supported by get_large_proj")
-        dim = len(identical_arr)+len(nonidentical_arr)
+        if definite_iso:
+            dim = len(identical_arr)+len(nonidentical_arr)
+        else:
+            dim = len(identical_arr)
         proj = np.zeros((dim, dim))
         for g_ind in range(len(group)):
             g_elem = group[g_ind]
             induced_rep = self.generate_induced_rep_nonint(identical_arr,
                                                            nonidentical_arr,
-                                                           g_elem)
+                                                           g_elem,
+                                                           definite_iso)
             proj = proj+induced_rep*bT[g_ind]
         return proj
 
@@ -927,8 +905,8 @@ class Groups:
         """Get the iso-projector for non-interacting vectors."""
         if qcis is None:
             raise ValueError("qcis cannot be None")
-        identical_arr = qcis.n1n2n3_ident_batched[cindex][shell_index]
-        nonidentical_arr = qcis.n1n2n3_batched[cindex][shell_index]
+        identical_arr = qcis.nvecset_ident_batched[cindex][shell_index]
+        nonidentical_arr = qcis.nvecset_batched[cindex][shell_index]
         iso_projector = ISO_PROJECTORS[iso_index]
         iso_prepare_sets = []
         id_sub_len = len(identical_arr)
@@ -976,8 +954,8 @@ class Groups:
             raise ValueError("qcis cannot be None")
         nP = qcis.nP
         irrep_set = Irreps(nP=nP).set
-        identical_arr = qcis.n1n2n3_ident_batched[cindex][shell_index]
-        nonidentical_arr = qcis.n1n2n3_batched[cindex][shell_index]
+        identical_arr = qcis.nvecset_ident_batched[cindex][shell_index]
+        nonidentical_arr = qcis.nvecset_batched[cindex][shell_index]
 
         if (nP@nP != 0) and (nP@nP != 1) and (nP@nP != 2):
             raise ValueError("momentum = ", nP, " is not yet supported")
@@ -994,7 +972,8 @@ class Groups:
             for irow in range(len(self.bTdict[group_str+'_'+irrep])):
                 proj = self.get_large_proj_nonint(nP, irrep, irow,
                                                   identical_arr,
-                                                  nonidentical_arr)
+                                                  nonidentical_arr,
+                                                  definite_iso)
                 eigvals, eigvecs = np.linalg.eig(proj)
                 eigvalsround = (np.round(np.abs(eigvals), 10))
                 example_eigval = 0.0
@@ -1032,7 +1011,7 @@ class Groups:
             raise ValueError("qcis cannot be None")
         nP = qcis.nP
         irrep_set = Irreps(nP=nP).set
-        nonidentical_arr = qcis.n1n2_batched[cindex][shell_index]
+        nonidentical_arr = qcis.nvecset_batched[cindex][shell_index]
 
         if (nP@nP != 0) and (nP@nP != 1) and (nP@nP != 2):
             raise ValueError("momentum = ", nP, " is not yet supported")
@@ -1108,23 +1087,32 @@ class Groups:
                         non_proj_dict[keytmp] = proj_tmp.real
         return non_proj_dict
 
-    def get_nonint_proj_dict(self, qcis=None, cindex=0, definite_iso=True):
+    def get_nonint_proj_dict(self, qcis=None, cindex=0):
         """Get it."""
         master_dict = {}
         if qcis is None:
             raise ValueError("qcis cannot be None")
+        definite_iso = qcis.fcs.fc_list[cindex].isospin_channel
+        if not (qcis.fcs.fc_list[cindex].flavors[0]
+                == qcis.fcs.fc_list[cindex].flavors[1]
+                == qcis.fcs.fc_list[cindex].flavors[2]):
+            raise ValueError("get_nonint_proj_dict currently only supports "
+                             + "identical flavors")
         row_zero_value = 0
         summary_string = ''
-        nshells = len(qcis.n1n2n3_ident_reps[cindex])
+        nshells = len(qcis.nvecset_ident_reps[cindex])
         for shell_index in range(nshells):
             shell_total = 0
-            nstates = len(qcis.n1n2n3_ident_batched[cindex][shell_index])\
-                + len(qcis.n1n2n3_batched[cindex][shell_index])
+            if definite_iso:
+                nstates = len(qcis.nvecset_ident_batched[cindex][shell_index])\
+                    + len(qcis.nvecset_batched[cindex][shell_index])
+            else:
+                nstates = len(qcis.nvecset_ident_batched[cindex][shell_index])
             summary_string = summary_string\
                 + f'shell_index = {shell_index} ({nstates} states):\n'
             summary_string = summary_string\
                 + (f'representative momenta '
-                   f'= \n{qcis.n1n2n3_ident_reps[cindex][shell_index]}\n')
+                   f'= \n{qcis.nvecset_ident_reps[cindex][shell_index]}\n')
             if definite_iso:
                 isoset = range(4)
             else:
@@ -1136,12 +1124,21 @@ class Groups:
                                                                 shell_index)
                 master_dict[(shell_index, isovalue)] = non_proj_dict
                 iso_shell_total = 0
-                if len(non_proj_dict) == 0:
-                    summary_string = summary_string\
-                        + f'    I3 = {isovalue} does not contain this shell\n'
+                if definite_iso:
+                    if len(non_proj_dict) == 0:
+                        summary_string = summary_string\
+                            + f'    I3 = {isovalue} does not contain this'\
+                            + ' shell\n'
+                    else:
+                        summary_string = summary_string\
+                            + f'    I3 = {isovalue} contains...\n'
                 else:
-                    summary_string = summary_string\
-                        + f'    I3 = {isovalue} contains...\n'
+                    if len(non_proj_dict) == 0:
+                        summary_string = summary_string\
+                            + '    Channel does not contain this shell\n'
+                    else:
+                        summary_string = summary_string\
+                            + '    Channel contains...\n'
                 for dict_ent in non_proj_dict:
                     irrep, row = dict_ent
                     dim = 1
@@ -1166,14 +1163,18 @@ class Groups:
                             s = 's'
                         shell_covered = shell_total+n_embedded*(dim-1)
                         iso_shell_covered = iso_shell_total+n_embedded*(dim-1)
-                        summary_string = summary_string\
-                            + (f'       {irrep} '
-                               f'(appears {n_embedded} time{s}), '
-                               f'covered {shell_covered}/{nstates} '
-                               f'({iso_shell_covered} for this isospin)\n')
-                    if shell_total == nstates:
-                        summary_string = summary_string\
-                            + 'The shell is covered!\n\n'
+                        if definite_iso:
+                            summary_string = summary_string\
+                                + (f'       {irrep} '
+                                   f'(appears {n_embedded} time{s}), '
+                                   f'covered {shell_covered}/{nstates} '
+                                   f'({iso_shell_covered} for this isospin)\n')
+                        else:
+                            summary_string = summary_string\
+                                + (f'       {irrep} '
+                                   f'(appears {n_embedded} time{s}), '
+                                   f'covered {shell_covered}/{nstates}\n')
+            assert shell_total == nstates
         summary_string = summary_string[:-1]
         master_dict['summary'] = summary_string
         return master_dict
@@ -1185,24 +1186,25 @@ class Groups:
             raise ValueError("qcis cannot be None")
         row_zero_value = 0
         summary_string = ''
-        nshells = len(qcis.n1n2_reps[cindex])
+        nshells = len(qcis.nvecset_reps[cindex])
         for shell_index in range(nshells):
             shell_total = 0
-            nstates = len(qcis.n1n2_batched[cindex][shell_index])*3
+            nstates = len(qcis.nvecset_batched[cindex][shell_index])*3
             summary_string = summary_string\
                 + f'shell_index = {shell_index} ({nstates} states):\n'
             summary_string = summary_string\
                 + (f'representative momenta '
-                   f'= \n{qcis.n1n2_reps[cindex][shell_index]}\n')
+                   f'= \n{qcis.nvecset_reps[cindex][shell_index]}\n')
             if definite_iso:
                 isoset = [2]
             else:
                 isoset = range(1)
             for isovalue in isoset:
-                non_proj_dict = self.get_noninttwo_proj_dict_shell(qcis, 0,
-                                                                   definite_iso,
-                                                                   isovalue,
-                                                                   shell_index)
+                non_proj_dict = self\
+                    .get_noninttwo_proj_dict_shell(qcis, cindex,
+                                                   definite_iso,
+                                                   isovalue,
+                                                   shell_index)
                 master_dict[(shell_index, isovalue)] = non_proj_dict
                 iso_shell_total = 0
                 if len(non_proj_dict) == 0:
@@ -1241,9 +1243,7 @@ class Groups:
                                f'(appears {n_embedded} time{s}), '
                                f'covered {shell_covered}/{nstates} '
                                f'({iso_shell_covered} for this isospin)\n')
-                    if shell_total == nstates:
-                        summary_string = summary_string\
-                            + 'The shell is covered!\n\n'
+            assert shell_total == nstates
         summary_string = summary_string[:-1]
         master_dict['summary'] = summary_string
         return master_dict
@@ -1268,17 +1268,22 @@ class Groups:
         for i in range(len(irrep_set)):
             irrep = irrep_set[i]
             for irow in range(len(self.bTdict[group_str+'_'+irrep])):
-                if qcis.fcs.n_three_slices > 1:
-                    raise ValueError("only one three-slice currently "
-                                     + "supported in get_channel_proj_dict")
                 if cindex < qcis.n_two_channels:
-                    slot_index = cindex
+                    slot_index = 0
                 else:
-                    slot_index = qcis.n_two_channels
+                    cindex_shift = cindex-qcis.n_two_channels
+                    slot_index = -1
+                    for k in range(len(qcis.fcs.three_slices)):
+                        three_slice = qcis.fcs.three_slices[k]
+                        if three_slice[0] <= cindex_shift < three_slice[1]:
+                            slot_index = k
+                    if qcis.n_two_channels > 0:
+                        slot_index = slot_index+1
                 slice_index = 0
-                for three_slice in qcis.fcs.three_slices:
-                    if slot_index-qcis.n_two_channels > three_slice[1]:
-                        slice_index = slice_index+1
+                # Check issue in following slice code
+                # for three_slice in qcis.fcs.three_slices:
+                #     if slot_index-qcis.n_two_channels > three_slice[1]:
+                #         slice_index = slice_index+1
                 nvec_arr = qcis.tbks_list[slot_index][slice_index].nvec_arr
                 ellm_set = qcis.ellm_sets[cindex]
                 proj = self.get_large_proj(nP=nP, irrep=irrep,
@@ -1300,12 +1305,13 @@ class Groups:
 
         return proj_dict
 
-    def get_slice_proj_dict(self, qcis=None, cindex=0, kellm_slice=None, slice_index=None):
-        """Get the dictionary of small projectors for one kellm_slice."""
+    def get_shell_proj_dict(self, qcis=None, cindex=0, kellm_shell=None,
+                            shell_index=None):
+        """Get the dictionary of small projectors for one kellm_shell."""
         if qcis is None:
             raise ValueError("qcis cannot be None")
-        if kellm_slice is None:
-            raise ValueError("kellm_slice cannot be None")
+        if kellm_shell is None:
+            raise ValueError("kellm_shell cannot be None")
         nP = qcis.nP
         irrep_set = Irreps(nP=nP).set
         if (nP@nP != 0) and (nP@nP != 1) and (nP@nP != 2):
@@ -1320,22 +1326,29 @@ class Groups:
         for i in range(len(irrep_set)):
             irrep = irrep_set[i]
             for irow in range(len(self.bTdict[group_str+'_'+irrep])):
-                if slice_index == None:
-                    slice_index = 0
-                if qcis.fcs.n_three_slices > 1:
-                    raise ValueError("only one three-slice currently "
-                                     + "supported in get_slice_proj_dict")
+                if shell_index is None:
+                    shell_index = 0
                 if cindex < qcis.n_two_channels:
-                    slot_index = cindex
+                    slot_index = 0
                 else:
-                    slot_index = qcis.n_two_channels
-                # for three_slice in qcis.fcs.three_slices:
-                #     if slot_index-qcis.n_two_channels > three_slice[1]:
-                #         slice_index = slice_index+1
-                nslice = [int(kellm_slice[0]/len(qcis.ellm_sets[cindex])),
-                          int(kellm_slice[1]/len(qcis.ellm_sets[cindex]))]
-                nvec_arr = qcis.tbks_list[slot_index][slice_index].nvec_arr[
-                    nslice[0]:nslice[1]]
+                    cindex_shift = cindex-qcis.n_two_channels
+                    slot_index = -1
+                    for k in range(len(qcis.fcs.three_slices)):
+                        three_slice = qcis.fcs.three_slices[k]
+                        if three_slice[0] <= cindex_shift < three_slice[1]:
+                            slot_index = k
+                    if qcis.n_two_channels > 0:
+                        slot_index = slot_index+1
+                nvec_arr = qcis.tbks_list[slot_index][shell_index].nvec_arr
+                ellm_set = qcis.ellm_sets[cindex]
+                nshell = [int(kellm_shell[0]/len(ellm_set)),
+                          int(kellm_shell[1]/len(ellm_set))]
+                assert np.abs(int(kellm_shell[0]/len(ellm_set))
+                              - kellm_shell[0]/len(ellm_set)) < EPSPROJ
+                assert np.abs(int(kellm_shell[1]/len(ellm_set))
+                              - kellm_shell[1]/len(ellm_set)) < EPSPROJ
+                nvec_arr = qcis.tbks_list[slot_index][shell_index].nvec_arr[
+                    nshell[0]:nshell[1]]
                 ellm_set = qcis.ellm_sets[cindex]
                 proj = self.get_large_proj(nP=nP, irrep=irrep,
                                            irow=irow,
@@ -1368,17 +1381,18 @@ class Groups:
             for irow in range(len(self.bTdict[group_str+'_'+irrep])):
                 proj_list = []
                 for cindex in range(qcis.n_channels):
-                    if qcis.fcs.n_three_slices > 1:
-                        raise ValueError("only one three-slice currently "
-                                         + "supported in get_full_proj_dict")
                     if cindex < qcis.n_two_channels:
-                        slot_index = cindex
+                        slot_index = 0
                     else:
-                        slot_index = qcis.n_two_channels
+                        cindex_shift = cindex-qcis.n_two_channels
+                        slot_index = -1
+                        for k in range(len(qcis.fcs.three_slices)):
+                            three_slice = qcis.fcs.three_slices[k]
+                            if three_slice[0] <= cindex_shift < three_slice[1]:
+                                slot_index = k
+                        if qcis.n_two_channels > 0:
+                            slot_index = slot_index+1
                     slice_index = 0
-                    for three_slice in qcis.fcs.three_slices:
-                        if slot_index-qcis.n_two_channels > three_slice[1]:
-                            slice_index = slice_index+1
                     nvec_arr = qcis.tbks_list[slot_index][slice_index].nvec_arr
                     ellm_set = qcis.ellm_sets[cindex]
                     proj_tmp = self.get_large_proj(nP=nP, irrep=irrep,
