@@ -10,42 +10,61 @@ import numpy as np
 import unittest
 import ampyl
 from scipy.linalg import block_diag
-from copy import deepcopy
 
-ell = 1.0 
-Group = ampyl.Groups(ell) 
-OhP = Group.OhP
-NVEC_CUTOFF = 1
+
+
 TWOPI = 2*np.pi
-LIMIT = 10e-13
+LIMIT = 1e-12
 
-C_MAT = np.array([[1./np.sqrt(10), 1./np.sqrt(10), 1./np.sqrt(10), 1./np.sqrt(10), 1./np.sqrt(10), 1./np.sqrt(10), np.sqrt(2/5)],\
-                 [-1./2., 0, -1./2., 1./2., 0., 1./2., 0. ],\
-                 [-1./np.sqrt(12), -1./np.sqrt(3), 1./np.sqrt(12), -1./np.sqrt(12), 1./np.sqrt(3), 1./np.sqrt(12), 0.],\
-                [np.sqrt(3/5)/2, -1./np.sqrt(15), np.sqrt(3/5)/2, np.sqrt(3/5)/2, -1/np.sqrt(15), np.sqrt(3/5)/2, -2/np.sqrt(15) ],\
-                [1./2., 0, -1./2., -1./2., 0., 1./2., 0.],\
-                [0., 1/np.sqrt(3), 0., 0., 1/np.sqrt(3), 0, -1/np.sqrt(3)],\
-                [-1/np.sqrt(6), 1/np.sqrt(6), 1/np.sqrt(6),  -1/np.sqrt(6), -1/np.sqrt(6), 1/np.sqrt(6), 0.]])
+CAL_C_ISO = np.array([[1./np.sqrt(10.), 1./np.sqrt(10.), 1./np.sqrt(10.),
+                       np.sqrt(2./5.), 1./np.sqrt(10.), 1./np.sqrt(10.),
+                       1./np.sqrt(10.)],
+                      [-0.5, -0.5, 0., 0., 0., 0.5, 0.5],
+                      [-1./np.sqrt(12.), 1./np.sqrt(12.), -1./np.sqrt(3.), 0.,
+                       1./np.sqrt(3.), -1./np.sqrt(12.), 1./np.sqrt(12.)],
+                      [np.sqrt(3./20.), np.sqrt(3./20.), -1./np.sqrt(15.),
+                       -2./np.sqrt(15.), -1./np.sqrt(15.), np.sqrt(3./20.),
+                       np.sqrt(3./20.)],
+                      [0.5, -0.5, 0., 0., 0., -0.5, 0.5],
+                      [0., 0., 1./np.sqrt(3.), -1./np.sqrt(3.), 1./np.sqrt(3.),
+                       0., 0.],
+                      [-1./np.sqrt(6.), 1./np.sqrt(6.), 1./np.sqrt(6.), 0.,
+                       -1./np.sqrt(6.), -1./np.sqrt(6.), 1./np.sqrt(6.)]])
+
+
+C_MAT = (CAL_C_ISO.T[[0,2,1,4,5,6,3]]).T
 
 
 
 
 class Nonint_Proj:
     
-    def __init__(self, Emax= 5.0 , nP=np.array([0,0,0]), Lmax = 7.0, masses = 3*[1]):
+    def __init__(self, ell, Emax= 5.0 , nP=np.array([0,0,0]), Lmax = 7.0, masses = 3*[1]):
+        self.ell = ell
         self.Emax = Emax
         self.nP = nP
         self.Lmax = Lmax
         self.masses = masses
+        self._Group = ampyl.Groups(self.ell)
+        self._lg = self._Group.get_little_group(self.nP)
+        self._irrep_set = ampyl.Irreps(nP).set
+        if self.nP@self.nP == 0.0:
+            self._lg_str = 'OhP'
+        elif self.nP@self.nP == 1.0:
+            self._lg_str = 'Dic4'
+        elif self.nP@self.nP == 2.0:
+            self._lg_str = 'Dic2'
+        else: 
+            raise ValueError('The total momentum is not yet supported')
+       
         
 
     def get_nvec_cutoff_n3zero(self, Emax, nP, Lmax, masses):
         pSQ = 0.0
+        m = masses[-1] 
         if len(masses) == 3:
-            m = masses[-1]
             pSQ = ((Emax - m)**2 - (nP@nP)*(TWOPI/Lmax)**2)/4 - m**2
         if len(masses) == 2:
-            m = masses[1] 
             pSQ = Emax**2/4 - m**2
         nSQ = pSQ*(Lmax/TWOPI)**2
         return int(np.sqrt(nSQ))
@@ -89,7 +108,21 @@ class Nonint_Proj:
         counts_sorted[np.array] -- the multiplicites of the non-interacting energies
         
         """
-        nvecs = self.nvecs_generator(nvec_cutoff)
+        #pSQ = 0.0
+        masses = self.masses
+        m = masses[-1] 
+        if len(masses) == 3:
+            pSQ = ((Emax - m)**2 - (nP@nP)*(TWOPI/Lmax)**2)/4 - m**2
+        if len(masses) == 2:
+            pSQ = Emax**2/4 - m**2
+        nSQ = pSQ*(Lmax/TWOPI)**2
+        nvec_cutoff = int(np.sqrt(nSQ))
+        
+        rng = range(-nvec_cutoff, nvec_cutoff+1)
+        mesh = np.meshgrid(*([rng] * 3))
+        nvecs = np.vstack([y.flat for y in mesh]).T
+        
+        #nvecs = self.nvecs_generator(nvec_cutoff)
         E_nSQ_arr = []
         n_arr = []
         for n1 in nvecs:
@@ -231,9 +264,7 @@ class Nonint_Proj:
             A square matrix made up from the projectors for both the identical and non-identical case.
     
         '''
-        m1 = self.masses[0]
-        m2 = self.masses[1]
-        m3 = self.masses[2]
+        [m1, m2, m3] = self.masses
         E_nSQ_arr, counts, n_arr = self.get_E_nSQ_vecs(Emax, nP, Lmax, nvec_cutoff , m1, m2, m3, False)
         E_nSQ_arr_identical, counts_identical, n_arr_identical = self.get_E_nSQ_vecs(Emax, nP, Lmax, nvec_cutoff , m1, m2, m3, True)
         n_arr_sorted = self.sort_by_rot(n_arr[state])
@@ -254,7 +285,7 @@ class Nonint_Proj:
     
 
 
-    def generic_zero_elimination(self, array, LIMIT=1.0e-13):
+    def generic_zero_elimination(self, array, LIMIT=1.0e-11):
         '''
         
     
@@ -315,44 +346,25 @@ class Nonint_Proj:
             with dimension of 'irrep'.
     
         '''
-        irrep_coeff = Group.bTdict['OhP'+'_'+irrep]
+        lg_str = self._lg_str
+        lg = self._lg
+        irrep_coeff = self._Group.bTdict[lg_str+'_'+irrep]
         dim = len(irrep_coeff)
         proj = dim*[[]]
         for n in range(dim):
             proj_tmp = 0.0
-            for i in range(len(OhP)):
-                irrep_tmp = self.get_total_proj(Emax, nP, Lmax, nvec_cutoff , masses, OhP[i], state)
+            for i in range(len(lg)):
+                irrep_tmp = self.get_total_proj(Emax, nP, Lmax, nvec_cutoff , masses, lg[i], state)
                 product  = irrep_coeff[n][i]*irrep_tmp
                 proj_tmp = proj_tmp + product
             proj[n] = proj_tmp
         final_proj = np.array(proj)
-        
-        second_change_of_basis = block_diag(*(3*[C_MAT]))
-        final_proj = self.generic_zero_elimination(second_change_of_basis@final_proj@(second_change_of_basis.T))
-        
-        
-        eig_values, eig_vectors = np.linalg.eig(final_proj)
-        eig_values = self.generic_zero_elimination(eig_values)
-        eig_values_nonzero = eig_values[np.nonzero(eig_values)]
-        return final_proj, eig_values_nonzero
-
-    def get_EigenValue_for_irrep_single_isospin(self, Emax, nP, Lmax, nvec_cutoff , masses, irrep, state, total_isospin):
-        
-        irrep_coeff = Group.bTdict['OhP'+'_'+irrep]
-        dim = len(irrep_coeff)
-        proj = dim*[[]]
-        for n in range(dim):
-            proj_tmp = 0.0
-            for i in range(len(OhP)):
-                irrep_tmp = self.get_total_proj(Emax, nP, Lmax, nvec_cutoff ,masses, OhP[i], state)
-                product  = irrep_coeff[n][i]*irrep_tmp
-                proj_tmp = proj_tmp + product
-            proj[n] = proj_tmp
-        final_proj = np.array(proj)
-        
         second_change_of_basis = block_diag(*(3*[C_MAT]))
         final_proj = second_change_of_basis@final_proj@(second_change_of_basis.T)
-        #print(generic_zero_elimination(final_proj[0]))
+        return final_proj
+        
+
+    def get_EigenValue_for_irrep_single_isospin(self, Emax, nP, Lmax, nvec_cutoff , masses, state, total_isospin):
         if total_isospin == 3:
             iso_list = [1,0,0,0,0,0,0]
         if total_isospin == 2:
@@ -361,83 +373,90 @@ class Nonint_Proj:
             iso_list = [0,0,0,1,1,1,0]
         if total_isospin == 0:
             iso_list = [0,0,0,0,0,0,1]
-    
-        final_proj = block_diag(*(3*[block_diag(*(iso_list))]))@final_proj\
-            @ block_diag(*(3*[block_diag(*(iso_list))]))
-       
-        eig_values, eig_vectors = np.linalg.eig(final_proj)
-        eig_values = self.generic_zero_elimination(eig_values)
-        eig_values_nonzero = eig_values[np.nonzero(eig_values)]
-        return eig_values_nonzero
-    
-    def _get_summary(self, Emax, nP, Lmax, masses, nvec_cutoff, state):
-        strtmp = '\n'
-        irrep_set = ampyl.Irreps(nP).set
-        for total_iso in [3, 2, 1, 0]:
-            print('\n for isospin:', total_iso)
-            for irrep in irrep_set:
-                eig_values = self.get_EigenValue_for_irrep_single_isospin(Emax, nP, Lmax, nvec_cutoff , masses, irrep, state, total_iso)
-                strtmp += f" eigenvalues of {eig_values} with length of {len(eig_values)} for Irrep {irrep} \n" 
-        return strtmp
+            
         
-        
-        
+        irrep_list = {}
+        for irrep in self._irrep_set:
+            final_proj = self.get_EigenValue_for_irrep(Emax, nP, Lmax, nvec_cutoff, masses, irrep, state)
+            final_proj = block_diag(*(3*[block_diag(*(iso_list))]))@final_proj\
+                @ block_diag(*(3*[block_diag(*(iso_list))]))
+           
+            eig_values, eig_vectors = np.linalg.eig(final_proj)
+            eig_values = self.generic_zero_elimination(eig_values)
+            eig_values_nonzero = eig_values[np.nonzero(eig_values)]
+            if len(eig_values_nonzero) != 0:
+                irrep_list[irrep] = len(eig_values_nonzero)
+        return irrep_list
     
-    def __str__(self):
+    def get_summary(self, nvec_cutoff, state):
         Emax = self.Emax
         nP = self.nP
         Lmax = self.Lmax
         masses = self.masses
-        #nvec_cutoff = self.get_nvec_cutoff_n3zero(Emax, nP, Lmax, masses)
-        nvec_cutoff = 1
-        state = 1
-        summary = self._get_summary(Emax, nP, Lmax, masses, nvec_cutoff, state)
-        return summary
+        total_iso = [3,2,1,0]
+        result = {}
+        for isospin in total_iso:
+                irrep_list = self.get_EigenValue_for_irrep_single_isospin(Emax, nP, Lmax, nvec_cutoff , masses, state, isospin)
+                result[isospin] = irrep_list 
+        return result
+    
+                
+def group_theory_nonint_summary(ell, qcis, cindex, definite_iso, shell_index):
+    result = {}
+    for isovalue in [0,1,2,3]:
+        irreps_embedded = {}
+        non_proj_dict = ampyl.Groups(ell).get_nonint_proj_dict_shell(qcis, cindex, definite_iso, isovalue, shell_index)
 
-masses = 3*[1]
-TWOPI = 2*np.pi
-Lmax = 5.0
-nP = np.array([0,0,0])
-Emax = 7.0
-m1 = m2 = m3 = 1.0
-nvec_cutoff = 1
-irrep_set = ampyl.Irreps(nP).set
-state = 1 
+        irrep_list = []
+        for dict_ent in non_proj_dict:
+            irrep, row = dict_ent
+            dim = 1
+            if irrep[0] == 'E':
+                dim = 2
+            if irrep[0] == 'T':
+                dim = 3
+            n_embedded = int(len(non_proj_dict[dict_ent].T)/dim)
+            if irrep not in irrep_list:
+                irrep_list = irrep_list +[irrep] 
+            irreps_embedded[irrep] = dim*n_embedded
+        result[isovalue] = irreps_embedded
+    return result
 
-nonint_proj = Nonint_Proj(Emax, nP, Lmax, masses)
-cutoff = nonint_proj.get_nvec_cutoff_n3zero(Emax, nP, Lmax, masses)
-#val_irrep = nonint_proj.get_EigenValue_for_irrep_single_isospin(Emax, nP, Lmax, nvec_cutoff , masses, 'A1PLUS', 1, 3)
-print(nonint_proj)
-
-
-# irrep_proj = []
-# for irrep in irrep_set:
-#     final_proj, eig_values = nonint_proj.get_EigenValue_for_irrep(Emax, nP, Lmax, nvec_cutoff , masses, irrep, state)
-#     if len(eig_values) != 0:
-#         irrep_proj = irrep_proj +[final_proj]
-#         print(f"Irrep {irrep} has eigenvalues of {eig_values} with length of {len(eig_values)}")
 
 
 class Test_group_theory(unittest.TestCase):
     """ """
     
-    def result(self):
-        pass
+    def test_nonint_proj(self):
+        """   """
+        ell = 1
+        state = 1
+        cindex = 0
+        definite_iso = True
+        shell_index = state
+        
+        fc = ampyl.FlavorChannel(3, twoisospin_value=4)
+        fcs = ampyl.FlavorChannelSpace(fc_list=[fc])
+        qcis = ampyl.QCIndexSpace(fcs=fcs, Emax=5.0, Lmax=5.0)
+        qcis.populate()
+        isospin_set = fc.twoisospin_value
+        
+        allowed_irreps = group_theory_nonint_summary(ell, qcis, 
+                                        cindex, definite_iso, shell_index)
 
-class Template(unittest.TestCase):
-    """Test."""
+        
+        nonint_000 = Nonint_Proj(ell, Emax= 5.0 , nP=np.array([0,0,0]),
+                                 Lmax = 5.0, masses = 3*[1.])
+        cutoff_000 = nonint_000.get_nvec_cutoff_n3zero(Emax = 5.0, 
+                                                       nP=np.array([0,0,0]),
+                                                       Lmax=5.0, masses=3*[1.])
+        summary_000 = nonint_000.get_summary(cutoff_000, state)
+        self.assertEqual(len(summary_000), isospin_set)
+        for isovalue in range(isospin_set):
+            self.assertDictEqual(summary_000[isovalue], allowed_irreps[isovalue])
+        
+        
+if __name__ == '__main__':
+    unittest.main()
+        
 
-    def setUp(self):
-        """Exectue set-up."""
-        pass
-
-    def tearDown(self):
-        """Execute tear-down."""
-        pass
-
-    def __example(self, x):
-        return x
-
-    def test(self):
-        """Example test."""
-        self.assertEqual(10., self.__example(10.))
