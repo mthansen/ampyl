@@ -52,7 +52,7 @@ class TestFlavorChannel(unittest.TestCase):
                                                 ell_col, mazi_col,
                                                 'relativistic pole',
                                                 {'hermitian': True,
-                                                 'real harmonics': True})
+                                                 'real_harmonics': True})
         return F
 
     def get_value_direct(self, E, nP, L, kellm_space, C1cut, alphaKSS):

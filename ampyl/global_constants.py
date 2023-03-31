@@ -37,10 +37,12 @@ Created July 2022.
 import numpy as np
 
 QC_IMPL_DEFAULTS = {'hermitian': True,
-                    'real harmonics': True,
-                    'Zinterp': False,
-                    'YYCG': False,
-                    'g_uses_prep_mat': False}
+                    'real_harmonics': True,
+                    'zeta_interp': False,
+                    'sph_harm_clebsch': False,
+                    'g_uses_prep_mat': False,
+                    'g_interpolate': False,
+                    'smarter_q_rescale': False}
 
 PI = np.pi
 TWOPI = 2.*PI
@@ -49,10 +51,14 @@ ROOT4PI = np.sqrt(4.*PI)
 ROOT_THREE = np.sqrt(3.0)
 ROOT_TWO = np.sqrt(2.0)
 EPSPROJ = 1.0e-8
+EPSILON4 = 1.0e-4
 EPSILON10 = 1.0e-10
 EPSILON15 = 1.0e-15
 EPSILON20 = 1.0e-20
 SPARSE_CUT = 1.5
+BAD_MIN_GUESS = 100.
+BAD_MAX_GUESS = 0.
+POLE_CUT = 100.
 
 DELTA_L_FOR_GRID = 0.9
 DELTA_E_FOR_GRID = 0.9

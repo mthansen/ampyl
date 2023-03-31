@@ -36,6 +36,7 @@ Created July 2022.
 
 import numpy as np
 from scipy.linalg import block_diag
+from scipy.optimize import root_scalar
 import warnings
 import functools
 from copy import deepcopy
@@ -43,12 +44,16 @@ from .group_theory import Groups
 from .group_theory import Irreps
 from .qc_functions import QCFunctions
 from .qc_functions import BKFunctions
+from scipy.interpolate import RegularGridInterpolator
 from .global_constants import QC_IMPL_DEFAULTS
 from .global_constants import PI
 from .global_constants import TWOPI
 from .global_constants import FOURPI2
+from .global_constants import EPSILON4
 from .global_constants import EPSILON10
 from .global_constants import EPSILON20
+from .global_constants import BAD_MIN_GUESS
+from .global_constants import BAD_MAX_GUESS
 from .global_constants import DELTA_L_FOR_GRID
 from .global_constants import DELTA_E_FOR_GRID
 from .global_constants import L_GRID_SHIFT
@@ -57,6 +62,7 @@ from .global_constants import G_TEMPLATE_DICT
 from .global_constants import ISO_PROJECTORS
 from .global_constants import CAL_C_ISO
 from .global_constants import SPARSE_CUT
+from .global_constants import POLE_CUT
 warnings.simplefilter('always')
 
 PRINT_THRESHOLD_DEFAULT = np.get_printoptions()['threshold']
@@ -1027,9 +1033,9 @@ class FiniteVolumeSetup:
 
     qc_impl is a dict that can include the following:
         qc_impl['hermitian'] (bool)
-        qc_impl['real harmonics'] (bool)
-        qc_impl['Zinterp'] (bool)
-        qc_impl['YYCG'] (bool)
+        qc_impl['real_harmonics'] (bool)
+        qc_impl['zeta_interp'] (bool)
+        qc_impl['sph_harm_clebsch'] (bool)
 
     :param formalism: indicates the formalism used. (Currently only 'RFT'
         (relatvistic-field theory approach) is supported.)
@@ -1049,9 +1055,7 @@ class FiniteVolumeSetup:
     :type qc_impl: dict
     """
 
-    def __init__(self, formalism='RFT', nP=np.array([0, 0, 0]), qc_impl=None):
-        if qc_impl is None:
-            qc_impl = QC_IMPL_DEFAULTS
+    def __init__(self, formalism='RFT', nP=np.array([0, 0, 0]), qc_impl={}):
         self.formalism = formalism
         self.qc_impl = qc_impl
         self.nP = nP
@@ -1685,9 +1689,13 @@ class QCIndexSpace:
         self.nonint_proj_dict = []
         for cindex in range(len(self.fcs.ni_list)):
             if self.fcs.ni_list[cindex].n_particles == 2:
+                isospin_channel = self.fcs.ni_list[cindex].isospin_channel
                 self.nonint_proj_dict = self.nonint_proj_dict\
-                    + [self.group.get_noninttwo_proj_dict(qcis=self,
-                                                          cindex=cindex)]
+                    + [self.group.
+                       get_noninttwo_proj_dict(qcis=self,
+                                               cindex=cindex,
+                                               definite_iso=isospin_channel)
+                       ]
             elif self.fcs.ni_list[cindex].n_particles == 3:
                 self.nonint_proj_dict = self.nonint_proj_dict\
                     + [self.group.get_nonint_proj_dict(qcis=self,
@@ -2773,16 +2781,21 @@ class G:
 
     def __init__(self, qcis=QCIndexSpace()):
         self.qcis = qcis
-        ts = self.qcis.tbis.three_scheme
-        if (ts == 'original pole')\
-           or (ts == 'relativistic pole'):
+        three_scheme = self.qcis.tbis.three_scheme
+        if (three_scheme == 'original pole')\
+           or (three_scheme == 'relativistic pole'):
             [self.alpha, self.beta] = self.qcis.tbis.scheme_data
+        self.all_relevant_nvecSQs = {}
+        self.pole_free_interpolator_matrix = {}
+        self.interpolator_matrix = {}
+        self.cob_matrices = {}
+        self.function_set = {}
+        self.all_dimensions = {}
+        self.total_cobs = {}
 
     def _get_masks_and_shells(self, E, nP, L, tbks_entry,
                               cindex_row, cindex_col,
                               row_shell_index, col_shell_index):
-        mask_row_shells = None
-        mask_col_shells = None
         three_slice_index_row\
             = self.qcis._get_three_slice_index(cindex_row)
         three_slice_index_col\
@@ -2791,46 +2804,66 @@ class G:
             raise ValueError("only one mass slice is supported in G")
         three_slice_index = three_slice_index_row
         if nP@nP == 0:
-            row_shell = tbks_entry.shells[row_shell_index]
-            col_shell = tbks_entry.shells[col_shell_index]
+            mask_row_shells, mask_col_shells, row_shell, col_shell\
+                = self._mask_and_shell_helper_nPzero(tbks_entry,
+                                                     row_shell_index,
+                                                     col_shell_index)
         else:
-            sc_compact_three_subspace\
-                = self.qcis.fcs.sc_compact[self.qcis.fcs.three_index]
-            masses = sc_compact_three_subspace[three_slice_index][1:4]
-            mspec = masses[0]
-            kvecSQ_arr = FOURPI2*tbks_entry.nvecSQ_arr/L**2
-            kvec_arr = TWOPI*tbks_entry.nvec_arr/L
-            omk_arr = np.sqrt(mspec**2+kvecSQ_arr)
-            Pvec = TWOPI*nP/L
-            PmkSQ_arr = ((Pvec-kvec_arr)**2).sum(axis=1)
-            mask_row = (E-omk_arr)**2-PmkSQ_arr > 0.0
-            row_shells = tbks_entry.shells
-            mask_row_shells = []
-            for row_shell in row_shells:
-                mask_row_shells = mask_row_shells\
-                    + [mask_row[row_shell[0]:row_shell[1]].all()]
-            row_shells = list(np.array(row_shells)[mask_row_shells])
-            row_shell = row_shells[row_shell_index]
-
-            sc_compact_three_subspace\
-                = self.qcis.fcs.sc_compact[self.qcis.fcs.three_index]
-            masses = sc_compact_three_subspace[three_slice_index][1:4]
-            mspec = masses[0]
-            kvecSQ_arr = FOURPI2*tbks_entry.nvecSQ_arr/L**2
-            kvec_arr = TWOPI*tbks_entry.nvec_arr/L
-            omk_arr = np.sqrt(mspec**2+kvecSQ_arr)
-            Pvec = TWOPI*nP/L
-            PmkSQ_arr = ((Pvec-kvec_arr)**2).sum(axis=1)
-            mask_col = (E-omk_arr)**2-PmkSQ_arr > 0.0
-            col_shells = tbks_entry.shells
-            mask_col_shells = []
-            for col_shell in col_shells:
-                mask_col_shells = mask_col_shells\
-                    + [mask_col[col_shell[0]:col_shell[1]].all()]
-            col_shells = list(np.array(col_shells)[mask_col_shells])
-            col_shell = col_shells[col_shell_index]
+            mask_row_shells, mask_col_shells, row_shell, col_shell = self.\
+                _mask_and_shell_helper_nPnonzero(E, nP, L, tbks_entry,
+                                                 row_shell_index,
+                                                 col_shell_index,
+                                                 three_slice_index)
         return mask_row_shells, mask_col_shells, row_shell, col_shell,\
             row_shell_index, col_shell_index
+
+    def _mask_and_shell_helper_nPnonzero(self, E, nP, L, tbks_entry,
+                                         row_shell_index, col_shell_index,
+                                         three_slice_index):
+        sc_compact_three_subspace\
+            = self.qcis.fcs.sc_compact[self.qcis.fcs.three_index]
+        masses = sc_compact_three_subspace[three_slice_index][1:4]
+        mspec = masses[0]
+        kvecSQ_arr = FOURPI2*tbks_entry.nvecSQ_arr/L**2
+        kvec_arr = TWOPI*tbks_entry.nvec_arr/L
+        omk_arr = np.sqrt(mspec**2+kvecSQ_arr)
+        Pvec = TWOPI*nP/L
+        PmkSQ_arr = ((Pvec-kvec_arr)**2).sum(axis=1)
+        mask_row = (E-omk_arr)**2-PmkSQ_arr > 0.0
+        row_shells = tbks_entry.shells
+        mask_row_shells = []
+        for row_shell in row_shells:
+            mask_row_shells = mask_row_shells\
+                    + [mask_row[row_shell[0]:row_shell[1]].all()]
+        row_shells = list(np.array(row_shells)[mask_row_shells])
+        row_shell = row_shells[row_shell_index]
+
+        sc_compact_three_subspace\
+            = self.qcis.fcs.sc_compact[self.qcis.fcs.three_index]
+        masses = sc_compact_three_subspace[three_slice_index][1:4]
+        mspec = masses[0]
+        kvecSQ_arr = FOURPI2*tbks_entry.nvecSQ_arr/L**2
+        kvec_arr = TWOPI*tbks_entry.nvec_arr/L
+        omk_arr = np.sqrt(mspec**2+kvecSQ_arr)
+        Pvec = TWOPI*nP/L
+        PmkSQ_arr = ((Pvec-kvec_arr)**2).sum(axis=1)
+        mask_col = (E-omk_arr)**2-PmkSQ_arr > 0.0
+        col_shells = tbks_entry.shells
+        mask_col_shells = []
+        for col_shell in col_shells:
+            mask_col_shells = mask_col_shells\
+                    + [mask_col[col_shell[0]:col_shell[1]].all()]
+        col_shells = list(np.array(col_shells)[mask_col_shells])
+        col_shell = col_shells[col_shell_index]
+        return mask_row_shells, mask_col_shells, row_shell, col_shell
+
+    def _mask_and_shell_helper_nPzero(self, tbks_entry, row_shell_index,
+                                      col_shell_index):
+        mask_row_shells = None
+        mask_col_shells = None
+        row_shell = tbks_entry.shells[row_shell_index]
+        col_shell = tbks_entry.shells[col_shell_index]
+        return mask_row_shells, mask_col_shells, row_shell, col_shell
 
     def get_shell(self, E=5.0, L=5.0, m1=1.0, m2=1.0, m3=1.0,
                   cindex_row=None, cindex_col=None,  # only for non-zero P
@@ -2841,7 +2874,155 @@ class G:
                   col_shell_index=None,
                   project=False, irrep=None):
         """Build the G matrix on a single shell."""
-        ts = self.qcis.tbis.three_scheme
+        three_scheme = self.qcis.tbis.three_scheme
+        nP = self.qcis.nP
+        qc_impl = self.qcis.fvs.qc_impl
+        alpha = self.alpha
+        beta = self.beta
+
+        mask_row_shells, mask_col_shells, row_shell, col_shell,\
+            row_shell_index, col_shell_index\
+            = self._get_masks_and_shells(E, nP, L, tbks_entry,
+                                         cindex_row, cindex_col,
+                                         row_shell_index, col_shell_index)
+        if project:
+            try:
+                if nP@nP != 0:
+                    proj_tmp_right, proj_tmp_left = self.\
+                        _nPzero_projectors(E, L, sc_index_row, sc_index_col,
+                                           row_shell_index, col_shell_index,
+                                           irrep,
+                                           mask_row_shells, mask_col_shells)
+                else:
+                    proj_tmp_right, proj_tmp_left = self.\
+                        _nPnonzero_projectors(sc_index_row, sc_index_col,
+                                              row_shell_index, col_shell_index,
+                                              irrep)
+            except KeyError:
+                return np.array([])
+            proj_support_right, proj_support_left, sparse = self.\
+                _get_sparse(proj_tmp_right, proj_tmp_left)
+        else:
+            sparse = False
+
+        if not sparse:
+            g_uses_prep_mat = QC_IMPL_DEFAULTS['g_uses_prep_mat']
+            if 'g_uses_prep_mat' in self.qcis.fvs.qc_impl:
+                g_uses_prep_mat = self.qcis.fvs.qc_impl['g_uses_prep_mat']
+            elif g_uses_prep_mat and (nP@nP == 0):
+                Gshell = QCFunctions.getG_array_prep_mat(E, nP, L, m1, m2, m3,
+                                                         tbks_entry,
+                                                         row_shell_index,
+                                                         col_shell_index,
+                                                         ell1, ell2,
+                                                         alpha, beta,
+                                                         qc_impl, three_scheme,
+                                                         g_rescale)
+            else:
+                Gshell = QCFunctions.getG_array(E, nP, L, m1, m2, m3,
+                                                tbks_entry,
+                                                row_shell, col_shell,
+                                                ell1, ell2,
+                                                alpha, beta,
+                                                qc_impl, three_scheme,
+                                                g_rescale)
+        else:
+            Gshell = self.\
+                _getG_array_sparse(E, nP, L, m1, m2, m3, ell1, ell2, g_rescale,
+                                   tbks_entry, three_scheme, qc_impl,
+                                   alpha, beta, row_shell, col_shell,
+                                   proj_support_right, proj_support_left)
+        if project:
+            Gshell = proj_tmp_left@Gshell@proj_tmp_right
+        return Gshell
+
+    def _getG_array_sparse(self, E, nP, L, m1, m2, m3, ell1, ell2, g_rescale,
+                           tbks_entry, three_scheme, qc_impl, alpha, beta,
+                           row_shell, col_shell,
+                           proj_support_right, proj_support_left):
+        J_slow = False
+        n1vec_arr_shell = tbks_entry.nvec_arr[row_shell[0]:row_shell[1]]
+        n1vecSQ_arr_shell = tbks_entry.nvecSQ_arr[
+                row_shell[0]:row_shell[1]]
+
+        n2vec_arr_shell = tbks_entry.nvec_arr[col_shell[0]:col_shell[1]]
+        n2vecSQ_arr_shell = tbks_entry.nvecSQ_arr[
+                col_shell[0]:col_shell[1]]
+        Gshell = np.zeros((len(n1vecSQ_arr_shell)*(2*ell1+1),
+                           len(n2vecSQ_arr_shell)*(2*ell2+1)))
+        for i1 in range(len(n1vecSQ_arr_shell)):
+            for i2 in range(2*ell1+1):
+                ifull = i1*(2*ell1+1)+i2
+                np1spec = n1vec_arr_shell[i1]
+                mazi1 = i2-ell1
+                for j1 in range(len(n2vecSQ_arr_shell)):
+                    for j2 in range(2*ell2+1):
+                        jfull = j1*(2*ell2+1)+j2
+                        np2spec = n2vec_arr_shell[j1]
+                        mazi2 = j2-ell2
+                        if ((proj_support_left[ifull] != 0.0)
+                           and (proj_support_right[jfull] != 0.0)):
+                            Gshell[ifull][jfull] = QCFunctions\
+                                    .getG_single_entry(E, nP, L,
+                                                       np1spec, np2spec,
+                                                       ell1, mazi1,
+                                                       ell2, mazi2,
+                                                       m1, m2, m3,
+                                                       alpha, beta,
+                                                       J_slow,
+                                                       three_scheme,
+                                                       qc_impl,
+                                                       g_rescale)
+        return Gshell
+
+    def _get_sparse(self, proj_tmp_right, proj_tmp_left):
+        proj_support_right = np.diag(proj_tmp_right@(proj_tmp_right.T))
+        zero_frac_right = float(
+            np.count_nonzero(proj_support_right == 0.))\
+            / float(len(proj_support_right))
+        proj_support_left = np.diag((proj_tmp_left.T)@proj_tmp_left)
+        zero_frac_left = float(
+            np.count_nonzero(proj_support_left == 0.))\
+            / float(len(proj_support_left))
+        sparse = ((zero_frac_right > SPARSE_CUT)
+                  and (zero_frac_left > SPARSE_CUT))
+
+        return proj_support_right, proj_support_left, sparse
+
+    def _nPnonzero_projectors(self, sc_index_row, sc_index_col,
+                              row_shell_index, col_shell_index, irrep):
+        proj_tmp_right = self.qcis.sc_proj_dicts_by_shell[
+                        sc_index_col][0][col_shell_index][irrep]
+        proj_tmp_left = np.conjugate((
+                        self.qcis.sc_proj_dicts_by_shell[
+                            sc_index_row][0][row_shell_index][irrep]
+                        ).T)
+        return proj_tmp_right, proj_tmp_left
+
+    def _nPzero_projectors(self, E, L, sc_index_row, sc_index_col,
+                           row_shell_index, col_shell_index, irrep,
+                           mask_row_shells, mask_col_shells):
+        ibest = self.qcis._get_ibest(E, L)
+        proj_tmp_right = np.array(self.qcis.sc_proj_dicts_by_shell[
+            sc_index_col][ibest])[mask_col_shells][
+                col_shell_index][irrep]
+        proj_tmp_left = np.conjugate((
+            np.array(self.qcis.
+                     sc_proj_dicts_by_shell[sc_index_row][ibest]
+                     )[mask_row_shells][row_shell_index][irrep]).T)
+        return proj_tmp_right, proj_tmp_left
+
+    def get_shell_nvecSQs_projs(self, E=5.0, L=5.0, m1=1.0, m2=1.0, m3=1.0,
+                                cindex_row=None, cindex_col=None,
+                                # only for non-zero P
+                                sc_index_row=None, sc_index_col=None,
+                                ell1=0, ell2=0,
+                                g_rescale=1.0, tbks_entry=None,
+                                row_shell_index=None,
+                                col_shell_index=None,
+                                project=False, irrep=None):
+        """Build the G matrix on a single shell."""
+        three_scheme = self.qcis.tbis.three_scheme
         nP = self.qcis.nP
         qc_impl = self.qcis.fvs.qc_impl
         alpha = self.alpha
@@ -2889,64 +3070,23 @@ class G:
             sparse = False
 
         if not sparse:
-            if self.qcis.fvs.qc_impl['g_uses_prep_mat'] and (nP@nP == 0):
-                Gshell = QCFunctions.getG_array_prep_mat(E, nP, L, m1, m2, m3,
-                                                         tbks_entry,
-                                                         row_shell_index,
-                                                         col_shell_index,
-                                                         ell1, ell2,
-                                                         alpha, beta,
-                                                         qc_impl, ts,
-                                                         g_rescale)
+            g_uses_prep_mat = QC_IMPL_DEFAULTS['g_uses_prep_mat']
+            if 'g_uses_prep_mat' in self.qcis.fvs.qc_impl:
+                g_uses_prep_mat = self.qcis.fvs.qc_impl['g_uses_prep_mat']
+            elif g_uses_prep_mat and (nP@nP == 0):
+                nvecSQ_mat_shells = QCFunctions\
+                    .getG_array_prep_mat(E, nP, L, m1, m2, m3, tbks_entry,
+                                         row_shell_index, col_shell_index,
+                                         ell1, ell2, alpha, beta, qc_impl,
+                                         three_scheme, g_rescale)
             else:
-                Gshell = QCFunctions.getG_array(E, nP, L, m1, m2, m3,
-                                                tbks_entry,
-                                                row_shell, col_shell,
-                                                ell1, ell2,
-                                                alpha, beta,
-                                                qc_impl, ts,
-                                                g_rescale)
-        else:
-            n1vec_arr_shell = tbks_entry.nvec_arr[row_shell[0]:row_shell[1]]
-            n1vecSQ_arr_shell = tbks_entry.nvecSQ_arr[
-                row_shell[0]:row_shell[1]]
-
-            n2vec_arr_shell = tbks_entry.nvec_arr[col_shell[0]:col_shell[1]]
-            n2vecSQ_arr_shell = tbks_entry.nvecSQ_arr[
-                col_shell[0]:col_shell[1]]
-            Gshell = np.zeros((len(n1vecSQ_arr_shell)*(2*ell1+1),
-                               len(n2vecSQ_arr_shell)*(2*ell2+1)))
-            for i1 in range(len(n1vecSQ_arr_shell)):
-                for i2 in range(2*ell1+1):
-                    ifull = i1*(2*ell1+1)+i2
-                    np1spec = n1vec_arr_shell[i1]
-                    mazi1 = i2-ell1
-                    for j1 in range(len(n2vecSQ_arr_shell)):
-                        for j2 in range(2*ell2+1):
-                            jfull = j1*(2*ell2+1)+j2
-                            np2spec = n2vec_arr_shell[j1]
-                            mazi2 = j2-ell2
-                            if ((proj_support_left[ifull] != 0.0)
-                               and (proj_support_right[jfull] != 0.0)):
-                                Gshell[ifull][jfull] = QCFunctions\
-                                    .getG_single_entry(E, nP, L,
-                                                       np1spec, np2spec,
-                                                       ell1, mazi1,
-                                                       ell2, mazi2,
-                                                       m1, m2, m3,
-                                                       alpha, beta,
-                                                       False,
-                                                       ts,
-                                                       qc_impl,
-                                                       g_rescale)
-        if project:
-            Gshell = proj_tmp_left@Gshell@proj_tmp_right
-        return Gshell
+                nvecSQ_mat_shells = QCFunctions\
+                    .get_nvecSQ_mat_shells(tbks_entry, row_shell, col_shell)
+        return [nvecSQ_mat_shells, proj_tmp_left, proj_tmp_right]
 
     def _clean_shape(self, g_collection):
         rowsizes = [0]*len(g_collection)
         colsizes = [0]*len(g_collection)
-
         for i in range(len(g_collection)):
             for j in range(len(g_collection)):
                 shtmp = g_collection[i][j].shape
@@ -2955,17 +3095,50 @@ class G:
                         rowsizes[i] = shtmp[0]
                     if shtmp[1] > colsizes[j]:
                         colsizes[j] = shtmp[1]
-
         for i in range(len(g_collection)):
             for j in range(len(g_collection)):
                 shtmp = g_collection[i][j].shape
                 if shtmp == (0,) or shtmp == (0, 0):
                     g_collection[i][j].shape = (rowsizes[i], colsizes[j])
-
         return g_collection
 
     def get_value(self, E=5.0, L=5.0, project=False, irrep=None):
         """Build the G matrix in a shell-based way."""
+        g_interpolate = QC_IMPL_DEFAULTS['g_interpolate']
+        if 'g_interpolate' in self.qcis.fvs.qc_impl:
+            g_interpolate = self.qcis.fvs.qc_impl['g_interpolate']
+        if g_interpolate:
+            g_final_smooth_basis = [[]]
+            total_cobs = self.total_cobs[irrep]
+            matrix_dimension = self.\
+                all_dimensions[irrep][total_cobs
+                               - self.qcis.get_tbks_sub_indices(E, L)[0]-1]
+            m1, m2, m3 = self.extract_masses()
+            for i in range(matrix_dimension):
+                g_row_tmp = []
+                for j in range(matrix_dimension):
+                    func_tmp = self.function_set[irrep][i][j]
+                    if func_tmp is not None:
+                        value_tmp = float(func_tmp((E, L)))
+                        for pole_data in self.\
+                           pole_free_interpolator_matrix[irrep][i][j][2]:
+                            factor_tmp = E-self.\
+                                get_pole_candidate(L, *pole_data[2],
+                                                   m1, m2, m3)
+                            value_tmp = value_tmp/factor_tmp
+                        g_row_tmp = g_row_tmp+[value_tmp]
+                    else:
+                        g_row_tmp = g_row_tmp+[0.]
+                g_final_smooth_basis = g_final_smooth_basis+[g_row_tmp]
+            g_final_smooth_basis = np.array(g_final_smooth_basis[1:])
+            cob_matrix = self.\
+                cob_matrices[irrep][total_cobs
+                                    - self.qcis.get_tbks_sub_indices(E, L)[0]
+                                    - 1]
+            g_matrix_tmp_rotated\
+                = (cob_matrix)@g_final_smooth_basis@(cob_matrix.T)
+            return g_matrix_tmp_rotated
+
         Lmax = self.qcis.Lmax
         Emax = self.qcis.Emax
         if E > Emax:
@@ -2987,9 +3160,11 @@ class G:
                 sf = '1./(2.*w1*L**3)\n    * 1./(E-w1-w3+w2)'
             else:
                 raise ValueError("three_scheme not recognized")
-            if (('hermitian' not in self.qcis.fvs.qc_impl.keys())
-               or (self.qcis.fvs.qc_impl['hermitian'])):
-                sf = sf+'\n    * 1./(2.0*w3*L**3)'
+            hermitian = QC_IMPL_DEFAULTS['hermitian']
+            if 'hermitian' in self.qcis.fvs.qc_impl:
+                hermitian = self.qcis.fvs.qc_impl['hermitian']
+            if hermitian:
+                sf = sf+'\n    * 1./(2.0*w3)'
 
             print('G = YY*H1*H2\n    * '+sf+'\n    * 1./(E-w1-w2-w3)\n')
 
@@ -3100,6 +3275,118 @@ class G:
         g_final = self._clean_shape(g_final)
         g_final = np.block(g_final)
         return g_final
+
+    def get_all_nvecSQs_by_shell(self, E=5.0, L=5.0, project=False,
+                                 irrep=None):
+        """Build the G matrix in a shell-based way."""
+        Lmax = self.qcis.Lmax
+        Emax = self.qcis.Emax
+        if E > Emax:
+            raise ValueError("get_value called with E > Emax")
+        if L > Lmax:
+            raise ValueError("get_value called with L > Lmax")
+        nP = self.qcis.nP
+        if self.qcis.fcs.n_three_slices != 1:
+            raise ValueError("only n_three_slices = 1 is supported")
+        cindex_row = cindex_col = 0
+        if (not ((irrep is None) and (project is False))
+           and (not (irrep in self.qcis.proj_dict.keys()))):
+            raise ValueError("irrep "+str(irrep)+" not in "
+                             + "qcis.proj_dict.keys()")
+
+        three_compact = self.qcis.fcs.sc_compact[self.qcis.fcs.three_index]
+        masses = three_compact[0][1:4]
+        [m1, m2, m3] = masses
+
+        if nP@nP == 0:
+            if self.qcis.verbosity >= 2:
+                print('nP = [0 0 0] indexing')
+            tbks_sub_indices = self.qcis.get_tbks_sub_indices(E=E, L=L)
+            if len(self.qcis.tbks_list) > 1:
+                raise ValueError("get_value within G assumes tbks_list is "
+                                 + "length one.")
+            tbks_entry = self.qcis.tbks_list[0][
+                tbks_sub_indices[0]]
+            slices = tbks_entry.shells
+            if self.qcis.verbosity >= 2:
+                print('tbks_sub_indices =', tbks_sub_indices)
+                print('tbks_entry =', tbks_entry)
+                print('slices =', slices)
+        else:
+            if self.qcis.verbosity >= 2:
+                print('nP != [0 0 0] indexing')
+            mspec = m1
+            ibest = self.qcis._get_ibest(E, L)
+            if len(self.qcis.tbks_list) > 1:
+                raise ValueError("get_value within G assumes tbks_list is "
+                                 + "length one.")
+            tbks_entry = self.qcis.tbks_list[0][ibest]
+            kvecSQ_arr = FOURPI2*tbks_entry.nvecSQ_arr/L**2
+            kvec_arr = TWOPI*tbks_entry.nvec_arr/L
+            omk_arr = np.sqrt(mspec**2+kvecSQ_arr)
+            Pvec = TWOPI*nP/L
+            PmkSQ_arr = ((Pvec-kvec_arr)**2).sum(axis=1)
+            mask = (E-omk_arr)**2-PmkSQ_arr > 0.0
+            if self.qcis.verbosity >= 2:
+                print('mask =')
+                print(mask)
+
+            mask_slices = []
+            slices = tbks_entry.shells
+            for slice_entry in slices:
+                mask_slices = mask_slices\
+                    + [mask[slice_entry[0]:slice_entry[1]].all()]
+            slices = list((np.array(slices))[mask_slices])
+
+        nvecSQs_final = [[]]
+        if self.qcis.verbosity >= 2:
+            print('iterating over spectator channels, slices')
+        for sc_row_ind in range(len(three_compact)):
+            nvecSQs_outer_row = []
+            row_ell_set = self.qcis.fcs.sc_list[sc_row_ind].ell_set
+            if len(row_ell_set) != 1:
+                raise ValueError("only length-one ell_set currently "
+                                 + "supported in G")
+            ell1 = row_ell_set[0]
+            for sc_col_ind in range(len(three_compact)):
+                if self.qcis.verbosity >= 2:
+                    print('sc_row_ind, sc_col_ind =', sc_row_ind, sc_col_ind)
+                col_ell_set = self.qcis.fcs.sc_list[sc_col_ind].ell_set
+                if len(col_ell_set) != 1:
+                    raise ValueError("only length-one ell_set currently "
+                                     + "supported in G")
+                ell2 = col_ell_set[0]
+                g_rescale = self.qcis.fcs.g_templates[0][0][
+                    sc_row_ind][sc_col_ind]
+
+                nvecSQs_inner = [[]]
+                for row_shell_index in range(len(slices)):
+                    nvecSQs_inner_row = []
+                    for col_shell_index in range(len(slices)):
+                        nvecSQs_tmp = self\
+                            .get_shell_nvecSQs_projs(E, L, m1, m2, m3,
+                                                     cindex_row, cindex_col,
+                                                     # only for non-zero P
+                                                     sc_row_ind, sc_col_ind,
+                                                     ell1, ell2, g_rescale,
+                                                     tbks_entry,
+                                                     row_shell_index,
+                                                     col_shell_index,
+                                                     project, irrep)
+                        nvecSQs_inner_row = nvecSQs_inner_row+[nvecSQs_tmp]
+                    nvecSQs_inner = nvecSQs_inner+[nvecSQs_inner_row]
+                nvecSQs_block_tmp = nvecSQs_inner[1:]
+                nvecSQs_outer_row = nvecSQs_outer_row+[nvecSQs_block_tmp]
+            nvecSQs_final = nvecSQs_final+[nvecSQs_outer_row]
+
+        nvecSQs_final = nvecSQs_final[1:]
+        return nvecSQs_final
+
+    def extract_masses(self):
+        three_compact = self.qcis.fcs.sc_compact[self.qcis.fcs.three_index]
+        masses = three_compact[0][1:4]
+        [m1, m2, m3] = masses
+        return m1, m2, m3
 
 
 class F:
@@ -3477,6 +3764,7 @@ class QC:
         self.qcis = qcis
         self.f = F(qcis=self.qcis, alphaKSS=alphaKSS, C1cut=C1cut)
         self.g = G(qcis=self.qcis)
+        self.fplusg = FplusG(qcis=self.qcis, alphaKSS=alphaKSS, C1cut=C1cut)
         self.k = K(qcis=self.qcis)
 
     def get_value(self, E=None, L=None, k_params=None, project=True,
@@ -3510,6 +3798,13 @@ class QC:
 
         if (len(version) >= 8) and (version[:8] == 'kdf_zero'):
             [pcotdelta_parameter_lists, k3_params] = k_params
+            if version == 'kdf_zero_1+_fgcombo':
+                FplusG = self.fplusg.get_value(E, L, project, irrep)/rescale
+                K = self.k.get_value(E, L, pcotdelta_parameter_lists,
+                                     project, irrep)*rescale
+                ident_tmp = np.identity(len(FplusG))
+                return np.linalg.det(ident_tmp+(FplusG)@K)
+
             F = self.f.get_value(E, L, project, irrep)/rescale
             G = self.g.get_value(E, L, project, irrep)/rescale
             K = self.k.get_value(E, L, pcotdelta_parameter_lists,
@@ -3524,3 +3819,66 @@ class QC:
 
             if version == 'kdf_zero_f+g_inv':
                 return np.linalg.det(np.linalg.inv(F+G)+K)
+
+    def get_qc_curve(self, Emin=None, Emax=None, Estep=None, L=None,
+                     k_params=None, project=True, irrep=None,
+                     version='kdf_zero_1+_fgcombo', rescale=1.0):
+        E_values = np.arange(Emin, Emax, Estep)
+        qc_values = []
+        for E in E_values:
+            qc_value = self.get_value(E=E, L=L, k_params=k_params,
+                                      project=project, irrep=irrep,
+                                      version=version, rescale=1.0)
+            qc_values = qc_values+[qc_value]
+        qc_values = np.array(qc_values)
+        return E_values, qc_values
+
+    def get_root(self, Elower=None, Eupper=None, L=None,
+                 k_params=None, project=True, irrep=None,
+                 version='kdf_zero_1+_fgcombo', rescale=1.0):
+        root = root_scalar(self.get_value,
+                           args=(L, k_params, project, irrep, version,
+                                 rescale),
+                           bracket=[Elower, Eupper]).root
+        return root
+
+    def search_range(self, Emin=None, Emax=None, Estep=None, cutoff=None,
+                     L=None, k_params=None, project=True, irrep=None,
+                     version='kdf_zero_1+_fgcombo', rescale=1.0):
+        E_values = []
+        qc_values = []
+        for E in np.arange(Emin, Emax, Estep):
+            qc = self.get_value(E, L, k_params, project, irrep, version,
+                                rescale)
+            if np.abs(qc) < cutoff:
+                E_values = E_values+[E]
+                qc_values = qc_values+[qc]
+        E_values = np.array(E_values)
+        qc_values = np.array(qc_values)
+        return E_values, qc_values
+
+    def get_energy_curve(self, Lstart=None, Lfinish=None, deltaL=None,
+                         Estart=None, Eshift=None, dE=None,
+                         k_params=None, project=True, irrep=None,
+                         version='kdf_zero_1+_fgcombo', rescale=1.0):
+        L_vals = np.arange(Lstart, Lfinish, deltaL)
+        Estart = Estart+Eshift
+        Evalsfinal = []
+        Lvalsfinal = []
+        for L_val in L_vals:
+            try:
+                rs = root_scalar(self.get_value,
+                                 args=(L_val,
+                                       k_params,
+                                       project,
+                                       irrep,
+                                       version,
+                                       rescale),
+                                 bracket=[Estart-dE, Estart+dE]).root
+                dE = np.abs(rs-Estart)*5
+                Evalsfinal = Evalsfinal+[rs]
+                Lvalsfinal = Lvalsfinal+[L_val]
+                Estart = rs
+            except ValueError:
+                return np.array(Lvalsfinal), np.array(Evalsfinal)
+        return np.array(Lvalsfinal), np.array(Evalsfinal)

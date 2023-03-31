@@ -44,6 +44,8 @@ from .global_constants import EPSPROJ
 from .global_constants import ISO_PROJECTORS
 from .global_constants import CAL_C_ISO
 from .global_constants import PION_ORDERS
+from .global_constants import EPSILON15
+from .global_constants import EPSILON10
 
 
 class Irreps:
@@ -647,19 +649,32 @@ class Groups:
         return induced_rep
 
     def generate_induced_rep_noninttwo(self,
-                                       nonidentical_arr=np.zeros((1, 2, 3)),
-                                       g_elem=np.identity(3)):
+                                       nvecset_batched=np.zeros((1, 2, 3)),
+                                       first_twospin=0, second_twospin=0,
+                                       g_elem=np.identity(3),
+                                       particles_are_identical=False):
         """Generate the non-interacting induced representation matrix."""
         loc_inds = []
         nonidentical_arr_rot = np.moveaxis(
-            g_elem@np.moveaxis(nonidentical_arr, 0, 2), 2, 0)
-        for i in range(len(nonidentical_arr)):
+            g_elem@np.moveaxis(nvecset_batched, 0, 2), 2, 0)
+        for i in range(len(nvecset_batched)):
             nonidentical_arr_rot_entry = nonidentical_arr_rot[i]
             loc_ind = np.where(
-                np.all(nonidentical_arr
+                np.all(nvecset_batched
                        == nonidentical_arr_rot_entry, axis=(1, 2))
                 )[0]
-            assert len(loc_ind) == 1
+            if particles_are_identical:
+                nonidentical_arr_rot_entry_swap = np.array([nonidentical_arr_rot_entry[1],
+                                                            nonidentical_arr_rot_entry[0]])
+                loc_ind = np.append(loc_ind, np.where(
+                    np.all(nvecset_batched
+                        == nonidentical_arr_rot_entry_swap, axis=(1, 2))
+                    )[0])
+            if len(loc_ind) == 2:
+                assert loc_ind[0] == loc_ind[1]
+                loc_ind = [loc_ind[0]]
+            else:
+                assert len(loc_ind) == 1
             loc_inds = loc_inds+[loc_ind[0]]
 
         nonint_rot_matrix = [[]]
@@ -669,14 +684,18 @@ class Groups:
             nonint_rot_matrix = nonint_rot_matrix+[nonint_rot_row]
         nonint_rot_matrix = np.array(nonint_rot_matrix[1:])
 
-        wig_d_ell_set = []
-        ell_set = [1]
-        for ell in ell_set:
-            wig_d_ell_set = wig_d_ell_set\
-                + [self.generate_wigner_d(ell, g_elem,
-                                          real_harmonics=True).T]
-        wig_d_block = block_diag(*wig_d_ell_set)
-        induced_rep = np.kron(nonint_rot_matrix, wig_d_block)
+        first_spin = float(0.5*first_twospin)
+        second_spin = float(0.5*second_twospin)
+        assert np.abs(int(first_spin)-first_spin) < EPSILON15
+        assert np.abs(int(second_spin)-second_spin) < EPSILON15
+        first_spin = int(first_spin)
+        second_spin = int(second_spin)
+        wig_d_first_spin = self.generate_wigner_d(first_spin, g_elem,
+                                        real_harmonics=True).T
+        wig_d_second_spin = self.generate_wigner_d(second_spin, g_elem,
+                                        real_harmonics=True).T
+        induced_rep_tmp = np.kron(nonint_rot_matrix, wig_d_first_spin)
+        induced_rep = np.kron(induced_rep_tmp, wig_d_second_spin)
         return induced_rep
 
     def generate_induced_rep_nonint(self, identical_arr=np.zeros((1, 3, 3)),
@@ -784,7 +803,9 @@ class Groups:
 
     def get_large_proj_nonint_two(self, nP=np.array([0, 0, 0]), irrep='A1PLUS',
                                   irow=0,
-                                  nonidentical_arr=np.zeros((1, 2, 3))):
+                                  nvecset_batched=np.zeros((1, 2, 3)),
+                                  first_twospin=0, second_twospin=0,
+                                  particles_are_identical=False):
         """Get a particular large projector."""
         if (nP == np.array([0, 0, 0])).all():
             group_str = 'OhP'
@@ -800,12 +821,16 @@ class Groups:
             bT = self.chardict[group_str+'_'+irrep][irow]
         else:
             return ValueError("group not yet supported by get_large_proj")
-        dim = len(nonidentical_arr)*3
+        total_spin_dimension = (first_twospin+1)*(second_twospin+1)
+        dim = len(nvecset_batched)*total_spin_dimension
         proj = np.zeros((dim, dim))
         for g_ind in range(len(group)):
             g_elem = group[g_ind]
-            induced_rep = self.generate_induced_rep_noninttwo(nonidentical_arr,
-                                                              g_elem)
+            induced_rep = self.generate_induced_rep_noninttwo(nvecset_batched,
+                                                              first_twospin,
+                                                              second_twospin,
+                                                              g_elem,
+                                                              particles_are_identical)
             proj = proj+induced_rep*bT[g_ind]
         return proj
 
@@ -1011,7 +1036,12 @@ class Groups:
             raise ValueError("qcis cannot be None")
         nP = qcis.nP
         irrep_set = Irreps(nP=nP).set
-        nonidentical_arr = qcis.nvecset_batched[cindex][shell_index]
+        flavors = qcis.fcs.ni_list[cindex].flavors
+        particles_are_identical = (flavors[0] == flavors[1])
+        if particles_are_identical:
+            nvecset_batched = qcis.nvecset_ident_batched[cindex][shell_index]
+        else:
+            nvecset_batched = qcis.nvecset_batched[cindex][shell_index]
 
         if (nP@nP != 0) and (nP@nP != 1) and (nP@nP != 2):
             raise ValueError("momentum = ", nP, " is not yet supported")
@@ -1023,14 +1053,19 @@ class Groups:
         if (nP@nP == 2):
             group_str = 'Dic2'
 
+        first_twospin = qcis.fcs.ni_list[cindex].twospins[0]
+        second_twospin = qcis.fcs.ni_list[cindex].twospins[1]
         for i in range(len(irrep_set)):
             irrep = irrep_set[i]
             for irow in range(len(self.chardict[group_str+'_'+irrep])):
                 proj = self.get_large_proj_nonint_two(nP, irrep, irow,
-                                                      nonidentical_arr)
+                                                      nvecset_batched,
+                                                      first_twospin,
+                                                      second_twospin,
+                                                      particles_are_identical)
                 some_zero_vec = False
-                for nonidentical_entry in nonidentical_arr:
-                    for single_vec in nonidentical_entry:
+                for batch in nvecset_batched:
+                    for single_vec in batch:
                         some_zero_vec = some_zero_vec\
                             or (single_vec@single_vec == 0)
                 proj = np.round(proj, 10)
@@ -1049,7 +1084,7 @@ class Groups:
                     zero_rows = []
                     nonzero_rows = []
                     for i in range(len(projT)):
-                        if np.abs(projT[i]@projT[i]) < 1.0e-10:
+                        if np.abs(projT[i]@projT[i]) < EPSILON10:
                             zero_rows = zero_rows+[i]
                         else:
                             nonzero_rows = nonzero_rows+[i]
@@ -1110,9 +1145,11 @@ class Groups:
                 nstates = len(qcis.nvecset_ident_batched[cindex][shell_index])
             summary_string = summary_string\
                 + f'shell_index = {shell_index} ({nstates} states):\n'
+            rep_mom = str(qcis.nvecset_ident_reps[cindex][shell_index])
+            rep_mom = rep_mom.replace(' [', (' '*30)+'[')
             summary_string = summary_string\
-                + (f'representative momenta '
-                   f'= \n{qcis.nvecset_ident_reps[cindex][shell_index]}\n')
+                + '    representative momenta = '\
+                + rep_mom+'\n'
             if definite_iso:
                 isoset = range(4)
             else:
@@ -1187,14 +1224,30 @@ class Groups:
         row_zero_value = 0
         summary_string = ''
         nshells = len(qcis.nvecset_reps[cindex])
+        first_twospin = qcis.fcs.ni_list[cindex].twospins[0]
+        second_twospin = qcis.fcs.ni_list[cindex].twospins[1]
+        total_spin_dimension = (first_twospin+1)*(second_twospin+1)
+        flavors = qcis.fcs.ni_list[cindex].flavors
+        particles_are_identical = (flavors[0] == flavors[1])
+        if particles_are_identical:
+            nvecset_batched_cindex = qcis.nvecset_ident_batched[cindex]
+        else:
+            nvecset_batched_cindex = qcis.nvecset_batched[cindex]
+        if particles_are_identical:
+            nvecset_reps_cindex = qcis.nvecset_ident_reps[cindex]
+        else:
+            nvecset_reps_cindex = qcis.nvecset_reps[cindex]
         for shell_index in range(nshells):
             shell_total = 0
-            nstates = len(qcis.nvecset_batched[cindex][shell_index])*3
+            nstates = len(nvecset_batched_cindex[shell_index])*total_spin_dimension
             summary_string = summary_string\
                 + f'shell_index = {shell_index} ({nstates} states):\n'
+
+            rep_mom = str(nvecset_reps_cindex[shell_index])
+            rep_mom = rep_mom.replace(' [', (' '*30)+'[')
             summary_string = summary_string\
-                + (f'representative momenta '
-                   f'= \n{qcis.nvecset_reps[cindex][shell_index]}\n')
+                + '    representative momenta = '\
+                + rep_mom+'\n'
             if definite_iso:
                 isoset = [2]
             else:
@@ -1208,11 +1261,19 @@ class Groups:
                 master_dict[(shell_index, isovalue)] = non_proj_dict
                 iso_shell_total = 0
                 if len(non_proj_dict) == 0:
-                    summary_string = summary_string\
-                        + f'    I2 = {isovalue} does not contain this shell\n'
+                    if definite_iso:
+                        summary_string = summary_string\
+                            + f'    I2 = {isovalue} does not contain this shell\n'
+                    else:
+                        summary_string = summary_string\
+                            + f'    channel does not contain this shell\n'
                 else:
-                    summary_string = summary_string\
-                        + f'    I2 = {isovalue} contains...\n'
+                    if definite_iso:
+                        summary_string = summary_string\
+                            + f'    I2 = {isovalue} contains...\n'
+                    else:
+                        summary_string = summary_string\
+                            + f'    channel contains...\n'
                 for dict_ent in non_proj_dict:
                     irrep, row = dict_ent
                     dim = 1

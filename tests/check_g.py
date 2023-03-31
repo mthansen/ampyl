@@ -54,7 +54,7 @@ class TestG(unittest.TestCase):
                                                 False,
                                                 'relativistic pole',
                                                 {'hermitian': True,
-                                                 'real harmonics': True})
+                                                 'real_harmonics': True})
         return G
 
     def get_value_direct(self, E, nP, L, kellm_space_row, kellm_space_col,
@@ -135,10 +135,10 @@ class TestG(unittest.TestCase):
                                                 False,
                                                 'relativistic pole',
                                                 {'hermitian': True,
-                                                 'real harmonics': True})
+                                                 'real_harmonics': True})
         smpl = 1./(2.*m*L**3)
         covpole = 1./((E-2.*m)**2-m**2)
-        G_direct = smpl**2*covpole
+        G_direct = smpl**2*covpole*L**3
         self.assertTrue(np.abs(G-G_direct) < self.epsilon)
 
         G = ampyl.QCFunctions.getG_single_entry(E, nP, L,
@@ -149,10 +149,10 @@ class TestG(unittest.TestCase):
                                                 False,
                                                 'original pole',
                                                 {'hermitian': True,
-                                                 'real harmonics': True})
+                                                 'real_harmonics': True})
         smpl_nv = 1./(2.*m)
         pole = 1./(E-3.*m)
-        G_direct = smpl**2*pole*smpl_nv
+        G_direct = smpl*pole*smpl_nv**2
         self.assertTrue(np.abs(G-G_direct) < self.epsilon)
 
         E = 6.
@@ -171,7 +171,7 @@ class TestG(unittest.TestCase):
                                                 False,
                                                 'relativistic pole',
                                                 {'hermitian': True,
-                                                 'real harmonics': True})
+                                                 'real_harmonics': True})
         om_1 = np.sqrt(m**2+(2.*np.pi/L)**2*(kentry_row@kentry_row))
         om_2 = np.sqrt(m**2+(2.*np.pi/L)**2*(kentry_col@kentry_col))
         om_3 = np.sqrt(m**2+(2.*np.pi/L)**2*((nP-kentry_row-kentry_col)
@@ -179,7 +179,7 @@ class TestG(unittest.TestCase):
         smpl_a = 1./(2.*om_1*L**3)
         smpl_b = 1./(2.*om_2*L**3)
         covpole = 1./((E-om_1-om_2)**2-om_3**2)
-        G_direct = smpl_a*smpl_b*covpole
+        G_direct = smpl_a*smpl_b*covpole*L**3
         self.assertTrue(np.abs(G-G_direct) < self.epsilon)
 
         E = 3.
@@ -194,7 +194,7 @@ class TestG(unittest.TestCase):
                                                 False,
                                                 'relativistic pole',
                                                 {'hermitian': True,
-                                                 'real harmonics': True})
+                                                 'real_harmonics': True})
         om_1 = np.sqrt(m**2+(2.*np.pi/L)**2*(kentry_row@kentry_row))
         om_2 = np.sqrt(m**2+(2.*np.pi/L)**2*(kentry_col@kentry_col))
         om_3 = np.sqrt(m**2+(2.*np.pi/L)**2*((nP-kentry_row-kentry_col)
@@ -206,7 +206,7 @@ class TestG(unittest.TestCase):
         E2colSQ = (E-om_2)**2-(2.*np.pi/L)**2*(nP-kentry_col)@(nP-kentry_col)
         HH = ampyl.BKFunctions.J_slow(E2rowSQ/(2.*m)**2)\
             * ampyl.BKFunctions.J_slow(E2colSQ/(2.*m)**2)
-        G_direct = smpl_a*smpl_b*covpole*HH
+        G_direct = smpl_a*smpl_b*covpole*HH*L**3
         self.assertTrue(np.abs(G-G_direct) < self.epsilon)
 
     def test_g_one(self):

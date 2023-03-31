@@ -459,8 +459,10 @@ class BKFunctions:
         -------
         (np.ndarray)
         """
-        if (('real harmonics' not in qc_impl.keys())
-           or (qc_impl['real harmonics'])):
+        real_harmonics = QC_IMPL_DEFAULTS['real_harmonics']
+        if 'real_harmonics' in qc_impl:
+            real_harmonics = qc_impl['real_harmonics']
+        if real_harmonics:
             if ell == 0:
                 Y = np.ones(len(nvec_arr))
             elif ell == 1 and mazi == 0:
@@ -473,7 +475,13 @@ class BKFunctions:
                 Y = BKFunctions.cart_sph_harm_real(ell, mazi, nvec_arr)
         else:
             Y = BKFunctions.cart_sph_harm(ell, mazi, nvec_arr)
-        calY = Y/np.abs(q**ell)
+        smarter_q_rescale = QC_IMPL_DEFAULTS['smarter_q_rescale']
+        if 'smarter_q_rescale' in qc_impl:
+            smarter_q_rescale = qc_impl['smarter_q_rescale']
+        if smarter_q_rescale:
+            calY = Y
+        else:
+            calY = Y/np.abs(q**ell)
         return calY
 
     @staticmethod
@@ -710,10 +718,11 @@ class QCFunctions:
             simple_factor = 1.0/(2.0*omega1*L**3*(E-omega1-omega3+omega2))
         else:
             raise ValueError("three_scheme not recognized")
-
-        if (('hermitian' not in qc_impl.keys())
-           or (qc_impl['hermitian'])):
-            simple_factor = simple_factor/(2.0*omega3*L**3)
+        hermitian = QC_IMPL_DEFAULTS['hermitian']
+        if 'hermitian' in qc_impl:
+            hermitian = qc_impl['hermitian']
+        if hermitian:
+            simple_factor = simple_factor/(2.0*omega3)
 
         pole_factor = 1.0/(E-omega1-omega2-omega3)
         return calY1*calY2conj*HH*simple_factor*pole_factor*g_rescale
@@ -882,20 +891,48 @@ class QCFunctions:
                 n3vecSQ_mat_shell]
 
     @staticmethod
+    def get_nvecSQ_mat_shells(tbks_entry,
+                              row_shell,
+                              col_shell):
+        """Get n1vecSQ_mat_shell, n2vecSQ_mat_shell, n3vecSQ_mat_shell."""
+        return QCFunctions.get_nvec_data(tbks_entry,
+                                         row_shell, col_shell)[-3:]
+
+    @staticmethod
     def __helperG_array_prep_mat(E, nP, L, m1, m2, m3,
-                            tbks_entry,
-                            row_shell_index,
-                            col_shell_index):
-        n1vec_arr_shell = tbks_entry.n1vec_arr_all_shells[row_shell_index][col_shell_index]
-        n1vecSQ_arr_shell = tbks_entry.n1vecSQ_arr_all_shells[row_shell_index][col_shell_index]
-        n2vec_arr_shell = tbks_entry.n2vec_arr_all_shells[row_shell_index][col_shell_index]
-        n2vecSQ_arr_shell = tbks_entry.n2vecSQ_arr_all_shells[row_shell_index][col_shell_index]
-        n1vec_mat_shell = tbks_entry.n1vec_mat_all_shells[row_shell_index][col_shell_index]
-        n2vec_mat_shell = tbks_entry.n2vec_mat_all_shells[row_shell_index][col_shell_index]
-        n3vec_mat_shell = tbks_entry.n3vec_mat_all_shells[row_shell_index][col_shell_index]
-        n1vecSQ_mat_shell = tbks_entry.n1vecSQ_mat_all_shells[row_shell_index][col_shell_index]
-        n2vecSQ_mat_shell = tbks_entry.n2vecSQ_mat_all_shells[row_shell_index][col_shell_index]
-        n3vecSQ_mat_shell = tbks_entry.n3vecSQ_mat_all_shells[row_shell_index][col_shell_index]
+                                 tbks_entry,
+                                 row_shell_index,
+                                 col_shell_index):
+        n1vec_arr_shell\
+            = tbks_entry.n1vec_arr_all_shells[row_shell_index][
+                col_shell_index]
+        n1vecSQ_arr_shell\
+            = tbks_entry.n1vecSQ_arr_all_shells[row_shell_index][
+                col_shell_index]
+        n2vec_arr_shell\
+            = tbks_entry.n2vec_arr_all_shells[row_shell_index][
+                col_shell_index]
+        n2vecSQ_arr_shell\
+            = tbks_entry.n2vecSQ_arr_all_shells[row_shell_index][
+                col_shell_index]
+        n1vec_mat_shell\
+            = tbks_entry.n1vec_mat_all_shells[row_shell_index][
+                col_shell_index]
+        n2vec_mat_shell\
+            = tbks_entry.n2vec_mat_all_shells[row_shell_index][
+                col_shell_index]
+        n3vec_mat_shell\
+            = tbks_entry.n3vec_mat_all_shells[row_shell_index][
+                col_shell_index]
+        n1vecSQ_mat_shell\
+            = tbks_entry.n1vecSQ_mat_all_shells[row_shell_index][
+                col_shell_index]
+        n2vecSQ_mat_shell\
+            = tbks_entry.n2vecSQ_mat_all_shells[row_shell_index][
+                col_shell_index]
+        n3vecSQ_mat_shell\
+            = tbks_entry.n3vecSQ_mat_all_shells[row_shell_index][
+                col_shell_index]
 
         Pvec = TWOPI*nP/L
         p1specvec_arr_slice\
@@ -1077,9 +1114,11 @@ class QCFunctions:
         else:
             raise ValueError("three_scheme not recognized")
 
-        if (('hermitian' not in qc_impl.keys())
-           or (qc_impl['hermitian'])):
-            simple_factor_mat = simple_factor_mat/(2.0*omega3_mat*L**3)
+        hermitian = QC_IMPL_DEFAULTS['hermitian']
+        if 'hermitian' in qc_impl:
+            hermitian = qc_impl['hermitian']
+        if hermitian:
+            simple_factor_mat = simple_factor_mat/(2.0*omega3_mat)
 
         pole_factor = 1.0/(E-omega1_mat-omega2_mat-omega3_mat)
         full_mat = simple_factor_mat*pole_factor
@@ -1096,12 +1135,12 @@ class QCFunctions:
 
     @staticmethod
     def getG_array_prep_mat(E, nP, L, m1, m2, m3,
-                   tbks_entry,
-                   row_shell_index, col_shell_index,
-                   ell1, ell2,
-                   alpha, beta,
-                   qc_impl, three_scheme,
-                   g_rescale):
+                            tbks_entry,
+                            row_shell_index, col_shell_index,
+                            ell1, ell2,
+                            alpha, beta,
+                            qc_impl, three_scheme,
+                            g_rescale):
         """
         Get G, numpy accelerated.
 
@@ -1119,9 +1158,9 @@ class QCFunctions:
          omegap1spec_arr_slice, omegap2spec_arr_slice,
          n3vecSQ_mat_shell]\
             = QCFunctions.__helperG_array_prep_mat(E, nP, L, m1, m2, m3,
-                                              tbks_entry,
-                                              row_shell_index,
-                                              col_shell_index)
+                                                   tbks_entry,
+                                                   row_shell_index,
+                                                   col_shell_index)
 
         shape1_tmp = vecstar_for1.shape
         r2_shape = shape1_tmp[:-1]
@@ -1193,9 +1232,11 @@ class QCFunctions:
         else:
             raise ValueError("three_scheme not recognized")
 
-        if (('hermitian' not in qc_impl.keys())
-           or (qc_impl['hermitian'])):
-            simple_factor_mat = simple_factor_mat/(2.0*omega3_mat*L**3)
+        hermitian = QC_IMPL_DEFAULTS['hermitian']
+        if 'hermitian' in qc_impl:
+            hermitian = qc_impl['hermitian']
+        if hermitian:
+            simple_factor_mat = simple_factor_mat/(2.0*omega3_mat)
 
         pole_factor = 1.0/(E-omega1_mat-omega2_mat-omega3_mat)
         full_mat = simple_factor_mat*pole_factor
@@ -1239,8 +1280,17 @@ class QCFunctions:
                 sph_harm_value = sph_harm_value*calY2conj
 
             if ((ell1 == ell2) and (mazi1 == mazi2)):
-                sph_harm_value = sph_harm_value\
-                    - (rSQ_arr**ell1/q**(2*ell1)-1.0)
+                smarter_q_rescale = QC_IMPL_DEFAULTS['smarter_q_rescale']
+                if 'smarter_q_rescale' in qc_impl:
+                    smarter_q_rescale = qc_impl['smarter_q_rescale']
+
+                if smarter_q_rescale:
+                    sph_harm_value = sph_harm_value\
+                    - (rSQ_arr**ell1-q**(2*ell1))
+                else:
+                    sph_harm_value = sph_harm_value\
+                        - (rSQ_arr**ell1/q**(2*ell1)-1.0)
+
 
         else:
             if (ell1 == 0 and ell2 == 0):
@@ -1273,8 +1323,16 @@ class QCFunctions:
                     calY2conj = np.conjugate(calY2)
                     sph_harm_value = sph_harm_value*calY2conj
                 if ((ell1 == ell2) and (mazi1 == mazi2)):
-                    sph_harm_value = sph_harm_value\
-                        - (rSQ_arr**ell1/q**(2*ell1)-1.0)
+                    smarter_q_rescale = QC_IMPL_DEFAULTS['smarter_q_rescale']
+                    if 'smarter_q_rescale' in qc_impl:
+                        smarter_q_rescale = qc_impl['smarter_q_rescale']
+
+                    if smarter_q_rescale:
+                        sph_harm_value = sph_harm_value\
+                        - (rSQ_arr**ell1-q**(2*ell1))
+                    else:
+                        sph_harm_value = sph_harm_value\
+                            - (rSQ_arr**ell1/q**(2*ell1)-1.0)
         Ds = rSQ_arr-qSQ
         return sph_harm_value*np.exp(-alphaKSS*Ds)/Ds
 
@@ -1292,7 +1350,7 @@ class QCFunctions:
 
     @staticmethod
     def __T2(qSQ=1.5, gamSQ=1.0, alphaKSS=1.0,
-             ell1=0, mazi1=0, ell2=0, mazi2=0):
+             ell1=0, mazi1=0, ell2=0, mazi2=0, qc_impl={}):
         if ((ell1 == ell2) and (mazi1 == mazi2)):
             gamma = np.sqrt(gamSQ)
             if qSQ >= 0:
@@ -1305,6 +1363,11 @@ class QCFunctions:
                       * erf(np.sqrt(-alphaKSS*qSQ))\
                       - 2.0*np.exp(alphaKSS*qSQ)\
                       * np.sqrt(np.pi**3)/np.sqrt(alphaKSS)
+            smarter_q_rescale = QC_IMPL_DEFAULTS['smarter_q_rescale']
+            if 'smarter_q_rescale' in qc_impl:
+                smarter_q_rescale = qc_impl['smarter_q_rescale']
+            if smarter_q_rescale:
+                ttmp = ttmp*np.abs((qSQ)**ell1)
             return gamma*ttmp/np.sqrt(2.0*TWOPI)
         else:
             return 0.0
@@ -1317,7 +1380,7 @@ class QCFunctions:
         r"""Evaluate a single entry of \\(Z\\)."""
         return QCFunctions.__T1(nP2, qSQ, gamSQ, alpha_mass, C1cut, alphaKSS,
                                 ell1, mazi1, ell2, mazi2, qc_impl)\
-            + QCFunctions.__T2(qSQ, gamSQ, alphaKSS, ell1, mazi1, ell2, mazi2)
+            + QCFunctions.__T2(qSQ, gamSQ, alphaKSS, ell1, mazi1, ell2, mazi2, qc_impl)
 
     @staticmethod
     def getFtwo_single_entry(E2=3.0, nP2=np.array([0, 0, 0]), L=5.0,
@@ -1388,8 +1451,16 @@ class QCFunctions:
         alpha_mass = 0.5*(1.+(m1**2-m2**2)/E2CMSQ)
         Htmp = BKFunctions.H(E2CMSQ, m1+m2, alpha, beta)
         pre = -Htmp*2.0/(L*np.sqrt(PI)*16.0*PI*E2CM*gamma)
-        if ('hermitian' not in qc_impl.keys()) or (qc_impl['hermitian']):
-            pre = pre/(2.0*omspec*L**3)
+        hermitian = QC_IMPL_DEFAULTS['hermitian']
+        if 'hermitian' in qc_impl:
+            hermitian = qc_impl['hermitian']
+        if hermitian:
+            pre = pre/(2.0*omspec)
+        smarter_q_rescale = QC_IMPL_DEFAULTS['smarter_q_rescale']
+        if 'smarter_q_rescale' in qc_impl:
+            smarter_q_rescale = qc_impl['smarter_q_rescale']
+        if smarter_q_rescale:
+            pre = pre*(FOURPI2/L**2)**ell1
         return pre*(QCFunctions.getZ_single_entry(nP2, qSQ_dimless, gamSQ,
                                                   alpha_mass, C1cut, alphaKSS,
                                                   ell1, mazi1,
@@ -1515,10 +1586,22 @@ class QCFunctions:
                                                       alpha=alpha,
                                                       beta=beta)
         pre = 1.0
-        if ('hermitian' not in qc_impl.keys()) or (qc_impl['hermitian']):
-            pre = pre*(2.0*omspec*L**3)
-        pcotdelta = pcotdelta/np.abs(pSQ**(ell))
-        return pre*16.0*PI*ECM/(pcotdelta+q_one_minus_H_tmp)
+        hermitian = QC_IMPL_DEFAULTS['hermitian']
+        if 'hermitian' in qc_impl:
+            hermitian = qc_impl['hermitian']
+        if hermitian:
+            pre = pre*(2.0*omspec)
+
+        smarter_q_rescale = QC_IMPL_DEFAULTS['smarter_q_rescale']
+        if 'smarter_q_rescale' in qc_impl:
+            smarter_q_rescale = qc_impl['smarter_q_rescale']
+
+        if smarter_q_rescale:
+            pcotdelta = pcotdelta/np.abs(pSQ**(ell))
+            return pre*16.0*PI*ECM/(pcotdelta+q_one_minus_H_tmp)/np.abs(pSQ**(ell))
+        else:
+            pcotdelta = pcotdelta/np.abs(pSQ**(ell))
+            return pre*16.0*PI*ECM/(pcotdelta+q_one_minus_H_tmp)
 
     def getK_array(E, nP, L, m1, m2, m3,
                    tbks_entry,
