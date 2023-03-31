@@ -3584,7 +3584,7 @@ class FplusG:
     Class for the sum.
     """
 
-    def __init__(self, qcis=QCIndexSpace()):
+    def __init__(self, qcis=QCIndexSpace(), alphaKSS=1.0, C1cut=3):
         self.qcis = qcis
 
 
