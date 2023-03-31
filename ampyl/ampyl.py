@@ -3579,6 +3579,15 @@ class F:
         return block_diag(*f_final_list)
 
 
+class FplusG:
+    r"""
+    Class for the sum.
+    """
+
+    def __init__(self, qcis=QCIndexSpace()):
+        self.qcis = qcis
+
+
 class K:
     """
     Class for the two-to-two k matrix.
