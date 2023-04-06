@@ -38,6 +38,7 @@ import numpy as np
 from scipy.linalg import block_diag
 from scipy.optimize import root_scalar
 import warnings
+warnings.simplefilter("once")
 import functools
 from copy import deepcopy
 from .group_theory import Groups
@@ -63,7 +64,6 @@ from .global_constants import ISO_PROJECTORS
 from .global_constants import CAL_C_ISO
 from .global_constants import SPARSE_CUT
 from .global_constants import POLE_CUT
-warnings.simplefilter('always')
 
 PRINT_THRESHOLD_DEFAULT = np.get_printoptions()['threshold']
 
@@ -2889,13 +2889,13 @@ class G:
             try:
                 if nP@nP != 0:
                     proj_tmp_right, proj_tmp_left = self.\
-                        _nPzero_projectors(E, L, sc_index_row, sc_index_col,
+                        _nP_nonzero_projectors(E, L, sc_index_row, sc_index_col,
                                            row_shell_index, col_shell_index,
                                            irrep,
                                            mask_row_shells, mask_col_shells)
                 else:
                     proj_tmp_right, proj_tmp_left = self.\
-                        _nPnonzero_projectors(sc_index_row, sc_index_col,
+                        _nPzero_projectors(sc_index_row, sc_index_col,
                                               row_shell_index, col_shell_index,
                                               irrep)
             except KeyError:
@@ -2909,7 +2909,7 @@ class G:
             g_uses_prep_mat = QC_IMPL_DEFAULTS['g_uses_prep_mat']
             if 'g_uses_prep_mat' in self.qcis.fvs.qc_impl:
                 g_uses_prep_mat = self.qcis.fvs.qc_impl['g_uses_prep_mat']
-            elif g_uses_prep_mat and (nP@nP == 0):
+            if g_uses_prep_mat and (nP@nP == 0):
                 Gshell = QCFunctions.getG_array_prep_mat(E, nP, L, m1, m2, m3,
                                                          tbks_entry,
                                                          row_shell_index,
@@ -2989,7 +2989,7 @@ class G:
 
         return proj_support_right, proj_support_left, sparse
 
-    def _nPnonzero_projectors(self, sc_index_row, sc_index_col,
+    def _nPzero_projectors(self, sc_index_row, sc_index_col,
                               row_shell_index, col_shell_index, irrep):
         proj_tmp_right = self.qcis.sc_proj_dicts_by_shell[
                         sc_index_col][0][col_shell_index][irrep]
@@ -2999,7 +2999,7 @@ class G:
                         ).T)
         return proj_tmp_right, proj_tmp_left
 
-    def _nPzero_projectors(self, E, L, sc_index_row, sc_index_col,
+    def _nP_nonzero_projectors(self, E, L, sc_index_row, sc_index_col,
                            row_shell_index, col_shell_index, irrep,
                            mask_row_shells, mask_col_shells):
         ibest = self.qcis._get_ibest(E, L)
@@ -3073,7 +3073,7 @@ class G:
             g_uses_prep_mat = QC_IMPL_DEFAULTS['g_uses_prep_mat']
             if 'g_uses_prep_mat' in self.qcis.fvs.qc_impl:
                 g_uses_prep_mat = self.qcis.fvs.qc_impl['g_uses_prep_mat']
-            elif g_uses_prep_mat and (nP@nP == 0):
+            if g_uses_prep_mat and (nP@nP == 0):
                 nvecSQ_mat_shells = QCFunctions\
                     .getG_array_prep_mat(E, nP, L, m1, m2, m3, tbks_entry,
                                          row_shell_index, col_shell_index,
@@ -3382,11 +3382,437 @@ class G:
         nvecSQs_final = nvecSQs_final[1:]
         return nvecSQs_final
 
+    def build_interpolator(self, Emin, Emax, Estep,
+                           Lmin, Lmax, Lstep, project, irrep):
+        """Build interpolator."""
+        assert project
+        # Generate grides and matrix structures
+        L_grid, E_grid, interp_mat_dim, interpolator_matrix = self\
+            .grids_and_matrix(Emin, Emax, Estep, Lmin, Lmax, Lstep,
+                              project, irrep)
+
+        # Determine basis where entries are smooth
+        dim_with_shell_index_all = self.get_dim_with_shell_index_all(irrep)
+        final_set_for_change_of_basis = self\
+            .get_final_set_for_change_of_basis(dim_with_shell_index_all)
+        cob_matrices = self.get_cob_matrices(final_set_for_change_of_basis)
+
+        # Populate interpolation data
+        energy_vol_dat_index = 0
+        interp_data_index = 1
+        for L in L_grid:
+            for E in E_grid:
+                g_tmp = self.get_value(E=E, L=L,
+                                       project=project, irrep=irrep)
+                for cob_matrix in cob_matrices:
+                    try:
+                        g_tmp = (cob_matrix.T)@g_tmp@cob_matrix
+                    except ValueError:
+                        pass
+                for i in range(len(g_tmp)):
+                    for j in range(len(g_tmp)):
+                        g_val = g_tmp[i][j]
+                        if not np.isnan(g_val) and (g_val != 0.):
+                            interpolator_matrix[i][j][interp_data_index]\
+                                = interpolator_matrix[i][j][interp_data_index]\
+                                + [[E, L, g_val]]
+        for i in range(interp_mat_dim):
+            for j in range(interp_mat_dim):
+                interpolator_matrix[i][j][interp_data_index] =\
+                    interpolator_matrix[i][j][interp_data_index][1:]
+                if len(interpolator_matrix[i][j][interp_data_index]) == 0:
+                    interpolator_matrix[i][j][energy_vol_dat_index] = []
+                else:
+                    for interpolator_entry in\
+                       interpolator_matrix[i][j][interp_data_index]:
+                        [E, L, g_val] = interpolator_entry
+                        # [Lmin, Lmax, Emin, Emax]
+                        if L < interpolator_matrix[i][j][
+                                energy_vol_dat_index][0]:
+                            interpolator_matrix[i][j][
+                                energy_vol_dat_index][0] = L
+                        if L > interpolator_matrix[i][j][
+                                energy_vol_dat_index][1]:
+                            interpolator_matrix[i][j][
+                                energy_vol_dat_index][1] = L
+                        if E < interpolator_matrix[i][j][
+                                energy_vol_dat_index][2]:
+                            interpolator_matrix[i][j][
+                                energy_vol_dat_index][2] = E
+                        if E > interpolator_matrix[i][j][
+                                energy_vol_dat_index][3]:
+                            interpolator_matrix[i][j][
+                                energy_vol_dat_index][3] = E
+                    interpolator_matrix[i][j][energy_vol_dat_index][0]\
+                        = interpolator_matrix[i][j][energy_vol_dat_index][0]\
+                        - Lstep
+                    interpolator_matrix[i][j][energy_vol_dat_index][2]\
+                        = interpolator_matrix[i][j][energy_vol_dat_index][2]\
+                        - Estep
+
+        # Identify all poles in projected entries
+        nvecSQs_by_shell = self.get_all_nvecSQs_by_shell(E=Emax, L=Lmax,
+                                                         project=project,
+                                                         irrep=irrep)
+        all_nvecSQs = self.get_all_nvecSQs(nvecSQs_by_shell)
+        m1, m2, m3 = self.extract_masses()
+        all_relevant_nvecSQs = self\
+            .get_all_relevant_nvecSQs(Emax, project, irrep, interp_mat_dim,
+                                      interpolator_matrix, cob_matrices,
+                                      all_nvecSQs, m1, m2, m3)
+
+        # Remove poles
+        pole_free_interpolator_matrix = self\
+            .get_pole_free_interpolator_matrix(interp_mat_dim,
+                                               interpolator_matrix,
+                                               interp_data_index, m1, m2, m3,
+                                               all_relevant_nvecSQs)
+
+        for i in range(interp_mat_dim):
+            for j in range(interp_mat_dim):
+                interpolator_matrix_complete = [[]]
+                pole_free_interpolator_matrix_complete = [[]]
+                if len(interpolator_matrix[i][j][energy_vol_dat_index]) == 4:
+                    [Lmin_entry, Lmax_entry, Emin_entry, Emax_entry]\
+                        = interpolator_matrix[i][j][energy_vol_dat_index]
+                    Lgrid_entry = np.arange(Lmin_entry, Lmax_entry+EPSILON4,
+                                            Lstep)
+                    Egrid_entry = np.arange(Emin_entry, Emax_entry+EPSILON4,
+                                            Estep)
+                    for Ltmp in Lgrid_entry:
+                        for Etmp in Egrid_entry:
+                            not_found = True
+                            for interpolator_entry_index in\
+                                range(len(interpolator_matrix[i][j][
+                                    interp_data_index])):
+                                interpolator_entry = interpolator_matrix[i][j][
+                                    interp_data_index][
+                                        interpolator_entry_index]
+                                if ((np.abs(interpolator_entry[0]-Etmp)
+                                    < EPSILON10)
+                                    and (np.abs(interpolator_entry[1]-Ltmp)
+                                         < EPSILON10)):
+                                    not_found = False
+                                    interpolator_matrix_complete\
+                                        = interpolator_matrix_complete\
+                                        + [interpolator_entry]
+                                    pole_free_interpolator_entry\
+                                        = pole_free_interpolator_matrix[i][j][
+                                            interp_data_index][
+                                                interpolator_entry_index]
+                                    pole_free_interpolator_matrix_complete =\
+                                        pole_free_interpolator_matrix_complete\
+                                        + [pole_free_interpolator_entry]
+                            if not_found:
+                                interpolator_matrix_complete\
+                                    = interpolator_matrix_complete\
+                                    + [[Etmp, Ltmp, 0.]]
+                                pole_free_interpolator_matrix_complete =\
+                                    pole_free_interpolator_matrix_complete\
+                                    + [[Etmp, Ltmp, 0.]]
+                    interpolator_matrix[i][j][interp_data_index]\
+                        = interpolator_matrix_complete[1:]
+                    pole_free_interpolator_matrix[i][j][interp_data_index]\
+                        = pole_free_interpolator_matrix_complete[1:]
+        warnings.simplefilter('default')
+
+        # Build interpolator functions
+        function_set = [[]]
+        for i in range(interp_mat_dim):
+            function_set_row = []
+            for j in range(interp_mat_dim):
+                if len(interpolator_matrix[i][j][energy_vol_dat_index]) == 4:
+                    [Lmin_entry, Lmax_entry, Emin_entry, Emax_entry]\
+                        = pole_free_interpolator_matrix[i][j][
+                            energy_vol_dat_index]
+                    L_grid_tmp\
+                        = np.arange(Lmin_entry, Lmax_entry+EPSILON4, Lstep)
+                    E_grid_tmp\
+                        = np.arange(Emin_entry, Emax_entry+EPSILON4, Estep)
+                    E_mesh_grid, L_mesh_grid\
+                        = np.meshgrid(E_grid_tmp, L_grid_tmp)
+                    g_pole_free_mesh_grid\
+                        = (np.array(pole_free_interpolator_matrix[i][j][
+                            interp_data_index]).T)[2].\
+                        reshape(L_mesh_grid.shape).T
+                    try:
+                        interp = RegularGridInterpolator((E_grid_tmp, L_grid_tmp), g_pole_free_mesh_grid, method='cubic')
+                    except ValueError:
+                        interp = RegularGridInterpolator((E_grid_tmp, L_grid_tmp), g_pole_free_mesh_grid, method='linear')
+                    function_set_row = function_set_row+[interp]
+                        # + [interp2d(E_mesh_grid, L_mesh_grid,
+                        #             g_pole_free_mesh_grid)]
+                else:
+                    function_set_row = function_set_row+[None]
+            function_set = function_set+[function_set_row]
+        function_set = np.array(function_set[1:])
+        warnings.simplefilter('always')
+
+        all_dimensions = []
+        for cob_matrix in cob_matrices:
+            all_dimensions = all_dimensions+[len(cob_matrix)]
+
+        # Add relevant data to self
+        self.all_relevant_nvecSQs[irrep] = all_relevant_nvecSQs
+        self.pole_free_interpolator_matrix[irrep]\
+            = pole_free_interpolator_matrix
+        self.interpolator_matrix[irrep] = interpolator_matrix
+        self.cob_matrices[irrep] = cob_matrices
+        self.total_cobs[irrep] = len(cob_matrices)
+        self.function_set[irrep] = function_set
+        self.all_dimensions[irrep] = all_dimensions
+
     def extract_masses(self):
         three_compact = self.qcis.fcs.sc_compact[self.qcis.fcs.three_index]
         masses = three_compact[0][1:4]
         [m1, m2, m3] = masses
         return m1, m2, m3
+
+    def get_pole_free_interpolator_matrix(self, interp_mat_dim,
+                                          interpolator_matrix,
+                                          interp_data_index, m1, m2, m3,
+                                          all_relevant_nvecSQs):
+        pole_free_interpolator_matrix = [[]]
+        for i in range(interp_mat_dim):
+            rowtmp = [[]]
+            for j in range(interp_mat_dim):
+                matrix_entry_interp_data = interpolator_matrix[i][j][
+                    interp_data_index]
+                relevant_poles = [[]]
+                for relevant_candidate in all_relevant_nvecSQs:
+                    if ((relevant_candidate[0] == i)
+                       and (relevant_candidate[1] == j)):
+                        relevant_poles = relevant_poles+[relevant_candidate]
+                relevant_poles = relevant_poles[1:]
+                for entry_index in range(len(matrix_entry_interp_data)):
+                    dim_with_shell_index = matrix_entry_interp_data[
+                        entry_index]
+                    [E, L, g_val] = dim_with_shell_index
+                    for nvecSQs_set in relevant_poles:
+                        nvecSQ = nvecSQs_set[2]
+                        n1vecSQ = nvecSQ[0]
+                        n2vecSQ = nvecSQ[1]
+                        n3vecSQ = nvecSQ[2]
+                        three_omega = self\
+                            .get_pole_candidate(L, n1vecSQ, n2vecSQ, n3vecSQ,
+                                                m1, m2, m3)
+                        pole_removal_factor = E-three_omega
+                        g_val = pole_removal_factor*g_val
+                    matrix_entry_interp_data[entry_index] = [E, L, g_val]
+                final_entry = [interpolator_matrix[i][j][0],
+                               matrix_entry_interp_data,
+                               relevant_poles]
+                rowtmp = rowtmp+[final_entry]
+            pole_free_interpolator_matrix = pole_free_interpolator_matrix\
+                + [rowtmp[1:]]
+        pole_free_interpolator_matrix = pole_free_interpolator_matrix[1:]
+        return pole_free_interpolator_matrix
+
+    def get_all_relevant_nvecSQs(self, Emax, project, irrep, interp_mat_dim,
+                                 interpolator_matrix, cob_matrices,
+                                 all_nvecSQs, m1, m2, m3):
+        interp_data_index = 1
+        all_relevant_nvecSQs = [[]]
+        for i in range(interp_mat_dim):
+            for j in range(interp_mat_dim):
+                matrix_entry_interp_data = interpolator_matrix[i][j][
+                    interp_data_index][1:]
+                if len(matrix_entry_interp_data) != 0:
+                    Lmin_tmp = BAD_MIN_GUESS
+                    Lmax_tmp = BAD_MAX_GUESS
+                    Emin_tmp = BAD_MIN_GUESS
+                    Emax_tmp = BAD_MAX_GUESS
+                    for single_interp_entry in matrix_entry_interp_data:
+                        energy_volume_set = single_interp_entry[:-1]
+                        [E_candidate, L_candidate] = energy_volume_set
+                        if E_candidate < Emin_tmp:
+                            Emin_tmp = E_candidate
+                        if E_candidate > Emax_tmp:
+                            Emax_tmp = E_candidate
+                        if L_candidate < Lmin_tmp:
+                            Lmin_tmp = L_candidate
+                        if L_candidate > Lmax_tmp:
+                            Lmax_tmp = L_candidate
+                    nvecSQs_all_keeps = [[]]
+                    for nvecSQ_entry in all_nvecSQs:
+                        n1vecSQ = nvecSQ_entry[0]
+                        n2vecSQ = nvecSQ_entry[1]
+                        n3vecSQ = nvecSQ_entry[2]
+                        removal_at_Lmin = self\
+                            .get_pole_candidate(Lmin_tmp,
+                                                n1vecSQ, n2vecSQ, n3vecSQ,
+                                                m1, m2, m3)
+                        removal_at_Lmax = self\
+                            .get_pole_candidate(Lmax_tmp,
+                                                n1vecSQ, n2vecSQ, n3vecSQ,
+                                                m1, m2, m3)
+                        if ((Emin_tmp < removal_at_Lmin < Emax_tmp)
+                           or (Emin_tmp < removal_at_Lmax < Emax_tmp)):
+                            nvecSQs_all_keeps = nvecSQs_all_keeps\
+                                + [[n1vecSQ, n2vecSQ, n3vecSQ]]
+                    nvecSQs_all_keeps = nvecSQs_all_keeps[1:]
+                    for nvecSQs_keep in nvecSQs_all_keeps:
+                        [n1vecSQ, n2vecSQ, n3vecSQ] = nvecSQs_keep
+                        Lvals_tmp = [Lmin_tmp+EPSILON4, Lmax_tmp-EPSILON4]
+                        for Ltmp in Lvals_tmp:
+                            Etmp = self\
+                                .get_pole_candidate_eps(Ltmp, n1vecSQ, n2vecSQ,
+                                                        n3vecSQ, m1, m2, m3)
+                            if Etmp < Emax:
+                                try:
+                                    g_tmp = self\
+                                        .get_value(E=Etmp, L=Ltmp,
+                                                   project=project,
+                                                   irrep=irrep)
+                                    for cob_matrix in cob_matrices:
+                                        try:
+                                            g_tmp =\
+                                                (cob_matrix.T)@g_tmp@cob_matrix
+                                        except ValueError:
+                                            pass
+                                    g_tmp_entry = g_tmp[i][j]
+                                    near_pole_mag = np.abs(g_tmp_entry)
+                                    pole_found = (near_pole_mag > POLE_CUT)
+                                    if (pole_found and
+                                        ([i, j, nvecSQs_keep] not in
+                                         all_relevant_nvecSQs)):
+                                        all_relevant_nvecSQs\
+                                            = all_relevant_nvecSQs\
+                                            + [[i, j, nvecSQs_keep]]
+                                except IndexError:
+                                    pass
+        all_relevant_nvecSQs = all_relevant_nvecSQs[1:]
+        return all_relevant_nvecSQs
+
+    def get_pole_candidate(self, L, n1vecSQ, n2vecSQ, n3vecSQ, m1, m2, m3):
+        pole_candidate = np.sqrt(m1**2+(FOURPI2/L**2)*n1vecSQ)\
+                       + np.sqrt(m2**2+(FOURPI2/L**2)*n2vecSQ)\
+                       + np.sqrt(m3**2+(FOURPI2/L**2)*n3vecSQ)
+        return pole_candidate
+
+    def get_pole_candidate_eps(self, L, n1vecSQ, n2vecSQ, n3vecSQ, m1, m2, m3):
+        pole_candidate_eps = np.sqrt(m1**2+(FOURPI2/L**2)*n1vecSQ)\
+                           + np.sqrt(m2**2+(FOURPI2/L**2)*n2vecSQ)\
+                           + np.sqrt(m3**2+(FOURPI2/L**2)*n3vecSQ)+EPSILON10
+        return pole_candidate_eps
+
+    def get_all_nvecSQs(self, nvecSQs_by_shell):
+        all_nvecSQs = []
+        for outer_nvecSQ_row in nvecSQs_by_shell:
+            for outer_nvecSQ_entry in outer_nvecSQ_row:
+                for inner_nvecSQ_row in outer_nvecSQ_entry:
+                    for inner_nvecSQ_entry in inner_nvecSQ_row:
+                        if len(inner_nvecSQ_entry) != 0:
+                            n1vecSQs = inner_nvecSQ_entry[0][0]
+                            n2vecSQs = inner_nvecSQ_entry[0][1]
+                            n3vecSQs = inner_nvecSQ_entry[0][2]
+                            for i in range(len(n1vecSQs)):
+                                for j in range(len(n1vecSQs[i])):
+                                    nvecSQ_sets = [n1vecSQs[i][j],
+                                                   n2vecSQs[i][j],
+                                                   n3vecSQs[i][j]]
+                                    nvecSQ_sets = list(np.sort(nvecSQ_sets))
+                                    if nvecSQ_sets not in all_nvecSQs:
+                                        all_nvecSQs = all_nvecSQs+[nvecSQ_sets]
+        return all_nvecSQs
+
+    def get_cob_matrices(self, final_set_for_change_of_basis):
+        all_restacks = [[]]
+        for dim_shell_counter_all in final_set_for_change_of_basis:
+            restack = [[]]
+            for shell_index in range(len(dim_shell_counter_all)):
+                for dim_shell_counter in dim_shell_counter_all[shell_index]:
+                    restack = restack+[[([dim_shell_counter[0][1],
+                                          shell_index]), dim_shell_counter[1]]]
+            all_restacks = all_restacks+[sorted(restack[1:])]
+        all_restacks = all_restacks[1:]
+        all_restacks_second = [[]]
+        for restack in all_restacks:
+            second_restack = []
+            for entry in restack:
+                second_restack = second_restack+(entry[1])
+            all_restacks_second = all_restacks_second+[second_restack]
+        all_restacks_second = all_restacks_second[1:]
+        cob_matrices = []
+        for restack in all_restacks_second:
+            cob_matrices = cob_matrices\
+                + [(np.identity(len(restack))[restack]).T]
+        return cob_matrices
+
+    def get_final_set_for_change_of_basis(self, dim_with_shell_index_all):
+        final_set_for_change_of_basis = [[]]
+        for shell_index in range(len(self.qcis.tbks_list[0][0].shells)):
+            dim_shell_counter_all = [[]]
+            dim_counter = 0
+            for dim_with_shell_index_for_sc in dim_with_shell_index_all:
+                dim_shell_counter = [[]]
+                for dim_with_shell_index in dim_with_shell_index_for_sc:
+                    if dim_with_shell_index[1] <= shell_index:
+                        counter_set = []
+                        for _ in range(dim_with_shell_index[0]):
+                            counter_set = counter_set+[dim_counter]
+                            dim_counter = dim_counter+1
+                        dim_shell_counter = dim_shell_counter\
+                            + [[dim_with_shell_index, counter_set]]
+                dim_shell_counter_all = dim_shell_counter_all\
+                    + [dim_shell_counter[1:]]
+            final_set_for_change_of_basis = final_set_for_change_of_basis\
+                + [dim_shell_counter_all[1:]]
+        final_set_for_change_of_basis = final_set_for_change_of_basis[1:]
+        return final_set_for_change_of_basis
+
+    def get_dim_with_shell_index_all(self, irrep):
+        dim_with_shell_index_all = [[]]
+        for spectator_channel_index in range(len(self.qcis.fcs.sc_list)):
+            dim_with_shell_index_for_sc = [[]]
+            ell_set_tmp = self\
+                .qcis.fcs.sc_list[spectator_channel_index].ell_set
+            ang_mom_dim = 0
+            for ell_tmp in ell_set_tmp:
+                ang_mom_dim = ang_mom_dim+(2*ell_tmp+1)
+            for shell_index in range(len(self.qcis.tbks_list[0][0].shells)):
+                shell = self.qcis.tbks_list[0][0].shells[shell_index]
+                try:
+                    transposed_proj_dict = self.qcis.sc_proj_dicts[
+                        spectator_channel_index][irrep][
+                        ang_mom_dim*shell[0]:ang_mom_dim*shell[1]].T
+                    support_rows = []
+                    for row_index in range(len(transposed_proj_dict)):
+                        row = transposed_proj_dict[row_index]
+                        if (not (row@row < EPSILON10)):
+                            support_rows = support_rows\
+                                + [row_index]
+                    proj_candidate = transposed_proj_dict[support_rows].T
+                    # only purpose of the following is to trigger KeyError
+                    self.qcis.sc_proj_dicts_by_shell[
+                        spectator_channel_index][0][shell_index][irrep]
+                    dim_with_shell_index_for_sc = dim_with_shell_index_for_sc\
+                        + [[(proj_candidate.shape)[1], shell_index]]
+                except KeyError:
+                    pass
+            dim_with_shell_index_all = dim_with_shell_index_all\
+                + [dim_with_shell_index_for_sc[1:]]
+        dim_with_shell_index_all = dim_with_shell_index_all[1:]
+        return dim_with_shell_index_all
+
+    def grids_and_matrix(self, Emin, Emax, Estep, Lmin, Lmax, Lstep,
+                         project, irrep):
+        L_grid = np.arange(Lmin, Lmax+EPSILON4, Lstep)
+        E_grid = np.arange(Emin, Emax+EPSILON4, Estep)
+        interp_mat_shape = (self.get_value(E=Emax, L=Lmax,
+                                           project=project,
+                                           irrep=irrep)).shape
+        interp_mat_dim = interp_mat_shape[0]
+        interpolator_matrix = [[]]
+        for _ in range(interp_mat_dim):
+            interp_mat_row = []
+            for _ in range(interp_mat_dim):
+                interp_mat_row = interp_mat_row\
+                    + [[[BAD_MIN_GUESS, BAD_MAX_GUESS,
+                         BAD_MIN_GUESS, BAD_MAX_GUESS], [[]]]]
+            interpolator_matrix = interpolator_matrix+[interp_mat_row]
+        interpolator_matrix = interpolator_matrix[1:]
+        return L_grid, E_grid, interp_mat_dim, interpolator_matrix
 
 
 class F:
@@ -3586,6 +4012,688 @@ class FplusG:
 
     def __init__(self, qcis=QCIndexSpace(), alphaKSS=1.0, C1cut=3):
         self.qcis = qcis
+        three_scheme = self.qcis.tbis.three_scheme
+        if (three_scheme == 'original pole')\
+           or (three_scheme == 'relativistic pole'):
+            [self.alpha, self.beta] = self.qcis.tbis.scheme_data
+        self.C1cut = C1cut
+        self.alphaKSS = alphaKSS
+        self.f = F(qcis=self.qcis, alphaKSS=alphaKSS, C1cut=C1cut)
+        self.g = G(qcis=self.qcis)
+        self.all_relevant_nvecSQs = {}
+        self.pole_free_interpolator_matrix = {}
+        self.interpolator_matrix = {}
+        self.cob_matrices = {}
+        self.function_set = {}
+        self.all_dimensions = {}
+        self.total_cobs = {}
+
+    def get_value(self, E=5.0, L=5.0, project=False, irrep=None):
+        """Build the F plus G matrix in a shell-based way."""
+        g_interpolate = QC_IMPL_DEFAULTS['g_interpolate']
+        if 'g_interpolate' in self.qcis.fvs.qc_impl:
+            g_interpolate = self.qcis.fvs.qc_impl['g_interpolate']
+        if not project:
+            raise ValueError('FplusG().get_value() should only be called with project==True')
+        if not g_interpolate:
+            raise ValueError('FplusG().get_value() should only be called with g_interpolate==True')
+        f_plus_g_final_smooth_basis = [[]]
+        total_cobs = self.total_cobs[irrep]
+        matrix_dimension = self.\
+            all_dimensions[irrep][total_cobs
+                            - self.qcis.get_tbks_sub_indices(E, L)[0]-1]
+        m1, m2, m3 = self.extract_masses()
+        for i in range(matrix_dimension):
+            g_row_tmp = []
+            for j in range(matrix_dimension):
+                func_tmp = self.function_set[irrep][i][j]
+                if func_tmp is not None:
+                    value_tmp = float(func_tmp((E, L)))
+                    for pole_data in self.\
+                        pole_free_interpolator_matrix[irrep][i][j][2]:
+                        factor_tmp = E-self.\
+                            get_pole_candidate(L, *pole_data[2],
+                                                m1, m2, m3)
+                        value_tmp = value_tmp/factor_tmp
+                    g_row_tmp = g_row_tmp+[value_tmp]
+                else:
+                    g_row_tmp = g_row_tmp+[0.]
+            f_plus_g_final_smooth_basis = f_plus_g_final_smooth_basis+[g_row_tmp]
+        f_plus_g_final_smooth_basis = np.array(f_plus_g_final_smooth_basis[1:])
+        cob_matrix = self.\
+            cob_matrices[irrep][total_cobs
+                                - self.qcis.get_tbks_sub_indices(E, L)[0]
+                                - 1]
+        f_plus_g_matrix_tmp_rotated\
+            = (cob_matrix)@f_plus_g_final_smooth_basis@(cob_matrix.T)
+        return f_plus_g_matrix_tmp_rotated
+
+    def get_all_nvecSQs_by_shell(self, E=5.0, L=5.0, project=False,
+                                 irrep=None):
+        """Build the G matrix in a shell-based way."""
+        Lmax = self.qcis.Lmax
+        Emax = self.qcis.Emax
+        if E > Emax:
+            raise ValueError("get_value called with E > Emax")
+        if L > Lmax:
+            raise ValueError("get_value called with L > Lmax")
+        nP = self.qcis.nP
+        if self.qcis.fcs.n_three_slices != 1:
+            raise ValueError("only n_three_slices = 1 is supported")
+        cindex_row = cindex_col = 0
+        if (not ((irrep is None) and (project is False))
+           and (not (irrep in self.qcis.proj_dict.keys()))):
+            raise ValueError("irrep "+str(irrep)+" not in "
+                             + "qcis.proj_dict.keys()")
+
+        three_compact = self.qcis.fcs.sc_compact[self.qcis.fcs.three_index]
+        masses = three_compact[0][1:4]
+        [m1, m2, m3] = masses
+
+        if nP@nP == 0:
+            if self.qcis.verbosity >= 2:
+                print('nP = [0 0 0] indexing')
+            tbks_sub_indices = self.qcis.get_tbks_sub_indices(E=E, L=L)
+            if len(self.qcis.tbks_list) > 1:
+                raise ValueError("get_value within G assumes tbks_list is "
+                                 + "length one.")
+            tbks_entry = self.qcis.tbks_list[0][
+                tbks_sub_indices[0]]
+            slices = tbks_entry.shells
+            if self.qcis.verbosity >= 2:
+                print('tbks_sub_indices =', tbks_sub_indices)
+                print('tbks_entry =', tbks_entry)
+                print('slices =', slices)
+        else:
+            if self.qcis.verbosity >= 2:
+                print('nP != [0 0 0] indexing')
+            mspec = m1
+            ibest = self.qcis._get_ibest(E, L)
+            if len(self.qcis.tbks_list) > 1:
+                raise ValueError("get_value within G assumes tbks_list is "
+                                 + "length one.")
+            tbks_entry = self.qcis.tbks_list[0][ibest]
+            kvecSQ_arr = FOURPI2*tbks_entry.nvecSQ_arr/L**2
+            kvec_arr = TWOPI*tbks_entry.nvec_arr/L
+            omk_arr = np.sqrt(mspec**2+kvecSQ_arr)
+            Pvec = TWOPI*nP/L
+            PmkSQ_arr = ((Pvec-kvec_arr)**2).sum(axis=1)
+            mask = (E-omk_arr)**2-PmkSQ_arr > 0.0
+            if self.qcis.verbosity >= 2:
+                print('mask =')
+                print(mask)
+
+            mask_slices = []
+            slices = tbks_entry.shells
+            for slice_entry in slices:
+                mask_slices = mask_slices\
+                    + [mask[slice_entry[0]:slice_entry[1]].all()]
+            slices = list((np.array(slices))[mask_slices])
+
+        nvecSQs_final = [[]]
+        if self.qcis.verbosity >= 2:
+            print('iterating over spectator channels, slices')
+        for sc_row_ind in range(len(three_compact)):
+            nvecSQs_outer_row = []
+            row_ell_set = self.qcis.fcs.sc_list[sc_row_ind].ell_set
+            if len(row_ell_set) != 1:
+                raise ValueError("only length-one ell_set currently "
+                                 + "supported in G")
+            ell1 = row_ell_set[0]
+            for sc_col_ind in range(len(three_compact)):
+                if self.qcis.verbosity >= 2:
+                    print('sc_row_ind, sc_col_ind =', sc_row_ind, sc_col_ind)
+                col_ell_set = self.qcis.fcs.sc_list[sc_col_ind].ell_set
+                if len(col_ell_set) != 1:
+                    raise ValueError("only length-one ell_set currently "
+                                     + "supported in G")
+                ell2 = col_ell_set[0]
+                g_rescale = self.qcis.fcs.g_templates[0][0][
+                    sc_row_ind][sc_col_ind]
+
+                nvecSQs_inner = [[]]
+                for row_shell_index in range(len(slices)):
+                    nvecSQs_inner_row = []
+                    for col_shell_index in range(len(slices)):
+                        nvecSQs_tmp = self\
+                            .get_shell_nvecSQs_projs(E, L, m1, m2, m3,
+                                                     cindex_row, cindex_col,
+                                                     # only for non-zero P
+                                                     sc_row_ind, sc_col_ind,
+                                                     ell1, ell2, g_rescale,
+                                                     tbks_entry,
+                                                     row_shell_index,
+                                                     col_shell_index,
+                                                     project, irrep)
+                        nvecSQs_inner_row = nvecSQs_inner_row+[nvecSQs_tmp]
+                    nvecSQs_inner = nvecSQs_inner+[nvecSQs_inner_row]
+                nvecSQs_block_tmp = nvecSQs_inner[1:]
+                nvecSQs_outer_row = nvecSQs_outer_row+[nvecSQs_block_tmp]
+            nvecSQs_final = nvecSQs_final+[nvecSQs_outer_row]
+
+        nvecSQs_final = nvecSQs_final[1:]
+        return nvecSQs_final
+
+    def build_interpolator(self, Emin, Emax, Estep,
+                           Lmin, Lmax, Lstep, project, irrep):
+        """Build interpolator."""
+        assert project
+        # Generate grides and matrix structures
+        L_grid, E_grid, interp_mat_dim, interpolator_matrix = self\
+            .grids_and_matrix(Emin, Emax, Estep, Lmin, Lmax, Lstep,
+                              project, irrep)
+
+        # Determine basis where entries are smooth
+        dim_with_shell_index_all = self.get_dim_with_shell_index_all(irrep)
+        final_set_for_change_of_basis = self\
+            .get_final_set_for_change_of_basis(dim_with_shell_index_all)
+        cob_matrices = self.get_cob_matrices(final_set_for_change_of_basis)
+
+        # Populate interpolation data
+        energy_vol_dat_index = 0
+        interp_data_index = 1
+        for L in L_grid:
+            for E in E_grid:
+                f_plus_g_tmp = self.g.get_value(E=E, L=L,
+                                                project=project, irrep=irrep)\
+                             + self.f.get_value(E=E, L=L,
+                                                project=project, irrep=irrep)
+                for cob_matrix in cob_matrices:
+                    try:
+                        f_plus_g_tmp = (cob_matrix.T)@f_plus_g_tmp@cob_matrix
+                    except ValueError:
+                        pass
+                for i in range(len(f_plus_g_tmp)):
+                    for j in range(len(f_plus_g_tmp)):
+                        f_plus_g_val = f_plus_g_tmp[i][j]
+                        if not np.isnan(f_plus_g_val) and (f_plus_g_val != 0.):
+                            interpolator_matrix[i][j][interp_data_index]\
+                                = interpolator_matrix[i][j][interp_data_index]\
+                                + [[E, L, f_plus_g_val]]
+        for i in range(interp_mat_dim):
+            for j in range(interp_mat_dim):
+                interpolator_matrix[i][j][interp_data_index] =\
+                    interpolator_matrix[i][j][interp_data_index][1:]
+                if len(interpolator_matrix[i][j][interp_data_index]) == 0:
+                    interpolator_matrix[i][j][energy_vol_dat_index] = []
+                else:
+                    for interpolator_entry in\
+                       interpolator_matrix[i][j][interp_data_index]:
+                        [E, L, f_plus_g_val] = interpolator_entry
+                        # [Lmin, Lmax, Emin, Emax]
+                        if L < interpolator_matrix[i][j][
+                                energy_vol_dat_index][0]:
+                            interpolator_matrix[i][j][
+                                energy_vol_dat_index][0] = L
+                        if L > interpolator_matrix[i][j][
+                                energy_vol_dat_index][1]:
+                            interpolator_matrix[i][j][
+                                energy_vol_dat_index][1] = L
+                        if E < interpolator_matrix[i][j][
+                                energy_vol_dat_index][2]:
+                            interpolator_matrix[i][j][
+                                energy_vol_dat_index][2] = E
+                        if E > interpolator_matrix[i][j][
+                                energy_vol_dat_index][3]:
+                            interpolator_matrix[i][j][
+                                energy_vol_dat_index][3] = E
+                    interpolator_matrix[i][j][energy_vol_dat_index][0]\
+                        = interpolator_matrix[i][j][energy_vol_dat_index][0]\
+                        - Lstep
+                    interpolator_matrix[i][j][energy_vol_dat_index][2]\
+                        = interpolator_matrix[i][j][energy_vol_dat_index][2]\
+                        - Estep
+
+        # Identify all poles in projected entries
+        nvecSQs_by_shell = self.get_all_nvecSQs_by_shell(E=Emax, L=Lmax,
+                                                         project=project,
+                                                         irrep=irrep)
+        all_nvecSQs = self.get_all_nvecSQs(nvecSQs_by_shell)
+        m1, m2, m3 = self.extract_masses()
+        all_relevant_nvecSQs = self\
+            .get_all_relevant_nvecSQs(Emax, project, irrep, interp_mat_dim,
+                                      interpolator_matrix, cob_matrices,
+                                      all_nvecSQs, m1, m2, m3)
+
+        # Remove poles
+        pole_free_interpolator_matrix = self\
+            .get_pole_free_interpolator_matrix(interp_mat_dim,
+                                               interpolator_matrix,
+                                               interp_data_index, m1, m2, m3,
+                                               all_relevant_nvecSQs)
+
+        for i in range(interp_mat_dim):
+            for j in range(interp_mat_dim):
+                interpolator_matrix_complete = [[]]
+                pole_free_interpolator_matrix_complete = [[]]
+                if len(interpolator_matrix[i][j][energy_vol_dat_index]) == 4:
+                    [Lmin_entry, Lmax_entry, Emin_entry, Emax_entry]\
+                        = interpolator_matrix[i][j][energy_vol_dat_index]
+                    Lgrid_entry = np.arange(Lmin_entry, Lmax_entry+EPSILON4,
+                                            Lstep)
+                    Egrid_entry = np.arange(Emin_entry, Emax_entry+EPSILON4,
+                                            Estep)
+                    for Ltmp in Lgrid_entry:
+                        for Etmp in Egrid_entry:
+                            not_found = True
+                            for interpolator_entry_index in\
+                                range(len(interpolator_matrix[i][j][
+                                    interp_data_index])):
+                                interpolator_entry = interpolator_matrix[i][j][
+                                    interp_data_index][
+                                        interpolator_entry_index]
+                                if ((np.abs(interpolator_entry[0]-Etmp)
+                                    < EPSILON10)
+                                    and (np.abs(interpolator_entry[1]-Ltmp)
+                                         < EPSILON10)):
+                                    not_found = False
+                                    interpolator_matrix_complete\
+                                        = interpolator_matrix_complete\
+                                        + [interpolator_entry]
+                                    pole_free_interpolator_entry\
+                                        = pole_free_interpolator_matrix[i][j][
+                                            interp_data_index][
+                                                interpolator_entry_index]
+                                    pole_free_interpolator_matrix_complete =\
+                                        pole_free_interpolator_matrix_complete\
+                                        + [pole_free_interpolator_entry]
+                            if not_found:
+                                interpolator_matrix_complete\
+                                    = interpolator_matrix_complete\
+                                    + [[Etmp, Ltmp, 0.]]
+                                pole_free_interpolator_matrix_complete =\
+                                    pole_free_interpolator_matrix_complete\
+                                    + [[Etmp, Ltmp, 0.]]
+                    interpolator_matrix[i][j][interp_data_index]\
+                        = interpolator_matrix_complete[1:]
+                    pole_free_interpolator_matrix[i][j][interp_data_index]\
+                        = pole_free_interpolator_matrix_complete[1:]
+        warnings.simplefilter('default')
+
+        # Build interpolator functions
+        function_set = [[]]
+        for i in range(interp_mat_dim):
+            function_set_row = []
+            for j in range(interp_mat_dim):
+                if len(interpolator_matrix[i][j][energy_vol_dat_index]) == 4:
+                    [Lmin_entry, Lmax_entry, Emin_entry, Emax_entry]\
+                        = pole_free_interpolator_matrix[i][j][
+                            energy_vol_dat_index]
+                    L_grid_tmp\
+                        = np.arange(Lmin_entry, Lmax_entry+EPSILON4, Lstep)
+                    E_grid_tmp\
+                        = np.arange(Emin_entry, Emax_entry+EPSILON4, Estep)
+                    E_mesh_grid, L_mesh_grid\
+                        = np.meshgrid(E_grid_tmp, L_grid_tmp)
+                    g_pole_free_mesh_grid\
+                        = (np.array(pole_free_interpolator_matrix[i][j][
+                            interp_data_index]).T)[2].\
+                        reshape(L_mesh_grid.shape).T
+
+                    try:
+                        interp = RegularGridInterpolator((E_grid_tmp, L_grid_tmp), g_pole_free_mesh_grid, method='cubic')
+                    except ValueError:
+                        interp = RegularGridInterpolator((E_grid_tmp, L_grid_tmp), g_pole_free_mesh_grid, method='linear')
+                    function_set_row = function_set_row+[interp]
+                else:
+                    function_set_row = function_set_row+[None]
+            function_set = function_set+[function_set_row]
+        function_set = np.array(function_set[1:])
+        warnings.simplefilter('always')
+
+        all_dimensions = []
+        for cob_matrix in cob_matrices:
+            all_dimensions = all_dimensions+[len(cob_matrix)]
+
+        # Add relevant data to self
+        self.all_relevant_nvecSQs[irrep] = all_relevant_nvecSQs
+        self.pole_free_interpolator_matrix[irrep]\
+            = pole_free_interpolator_matrix
+        self.interpolator_matrix[irrep] = interpolator_matrix
+        self.cob_matrices[irrep] = cob_matrices
+        self.total_cobs[irrep] = len(cob_matrices)
+        self.function_set[irrep] = function_set
+        self.all_dimensions[irrep] = all_dimensions
+
+    def extract_masses(self):
+        three_compact = self.qcis.fcs.sc_compact[self.qcis.fcs.three_index]
+        masses = three_compact[0][1:4]
+        [m1, m2, m3] = masses
+        return m1, m2, m3
+
+    def get_pole_free_interpolator_matrix(self, interp_mat_dim,
+                                          interpolator_matrix,
+                                          interp_data_index, m1, m2, m3,
+                                          all_relevant_nvecSQs):
+        pole_free_interpolator_matrix = [[]]
+        for i in range(interp_mat_dim):
+            rowtmp = [[]]
+            for j in range(interp_mat_dim):
+                matrix_entry_interp_data = interpolator_matrix[i][j][
+                    interp_data_index]
+                relevant_poles = [[]]
+                for relevant_candidate in all_relevant_nvecSQs:
+                    if ((relevant_candidate[0] == i)
+                       and (relevant_candidate[1] == j)):
+                        relevant_poles = relevant_poles+[relevant_candidate]
+                relevant_poles = relevant_poles[1:]
+                for entry_index in range(len(matrix_entry_interp_data)):
+                    dim_with_shell_index = matrix_entry_interp_data[
+                        entry_index]
+                    [E, L, g_val] = dim_with_shell_index
+                    for nvecSQs_set in relevant_poles:
+                        nvecSQ = nvecSQs_set[2]
+                        n1vecSQ = nvecSQ[0]
+                        n2vecSQ = nvecSQ[1]
+                        n3vecSQ = nvecSQ[2]
+                        three_omega = self\
+                            .get_pole_candidate(L, n1vecSQ, n2vecSQ, n3vecSQ,
+                                                m1, m2, m3)
+                        pole_removal_factor = E-three_omega
+                        g_val = pole_removal_factor*g_val
+                    matrix_entry_interp_data[entry_index] = [E, L, g_val]
+                final_entry = [interpolator_matrix[i][j][0],
+                               matrix_entry_interp_data,
+                               relevant_poles]
+                rowtmp = rowtmp+[final_entry]
+            pole_free_interpolator_matrix = pole_free_interpolator_matrix\
+                + [rowtmp[1:]]
+        pole_free_interpolator_matrix = pole_free_interpolator_matrix[1:]
+        return pole_free_interpolator_matrix
+
+    def get_all_relevant_nvecSQs(self, Emax, project, irrep, interp_mat_dim,
+                                 interpolator_matrix, cob_matrices,
+                                 all_nvecSQs, m1, m2, m3):
+        interp_data_index = 1
+        all_relevant_nvecSQs = [[]]
+        for i in range(interp_mat_dim):
+            for j in range(interp_mat_dim):
+                matrix_entry_interp_data = interpolator_matrix[i][j][
+                    interp_data_index][1:]
+                if len(matrix_entry_interp_data) != 0:
+                    Lmin_tmp = BAD_MIN_GUESS
+                    Lmax_tmp = BAD_MAX_GUESS
+                    Emin_tmp = BAD_MIN_GUESS
+                    Emax_tmp = BAD_MAX_GUESS
+                    for single_interp_entry in matrix_entry_interp_data:
+                        energy_volume_set = single_interp_entry[:-1]
+                        [E_candidate, L_candidate] = energy_volume_set
+                        if E_candidate < Emin_tmp:
+                            Emin_tmp = E_candidate
+                        if E_candidate > Emax_tmp:
+                            Emax_tmp = E_candidate
+                        if L_candidate < Lmin_tmp:
+                            Lmin_tmp = L_candidate
+                        if L_candidate > Lmax_tmp:
+                            Lmax_tmp = L_candidate
+                    nvecSQs_all_keeps = [[]]
+                    for nvecSQ_entry in all_nvecSQs:
+                        n1vecSQ = nvecSQ_entry[0]
+                        n2vecSQ = nvecSQ_entry[1]
+                        n3vecSQ = nvecSQ_entry[2]
+                        removal_at_Lmin = self\
+                            .get_pole_candidate(Lmin_tmp,
+                                                n1vecSQ, n2vecSQ, n3vecSQ,
+                                                m1, m2, m3)
+                        removal_at_Lmax = self\
+                            .get_pole_candidate(Lmax_tmp,
+                                                n1vecSQ, n2vecSQ, n3vecSQ,
+                                                m1, m2, m3)
+                        if ((Emin_tmp < removal_at_Lmin < Emax_tmp)
+                           or (Emin_tmp < removal_at_Lmax < Emax_tmp)):
+                            nvecSQs_all_keeps = nvecSQs_all_keeps\
+                                + [[n1vecSQ, n2vecSQ, n3vecSQ]]
+                    nvecSQs_all_keeps = nvecSQs_all_keeps[1:]
+                    for nvecSQs_keep in nvecSQs_all_keeps:
+                        [n1vecSQ, n2vecSQ, n3vecSQ] = nvecSQs_keep
+                        Lvals_tmp = [Lmin_tmp+EPSILON4, Lmax_tmp-EPSILON4]
+                        for Ltmp in Lvals_tmp:
+                            Etmp = self\
+                                .get_pole_candidate_eps(Ltmp, n1vecSQ, n2vecSQ,
+                                                        n3vecSQ, m1, m2, m3)
+                            if Etmp < Emax:
+                                try:
+                                    g_tmp = self\
+                                        .get_value(E=Etmp, L=Ltmp,
+                                                   project=project,
+                                                   irrep=irrep)\
+                                          + self\
+                                        .get_value_f_only(E=Etmp, L=Ltmp,
+                                                          project=project,
+                                                          irrep=irrep)
+                                    for cob_matrix in cob_matrices:
+                                        try:
+                                            g_tmp =\
+                                                (cob_matrix.T)@g_tmp@cob_matrix
+                                        except ValueError:
+                                            pass
+                                    g_tmp_entry = g_tmp[i][j]
+                                    near_pole_mag = np.abs(g_tmp_entry)
+                                    pole_found = (near_pole_mag > POLE_CUT)
+                                    if (pole_found and
+                                        ([i, j, nvecSQs_keep] not in
+                                         all_relevant_nvecSQs)):
+                                        all_relevant_nvecSQs\
+                                            = all_relevant_nvecSQs\
+                                            + [[i, j, nvecSQs_keep]]
+                                except IndexError:
+                                    pass
+        all_relevant_nvecSQs = all_relevant_nvecSQs[1:]
+        return all_relevant_nvecSQs
+
+    def get_pole_candidate(self, L, n1vecSQ, n2vecSQ, n3vecSQ, m1, m2, m3):
+        pole_candidate = np.sqrt(m1**2+(FOURPI2/L**2)*n1vecSQ)\
+                       + np.sqrt(m2**2+(FOURPI2/L**2)*n2vecSQ)\
+                       + np.sqrt(m3**2+(FOURPI2/L**2)*n3vecSQ)
+        return pole_candidate
+
+    def get_pole_candidate_eps(self, L, n1vecSQ, n2vecSQ, n3vecSQ, m1, m2, m3):
+        pole_candidate_eps = np.sqrt(m1**2+(FOURPI2/L**2)*n1vecSQ)\
+                           + np.sqrt(m2**2+(FOURPI2/L**2)*n2vecSQ)\
+                           + np.sqrt(m3**2+(FOURPI2/L**2)*n3vecSQ)+EPSILON10
+        return pole_candidate_eps
+
+    def get_all_nvecSQs(self, nvecSQs_by_shell):
+        all_nvecSQs = []
+        for outer_nvecSQ_row in nvecSQs_by_shell:
+            for outer_nvecSQ_entry in outer_nvecSQ_row:
+                for inner_nvecSQ_row in outer_nvecSQ_entry:
+                    for inner_nvecSQ_entry in inner_nvecSQ_row:
+                        if len(inner_nvecSQ_entry) != 0:
+                            n1vecSQs = inner_nvecSQ_entry[0][0]
+                            n2vecSQs = inner_nvecSQ_entry[0][1]
+                            n3vecSQs = inner_nvecSQ_entry[0][2]
+                            for i in range(len(n1vecSQs)):
+                                for j in range(len(n1vecSQs[i])):
+                                    nvecSQ_sets = [n1vecSQs[i][j],
+                                                   n2vecSQs[i][j],
+                                                   n3vecSQs[i][j]]
+                                    nvecSQ_sets = list(np.sort(nvecSQ_sets))
+                                    if nvecSQ_sets not in all_nvecSQs:
+                                        all_nvecSQs = all_nvecSQs+[nvecSQ_sets]
+                                    if i == j:
+                                        rng = range(-2, 2+1)
+                                        mesh = np.meshgrid(*([rng]*3))
+                                        nvec_arr = np.vstack([y.flat
+                                                              for y in mesh]).T
+                                        if n1vecSQs[i][0] == 0:
+                                            n3vec = np.array([0, 0, 0])
+                                            for n1vec in nvec_arr:
+                                                n2vec = -n1vec-n3vec
+                                                n1SQtmp = n1vec@n1vec
+                                                n2SQtmp = n2vec@n2vec
+                                                n3SQtmp = n3vec@n3vec
+                                                nvecSQ_sets =\
+                                                    list(
+                                                        np.sort([n1SQtmp,
+                                                                 n2SQtmp,
+                                                                 n3SQtmp]))
+                                                if (nvecSQ_sets not in
+                                                   all_nvecSQs):
+                                                    all_nvecSQs =\
+                                                        all_nvecSQs+[
+                                                            nvecSQ_sets]
+                                        elif n1vecSQs[i][0] == 1:
+                                            n3vec = np.array([0, 0, 1])
+                                            for n1vec in nvec_arr:
+                                                n2vec = -n1vec-n3vec
+                                                n1SQtmp = n1vec@n1vec
+                                                n2SQtmp = n2vec@n2vec
+                                                n3SQtmp = n3vec@n3vec
+                                                nvecSQ_sets =\
+                                                    list(
+                                                        np.sort([n1SQtmp,
+                                                                 n2SQtmp,
+                                                                 n3SQtmp]))
+                                                if (nvecSQ_sets not in
+                                                   all_nvecSQs):
+                                                    all_nvecSQs =\
+                                                        all_nvecSQs+[
+                                                            nvecSQ_sets]
+                                        elif n1vecSQs[i][0] == 2:
+                                            n3vec = np.array([0, 1, 1])
+                                            for n1vec in nvec_arr:
+                                                n2vec = -n1vec-n3vec
+                                                n1SQtmp = n1vec@n1vec
+                                                n2SQtmp = n2vec@n2vec
+                                                n3SQtmp = n3vec@n3vec
+                                                nvecSQ_sets = list(np.sort(
+                                                    [n1SQtmp, n2SQtmp, n3SQtmp]
+                                                    ))
+                                                if (nvecSQ_sets not in
+                                                   all_nvecSQs):
+                                                    all_nvecSQs =\
+                                                        all_nvecSQs+[
+                                                            nvecSQ_sets]
+                                        elif n1vecSQs[i][0] == 3:
+                                            n3vec = np.array([1, 1, 1])
+                                            for n1vec in nvec_arr:
+                                                n2vec = -n1vec-n3vec
+                                                n1SQtmp = n1vec@n1vec
+                                                n2SQtmp = n2vec@n2vec
+                                                n3SQtmp = n3vec@n3vec
+                                                nvecSQ_sets = list(np.sort(
+                                                    [n1SQtmp, n2SQtmp, n3SQtmp]
+                                                    ))
+                                                if (nvecSQ_sets not in
+                                                   all_nvecSQs):
+                                                    all_nvecSQs =\
+                                                        all_nvecSQs+[
+                                                            nvecSQ_sets]
+                                        elif n1vecSQs[i][0] == 4:
+                                            n3vec = np.array([0, 0, 2])
+                                            for n1vec in nvec_arr:
+                                                n2vec = -n1vec-n3vec
+                                                n1SQtmp = n1vec@n1vec
+                                                n2SQtmp = n2vec@n2vec
+                                                n3SQtmp = n3vec@n3vec
+                                                nvecSQ_sets = list(np.sort(
+                                                    [n1SQtmp, n2SQtmp, n3SQtmp]
+                                                    ))
+                                                if (nvecSQ_sets not in
+                                                   all_nvecSQs):
+                                                    all_nvecSQs =\
+                                                        all_nvecSQs+[
+                                                            nvecSQ_sets]
+        return all_nvecSQs
+
+    def get_cob_matrices(self, final_set_for_change_of_basis):
+        all_restacks = [[]]
+        for dim_shell_counter_all in final_set_for_change_of_basis:
+            restack = [[]]
+            for shell_index in range(len(dim_shell_counter_all)):
+                for dim_shell_counter in dim_shell_counter_all[shell_index]:
+                    restack = restack+[[([dim_shell_counter[0][1],
+                                          shell_index]), dim_shell_counter[1]]]
+            all_restacks = all_restacks+[sorted(restack[1:])]
+        all_restacks = all_restacks[1:]
+        all_restacks_second = [[]]
+        for restack in all_restacks:
+            second_restack = []
+            for entry in restack:
+                second_restack = second_restack+(entry[1])
+            all_restacks_second = all_restacks_second+[second_restack]
+        all_restacks_second = all_restacks_second[1:]
+        cob_matrices = []
+        for restack in all_restacks_second:
+            cob_matrices = cob_matrices\
+                + [(np.identity(len(restack))[restack]).T]
+        return cob_matrices
+
+    def get_final_set_for_change_of_basis(self, dim_with_shell_index_all):
+        final_set_for_change_of_basis = [[]]
+        for shell_index in range(len(self.qcis.tbks_list[0][0].shells)):
+            dim_shell_counter_all = [[]]
+            dim_counter = 0
+            for dim_with_shell_index_for_sc in dim_with_shell_index_all:
+                dim_shell_counter = [[]]
+                for dim_with_shell_index in dim_with_shell_index_for_sc:
+                    if dim_with_shell_index[1] <= shell_index:
+                        counter_set = []
+                        for _ in range(dim_with_shell_index[0]):
+                            counter_set = counter_set+[dim_counter]
+                            dim_counter = dim_counter+1
+                        dim_shell_counter = dim_shell_counter\
+                            + [[dim_with_shell_index, counter_set]]
+                dim_shell_counter_all = dim_shell_counter_all\
+                    + [dim_shell_counter[1:]]
+            final_set_for_change_of_basis = final_set_for_change_of_basis\
+                + [dim_shell_counter_all[1:]]
+        final_set_for_change_of_basis = final_set_for_change_of_basis[1:]
+        return final_set_for_change_of_basis
+
+    def get_dim_with_shell_index_all(self, irrep):
+        dim_with_shell_index_all = [[]]
+        for spectator_channel_index in range(len(self.qcis.fcs.sc_list)):
+            dim_with_shell_index_for_sc = [[]]
+            ell_set_tmp = self\
+                .qcis.fcs.sc_list[spectator_channel_index].ell_set
+            ang_mom_dim = 0
+            for ell_tmp in ell_set_tmp:
+                ang_mom_dim = ang_mom_dim+(2*ell_tmp+1)
+            for shell_index in range(len(self.qcis.tbks_list[0][0].shells)):
+                shell = self.qcis.tbks_list[0][0].shells[shell_index]
+                try:
+                    transposed_proj_dict = self.qcis.sc_proj_dicts[
+                        spectator_channel_index][irrep][
+                        ang_mom_dim*shell[0]:ang_mom_dim*shell[1]].T
+                    support_rows = []
+                    for row_index in range(len(transposed_proj_dict)):
+                        row = transposed_proj_dict[row_index]
+                        if (not (row@row < EPSILON10)):
+                            support_rows = support_rows\
+                                + [row_index]
+                    proj_candidate = transposed_proj_dict[support_rows].T
+                    # only purpose of the following is to trigger KeyError
+                    self.qcis.sc_proj_dicts_by_shell[
+                        spectator_channel_index][0][shell_index][irrep]
+                    dim_with_shell_index_for_sc = dim_with_shell_index_for_sc\
+                        + [[(proj_candidate.shape)[1], shell_index]]
+                except KeyError:
+                    pass
+            dim_with_shell_index_all = dim_with_shell_index_all\
+                + [dim_with_shell_index_for_sc[1:]]
+        dim_with_shell_index_all = dim_with_shell_index_all[1:]
+        return dim_with_shell_index_all
+
+    def grids_and_matrix(self, Emin, Emax, Estep, Lmin, Lmax, Lstep,
+                         project, irrep):
+        L_grid = np.arange(Lmin, Lmax+EPSILON4, Lstep)
+        E_grid = np.arange(Emin, Emax+EPSILON4, Estep)
+        interp_mat_shape = (self.get_value(E=Emax, L=Lmax,
+                                           project=project,
+                                           irrep=irrep)).shape
+        interp_mat_dim = interp_mat_shape[0]
+        interpolator_matrix = [[]]
+        for _ in range(interp_mat_dim):
+            interp_mat_row = []
+            for _ in range(interp_mat_dim):
+                interp_mat_row = interp_mat_row\
+                    + [[[BAD_MIN_GUESS, BAD_MAX_GUESS,
+                         BAD_MIN_GUESS, BAD_MAX_GUESS], [[]]]]
+            interpolator_matrix = interpolator_matrix+[interp_mat_row]
+        interpolator_matrix = interpolator_matrix[1:]
+        return L_grid, E_grid, interp_mat_dim, interpolator_matrix
 
 
 class K:

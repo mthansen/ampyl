@@ -38,6 +38,8 @@ import numpy as np
 from scipy.linalg import block_diag
 import quaternionic
 import spherical
+import warnings
+warnings.simplefilter("once")
 from .global_constants import ROOT_THREE
 from .global_constants import ROOT_TWO
 from .global_constants import EPSPROJ

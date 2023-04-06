@@ -35,6 +35,8 @@ Created July 2022.
 ###############################################################################
 
 import numpy as np
+import warnings
+warnings.simplefilter("once")
 from sympy.physics.quantum.cg import CG
 from sympy import S
 from scipy.special import sph_harm
