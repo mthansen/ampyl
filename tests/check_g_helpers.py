@@ -39,6 +39,7 @@ from ampyl import QCIndexSpace
 from ampyl import G
 from ampyl import FiniteVolumeSetup
 
+
 class TestGHelpers(unittest.TestCase):
 
     def setUp(self):
@@ -63,7 +64,10 @@ class TestGHelpers(unittest.TestCase):
         for row_shell_index in range(len(tbks_entry.shells)):
             for col_shell_index in range(len(tbks_entry.shells)):
                 mask_row_shells, mask_col_shells, row_shell, col_shell\
-                      = self.g._get_masks_and_shells(E, nP, L, tbks_entry, cindex_row, cindex_col, row_shell_index, col_shell_index)
+                      = self.g._get_masks_and_shells(E, nP, L, tbks_entry,
+                                                     cindex_row, cindex_col,
+                                                     row_shell_index,
+                                                     col_shell_index)
                 self.assertIsNone(mask_row_shells)
                 self.assertIsNone(mask_col_shells)
                 expected_row_shell = expected_shells[row_shell_index]
@@ -78,10 +82,15 @@ class TestGHelpers(unittest.TestCase):
         tbks_entry = self.tbks_set_011[0]
         cindex_row = 0
         cindex_col = 0
-        expected_shells = [[0, 1], [1, 3], [3, 5], [5, 7], [7, 8], [8, 12], [12, 14], [14, 16], [16, 18], [18, 20]]
+        expected_shells = [[0, 1], [1, 3], [3, 5], [5, 7], [7, 8], [8, 12],
+                           [12, 14], [14, 16], [16, 18], [18, 20]]
         for row_shell_index in range(len(tbks_entry.shells)):
             for col_shell_index in range(len(tbks_entry.shells)):
-                mask_row_shells, mask_col_shells, row_shell, col_shell = self.g._get_masks_and_shells(E, nP, L, tbks_entry, cindex_row, cindex_col, row_shell_index, col_shell_index)
+                mask_row_shells, mask_col_shells, row_shell, col_shell\
+                    = self.g._get_masks_and_shells(E, nP, L, tbks_entry,
+                                                   cindex_row, cindex_col,
+                                                   row_shell_index,
+                                                   col_shell_index)
                 expected_row_shell = expected_shells[row_shell_index]
                 expected_col_shell = expected_shells[col_shell_index]
                 row_truth_list = [True]*len(expected_shells)
@@ -98,12 +107,20 @@ class TestGHelpers(unittest.TestCase):
         tbks_entry = self.tbks_set_011[0]
         cindex_row = 0
         cindex_col = 0
-        expected_shells_unmasked = [[0, 1], [1, 3], [3, 5], [5, 7], [7, 8], [8, 12], [12, 14], [14, 16], [16, 18], [18, 20]]
-        expected_mask = [True, True, True, False, True, True, False, True, False, False]
-        expected_shells = list(np.array(expected_shells_unmasked)[expected_mask])
+        expected_shells_unmasked = [[0, 1], [1, 3], [3, 5], [5, 7], [7, 8],
+                                    [8, 12], [12, 14], [14, 16], [16, 18],
+                                    [18, 20]]
+        expected_mask = [True, True, True, False, True,
+                         True, False, True, False, False]
+        expected_shells = list(np.array(
+            expected_shells_unmasked)[expected_mask])
         for row_shell_index in range(len(expected_shells)):
             for col_shell_index in range(len(expected_shells)):
-                mask_row_shells, mask_col_shells, row_shell, col_shell = self.g._get_masks_and_shells(E, nP, L, tbks_entry, cindex_row, cindex_col, row_shell_index, col_shell_index)
+                mask_row_shells, mask_col_shells, row_shell, col_shell\
+                    = self.g._get_masks_and_shells(E, nP, L, tbks_entry,
+                                                   cindex_row, cindex_col,
+                                                   row_shell_index,
+                                                   col_shell_index)
                 self.assertEqual(mask_row_shells, expected_mask)
                 self.assertEqual(mask_col_shells, expected_mask)
                 expected_row_shell = list(expected_shells[row_shell_index])
@@ -121,7 +138,27 @@ class TestGHelpers(unittest.TestCase):
         row_shell_index = 0
         col_shell_index = 0
         with self.assertRaises(ValueError):
-            self.g._get_masks_and_shells(E, nP, L, tbks_entry, cindex_row, cindex_col, row_shell_index, col_shell_index)
+            self.g._get_masks_and_shells(E, nP, L, tbks_entry,
+                                         cindex_row, cindex_col,
+                                         row_shell_index, col_shell_index)
+
+    def test_nPzero_projectors(self):
+        sc_index_col = 0
+        sc_index_row = 0
+        row_shell_index = 0
+        col_shell_index = 0
+        irrep = ('A1PLUS', 0)
+        [proj_left, proj_right]\
+            = self.g._nPzero_projectors(sc_index_row, sc_index_col,
+                                        row_shell_index, col_shell_index,
+                                        irrep)
+        for row in proj_left:
+            for entry in row:
+                self.assertEqual(entry, 1.)
+        for row in proj_right:
+            for entry in row:
+                self.assertEqual(entry, 1.)
+
 
 class Template(unittest.TestCase):
     """Test."""

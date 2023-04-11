@@ -123,7 +123,8 @@ class FlavorChannel:
             [isospin value (x2), two-particle sub-isospin (x2),
              spectator flavor, spectator isospin (x2),
              first non-spectator flavor, second non-spectator flavor,
-             first non-spectator isospin (x2), second non-spectator isospin (x2)]
+             first non-spectator isospin (x2),
+             second non-spectator isospin (x2)]
 
         For example, for three pions with total isospin 0 the unique entry is
         ``[0, 2, 'pi', 2, 'pi', 'pi', 2, 2]``.
@@ -1984,7 +1985,9 @@ class QCIndexSpace:
     def _get_three_slice_index(self, cindex):
         three_channel_max = self.fcs.three_slices[-1][-1]-1
         if ((self.n_two_channels == 0) and (cindex > three_channel_max)):
-            raise ValueError(f"Using cindex={cindex} with three_slices={self.fcs.three_slices} and no two-particle channels.")
+            raise ValueError(f"Using cindex={cindex} with three_slices="
+                             f"{self.fcs.three_slices} and (no two-particle "
+                             f"channels) is not allowed.")
         slice_index = 0
         for three_slice in self.fcs.three_slices:
             if cindex > three_slice[1]:
@@ -2889,15 +2892,18 @@ class G:
             try:
                 if nP@nP != 0:
                     proj_tmp_right, proj_tmp_left = self.\
-                        _nP_nonzero_projectors(E, L, sc_index_row, sc_index_col,
-                                           row_shell_index, col_shell_index,
-                                           irrep,
-                                           mask_row_shells, mask_col_shells)
+                        _nP_nonzero_projectors(E, L,
+                                               sc_index_row, sc_index_col,
+                                               row_shell_index,
+                                               col_shell_index,
+                                               irrep,
+                                               mask_row_shells,
+                                               mask_col_shells)
                 else:
                     proj_tmp_right, proj_tmp_left = self.\
                         _nPzero_projectors(sc_index_row, sc_index_col,
-                                              row_shell_index, col_shell_index,
-                                              irrep)
+                                           row_shell_index, col_shell_index,
+                                           irrep)
             except KeyError:
                 return np.array([])
             proj_support_right, proj_support_left, sparse = self.\
@@ -2990,7 +2996,7 @@ class G:
         return proj_support_right, proj_support_left, sparse
 
     def _nPzero_projectors(self, sc_index_row, sc_index_col,
-                              row_shell_index, col_shell_index, irrep):
+                           row_shell_index, col_shell_index, irrep):
         proj_tmp_right = self.qcis.sc_proj_dicts_by_shell[
                         sc_index_col][0][col_shell_index][irrep]
         proj_tmp_left = np.conjugate((
@@ -3000,8 +3006,8 @@ class G:
         return proj_tmp_right, proj_tmp_left
 
     def _nP_nonzero_projectors(self, E, L, sc_index_row, sc_index_col,
-                           row_shell_index, col_shell_index, irrep,
-                           mask_row_shells, mask_col_shells):
+                               row_shell_index, col_shell_index, irrep,
+                               mask_row_shells, mask_col_shells):
         ibest = self.qcis._get_ibest(E, L)
         proj_tmp_right = np.array(self.qcis.sc_proj_dicts_by_shell[
             sc_index_col][ibest])[mask_col_shells][
@@ -3110,7 +3116,8 @@ class G:
             total_cobs = self.total_cobs[irrep]
             matrix_dimension = self.\
                 all_dimensions[irrep][total_cobs
-                               - self.qcis.get_tbks_sub_indices(E, L)[0]-1]
+                                      - self.
+                                      qcis.get_tbks_sub_indices(E, L)[0]-1]
             m1, m2, m3 = self.extract_masses()
             for i in range(matrix_dimension):
                 g_row_tmp = []
@@ -3118,8 +3125,9 @@ class G:
                     func_tmp = self.function_set[irrep][i][j]
                     if func_tmp is not None:
                         value_tmp = float(func_tmp((E, L)))
-                        for pole_data in self.\
-                           pole_free_interpolator_matrix[irrep][i][j][2]:
+                        for pole_data in (self.
+                                          pole_free_interpolator_matrix[
+                                              irrep][i][j][2]):
                             factor_tmp = E-self.\
                                 get_pole_candidate(L, *pole_data[2],
                                                    m1, m2, m3)
@@ -3534,12 +3542,16 @@ class G:
                             interp_data_index]).T)[2].\
                         reshape(L_mesh_grid.shape).T
                     try:
-                        interp = RegularGridInterpolator((E_grid_tmp, L_grid_tmp), g_pole_free_mesh_grid, method='cubic')
+                        interp =\
+                            RegularGridInterpolator((E_grid_tmp, L_grid_tmp),
+                                                    g_pole_free_mesh_grid,
+                                                    method='cubic')
                     except ValueError:
-                        interp = RegularGridInterpolator((E_grid_tmp, L_grid_tmp), g_pole_free_mesh_grid, method='linear')
+                        interp =\
+                            RegularGridInterpolator((E_grid_tmp, L_grid_tmp),
+                                                    g_pole_free_mesh_grid,
+                                                    method='linear')
                     function_set_row = function_set_row+[interp]
-                        # + [interp2d(E_mesh_grid, L_mesh_grid,
-                        #             g_pole_free_mesh_grid)]
                 else:
                     function_set_row = function_set_row+[None]
             function_set = function_set+[function_set_row]
@@ -4032,14 +4044,16 @@ class FplusG:
         if 'g_interpolate' in self.qcis.fvs.qc_impl:
             g_interpolate = self.qcis.fvs.qc_impl['g_interpolate']
         if not project:
-            raise ValueError('FplusG().get_value() should only be called with project==True')
+            raise ValueError("FplusG().get_value() should only be called "
+                             + "with project==True")
         if not g_interpolate:
-            raise ValueError('FplusG().get_value() should only be called with g_interpolate==True')
+            raise ValueError("FplusG().get_value() should only be called "
+                             + "with g_interpolate==True")
         f_plus_g_final_smooth_basis = [[]]
         total_cobs = self.total_cobs[irrep]
         matrix_dimension = self.\
             all_dimensions[irrep][total_cobs
-                            - self.qcis.get_tbks_sub_indices(E, L)[0]-1]
+                                  - self.qcis.get_tbks_sub_indices(E, L)[0]-1]
         m1, m2, m3 = self.extract_masses()
         for i in range(matrix_dimension):
             g_row_tmp = []
@@ -4047,16 +4061,17 @@ class FplusG:
                 func_tmp = self.function_set[irrep][i][j]
                 if func_tmp is not None:
                     value_tmp = float(func_tmp((E, L)))
-                    for pole_data in self.\
-                        pole_free_interpolator_matrix[irrep][i][j][2]:
+                    for pole_data in (self.
+                                      pole_free_interpolator_matrix[
+                                          irrep][i][j][2]):
                         factor_tmp = E-self.\
-                            get_pole_candidate(L, *pole_data[2],
-                                                m1, m2, m3)
+                            get_pole_candidate(L, *pole_data[2], m1, m2, m3)
                         value_tmp = value_tmp/factor_tmp
                     g_row_tmp = g_row_tmp+[value_tmp]
                 else:
                     g_row_tmp = g_row_tmp+[0.]
-            f_plus_g_final_smooth_basis = f_plus_g_final_smooth_basis+[g_row_tmp]
+            f_plus_g_final_smooth_basis = f_plus_g_final_smooth_basis\
+                + [g_row_tmp]
         f_plus_g_final_smooth_basis = np.array(f_plus_g_final_smooth_basis[1:])
         cob_matrix = self.\
             cob_matrices[irrep][total_cobs
@@ -4329,9 +4344,15 @@ class FplusG:
                         reshape(L_mesh_grid.shape).T
 
                     try:
-                        interp = RegularGridInterpolator((E_grid_tmp, L_grid_tmp), g_pole_free_mesh_grid, method='cubic')
+                        interp =\
+                            RegularGridInterpolator((E_grid_tmp, L_grid_tmp),
+                                                    g_pole_free_mesh_grid,
+                                                    method='cubic')
                     except ValueError:
-                        interp = RegularGridInterpolator((E_grid_tmp, L_grid_tmp), g_pole_free_mesh_grid, method='linear')
+                        interp =\
+                            RegularGridInterpolator((E_grid_tmp, L_grid_tmp),
+                                                    g_pole_free_mesh_grid,
+                                                    method='linear')
                     function_set_row = function_set_row+[interp]
                 else:
                     function_set_row = function_set_row+[None]
@@ -4451,21 +4472,22 @@ class FplusG:
                                                         n3vecSQ, m1, m2, m3)
                             if Etmp < Emax:
                                 try:
-                                    g_tmp = self\
-                                        .get_value(E=Etmp, L=Ltmp,
-                                                   project=project,
-                                                   irrep=irrep)\
-                                          + self\
-                                        .get_value_f_only(E=Etmp, L=Ltmp,
-                                                          project=project,
-                                                          irrep=irrep)
+                                    f_plus_g_tmp = self.\
+                                        g.get_value(E=Etmp, L=Ltmp,
+                                                    project=project,
+                                                    irrep=irrep)\
+                                        + self.\
+                                        f.get_value(E=Etmp, L=Ltmp,
+                                                    project=project,
+                                                    irrep=irrep)
                                     for cob_matrix in cob_matrices:
                                         try:
-                                            g_tmp =\
-                                                (cob_matrix.T)@g_tmp@cob_matrix
+                                            f_plus_g_tmp =\
+                                                (cob_matrix.T)@f_plus_g_tmp\
+                                                @ cob_matrix
                                         except ValueError:
                                             pass
-                                    g_tmp_entry = g_tmp[i][j]
+                                    g_tmp_entry = f_plus_g_tmp[i][j]
                                     near_pole_mag = np.abs(g_tmp_entry)
                                     pole_found = (near_pole_mag > POLE_CUT)
                                     if (pole_found and
