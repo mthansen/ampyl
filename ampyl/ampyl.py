@@ -37,8 +37,6 @@ Created July 2022.
 import numpy as np
 from scipy.linalg import block_diag
 from scipy.optimize import root_scalar
-import warnings
-warnings.simplefilter("once")
 import functools
 from copy import deepcopy
 from .group_theory import Groups
@@ -64,6 +62,8 @@ from .global_constants import ISO_PROJECTORS
 from .global_constants import CAL_C_ISO
 from .global_constants import SPARSE_CUT
 from .global_constants import POLE_CUT
+import warnings
+warnings.simplefilter("once")
 
 PRINT_THRESHOLD_DEFAULT = np.get_printoptions()['threshold']
 
@@ -1982,6 +1982,9 @@ class QCIndexSpace:
         self.ellm_sets = tmpset_outer[1:]
 
     def _get_three_slice_index(self, cindex):
+        three_channel_max = self.fcs.three_slices[-1][-1]-1
+        if ((self.n_two_channels == 0) and (cindex > three_channel_max)):
+            raise ValueError(f"Using cindex={cindex} with three_slices={self.fcs.three_slices} and no two-particle channels.")
         slice_index = 0
         for three_slice in self.fcs.three_slices:
             if cindex > three_slice[1]:
@@ -2814,8 +2817,7 @@ class G:
                                                  row_shell_index,
                                                  col_shell_index,
                                                  three_slice_index)
-        return mask_row_shells, mask_col_shells, row_shell, col_shell,\
-            row_shell_index, col_shell_index
+        return mask_row_shells, mask_col_shells, row_shell, col_shell
 
     def _mask_and_shell_helper_nPnonzero(self, E, nP, L, tbks_entry,
                                          row_shell_index, col_shell_index,
@@ -2836,7 +2838,7 @@ class G:
             mask_row_shells = mask_row_shells\
                     + [mask_row[row_shell[0]:row_shell[1]].all()]
         row_shells = list(np.array(row_shells)[mask_row_shells])
-        row_shell = row_shells[row_shell_index]
+        row_shell = list(row_shells[row_shell_index])
 
         sc_compact_three_subspace\
             = self.qcis.fcs.sc_compact[self.qcis.fcs.three_index]
@@ -2854,7 +2856,7 @@ class G:
             mask_col_shells = mask_col_shells\
                     + [mask_col[col_shell[0]:col_shell[1]].all()]
         col_shells = list(np.array(col_shells)[mask_col_shells])
-        col_shell = col_shells[col_shell_index]
+        col_shell = list(col_shells[col_shell_index])
         return mask_row_shells, mask_col_shells, row_shell, col_shell
 
     def _mask_and_shell_helper_nPzero(self, tbks_entry, row_shell_index,
@@ -2880,11 +2882,9 @@ class G:
         alpha = self.alpha
         beta = self.beta
 
-        mask_row_shells, mask_col_shells, row_shell, col_shell,\
-            row_shell_index, col_shell_index\
+        mask_row_shells, mask_col_shells, row_shell, col_shell\
             = self._get_masks_and_shells(E, nP, L, tbks_entry,
-                                         cindex_row, cindex_col,
-                                         row_shell_index, col_shell_index)
+                                         cindex_row, cindex_col)
         if project:
             try:
                 if nP@nP != 0:
@@ -3028,11 +3028,9 @@ class G:
         alpha = self.alpha
         beta = self.beta
 
-        mask_row_shells, mask_col_shells, row_shell, col_shell,\
-            row_shell_index, col_shell_index\
+        mask_row_shells, mask_col_shells, row_shell, col_shell\
             = self._get_masks_and_shells(E, nP, L, tbks_entry,
-                                         cindex_row, cindex_col,
-                                         row_shell_index, col_shell_index)
+                                         cindex_row, cindex_col)
         if project:
             try:
                 if nP@nP != 0:
