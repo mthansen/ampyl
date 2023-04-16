@@ -86,7 +86,7 @@ class TestG(unittest.TestCase):
         fvs = ampyl.FiniteVolumeSetup()
         tbis = ampyl.ThreeBodyInteractionScheme()
         qcis = ampyl.QCIndexSpace(fcs=fcs, fvs=fvs, tbis=tbis,
-                                  Emax=5., Lmax=7.)
+                                  Emax=5., Lmax=6.)
         qcis.populate()
 
         self.epsilon = 1.0e-15
@@ -94,6 +94,9 @@ class TestG(unittest.TestCase):
         self.qcis = qcis
         self.fcs = fcs
         self.g = ampyl.G(qcis=qcis)
+        self.g.build_interpolator(Emin=2.9, Emax=4., Estep=0.2,
+                                  Lmin=4., Lmax=5.1, Lstep=0.5,
+                                  project=True, irrep=('A1PLUS', 0))
 
         fvs = ampyl.FiniteVolumeSetup(nP=np.array([0, 0, 1]))
         qcis_001 = ampyl.QCIndexSpace(fcs=fcs, fvs=fvs, tbis=tbis,
@@ -211,8 +214,8 @@ class TestG(unittest.TestCase):
 
     def test_g_one(self):
         """Test G, first test."""
-        G = self.g.get_value(5., 7.)
-        G_direct = self.get_value_direct(5., np.array([0, 0, 0]), 7.,
+        G = self.g.get_value(5., 6.)
+        G_direct = self.get_value_direct(5., np.array([0, 0, 0]), 6.,
                                          self.qcis.kellm_spaces[0][0],
                                          self.qcis.kellm_spaces[0][0],
                                          self.fcs)
@@ -240,7 +243,7 @@ class TestG(unittest.TestCase):
         """Test G, fourth test."""
         total_trace = 0.
         for irrep in self.qcis.proj_dict['best_irreps']:
-            trace_tmp = np.trace(self.g.get_value(5., 7.,
+            trace_tmp = np.trace(self.g.get_value(5., 6.,
                                                   project=True,
                                                   irrep=irrep)).real
             if irrep[0][0] == 'E':
@@ -249,7 +252,7 @@ class TestG(unittest.TestCase):
                 total_trace = total_trace+trace_tmp*3.
             else:
                 total_trace = total_trace+trace_tmp
-        G = self.g.get_value(5., 7.)
+        G = self.g.get_value(5., 6.)
         self.assertTrue(np.abs(total_trace-np.trace(G)) < self.epsilon)
 
     def test_g_five(self):
@@ -283,6 +286,23 @@ class TestG(unittest.TestCase):
                 total_trace = total_trace+trace_tmp
         G = self.g_011.get_value(5., 7.)
         self.assertTrue(np.abs(total_trace-np.trace(G)) < self.epsilon)
+
+    def test_g_seven(self):
+        self.g.qcis.fvs.qc_impl['g_interpolate'] = False
+        G1 = self.g.get_value(E=3.3, L=4.0,
+                              project=True, irrep=('A1PLUS', 0))
+        self.g.qcis.fvs.qc_impl['g_interpolate'] = True
+        G2 = self.g.get_value(E=3.3, L=4.0,
+                              project=True, irrep=('A1PLUS', 0))
+        self.assertAlmostEqual(G1[0][0], G2[0][0])
+        self.g.qcis.fvs.qc_impl['g_interpolate'] = False
+        G1 = self.g.get_value(E=3.4, L=4.0,
+                              project=True, irrep=('A1PLUS', 0))
+        self.g.qcis.fvs.qc_impl['g_interpolate'] = True
+        G2 = self.g.get_value(E=3.4, L=4.0,
+                              project=True, irrep=('A1PLUS', 0))
+        self.assertAlmostEqual(G1[0][0], G2[0][0], places=4)
+        self.g.qcis.fvs.qc_impl['g_interpolate'] = False
 
 
 class Template(unittest.TestCase):
