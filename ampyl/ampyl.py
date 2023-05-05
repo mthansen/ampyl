@@ -777,7 +777,7 @@ class FlavorChannelSpace:
                 elif (sub_isospin == 1.0) and (flavors[1] == flavors[2]):
                     ell_set = [1]
                     warnings.warn(f"\n{bcolors.WARNING}"
-                                  "Assuming ell_set = [0] for spectator with "
+                                  "Assuming ell_set = [1] for spectator with "
                                   f"sub_isospin = {sub_isospin} and "
                                   f"flavors = {flavors}"
                                   f"{bcolors.ENDC}", stacklevel=2)
