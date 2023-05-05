@@ -42,10 +42,10 @@ from copy import deepcopy
 from .group_theory import Groups
 from .group_theory import Irreps
 from .qc_functions import QCFunctions
+from inspect import signature
 from .qc_functions import BKFunctions
 from scipy.interpolate import RegularGridInterpolator
 from .global_constants import QC_IMPL_DEFAULTS
-from .global_constants import PI
 from .global_constants import TWOPI
 from .global_constants import FOURPI2
 from .global_constants import EPSILON4
@@ -82,61 +82,154 @@ class bcolors:
     UNDERLINE = '\033[4m'
 
 
+class Particle:
+    """
+    Class used to represent a particle.
+
+    :param mass: mass of the particle (default is ``1.``)
+    :type mass: float
+    :param spin: spin of the particle (default is ``0.``)
+    :type spin: float
+    :param flavor: flavor of the particle (default is ``'pi'``)
+    :type flavor: str
+    :param isospin_multiplet: specifies whether this is an isospin multiplet
+    :type isospin_multiplet: bool
+    :param isospin: isospin of the particle (default is ``None``)
+    :type isospin: float
+    """
+    def __init__(self, mass=1., spin=0., flavor='pi',
+                 isospin_multiplet=False, isospin=None):
+        if not isospin_multiplet and isospin is not None:
+            isospin_multiplet = True
+        if isospin_multiplet and isospin is None:
+            isospin = 1.
+
+        self._mass = mass
+        self._spin = spin
+        self._flavor = flavor
+        self._isospin_multiplet = isospin_multiplet
+        self._isospin = isospin
+
+        self.mass = self._mass
+        self.spin = self._spin
+        self.flavor = self._flavor
+        self.isospin_multiplet = self._isospin_multiplet
+        self.isospin = self._isospin
+
+    def _check_type(self, variable, variable_string, variable_type,
+                    variable_type_str):
+        """Check that a variable is of the correct type."""
+        if variable is not None:
+            if not isinstance(variable, variable_type):
+                raise TypeError(f"{variable_string} must be of type "
+                                f"{variable_type_str}")
+
+    @property
+    def mass(self):
+        """Mass of the particle."""
+        return self._mass
+
+    @mass.setter
+    def mass(self, mass):
+        """Set the mass of the particle."""
+        self._check_type(mass, 'mass', float, 'float')
+        self._mass = mass
+
+    @property
+    def spin(self):
+        """Spin of the particle."""
+        return self._spin
+
+    @spin.setter
+    def spin(self, spin):
+        """Set the spin of the particle."""
+        self._check_type(spin, 'spin', float, 'float')
+        self._spin = spin
+
+    @property
+    def flavor(self):
+        """Flavor of the particle."""
+        return self._flavor
+
+    @flavor.setter
+    def flavor(self, flavor):
+        """Set the flavor of the particle."""
+        self._check_type(flavor, 'flavor', str, 'str')
+        self._flavor = flavor
+
+    @property
+    def isospin_multiplet(self):
+        """Whether the particle is an isospin multiplet."""
+        return self._isospin_multiplet
+
+    @isospin_multiplet.setter
+    def isospin_multiplet(self, isospin_multiplet):
+        """Set whether the particle is an isospin multiplet."""
+        self._check_type(isospin_multiplet, 'isospin_multiplet', bool, 'bool')
+        self._isospin_multiplet = isospin_multiplet
+
+    @property
+    def isospin(self):
+        """Isospin of the particle."""
+        return self._isospin
+
+    @isospin.setter
+    def isospin(self, isospin):
+        """Set the isospin of the particle."""
+        self._check_type(isospin, 'isospin', float, 'float')
+        self._isospin = isospin
+
+    def __eq__(self, other):
+        """Check if two particles are equal."""
+        if not isinstance(other, Particle):
+            return False
+        return (self.mass == other.mass and
+                self.spin == other.spin and
+                self.flavor == other.flavor and
+                self.isospin_multiplet == other.isospin_multiplet and
+                self.isospin == other.isospin)
+
+    def __str__(self):
+        """Return a string representation of the particle object."""
+        particle_str = "Particle with the following properties:\n"
+        particle_str += f"    mass: {self.mass},\n"
+        particle_str += f"    spin: {self.spin},\n"
+        particle_str += f"    flavor: {self.flavor},\n"
+        particle_str += f"    isospin_multiplet: {self.isospin_multiplet},\n"
+        if self.isospin_multiplet:
+            particle_str += f"    isospin: {self.isospin},\n"
+        return particle_str[:-2]+"."
+
+
 class FlavorChannel:
     """
-    Class used to represent a particular flavor channel.
+    Class used to represent a flavor channel.
 
-    :param n_particles: number of particles in the channel (no default)
+    :param n_particles: number of particles in the channel
     :type n_particles: int
-    :param masses: mass of each particle in the channel (default is
-        ``[1.0]*n_particles``)
-    :type masses: list of floats
-    :param twospins: twice the spin of each particle in the channel (default
-        is ``[0]*n_particles``)
-    :type twospins: list of ints
-    :param flavors: flavor of each particle (default is ``['pi']*n_particles``)
-    :type flavors: list of strs
+    :param particles: list of particles in the channel
+    :type particles: list
+    :param masses: list of masses of the particles in the channel
+    :type masses: list
+    :param spins: list of spins of the particles in the channel
+    :type spins: list
+    :param flavors: list of flavors of the particles in the channel
+    :type flavors: list
+    :param isospins: list of isospins of the particles in the channel
+    :type isospins: list
     :param isospin_channel: specifies whether this is an isospin channel
-        (default is ``False``)
     :type isospin_channel: bool
-    :param twoisospins: twice the isospin of each particle in the channel
-        (is ``None`` if ``isospin_channel`` is ``False``, default is ``None``
-        but if ``isospin_channel`` is ``True`` then default to
-        ``[2]*n_particles``, i.e. pion isospins)
-    :type twoisospins: list of ints
-    :param allowed_total_twoisospins: twice the allowed total isospins for the
-        channel (is ``None`` if ``isospin_channel`` is ``False``, default is
-        ``None`` but if ``isospin_channel`` is ``True`` then set is constructed
-        from ``twoisospins``)
-    :type allowed_total_twoisospins: list of ints
-    :param twoisospin_value: twice the isospin of the channel (is None if
-        ``isospin_channel`` is ``False``, default is ``None`` but if
-        ``isospin_channel`` is ``True`` then default to largest value in
-        ``allowed_total_twoisospins``)
-    :type twoisospin_value: int
-    :param summary: compact collection of the relevant data for an isospin
-        channel. Each row is a possible combination of spectator and isospin
-        assignments. The multiple rows ignore ``twoisospin_value`` and are
-        populated with all possible values based on ``twoisospins``. Each row
-        contains seven entries::
-
-            [isospin value (x2), two-particle sub-isospin (x2),
-             spectator flavor, spectator isospin (x2),
-             first non-spectator flavor, second non-spectator flavor,
-             first non-spectator isospin (x2),
-             second non-spectator isospin (x2)]
-
-        For example, for three pions with total isospin 0 the unique entry is
-        ``[0, 2, 'pi', 2, 'pi', 'pi', 2, 2]``.
-    :type summary: np.ndarray
-    :param summary_reduced: as with ``summary`` but reduced to only include
-        entries with the correct ``twoisospin_value``.
-    :type summary_reduced: np.ndarray
+    :param isospin: isospin of the flavor channel (default is ``None``)
+    :type isospin: float
+    :param allowed_total_isospins: list of allowed total isospins for the
+    :type allowed_total_isospins: list
+    :param summary: summary of the flavor channel
+    :type summary: list
+    :param summary_reduced: reduced summary of the flavor channel
+    :type summary_reduced: list
     """
-
-    def __init__(self, n_particles, masses=None, twospins=None,
-                 flavors=None, isospin_channel=False,
-                 twoisospins=None, twoisospin_value=None):
+    def __init__(self, n_particles, particles=[], isospin_channel=False,
+                 isospin=None):
         if not isinstance(n_particles, int):
             raise ValueError("n_particles must be an int")
         if n_particles < 2:
@@ -146,474 +239,294 @@ class FlavorChannel:
         self.summary = None
         self.summary_reduced = None
 
-        allowed_total_twoisospins = None
-        if masses is None:
-            masses = n_particles*[1.0]
-        if twospins is None:
-            twospins = n_particles*[0]
-        if not isospin_channel and twoisospin_value is not None:
+        if isinstance(particles, list) and len(particles) == 0:
+            particles = [Particle() for _ in range(n_particles)]
+        if not isospin_channel and isospin is not None:
             isospin_channel = True
-        if not isospin_channel and twoisospins is not None:
-            isospin_channel = True
-        if flavors is None:
-            flavors = n_particles*['pi']
-        if isospin_channel:
-            if twoisospins is None:
-                twoisospins = n_particles*[2]
+        if isospin_channel and isospin is None:
+            isospin_channel = False
+            warnings.warn(f"\n{bcolors.WARNING}"
+                          "isospin_channel is True but isospin is None; "
+                          "setting isospin_channel to False"
+                          f"{bcolors.ENDC}", stacklevel=2)
 
-        self._flavors = flavors
+        self._particles = particles
         self._isospin_channel = isospin_channel
-        self._twoisospins = twoisospins
-        self._allowed_total_twoisospins = allowed_total_twoisospins
-        self._twoisospin_value = twoisospin_value
-        self._masses = masses
-        self._twospins = twospins
+        self._isospin = isospin
 
-        self.flavors = self._flavors
+        self.particles = self._particles
+
+        self.masses = self._get_masses()
+        self.spins = self._get_spins()
+        self.flavors = self._get_flavors()
+        self.isospins = self._get_isospins()
+
+        self.allowed_total_isospins = self._get_allowed_total_isospins()
+
         self.isospin_channel = self._isospin_channel
-        self.twoisospins = self._twoisospins
-        self.twoisospin_value = self._twoisospin_value
-        self.masses = self._masses
-        self.twospins = self._twospins
+        self.isospin = self._isospin
         self.n_particles = self._n_particles
 
-    def _get_allowed(self, twoisospins=None):
-        """
-        Get allowed isospin values.
+    def _get_masses(self):
+        return [particle.mass for particle in self.particles]
 
-        Calculates the allowed isospin combinations for a given number of
-        particles with given isospins.
+    def _get_spins(self):
+        return [particle.spin for particle in self.particles]
 
-        Parameters
-        ----------
-        twoisospins: list, optional
-            List of isospins for each particle. If not provided, use the stored
-            `twoisospins` attribute.
+    def _get_flavors(self):
+        return [particle.flavor for particle in self.particles]
 
-        Returns
-        -------
-        allowed_totals : list
-            List of allowed isospin combinations.
+    def _get_isospins(self):
+        return [particle.isospin for particle in self.particles]
 
-        Raises
-        ------
-        ValueError
-            If the number of particles is greater than 3.
-
-        """
-        if twoisospins is None:
-            twoisospins = self._twoisospins
-        num_particles = len(twoisospins)
-        if num_particles == 1:
-            return twoisospins
-        if num_particles == 2:
-            min_isospin = abs(twoisospins[0] - twoisospins[1])
-            max_isospin = abs(twoisospins[0] + twoisospins[1])
-            return list(range(min_isospin, max_isospin + 2, 2))
-        if num_particles == 3:
+    def _get_allowed_total_isospins(self, isospins=None):
+        if not self._isospin_channel:
+            return None
+        if isospins is None:
+            none_was_passed = True
+            isospins = self.isospins
+        else:
+            none_was_passed = False
+        n_isospins = len(isospins)
+        if n_isospins == 1:
+            return isospins
+        if n_isospins == 2:
+            min_isospin = abs(isospins[0]-isospins[1])
+            max_isospin = abs(isospins[0]+isospins[1])
+            return list(np.arange(min_isospin, max_isospin+0.5+EPSILON4))
+        if n_isospins == 3 and none_was_passed:
             unique_flavors = np.unique(self.flavors)
             redundant_list = []
             counting_list = []
             for j in range(len(unique_flavors)):
                 spectator_flavor = unique_flavors[j]
                 i = np.where(np.array(self.flavors) == spectator_flavor)[0][0]
-                spectator_twoisospin = twoisospins[i]
-                pair_twoisospins = twoisospins[:i] + twoisospins[i+1:]
+                spectator_isospin = isospins[i]
+                pair_isospins = isospins[:i] + isospins[i+1:]
                 pair_flavors = self.flavors[:i] + self.flavors[i+1:]
-                combined_pair_twoisospins\
-                    = self._get_allowed(twoisospins=pair_twoisospins)
-                for combined_pair_twoisospin in combined_pair_twoisospins:
-                    combined_three_particle_twoisospins = self._get_allowed(
-                        twoisospins=[combined_pair_twoisospin,
-                                     spectator_twoisospin]
-                    )
-                    for combined_entry in combined_three_particle_twoisospins:
-                        redundant_list.append(combined_entry)
-                        candidate = (combined_entry,
-                                     combined_pair_twoisospin,
+                combined_pair_isospins = self.\
+                    _get_allowed_total_isospins(isospins=pair_isospins)
+                for combined_pair_isospin in combined_pair_isospins:
+                    combined_three_isospins = self\
+                        ._get_allowed_total_isospins(
+                            isospins=[spectator_isospin, combined_pair_isospin]
+                            )
+                    for combined_three_isospin in combined_three_isospins:
+                        redundant_list.append(combined_three_isospin)
+                        candidate = (combined_three_isospin,
+                                     combined_pair_isospin,
                                      spectator_flavor,
-                                     spectator_twoisospin,
-                                     pair_flavors[0], pair_flavors[1],
-                                     pair_twoisospins[0], pair_twoisospins[1])
+                                     spectator_isospin,
+                                     *pair_flavors, *pair_isospins)
                         if candidate not in counting_list:
                             counting_list.append(candidate)
-            allowed_totals_three_particles\
+            allowed_total_isospins\
                 = list(np.sort(np.unique(redundant_list)))
             self.summary = np.array([entry for entry in counting_list],
                                     dtype=object)
-            if self.twoisospin_value is not None:
+            if self._isospin is not None:
+                if self._isospin not in allowed_total_isospins:
+                    raise ValueError(f"total isospin {self._isospin} not "
+                                     f"allowed with these particles")
                 self.summary_reduced\
                     = np.array([entry for entry in self.summary
-                                if entry[0] == self.twoisospin_value],
+                                if entry[0] == self.isospin],
                                dtype=object)
-            return allowed_totals_three_particles
-        raise ValueError("n_particles > 3 not supported within FlavorChannel")
-
-    def _generic_setter(self, var, varstr, enttype, enttypestr):
-        if not isinstance(var, list):
-            raise ValueError(varstr+' must be a list')
-        for obj in var:
-            if not isinstance(obj, enttype):
-                raise ValueError(varstr+' must be populated with '
-                                 + enttypestr+'s')
-        if self._n_particles == len(var):
-            return var
-        if self._n_particles < len(var):
-            warnings.warn(f"\n{bcolors.WARNING}"
-                          f"Length of {varstr} must equal n_particles; "
-                          f"last entries will be dropped"
-                          f"{bcolors.ENDC}", stacklevel=2)
-            return var[:self._n_particles]
-        warnings.warn(f"\n{bcolors.WARNING}"
-                      f"Length of {varstr} must equal n_particles; "
-                      f"last entry will be duplicated"
-                      f"{bcolors.ENDC}", stacklevel=2)
-        return var+[var[-1]]*(self._n_particles-len(var))
+            return allowed_total_isospins
+        raise NotImplementedError("more than three particles not implemented "
+                                  "yet")
 
     @property
-    def flavors(self):
-        """Get flavors (list of strs)."""
-        return self._flavors
+    def particles(self):
+        """Particles in the channel."""
+        return self._particles
 
-    @flavors.setter
-    def flavors(self, flavors):
-        if flavors is None:
-            warnings.warn(f"\n{bcolors.WARNING}"
-                          f"flavors is being set to None but this is not "
-                          f"allowed; setting it to a list of pi strings"
-                          f"{bcolors.ENDC}", stacklevel=2)
-            self._flavors = (self.n_particles)*['pi']
-        else:
-            self._flavors = self._generic_setter(flavors, 'flavors',
-                                                 str, 'str')
+    @particles.setter
+    def particles(self, particles):
+        """Set the particles in the channel."""
+        if not isinstance(particles, list):
+            raise ValueError("particles must be a list")
+        if len(particles) != self.n_particles:
+            raise ValueError("len(particles) must be equal to n_particles")
+        for particle in particles:
+            if not isinstance(particle, Particle):
+                raise ValueError("particles must be a list of Particle "
+                                 "objects")
+        for particle_a in particles:
+            for particle_b in particles:
+                if (particle_a.flavor == particle_b.flavor)\
+                   and (particle_a != particle_b):
+                    raise ValueError("particles with the same flavors must be "
+                                     + "identical")
+        if self._isospin_channel:
+            for particle in particles:
+                if not particle.isospin_multiplet:
+                    raise ValueError("all particles must be in an isospin "
+                                     "multiplet if the channel is an "
+                                     "isospin channel")
+        self._particles = particles
 
     @property
     def isospin_channel(self):
-        """Get isospin channel status (bool)."""
+        """Whether the channel is an isospin channel."""
         return self._isospin_channel
 
     @isospin_channel.setter
     def isospin_channel(self, isospin_channel):
+        """Set whether the channel is an isospin channel."""
         if not isinstance(isospin_channel, bool):
-            raise ValueError("isospin_channel must be a boolean")
+            raise ValueError("isospin_channel must be a bool")
         self._isospin_channel = isospin_channel
-        if isospin_channel and (self._twoisospins is None):
-            warnings.warn(f"\n{bcolors.WARNING}"
-                          f"isospin_channel is being set to True but "
-                          f"twoisospins is None; setting it to default"
-                          f"{bcolors.ENDC}", stacklevel=2)
-            self._twoisospins = self.n_particles*[2]
-            self._allowed_total_twoisospins = self._get_allowed()
-        if isospin_channel and (self._allowed_total_twoisospins is None):
-            self._allowed_total_twoisospins = self._get_allowed()
-        if isospin_channel and (self._twoisospin_value is None):
-            warnings.warn(f"\n{bcolors.WARNING}"
-                          f"isospin_channel is being set to True but "
-                          f"twoisospin_value is None; setting it to default"
-                          f"{bcolors.ENDC}", stacklevel=2)
-            self._twoisospin_value = self._allowed_total_twoisospins[-1]
-            if self.summary is not None:
-                summary_reduced = [[]]
-                if self.twoisospin_value is not None:
-                    for entry in self.summary:
-                        if entry[0] == self.twoisospin_value:
-                            summary_reduced = summary_reduced+[entry]
-                summary_reduced = np.array(summary_reduced[1:], dtype=object)
-                self.summary_reduced = summary_reduced
-        if (not isospin_channel) and (self._twoisospins is not None):
-            warnings.warn(f"\n{bcolors.WARNING}"
-                          f"isospin_channel is being set to False but "
-                          f"twoisospins is not None; setting it to None"
-                          f"{bcolors.ENDC}", stacklevel=2)
-            self._twoisospins = None
-        if ((not isospin_channel)
-           and (self._allowed_total_twoisospins is not None)):
-            warnings.warn(f"\n{bcolors.WARNING}"
-                          f"isospin_channel is being set to False but "
-                          f"allowed_total_twoisospins is not None; setting "
-                          f"it to None"
-                          f"{bcolors.ENDC}", stacklevel=2)
-            self._allowed_total_twoisospins = None
-        if (not isospin_channel) and (self._twoisospin_value is not None):
-            warnings.warn(f"\n{bcolors.WARNING}"
-                          f"isospin_channel is being set to False but "
-                          f"twoisospin_value is not None; setting it to None."
-                          f"{bcolors.ENDC}", stacklevel=2)
-            self._twoisospin_value = None
 
     @property
-    def twoisospins(self):
-        """Get twice the isospin of each particle (list of ints)."""
-        return self._twoisospins
+    def isospin(self):
+        """Isospin value of the channel."""
+        return self._isospin
 
-    @twoisospins.setter
-    def twoisospins(self, twoisospins):
-        if twoisospins is not None:
-            self._twoisospins = self._generic_setter(
-                twoisospins, 'twoisospins', int, 'int')
-            for i in range(len(self._twoisospins)):
-                for j in range(len(self._twoisospins)):
-                    f1 = self.flavors[i]
-                    f2 = self.flavors[j]
-                    ti1 = self._twoisospins[i]
-                    ti2 = self._twoisospins[j]
-                    if (f1 == f2) and (ti1 != ti2):
-                        warnings.warn(f"\n{bcolors.WARNING}"
-                                      f"isospins must be equal when flavors "
-                                      f"are equal; changing one of the "
-                                      f"twoisospins"
-                                      f"{bcolors.ENDC}", stacklevel=2)
-                        self._twoisospins[j] = ti1
-            self._allowed_total_twoisospins = self._get_allowed()
-            if ((self._twoisospin_value is not None)
-               and (self._twoisospin_value not in
-                    self._allowed_total_twoisospins)):
-                warnings.warn(f"\n{bcolors.WARNING}"
-                              f"twoisospin_value currently not in "
-                              f"allowed_total_twoisospins; setting it to "
-                              f"maximum allowed value"
-                              f"{bcolors.ENDC}", stacklevel=2)
-                self._twoisospin_value = self._allowed_total_twoisospins[-1]
-                if self.summary is not None:
-                    summary_reduced = [[]]
-                    if self.twoisospin_value is not None:
-                        for entry in self.summary:
-                            if entry[0] == self.twoisospin_value:
-                                summary_reduced = summary_reduced+[entry]
-                    summary_reduced = np.array(summary_reduced[1:],
-                                               dtype=object)
-                    self.summary_reduced = summary_reduced
-        if self.isospin_channel and (twoisospins is None):
-            warnings.warn(f"\n{bcolors.WARNING}"
-                          f"twoisospins is being set to None "
-                          f"but isospin_channel is True; setting it to False"
-                          f"{bcolors.ENDC}", stacklevel=2)
-            self.isospin_channel = False
-        if (not self.isospin_channel) and (twoisospins is not None):
-            warnings.warn(f"\n{bcolors.WARNING}"
-                          f"twoisospins is being set but isospin_channel is "
-                          f"False; setting it to True"
-                          f"{bcolors.ENDC}", stacklevel=2)
-            self.isospin_channel = True
-
-    @property
-    def allowed_total_twoisospins(self):
-        """Get the set of twice the allowed total isospins (list of ints)."""
-        return self._allowed_total_twoisospins
-
-    @property
-    def twoisospin_value(self):
-        """Get twice the isospin value (int)."""
-        return self._twoisospin_value
-
-    @twoisospin_value.setter
-    def twoisospin_value(self, twoisospin_value):
-        if ((twoisospin_value is not None)
-           and (not isinstance(twoisospin_value, int)
-           and (not isinstance(twoisospin_value, np.int64)))):
-            raise ValueError("twoisospin_value must be an int")
-        if ((twoisospin_value is not None)
-           and (self._allowed_total_twoisospins is not None)
-           and (twoisospin_value not in self._allowed_total_twoisospins)):
-            warnings.warn(f"\n{bcolors.WARNING}"
-                          f"twoisospin_value currently not in "
-                          f"allowed_total_twoisospins; setting it to "
-                          f"maximum allowed value"
-                          f"{bcolors.ENDC}", stacklevel=2)
-            self._twoisospin_value = self._allowed_total_twoisospins[-1]
-        else:
-            self._twoisospin_value = twoisospin_value
-        if self.summary is not None:
-            summary_reduced = [[]]
-            if self.twoisospin_value is not None:
-                for entry in self.summary:
-                    if entry[0] == self.twoisospin_value:
-                        summary_reduced = summary_reduced+[entry]
-            summary_reduced = np.array(summary_reduced[1:], dtype=object)
-            self.summary_reduced = summary_reduced
-        if (not self.isospin_channel) and (twoisospin_value is not None):
-            warnings.warn(f"\n{bcolors.WARNING}"
-                          f"twoisospin_value is being set but "
-                          f"isospin_channel is False; setting it to True"
-                          f"{bcolors.ENDC}", stacklevel=2)
-            self.isospin_channel = True
-        if self.isospin_channel and (twoisospin_value is None):
-            warnings.warn(f"\n{bcolors.WARNING}"
-                          f"twoisospin_value is being set to None but "
-                          f"isospin_channel is True; setting it to False"
-                          f"{bcolors.ENDC}", stacklevel=2)
-            self.isospin_channel = False
-            self.isospin_flavor = None
-
-    @property
-    def masses(self):
-        """Get the masses (list of floats)."""
-        return self._masses
-
-    @masses.setter
-    def masses(self, masses):
-        self._masses = self._generic_setter(masses, 'masses', float, 'float')
-        for i in range(len(self._masses)):
-            for j in range(len(self._masses)):
-                f1 = self.flavors[i]
-                f2 = self.flavors[j]
-                m1 = self._masses[i]
-                m2 = self._masses[j]
-                if (f1 == f2) and (m1 != m2):
-                    warnings.warn(f"\n{bcolors.WARNING}"
-                                  f"masses must be equal when flavors are "
-                                  f"equal; changing one of the masses."
-                                  f"{bcolors.ENDC}", stacklevel=2)
-                    self._masses[j] = m1
-
-    @property
-    def twospins(self):
-        """Get twice the spins (list of ints)."""
-        return self._twospins
-
-    @twospins.setter
-    def twospins(self, twospins):
-        self._twospins = self._generic_setter(twospins, 'twospins', int, 'int')
-        for i in range(len(self._twospins)):
-            for j in range(len(self._masses)):
-                f1 = self.flavors[i]
-                f2 = self.flavors[j]
-                s1 = self._twospins[i]
-                s2 = self._twospins[j]
-                if (f1 == f2) and (s1 != s2):
-                    warnings.warn(f"\n{bcolors.WARNING}"
-                                  f"twospins must be equal when flavors are "
-                                  f"equal; changing one of the twospins"
-                                  f"{bcolors.ENDC}", stacklevel=2)
-                    self._twospins[j] = s1
+    @isospin.setter
+    def isospin(self, isospin):
+        """Set the isospin value of the channel."""
+        if isospin is not None and not isinstance(isospin, float):
+            raise ValueError("isospin must be an float")
+        if isospin is not None and isospin not in self.allowed_total_isospins:
+            raise ValueError("isospin must be in allowed_total_isospins")
+        self._isospin = isospin
 
     @property
     def n_particles(self):
-        """Get number of particles (int)."""
+        """Number of particles in the channel."""
         return self._n_particles
 
     @n_particles.setter
     def n_particles(self, n_particles):
+        """Set the number of particles in the channel."""
         if not isinstance(n_particles, int):
             raise ValueError("n_particles must be an int")
         if n_particles < 2:
             raise ValueError("n_particles must be >= 2")
-        else:
-            self._n_particles = n_particles
-            self.masses = self._masses
-            self.twospins = self._twospins
-            self.flavors = self._flavors
-            self.twoisospins = self._twoisospins
-            self.twoisospin_value = self._twoisospin_value
 
     def __str__(self):
-        """Summary of the flavor channel."""
-        strtmp = 'FlavorChannel with the following details:\n'
-        strtmp = strtmp+f'    {self._n_particles} particles,\n'
-        strtmp = strtmp+f'    masses: {self._masses},\n'
-        strtmp = strtmp+f'    spins: {np.array(self._twospins)*0.5},\n'
-        strtmp = strtmp+(f'    flavors: '
-                         f'{self._flavors},\n')
-        strtmp = strtmp+(f'    isospin_channel: '
-                         f'{self._isospin_channel},\n')
-        if self._isospin_channel:
-            strtmp = strtmp+(f'    isospins: '
-                             f'{np.array(self._twoisospins)*0.5},\n')
-            strtmp = strtmp+(f'    allowed total isospins: '
-                             f'{np.array(self._allowed_total_twoisospins)*0.5}'
-                             f',\n')
-            strtmp = strtmp+(f'    isospin_value:'
-                             f' {float(self._twoisospin_value)*0.5},\n')
-        return strtmp[:-2]+'.'
+        """Return a string representation of the FlavorChannel object."""
+        flavor_channel_str = "FlavorChannel with the following details:\n"
+        flavor_channel_str += f"    {self.n_particles} particles,\n"
+        flavor_channel_str += f"    masses: {self.masses},\n"
+        flavor_channel_str += f"    spins: {self.spins},\n"
+        flavor_channel_str += f"    flavors: {self.flavors},\n"
+        flavor_channel_str += f"    isospin_channel: {self.isospin_channel},\n"
+        if self.isospin_channel:
+            flavor_channel_str += f"    isospins: {self.isospins},\n"
+            flavor_channel_str += f"    allowed_total_isospins: "\
+                f"{self.allowed_total_isospins},\n"
+            flavor_channel_str += f"    isospin: {self.isospin},\n"
+        return flavor_channel_str[:-2]+"."
 
 
 class SpectatorChannel:
     """
-    Class used to represent a particular spectator channel.
+    Class used to represent a spectator channel.
 
-    :param fc: instance of FlavorChannel, a key property of the spectator
-        channel
+    :param fc: FlavorChannel object required to define the spectator channel
     :type fc: FlavorChannel
-    :param indexing: permutation of [0, 1, 2], the first entry is the spectator
-        particle (indexing is None for a two-particle channel)
-    :type indexing: list of ints
-    :param allowed_sub_twoisospins: twice the possible values of isospins for
-        the two-particle subsystems, given the total isospin and the spectator
-        flavor
-    :param allowed_sub_twoisospins: list
-    :param sub_twoisospin: twice the value of the two-particle isospin for the
-        spectator channel (is None if the flavor channel is not an isospin
-        channel)
-    :type sub_twoisospin: int
-    :param ell_set: specifies the allowed values of orbital angular momentum
-    :type ell_set: list of ints
-    :param p_cot_deltas: specifies the two-particle scattering phase shifts
-        (same length as ell_set, default is scattering length only)
-    :type p_cot_deltas: list of functions
-    :param n_params_set: specifies the number of parameters for each
-        p_cot_deltas entry (same length as ell_set and p_cot_deltas)
-    :type n_params_set: list of ints
+    :param indexing: list of indices of the particles in the FlavorChannel. The
+    first entry corresponds to the spectator particle.
+    :type indexing: list
+    :param masses_indexed: masses of the particles in the channel with the
+    spectator first
+    :type masses_indexed: list
+    :param spins_indexed: spins of the particles in the channel with the
+    spectator first
+    :type spins_indexed: list
+    :param flavors_indexed: flavors of the particles in the channel with the
+    spectator first
+    :type flavors_indexed: list
+    :param isospins_indexed: isospins of the particles in the channel with the
+    spectator first
+    :type isospins_indexed: list
+    :param sub_isospin: sub-isospin value of the channel
+    :type sub_isospin: float
+    :param ell_set: list of angular momentum values of the channel
+    :type ell_set: list
+    :param p_cot_deltas: list of p_cot_delta values of the channel
+    :type p_cot_deltas: list
+    :param n_params_set: list of parameter counts for the channel. Set
+    automatically.
+    :type n_params_set: list
+    :param allowed_sub_isospins: list of allowed sub-channel isospins
+    :type allowed_sub_isospins: list
     """
 
     def __init__(self, fc=FlavorChannel(3), indexing=[0, 1, 2],
-                 sub_twoisospin=None, ell_set=[0], p_cot_deltas=None,
+                 sub_isospin=None, ell_set=[0], p_cot_deltas=None,
                  n_params_set=[1]):
 
-        self.allowed_sub_twoisospins = None
+        self.allowed_sub_isospins = None
 
         self._fc = fc
         self._indexing = indexing
-        self._sub_twoisospin = sub_twoisospin
+        self._sub_isospin = sub_isospin
         self._ell_set = ell_set
         self._p_cot_deltas = p_cot_deltas
         self._n_params_set = n_params_set
 
         if fc.isospin_channel and fc.n_particles > 2:
-            allowed_sub_twoisospins = []
+            allowed_sub_isospins = []
             for entry in fc.summary_reduced:
                 if fc.flavors[indexing[0]] == entry[2]:
-                    allowed_sub_twoisospins = allowed_sub_twoisospins\
-                        + [entry[1]]
-            self.allowed_sub_twoisospins = allowed_sub_twoisospins
+                    allowed_sub_isospins.append(entry[1])
+            self.allowed_sub_isospins = allowed_sub_isospins
 
         self.fc = fc
         self.indexing = indexing
-        self.sub_twoisospin = sub_twoisospin
+        self.sub_isospin = sub_isospin
         self.ell_set = ell_set
 
+        if self.fc.n_particles == 2:
+            self.masses_indexed = self.fc.masses
+            self.spins_indexed = self.fc.spins
+            self.flavors_indexed = self.fc.flavors
+            self.isospins_indexed = self.fc.isospins
+        elif self.fc.n_particles == 3:
+            self.masses_indexed = list(np.array(self.fc.masses)[indexing])
+            self.spins_indexed = list(np.array(self.fc.spins)[indexing])
+            self.flavors_indexed = list(np.array(self.fc.flavors)[indexing])
+            self.isospins_indexed = list(np.array(self.fc.isospins)[indexing])
+        else:
+            raise NotImplementedError("only 2- and 3-body channels supported")
+
         if p_cot_deltas is None:
-            tmp = []
-            for i in range(len(ell_set)):
-                tmp = tmp+[QCFunctions.pcotdelta_scattering_length]
-                self._p_cot_deltas = tmp
-                self.p_cot_deltas = tmp
+            p_cot_deltas = []
+            for _ in range(len(ell_set)):
+                p_cot_deltas.append(QCFunctions.pcotdelta_scattering_length)
+                self._p_cot_deltas = p_cot_deltas
+                self.p_cot_deltas = p_cot_deltas
         else:
             self._p_cot_deltas = p_cot_deltas
             self.p_cot_deltas = p_cot_deltas
 
-        self.n_params_set = n_params_set
+        self._n_params_set = n_params_set
 
     @property
     def fc(self):
-        """Get the flavor channel (FlavorChannel)."""
+        """FlavorChannel object of the spectator channel."""
         return self._fc
 
     @fc.setter
     def fc(self, fc):
+        """Set the FlavorChannel object of the spectator channel."""
         self._fc = fc
         self.indexing = self._indexing
-        self.sub_twoisospin = self._sub_twoisospin
+        self.sub_isospin = self._sub_isospin
         self.ell_set = self._ell_set
         self.p_cot_deltas = self._p_cot_deltas
-        self.n_params_set = self._n_params_set
 
     @property
     def indexing(self):
-        """Get the indexing (list of ints)."""
+        """Indexing of the spectator channel."""
         return self._indexing
 
     @indexing.setter
     def indexing(self, indexing):
+        """Set the indexing of the spectator channel."""
         if (self.fc.n_particles == 2) and (indexing is not None):
             warnings.warn(f"\n{bcolors.WARNING}"
                           f"n_particles == 2 and indexing is not None; "
@@ -625,212 +538,260 @@ class SpectatorChannel:
         elif self.fc.n_particles >= 3:
             if not isinstance(indexing, list):
                 raise ValueError("for n_particles > 2, indexing must be a "
-                                 + "list")
+                                 "list")
             if len(indexing) != self.fc.n_particles:
                 raise ValueError("indexing must have length n_particles")
             if (np.sort(indexing) != np.arange(self.fc.n_particles)).any():
                 raise ValueError("indexing must be a permuatation of "
-                                 + "ascending integers")
+                                 "ascending integers")
             self._indexing = indexing
         else:
             raise ValueError("unknown problem with indexing")
 
     @property
-    def sub_twoisospin(self):
-        """Get twice the sub-channel isospin (int)."""
-        return self._sub_twoisospin
+    def sub_isospin(self):
+        """Sub-channel isospin of the spectator channel."""
+        return self._sub_isospin
 
-    @sub_twoisospin.setter
-    def sub_twoisospin(self, sub_twoisospin):
-        if ((sub_twoisospin is not None)
+    @sub_isospin.setter
+    def sub_isospin(self, sub_isospin):
+        """Set the sub-channel isospin of the spectator channel."""
+        if ((sub_isospin is not None)
            and (self.fc.n_particles == 2)):
-            raise ValueError("sub_twoisospin must be None "
-                             + "for n_particles == 2")
-        if ((sub_twoisospin is not None)
-           and (not isinstance(sub_twoisospin, int))):
-            raise ValueError("sub_twoisospin must be an int")
-        if ((sub_twoisospin is not None)
-           and (self.allowed_sub_twoisospins is not None)
-           and (sub_twoisospin not in self.allowed_sub_twoisospins)):
-            raise ValueError("sub-two-isospin is not in allowed set")
-        if (not self.fc.isospin_channel) and (sub_twoisospin is not None):
-            raise ValueError("sub_twoisospin cannot be set because "
-                             + "isospin_channel is False")
-        if (self.fc.isospin_channel and (sub_twoisospin is None)
+            raise ValueError("sub_isospin must be None "
+                             "for n_particles == 2")
+        if ((sub_isospin is not None)
+           and (not isinstance(sub_isospin, float))):
+            raise ValueError("sub_isospin must be an float")
+        if ((sub_isospin is not None)
+           and (self.allowed_sub_isospins is not None)
+           and (sub_isospin not in self.allowed_sub_isospins)):
+            raise ValueError("sub-isospin is not in allowed set")
+        if (not self.fc.isospin_channel) and (sub_isospin is not None):
+            raise ValueError("sub_isospin cannot be set because "
+                             "isospin_channel is False")
+        if (self.fc.isospin_channel and (sub_isospin is None)
            and (self.fc.n_particles != 2)):
-            raise ValueError("sub_twoisospin cannot be set to None because "
-                             + "isospin_channel is True")
-        self._sub_twoisospin = sub_twoisospin
+            raise ValueError("sub_isospin cannot be set to None because "
+                             "isospin_channel is True")
+        self._sub_isospin = sub_isospin
 
     @property
     def ell_set(self):
-        """Get the set of orbital angular momentum (list of ints)."""
+        """Angular-momentum set of the spectator channel."""
         return self._ell_set
 
     @ell_set.setter
     def ell_set(self, ell_set):
-        self._ell_set = ell_set
-        if ((self.p_cot_deltas is not None)
-           and (len(self.p_cot_deltas) != len(ell_set))):
-            self._p_cot_deltas = [self._p_cot_deltas[0]]*len(ell_set)
-        if len(self.n_params_set) != len(ell_set):
-            self._n_params_set = [self._n_params_set[0]]*len(ell_set)
+        """Set the angular-momentum set of the spectator channel."""
+        if ell_set is None:
+            self._ell_set = None
+            self._p_cot_deltas = None
+            self._n_params_set = None
+        else:
+            if self._p_cot_deltas is None:
+                self._p_cot_deltas = []
+            if len(self._p_cot_deltas) > len(ell_set):
+                for _ in range(len(self._p_cot_deltas)-len(self._ell_set)):
+                    self._p_cot_deltas.pop()
+            elif (len(self._p_cot_deltas) < len(ell_set)
+                  and len(self._p_cot_deltas) != 0):
+                for _ in range(len(self._ell_set)-len(self.p_cot_deltas)):
+                    self._p_cot_deltas.append(self._p_cot_deltas[-1])
+            elif len(self._p_cot_deltas) < len(ell_set):
+                for _ in range(len(self._ell_set)-len(self.p_cot_deltas)):
+                    self._p_cot_deltas.append(
+                        QCFunctions.pcotdelta_scattering_length)
+            self._ell_set = ell_set
+            self._n_params_set = []
+            for p_cot_delta in self._p_cot_deltas:
+                self._n_params_set.append(
+                    len(signature(p_cot_delta).parameters)-1)
 
     @property
     def p_cot_deltas(self):
-        """Get the set of p-cot-delta functions (list of functions)."""
+        """p-cot-delta functions of the spectator channel."""
         return self._p_cot_deltas
 
     @p_cot_deltas.setter
     def p_cot_deltas(self, p_cot_deltas):
-        self._p_cot_deltas = p_cot_deltas
-        if ((p_cot_deltas is not None)
-           and (len(self.ell_set) != len(p_cot_deltas))):
-            raise ValueError("len(ell_set) != len(p_cot_deltas)")
+        """Set the p-cot-delta functions of the spectator channel."""
+        if p_cot_deltas is None:
+            self._ell_set = None
+            self._p_cot_deltas = None
+            self._n_params_set = None
+        else:
+            self._n_params_set = []
+            for p_cot_delta in p_cot_deltas:
+                self._n_params_set.append(
+                    len(signature(p_cot_delta).parameters)-1)
+            if self._ell_set is None:
+                self._ell_set = []
+            elif len(p_cot_deltas) < len(self._ell_set):
+                for _ in range(len(self._ell_set)-len(self.p_cot_deltas)):
+                    self._ell_set.pop()
+            elif len(p_cot_deltas) > len(self._ell_set):
+                for _ in range(len(self.p_cot_deltas)-len(self._ell_set)):
+                    if len(self._ell_set) == 0:
+                        self._ell_set.append(0)
+                    else:
+                        self._ell_set.append(self._ell_set[-1]+1)
+            self._p_cot_deltas = p_cot_deltas
 
     @property
     def n_params_set(self):
-        """Get the set of parameter counts (list of ints)."""
+        """Parameter counts of the spectator channel p-cot-deltas."""
         return self._n_params_set
 
-    @n_params_set.setter
-    def n_params_set(self, n_params_set):
-        self._n_params_set = n_params_set
-        if len(self.ell_set) != len(n_params_set):
-            raise ValueError("len(ell_set) != len(n_params_set)")
+    def __eq__(self, other):
+        """Return True if the two SpectatorChannel objects are equal."""
+        if not isinstance(other, SpectatorChannel):
+            return False
+        if not (self.fc == other.fc):
+            return False
+        if not (self.indexing == other.indexing):
+            return False
+        if not (self.sub_isospin == other.sub_isospin):
+            return False
+        if not (self.ell_set == other.ell_set):
+            return False
+        if not (self.p_cot_deltas == other.p_cot_deltas):
+            return False
+        if not (self.n_params_set == other.n_params_set):
+            return False
+        return True
 
     def __str__(self):
-        """Summary of the spectator channel."""
-        strtmp = self.fc.__str__().replace('Flavor', 'Spectator')[:-1]+",\n"
-        strtmp = strtmp+"    indexing: "+str(self.indexing)+",\n"
+        """Return a string representation of the SpectatorChannel object."""
+        spectator_channel_str = self.fc.__str__().replace("Flavor",
+                                                          "Spectator")
+        spectator_channel_str = spectator_channel_str[:-1]+",\n"
+        spectator_channel_str += f"    indexing: {self.indexing},\n"
         if self.fc.isospin_channel:
-            if self.sub_twoisospin is not None:
-                strtmp = strtmp+"    sub_isospin: "\
-                    + str(float(self.sub_twoisospin)*0.5)+",\n"
-            if self.allowed_sub_twoisospins is not None:
-                strtmp = strtmp+"    allowed sub_isospins: "\
-                    + str(np.array(self.allowed_sub_twoisospins)*0.5)+",\n"
-        strtmp = strtmp+"    ell_set: "+str(self.ell_set)+",\n"
-        pcd_str = ""
-        for pcd_tmp in self.p_cot_deltas:
-            pcd_str = pcd_str+str(pcd_tmp)+",\n"
-        strtmp = strtmp+"    p_cot_deltas: "+pcd_str
-        strtmp = strtmp+"    n_params_set: "+str(self.n_params_set)+",\n"
-        return strtmp[:-2]+"."
+            if self.sub_isospin is not None:
+                spectator_channel_str += f"    sub_isospin: "\
+                    f"{self.sub_isospin},\n"
+            if self.allowed_sub_isospins is not None:
+                spectator_channel_str += f"    allowed sub_isospins: "\
+                    f"{self.allowed_sub_isospins},\n"
+        spectator_channel_str += f"    ell_set: {self.ell_set},\n"
+        for i, ell in enumerate(self.ell_set):
+            spectator_channel_str += f"    p_cot_delta_{ell}: "\
+                f"{self.p_cot_deltas[i]},\n"
+        spectator_channel_str += f"    n_params_set: {self.n_params_set},\n"
+        return spectator_channel_str[:-2]+"."
 
 
 class FlavorChannelSpace:
-    r"""
-    Class used to represent a space of multi-hadron channels.
+    """
+    Class used to represent a flavor-channel space.
 
-    :param fc_list: flavor-channel list
-    :type fc_list: list of instances of FlavorChannel
-    :param ni_list: non-interacting flavor-channel list
-    :type ni_list: list of instances of FlavorChannel
-    :param sc_list: spectator-channel list
-         (SpectatorChannel is a class to be used predominantly within
-         FlavorChannelSpace. It includes extra information relevative to
-         FlavorChannel as summarized in the SpectatorChannel documentation.)
-    :type sc_list: list of instances of SpectatorChannel
-    :param sc_compact: Compact summary of the relevant spectator-channel
-        properties:
-
-        sc_compact is a list of rank-two np.ndarrays, one for each value of
-        n_particles included in the entries of fc_list. If only three-particle
-        channels are included, then ``len(sc_compact)`` is 1 and it contains a
-        single rank-two np.ndarray. Focus on this case. Then
-        ``len(sc_compact[0])`` is the total number of three-particle spectator
-        channels and each entry ``sc_compact[0][i]`` (for non-negative integer
-        ``i < len(sc_compact[0])``) is the data for a given channel, has
-        length 16, and is populated as follows::
-
-            [3.0, mass1, mass2, mass3, twospin1, twospin2, twospin3,
-             flavor1, flavor2, flavor3, isospin_channel,
-             twoisospin1, twoisospin2, twoisospin3, twoisospin_value
-             sub_twoisospin]
-
-        where the first entry is the number of particles. In the case that
-        ``isospin_channel`` is ``False``, all subsequent entries are ``None``.
-    :type sc_compact: list
-    :param three_index: location of the three-particle subspace
-
-        If the fc_list includes multiple values of n_particles, three_index
-        is used to specify the location of the sc_compact entry for the
-        three-particle subspace. For the case of only three-particle
-        channels, three_index is 0.
-    :type three_index: int
-    :param three_slices: list of two-entry (doublet) lists of integers
-
-        Each doublet specifies a slice of ``sc_compact[three_index]`` according
-        to mass values. So, for a non-negative integer
-        ``i < len(three_slices)`` we can evaluate::
-
-            sc_compact[three_index][three_slices[i][0]:three_slices[i][1]]
-
-        to get a three-particle subspace with fixed mass values.
-    :type three_slices: list
-    :param n_three_slices: length of three_slices
-        This is equal to the number of different mass values.
+    :param fc_list: list of FlavorChannel objects
+    :type fc_list: list
+    :param ni_list: list of FlavorChannel objects (corresponding to
+    non-interacting channels)
+    :type ni_list: list
+    :param sc_list: list of SpectatorChannel objects built autmatically from
+    fc_list
+    :type sc_list: list
+    :param sc_list_sorted: list of SpectatorChannel objects sorted first by
+    particle number, then mass, then other properties
+    :type sc_list_sorted: list
+    :param n_particles_max: maximum number of particles in the space
+    :type n_particles_max: int
+    :param possible_numbers_of_particles: possible numbers of particles in the
+    space, typically either ``[2]``, ``[3]`` or ``[2, 3]``
+    :type possible_numbers_of_particles: list
+    :param n_particle_numbers: number of distinct counts in the space (e.g.
+    for ``possible_numbers_of_particles == [2, 3]`` one has
+    ``n_particle_numbers == 2``)
+    :type n_particle_numbers: int
+    :param n_channels_by_particle_number: number of spectator channels for a
+    fixed number of particles. For example, for ``possible_numbers_of_particles
+    == [2, 3]`` and ``n_channels_by_particle_number == [2, 3]`` one has two
+    two-particle and three three-particle channels. The ordering matches
+    ``possible_numbers_of_particles``.
+    :type n_channels_by_particle_number: list
+    :param slices_by_particle_number: slices of the channel space by particle
+    number (e.g. for three two- and one three-particle channel one has
+    ``slices_by_particle_number = [[0, 3], [3, 4]]``)
+    :type slices_by_particle_number: list
+    :param slices_by_three_masses: mass-dependent slicing of the three-particle
+    channel space (e.g. for one two- and two three-particle channels with
+    distinct masses one has ``slices_by_three_masses = [[1, 2], [2, 3]]``)
+    :type slices_by_three_masses: list
+    :param n_three_slices: length of ``slices_by_three_masses``
     :type n_three_slices: int
-    :param g_templates: flavor structure of g
-
-        ``len(g_templates)`` is equal to ``len(g_templates[i])`` for any
-        non-negative integer ``i < len(g_templates)``. Thus the list of lists
-        is interpreted as a square array, with the number of rows and columns
-        also equal to n_three_slices. Each entry in g_template gives a template
-        for the finite-volume G matrix within each pair of mass-identical
-        subspaces. Off diaongal entries are all zeroes if the sorted set of
-        masses is distinct but can be non-zero if, for example masses
-        2.0, 2.0, 1.0 swap into masses 1.0, 2.0, 2.0 (where the first
-        entry is the spectator in both cases).
-    :type g_templates: list of lists of np.ndarrays
+    :param g_templates: templates for the g matrices
+    :type g_templates: list
+    :param g_templates_ell_specific: templates for the g matrices, ell-specific
+    :type g_templates_ell_specific: dict
     """
 
-    def __init__(self, fc_list=None, ni_list=None):
-        if fc_list is None:
-            self.fc_list = []
-        else:
-            self.fc_list = fc_list
-
+    def __init__(self, fc_list=[], ni_list=None):
+        self.fc_list = fc_list
         if ni_list is None:
             self.ni_list = fc_list
         else:
             self.ni_list = ni_list
-
         self.sc_list = []
         for fc in fc_list:
             self._add_flavor_channel(fc)
         self._build_sorted_sc_list()
         self._build_g_templates()
+        self._build_g_templates_ell_specific()
 
     def _add_spectator_channel(self, sc):
         self.sc_list.append(sc)
 
     def _add_flavor_channel(self, fc):
+        """
+        Add a flavor channel to the flavor channel space.
+
+        This method hard codes some choices for the ell_set and p_cot_deltas.
+        This should be changed in the future.
+        """
         if fc.n_particles == 2:
             sc1 = SpectatorChannel(fc, indexing=None)
             self._add_spectator_channel(sc1)
         elif fc.isospin_channel:
-            for entry in fc.summary:
-                if entry[0] == fc.twoisospin_value:
-                    flavors = entry[[2, 4, 5]]
-                    sub_twoisospin = entry[1]
-                    indexing = []
-                    for flavor in flavors:
-                        tmp_locations = np.where(np.array(fc.flavors)
-                                                 == flavor)[0]
-                        added = False
-                        for tmp_location in tmp_locations:
-                            if (tmp_location not in indexing) and not added:
-                                indexing = indexing+[tmp_location]
-                                added = True
+            for entry in fc.summary_reduced:
+                flavors = entry[[2, 4, 5]]
+                sub_isospin = entry[1]
+                indexing = []
+                for flavor in flavors:
+                    tmp_locations = np.where(np.array(fc.flavors)
+                                             == flavor)[0]
+                    added = False
+                    for tmp_location in tmp_locations:
+                        if (tmp_location not in indexing) and not added:
+                            indexing.append(tmp_location)
+                            added = True
+                if (sub_isospin == 0.0) and (flavors[1] == flavors[2]):
                     ell_set = [0]
-                    if (sub_twoisospin == 2) and (flavors[1] == flavors[2]):
-                        ell_set = [1]
-                    sctmp = SpectatorChannel(fc, indexing=indexing,
-                                             sub_twoisospin=sub_twoisospin,
-                                             ell_set=ell_set)
-                    self._add_spectator_channel(sctmp)
+                    warnings.warn(f"\n{bcolors.WARNING}"
+                                  "Assuming ell_set = [0] for spectator with "
+                                  f"sub_isospin = {sub_isospin} and "
+                                  f"flavors = {flavors}"
+                                  f"{bcolors.ENDC}", stacklevel=2)
+                elif (sub_isospin == 1.0) and (flavors[1] == flavors[2]):
+                    ell_set = [1]
+                    warnings.warn(f"\n{bcolors.WARNING}"
+                                  "Assuming ell_set = [0] for spectator with "
+                                  f"sub_isospin = {sub_isospin} and "
+                                  f"flavors = {flavors}"
+                                  f"{bcolors.ENDC}", stacklevel=2)
+                elif (sub_isospin == 2.0) and (flavors[1] == flavors[2]):
+                    ell_set = [0]
+                    warnings.warn(f"\n{bcolors.WARNING}"
+                                  "Assuming ell_set = [0] for spectator with "
+                                  f"sub_isospin = {sub_isospin} and "
+                                  f"flavors = {flavors}"
+                                  f"{bcolors.ENDC}", stacklevel=2)
+                sc_tmp = SpectatorChannel(fc, indexing=indexing,
+                                          sub_isospin=sub_isospin,
+                                          ell_set=ell_set)
+                self._add_spectator_channel(sc_tmp)
         else:
             if fc.flavors[0] == fc.flavors[1]\
                == fc.flavors[2]:
@@ -861,48 +822,50 @@ class FlavorChannelSpace:
 
     def _build_sorted_sc_list(self):
         n_particles_max = 0
+        possible_numbers_of_particles = []
         for fc in self.fc_list:
             if fc.n_particles > n_particles_max:
                 n_particles_max = fc.n_particles
-        sc_compact = [[[]] for _ in range(n_particles_max-1)]
+            if fc.n_particles not in possible_numbers_of_particles:
+                possible_numbers_of_particles.append(fc.n_particles)
+        possible_numbers_of_particles.sort()
+        n_particle_numbers = len(possible_numbers_of_particles)
+        n_channels_by_particle_number = [0 for _ in range(n_particle_numbers)]
         for sc in self.sc_list:
-            sc_comp_tmp = [sc.fc.n_particles]
+            n_channels_by_particle_number[possible_numbers_of_particles.index(
+                sc.fc.n_particles)] += 1
+        slices_by_particle_number = []
+        n_channels_prev = 0
+        for n_channels in n_channels_by_particle_number:
+            slices_by_particle_number.append([n_channels_prev,
+                                              n_channels
+                                              + n_channels_prev])
+            n_channels_prev = n_channels
+        self.n_particles_max = n_particles_max
+        self.possible_numbers_of_particles = possible_numbers_of_particles
+        self.n_particle_numbers = n_particle_numbers
+        self.n_channels_by_particle_number = n_channels_by_particle_number
+        self.slices_by_particle_number = slices_by_particle_number
+
+        sc_compact = [[] for _ in range(n_particle_numbers)]
+        sc_index = -1
+        for sc in self.sc_list:
+            sc_index += 1
+            sc_compact_single = [sc.fc.n_particles]
             if sc.fc.n_particles == 2:
-                sc_comp_tmp = sc_comp_tmp\
-                    + list(np.array(sc.fc.masses))
-                sc_comp_tmp = sc_comp_tmp\
-                    + list(np.array(sc.fc.twospins))
-                sc_comp_tmp = sc_comp_tmp\
-                    + list(np.array(sc.fc.flavors))
-                sc_comp_tmp = sc_comp_tmp+[sc.fc.isospin_channel]
-                if sc.fc.isospin_channel:
-                    sc_comp_tmp = sc_comp_tmp\
-                        + list(np.array(sc.fc.twoisospins))
-                    sc_comp_tmp = sc_comp_tmp+[sc.fc.twoisospin_value]
-                else:
-                    sc_comp_tmp = sc_comp_tmp+[None, None, None]
+                sc_compact_single = self.\
+                    _add_two_particle_compact(sc, sc_index, sc_compact_single)
             elif sc.fc.n_particles == 3:
-                sc_comp_tmp = sc_comp_tmp\
-                    + list(np.array(sc.fc.masses)[sc.indexing])
-                sc_comp_tmp = sc_comp_tmp\
-                    + list(np.array(sc.fc.twospins)[sc.indexing])
-                sc_comp_tmp = sc_comp_tmp\
-                    + list(np.array(sc.fc.flavors)[sc.indexing])
-                sc_comp_tmp = sc_comp_tmp+[sc.fc.isospin_channel]
-                if sc.fc.isospin_channel:
-                    sc_comp_tmp = sc_comp_tmp\
-                        + list(np.array(sc.fc.twoisospins)[sc.indexing])
-                    sc_comp_tmp = sc_comp_tmp+[sc.fc.twoisospin_value]
-                    sc_comp_tmp = sc_comp_tmp+[sc.sub_twoisospin]
-                else:
-                    sc_comp_tmp = sc_comp_tmp+[None, None, None, None, None]
+                sc_compact_single = self.\
+                    _add_three_particle_compact(sc, sc_index,
+                                                sc_compact_single)
             else:
-                return ValueError("something is wrong with channel"
-                                  + " specification.")
-            sc_compact[sc.fc.n_particles-2] = sc_compact[sc.fc.n_particles-2]\
-                + [sc_comp_tmp]
+                return ValueError("n_particles > 3 not implemented yet")
+            sc_compact[possible_numbers_of_particles.index(sc.fc.n_particles)]\
+                .append(sc_compact_single)
+
         for j in range(len(sc_compact)):
-            sc_compact[j] = np.array(sc_compact[j][1:], dtype=object)
+            sc_compact[j] = np.array(sc_compact[j], dtype=object)
             len_tmp = len(sc_compact[j].T)
             for i in range(len_tmp):
                 try:
@@ -911,149 +874,301 @@ class FlavorChannelSpace:
                             kind='mergesort')]
                 except TypeError:
                     pass
-        self.sc_compact = []
-        for sc_compact_entry in sc_compact:
-            if len(sc_compact_entry) != 0:
-                self.sc_compact = self.sc_compact+[sc_compact_entry]
-        self.three_slices = [[]]
-        three_index = None
-        for j in range(len(self.sc_compact)):
-            if self.sc_compact[j][0][0] == 3:
-                three_index = j
-        self.three_index = three_index
-        if self.three_index is not None:
-            sc_compact_three_subspace = self.sc_compact[three_index]
-            sc_three_masses_previous = sc_compact_three_subspace[0][1:4]
-            slice_min = 0
-            slice_max = 0
+
+        three_particle_channel_included\
+            = (3 in self.possible_numbers_of_particles)
+        if three_particle_channel_included:
+            slices_by_three_masses = []
+
+            if 2 in self.possible_numbers_of_particles:
+                three_offset = self.n_channels_by_particle_number[
+                    possible_numbers_of_particles.index(2)]
+            else:
+                three_offset = 0
+
+            sc_compact_three_subspace = sc_compact[
+                possible_numbers_of_particles.index(3)]
+            first_mass_index = 1
+            last_mass_index = 4
+            sc_three_previous_masses = sc_compact_three_subspace[0][
+                first_mass_index:last_mass_index]
+            slice_min = three_offset
+            slice_max = three_offset
             for sc_compact_entry in sc_compact_three_subspace:
-                sc_three_masses_current = sc_compact_entry[1:4]
-                if (sc_three_masses_previous == sc_three_masses_current).all():
+                sc_three_masses_current = sc_compact_entry[first_mass_index:
+                                                           last_mass_index]
+                if (sc_three_previous_masses == sc_three_masses_current).all():
                     slice_max = slice_max+1
                 else:
-                    self.three_slices = self.three_slices+[[slice_min,
-                                                            slice_max]]
+                    slices_by_three_masses.append([slice_min, slice_max])
                     slice_min = slice_max
                     slice_max = slice_max+1
-                    sc_three_masses_previous = sc_three_masses_current
-            self.three_slices = self.three_slices+[[slice_min, slice_max]]
-            self.three_slices = self.three_slices[1:]
-            self.n_three_slices = len(self.three_slices)
+                    sc_three_previous_masses = sc_three_masses_current
+            slices_by_three_masses.append([slice_min, slice_max])
+            self.slices_by_three_masses = slices_by_three_masses
+            self.n_three_slices = len(slices_by_three_masses)
         else:
-            self.three_slices = []
+            self.slices_by_three_masses = []
             self.n_three_slices = 0
 
+        sc_list_sorted = []
+        for sc_group in sc_compact:
+            for sc_entry in sc_group:
+                sc_list_sorted.append(self.sc_list[sc_entry[-1]])
+        self.sc_list_sorted = sc_list_sorted
+
+    def _add_three_particle_compact(self, sc, sc_index, sc_compact_single):
+        sc_compact_single = sc_compact_single\
+            + list(np.array(sc.fc.masses)[sc.indexing])
+        sc_compact_single = sc_compact_single\
+            + list(np.array(sc.fc.spins)[sc.indexing])
+        sc_compact_single = sc_compact_single\
+            + list(np.array(sc.fc.flavors)[sc.indexing])
+        sc_compact_single = sc_compact_single+[sc.fc.isospin_channel]
+        if sc.fc.isospin_channel:
+            sc_compact_single = sc_compact_single\
+                        + list(np.array(sc.fc.isospins)[sc.indexing])
+            sc_compact_single = sc_compact_single+[sc.fc.isospin]
+            sc_compact_single = sc_compact_single+[sc.sub_isospin]
+        else:
+            sc_compact_single = sc_compact_single\
+                        + [None, None, None, None, None]
+        sc_compact_single = sc_compact_single+[sc_index]
+        return sc_compact_single
+
+    def _add_two_particle_compact(self, sc, sc_index, sc_compact_single):
+        sc_compact_single = sc_compact_single\
+            + list(np.array(sc.fc.masses))
+        sc_compact_single = sc_compact_single\
+            + list(np.array(sc.fc.spins))
+        sc_compact_single = sc_compact_single\
+            + list(np.array(sc.fc.flavors))
+        sc_compact_single = sc_compact_single+[sc.fc.isospin_channel]
+        if sc.fc.isospin_channel:
+            sc_compact_single = sc_compact_single\
+                        + list(np.array(sc.fc.isospins))
+            sc_compact_single = sc_compact_single+[sc.fc.isospin]
+        else:
+            sc_compact_single = sc_compact_single+[None, None, None]
+        sc_compact_single = sc_compact_single+[sc_index]
+        return sc_compact_single
+
     def _build_g_templates(self):
-        self.g_templates = [[]]
-        for slice_row in self.three_slices:
-            len_row = slice_row[1]-slice_row[0]
+        g_templates = []
+        for slice_i in self.slices_by_three_masses:
+            slice_i_len = slice_i[1]-slice_i[0]
             g_templates_row = []
-            for slice_col in self.three_slices:
-                len_col = slice_col[1]-slice_col[0]
-                g_template_tmp = np.zeros((len_row, len_col))
-                for i in range(len_row):
-                    for j in range(len_col):
-                        flav_loc_start = 7
-                        flav_loc_end = 10
-                        i_flavs = self.sc_compact[self.three_index][
-                            slice_row[0]+i][flav_loc_start:flav_loc_end]
-                        j_flavs = self.sc_compact[self.three_index][
-                            slice_col[0]+j][flav_loc_start:flav_loc_end]
-                        if (
-                                ((i_flavs[0] == j_flavs[2])
-                                 and (np.sort(i_flavs[1:])
-                                      == np.sort(j_flavs[:-1])).all())
+            for slice_j in self.slices_by_three_masses:
+                slice_j_len = slice_j[1]-slice_j[0]
+                g_template = np.zeros((slice_i_len, slice_j_len))
+                for i in range(slice_i_len):
+                    for j in range(slice_j_len):
+                        flavors_i = self.sc_list_sorted[slice_i[0]+i].\
+                            flavors_indexed
+                        flavors_j = self.sc_list_sorted[slice_j[0]+j].\
+                            flavors_indexed
+                        g_is_nonzero = (
+                                ((flavors_i[0] == flavors_j[2])
+                                 and (np.sort(flavors_i[1:])
+                                      == np.sort(flavors_j[:-1])).all())
                                 or
-                                ((i_flavs[0] == j_flavs[1])
-                                 and (np.sort(i_flavs[1:])
-                                      == np.sort([j_flavs[0]]
-                                                 + [j_flavs[2]])).all())
-                                ):
-                            iso_bool_loc = 10
-                            isospin_channel_i\
-                                = self.sc_compact[self.three_index][
-                                    slice_row[0]+i][iso_bool_loc]
-                            isospin_channel_j\
-                                = self.sc_compact[self.three_index][
-                                    slice_col[0]+j][iso_bool_loc]
-                            if ((not isospin_channel_i)
-                               and (not isospin_channel_j)):
-                                g_template_tmp[i][j] = 1.0
-                            elif isospin_channel_i and isospin_channel_j:
-                                iso_val_loc = 14
-                                iso_val_i\
-                                    = self.sc_compact[self.three_index][
-                                        slice_row[0]+i][iso_val_loc]
-                                iso_val_j\
-                                    = self.sc_compact[self.three_index][
-                                        slice_col[0]+j][iso_val_loc]
-                                if iso_val_i == iso_val_j:
-                                    g_iso_template_tmp\
-                                        = G_TEMPLATE_DICT[int(iso_val_i/2)]
-                                    sub_iso_loc = 15
-                                    sub_iso_i\
-                                        = self.sc_compact[self.three_index][
-                                            slice_row[0]+i][sub_iso_loc]
-                                    sub_iso_j\
-                                        = self.sc_compact[self.three_index][
-                                            slice_col[0]+j][sub_iso_loc]
-                                    if iso_val_i == 6:
-                                        ind_i = sub_iso_i-4
-                                        ind_j = sub_iso_j-4
-                                    elif iso_val_i == 4:
-                                        ind_i = int((sub_iso_i-2)/2)
-                                        ind_j = int((sub_iso_j-2)/2)
-                                    elif iso_val_i == 2:
-                                        ind_i = int(sub_iso_i/2)
-                                        ind_j = int(sub_iso_j/2)
-                                    elif iso_val_i == 0:
-                                        ind_i = sub_iso_i-2
-                                        ind_j = sub_iso_j-2
-                                g_template_tmp[i][j]\
-                                    = g_iso_template_tmp[ind_i][ind_j]
-                g_templates_row = g_templates_row+[g_template_tmp]
-            self.g_templates = self.g_templates+[g_templates_row]
-        self.g_templates = self.g_templates[1:]
+                                ((flavors_i[0] == flavors_j[1])
+                                 and (np.sort(flavors_i[1:])
+                                      == np.sort([flavors_j[0]]
+                                                 + [flavors_j[2]])).all())
+                                )
+                        if g_is_nonzero:
+                            isospin_channel_i = self.sc_list_sorted[
+                                slice_i[0]+i].fc.isospin_channel
+                            isospin_channel_j = self.sc_list_sorted[
+                                slice_j[0]+j].fc.isospin_channel
+                            neither_are_isospin_channels\
+                                = ((not isospin_channel_i)
+                                   and (not isospin_channel_j))
+                            both_are_isospin_channels\
+                                = isospin_channel_i and isospin_channel_j
+                            if neither_are_isospin_channels:
+                                g_template[i][j] = 1.0
+                            elif both_are_isospin_channels:
+                                g_isospin_ij\
+                                    = self._get_g_isospin_ij(slice_i, slice_j,
+                                                             i, j)
+                                g_template[i][j] = g_isospin_ij
+                            else:
+                                raise NotImplementedError(
+                                    "Mixing of isospin and non-isospin "
+                                    "channels is not implemented.")
+                g_templates_row.append(g_template)
+            g_templates.append(g_templates_row)
+        self.g_templates = g_templates
+
+    def _get_g_isospin_ij(self, slice_i, slice_j, i, j):
+        isospin_i = self.sc_list_sorted[slice_i[0]+i].fc.isospin
+        isospin_j = self.sc_list_sorted[slice_j[0]+j].fc.isospin
+        if isospin_i == isospin_j:
+            g_template_isospin = G_TEMPLATE_DICT[int(isospin_i)]
+            sub_isospin_i = self.sc_list_sorted[
+                slice_i[0]+i].sub_isospin
+            sub_isospin_j = self.sc_list_sorted[
+                slice_j[0]+j].sub_isospin
+            if isospin_i == 3.0:
+                ind_i = int(sub_isospin_i-2.0)
+                ind_j = int(sub_isospin_j-2.0)
+            elif isospin_i == 2.0:
+                ind_i = int(sub_isospin_i-1.0)
+                ind_j = int(sub_isospin_j-1.0)
+            elif isospin_i == 1.0:
+                ind_i = int(sub_isospin_i)
+                ind_j = int(sub_isospin_j)
+            elif isospin_i == 0.0:
+                ind_i = int(sub_isospin_i-1.0)
+                ind_j = int(sub_isospin_j-1.0)
+        return g_template_isospin[ind_i][ind_j]
+
+    def _build_g_templates_ell_specific(self):
+        if 3 in self.possible_numbers_of_particles:
+            g_templates_ell_specific_db = self._populate_g_templates_db()
+            g_templates_ell_specific_db = self._sort_db(
+                g_templates_ell_specific_db)
+            g_templates_clustered = self._populate_g_clustered(
+                g_templates_ell_specific_db)
+            g_templates_ell_specific = {}
+            for g_key in g_templates_clustered:
+                g_key_list = list(g_templates_clustered[g_key][:4])
+                g_key_tuple = tuple(g_key_list)
+                g_templates_ell_specific[g_key_tuple] \
+                    = g_templates_clustered[g_key][4:]
+            self.g_templates_ell_specific = g_templates_ell_specific
+        else:
+            self.g_templates_ell_specific = {}
+
+    def _populate_g_clustered(self, g_templates_ell_specific_db):
+        g_templates_clustered = {}
+        for g_template_entry in g_templates_ell_specific_db:
+            g_key = str(g_template_entry[:4])
+            if g_key not in g_templates_clustered:
+                g_templates_clustered[g_key]\
+                        = np.array(list(g_template_entry[:4])
+                                   + [g_template_entry[4]]
+                                   + [[g_template_entry[5]]]
+                                   + [[g_template_entry[6]]]
+                                   + [[g_template_entry[7]]]
+                                   + [[g_template_entry[8]]],
+                                   dtype=object)
+            else:
+                g_template_entry_prev = g_templates_clustered[g_key]
+                g_template_matrix_prev = g_template_entry_prev[4]
+                sc_indexset_i_prev = g_template_entry_prev[5]
+                sc_indexset_j_prev = g_template_entry_prev[6]
+                collective_set_i_prev = g_template_entry_prev[7]
+                collective_set_j_prev = g_template_entry_prev[8]
+                sc_index_i = g_template_entry[5]
+                sc_index_j = g_template_entry[6]
+                collective_index_i = g_template_entry[7]
+                collective_index_j = g_template_entry[8]
+                if sc_index_i not in sc_indexset_i_prev:
+                    sc_indexset_i_prev.append(sc_index_i)
+                    collective_set_i_prev.append(collective_index_i)
+                if sc_index_j not in sc_indexset_j_prev:
+                    sc_indexset_j_prev.append(sc_index_j)
+                    collective_set_j_prev.append(collective_index_j)
+                if (len(sc_indexset_i_prev) != len(g_template_matrix_prev)) or\
+                    (len(sc_indexset_j_prev) !=
+                     len(g_template_matrix_prev.T)):
+                    g_template_matrix_new = np.zeros((len(sc_indexset_i_prev),
+                                                      len(sc_indexset_j_prev)))
+                    g_template_matrix_new[:len(sc_indexset_i_prev),
+                                          :len(sc_indexset_j_prev)]\
+                        = g_template_matrix_prev
+                else:
+                    g_template_matrix_new = g_template_matrix_prev
+                i_ind = np.where(np.array(sc_indexset_i_prev) ==
+                                 sc_index_i)[0][0]
+                j_ind = np.where(np.array(sc_indexset_j_prev) ==
+                                 sc_index_j)[0][0]
+                g_template_matrix_new[i_ind, j_ind] = g_template_entry[4][0][0]
+                g_templates_clustered[g_key]\
+                    = np.array(list(g_template_entry[:4])
+                               + [g_template_matrix_new]
+                               + [sc_indexset_i_prev]
+                               + [sc_indexset_j_prev]
+                               + [collective_set_i_prev]
+                               + [collective_set_j_prev], dtype=object)
+        return g_templates_clustered
+
+    def _sort_db(self, g_templates_ell_specific_db):
+        len_dbT = len(g_templates_ell_specific_db.T)
+        for slice_index_i in range(len_dbT):
+            try:
+                g_templates_ell_specific_db = g_templates_ell_specific_db[
+                        g_templates_ell_specific_db[:, len_dbT-slice_index_i-1]
+                        .argsort(kind='mergesort')]
+            except TypeError:
+                pass
+        return g_templates_ell_specific_db
+
+    def _populate_g_templates_db(self):
+        g_templates_ell_specific_db = []
+        collective_index_i = 0
+        for slice_index_i in range(len(self.slices_by_three_masses)):
+            slice_i = self.slices_by_three_masses[slice_index_i]
+            three_mass_slice_i = self.sc_list_sorted[slice_i[0]:slice_i[1]]
+            for sc_index_i in range(len(three_mass_slice_i)):
+                sc_i = three_mass_slice_i[sc_index_i]
+                for ell_i in sc_i.ell_set:
+                    collective_index_j = 0
+                    for slice_index_j in range(len(
+                                self.slices_by_three_masses)):
+                        slice_j = self.slices_by_three_masses[
+                                slice_index_j]
+                        three_mass_slice_j = self.sc_list_sorted[
+                                slice_j[0]:slice_j[1]]
+                        g_template_ij = self.g_templates[slice_index_i][
+                                slice_index_j]
+                        for sc_index_j in range(len(three_mass_slice_j)):
+                            sc_j = three_mass_slice_j[sc_index_j]
+                            for ell_j in sc_j.ell_set:
+                                g_templates_ell_specific_db.append(
+                                        np.array(
+                                            [slice_index_i,
+                                             slice_index_j,
+                                             ell_i, ell_j,
+                                             np.array([[g_template_ij[
+                                                 sc_index_i][sc_index_j]]]),
+                                             sc_index_i, sc_index_j,
+                                             collective_index_i,
+                                             collective_index_j],
+                                            dtype=object))
+                                collective_index_j += 1
+                    collective_index_i += 1
+        g_templates_ell_specific_db = np.array(g_templates_ell_specific_db)
+        return g_templates_ell_specific_db
 
     def __str__(self):
-        """Summary of the flavor-channel space."""
-        strtmp = "FlavorChannelSpace with the following SpectatorChannels:\n"
-        for sc in self.sc_list:
-            strtmp = strtmp+"    "
-            strtmp = strtmp+sc.__str__().replace('\n    ',
-                                                 '\n        ')[:-1]+",\n"
-        return strtmp[:-2]+"."
+        """Return a string representation of the FlavorChannelSpace object."""
+        flavor_channel_space_str = "FlavorChannelSpace with the following "\
+            + "SpectatorChannels:\n"
+        for sc in self.sc_list_sorted:
+            flavor_channel_space_str += "    "
+            flavor_channel_space_str += sc.__str__().replace("\n    ",
+                                                             "\n        ")[:-1]
+            flavor_channel_space_str += ",\n"
+        return flavor_channel_space_str[:-2]+"."
 
 
 class FiniteVolumeSetup:
-    r"""
-    Class used to represent the finite-volume set-up.
+    """
+    Class used to represent a finite volume setup.
 
-    The provided data includes the formalism to be used, the total spatial
-    momentum, the finite-volume irrep and the qc implementation (qc_impl).
-
-    qc_impl is a dict that can include the following:
-        qc_impl['hermitian'] (bool)
-        qc_impl['real_harmonics'] (bool)
-        qc_impl['zeta_interp'] (bool)
-        qc_impl['sph_harm_clebsch'] (bool)
-
-    :param formalism: indicates the formalism used. (Currently only 'RFT'
-        (relatvistic-field theory approach) is supported.)
+    :param formalism: formalism used (currently only ``'RFT'`` supported)
     :type formalism: str
-    :param nP: three-vector as a numpy array, indicating the total spatial
-        momentum in units of 2*PI/L, where L is the box length
-    :type nP: np.ndarray of ints, shape (3,)
-    :param nPSQ: magnitude squared of nP
-    :type nPSQ: int
-    :param nPmag: magnitude of nP
-    :type nPmag: float
-    :param irreps: encodes the possible irreducible representations of the
-        finite-volume symmetry group for a given value of nP
-    :type irreps: instance of Irreps
-    :param qc_impl: all settings for the implementation of the quantization
-        condition
+    :param nP: total momentum in the finite-volume frame
+    :type nP: numpy.ndarray
+    :param qc_impl: implementation details of the finite-volume setup
     :type qc_impl: dict
+    :param irreps: irreducible representations of the finite-volume
+    symmetry group
+    :type irreps: Irreps
     """
 
     def __init__(self, formalism='RFT', nP=np.array([0, 0, 0]), qc_impl={}):
@@ -1064,11 +1179,12 @@ class FiniteVolumeSetup:
 
     @property
     def nP(self):
-        """Get the total three-momentum (np.ndarray with shape (3,))."""
+        """Total momentum in the finite-volume frame."""
         return self._nP
 
     @nP.setter
     def nP(self, nP):
+        """Set the total momentum in the finite-volume frame."""
         if not isinstance(nP, np.ndarray):
             raise ValueError("nP must be a numpy array")
         elif not np.array(nP).shape == (3,):
@@ -1085,7 +1201,7 @@ class FiniteVolumeSetup:
     @property
     def qc_impl(self):
         """
-        Get the quantization condition implementation (dict).
+        Implementation of the quantization condition.
 
         See FiniteVolumeSetup for documentation of possible keys included in
         qc_impl.
@@ -1094,6 +1210,7 @@ class FiniteVolumeSetup:
 
     @qc_impl.setter
     def qc_impl(self, qc_impl):
+        """Set the implementation of the quantization condition."""
         if not isinstance(qc_impl, dict):
             raise ValueError("qc_impl must be a dict")
         for key in qc_impl.keys():
@@ -1108,43 +1225,31 @@ class FiniteVolumeSetup:
         self._qc_impl = qc_impl
 
     def __str__(self):
-        """Summary of the finite-volume set-up."""
-        strtmp = "FiniteVolumeSetup using the "+self.formalism+":\n"
-        strtmp = strtmp+"    nP = "+str(self._nP)+",\n"
-        strtmp = strtmp+"    qc_impl = "\
-            + str(self.qc_impl)+",\n"
-        return strtmp[:-2]+"."
+        """Return a string representation of the FiniteVolumeSetup object."""
+        finite_volume_setup_str =\
+            f"FiniteVolumeSetup using the {self.formalism}:\n"
+        finite_volume_setup_str += f"    nP = {self._nP},\n"
+        finite_volume_setup_str += f"    qc_impl = {self.qc_impl},\n"
+        return finite_volume_setup_str[:-2]+"."
 
 
 class ThreeBodyInteractionScheme:
-    r"""
-    Class for the meaning and parametrization of the three-body interaction.
+    """
+    Class used to represent all details of the three-body interaction.
 
-    Specifes the cutoff function and the exact meaning of finite-volume
-    functions as these affect the exact meaning of the three-body interaction.
-    Also specifies the parametrization of the three body interaction on the
-    FlavorChannelSpace.
-
-    three_scheme is drawn from the following:
-        'relativistic pole'
-        'original pole'
-    This refers to the type of pole used within the finite-volume G function.
-    This choice affects the meaning of the three-body interaction.
-
-    :param fcs: flavor-channel space, required for building the space of
-        kdf_functions
+    :param fcs: FlavorChannelSpace object, needed to define the space for Kdf
     :type fcs: FlavorChannelSpace
-    :param three_scheme: specifies the scheme for kdf, see options above above
+    :param Emin: minimum energy defining the subthreshold region
+    :type Emin: float
+    :param three_scheme: three-body interaction scheme
     :type three_scheme: str
-    :param scheme_data: two parameters, `[alpha, beta]`, specifying the shape
-        of the cutoff function; Ddfault is `[alpha, beta]=[-1.0, 0.0]`
-    :type scheme_data: list of floats, length 2
-    :param kdf_functions: square array of functions specifying the square
-        kdf matrix (length is the number of flavor channels)
-    :type kdf_functions: list of lists of functions
-    :param kdf_iso_constant: simplest choice for kdf, a single coupling called
-        beta_0, independent of all kinematics
-    :type kdf_iso_constant: builtin_function_or_method
+    :param scheme_data: data needed to define the three-body interaction,
+    typically ``[alpha, beta]`` where alpha dictates the width of the smooth
+    cutoff function and beta dictates the position
+    :type scheme_data: list
+    :param kdf_functions: list of functions used to define the three-body
+    interaction for each pair of FlavorChannels
+    :type kdf_functions: list
     """
 
     def __init__(self, fcs=None, Emin=0.0, three_scheme='relativistic pole',
@@ -1172,7 +1277,6 @@ class ThreeBodyInteractionScheme:
 
                 def __str__(self):
                     return str_func()
-
             return functools.wraps(f)(FuncType())
         return wrapper
 
@@ -1186,33 +1290,104 @@ class ThreeBodyInteractionScheme:
         return beta_0
 
     def __str__(self):
-        """Summary of the three-body interaction scheme."""
-        strtmp = "ThreeBodyInteractionScheme with the following data:\n"
-        strtmp = strtmp+"    Emin = "+str(self.Emin)+",\n"
-        strtmp = strtmp+"    three_scheme = "+self.three_scheme+",\n"
-        strtmp = strtmp+"    [alpha, beta] = "+str(self.scheme_data)+",\n"
-        strtmp = strtmp+"    kdf_functions as follows:\n"
+        """Return a string representation of the ThreeBodyInteractionScheme."""
+        three_body_interaction_scheme_str =\
+            "ThreeBodyInteractionScheme with the following data:\n"
+        three_body_interaction_scheme_str += f"    Emin = {self.Emin},\n"
+        three_body_interaction_scheme_str +=\
+            f"    three_scheme = {self.three_scheme},\n"
+        three_body_interaction_scheme_str +=\
+            f"    [alpha, beta] = {self.scheme_data},\n"
+        three_body_interaction_scheme_str +=\
+            "    kdf_functions as follows:\n"
         for i in range(len(self.fcs.fc_list)):
-            strtmp = strtmp+"        "+str(self.kdf_functions[i])+" for\n"
-            strtmp = strtmp+"        "+str(self.fcs.fc_list[i]).replace(
-                "    ", "            ")[:-1]+",\n"
-        return strtmp[:-2]+"."
+            three_body_interaction_scheme_str +=\
+                f"        {self.kdf_functions[i]} for\n"
+            three_body_interaction_scheme_str +=\
+                "        "+str(self.fcs.fc_list[i]).replace(
+                    "   ", "            ")[:-1]+",\n"
+        return three_body_interaction_scheme_str[:-2]+"."
 
 
 class ThreeBodyKinematicSpace:
-    r"""
-    Class encoding spectator-momentum kinematics.
+    """
+    Class encoding the spectator-momentum kinematics.
 
-    :param nP: three-vector as a numpy array, indicating the total spatial
-        momentum in units of 2*PI/L, where L is the box length
-    :type nP: np.ndarray of ints, shape (3,)
-    :param build_shell_acc: determines whether data is prepared to accelerate
-        evaluations of the qc
+    :param nP: total momentum in the finite-volume frame
+    :type nP: numpy.ndarray
+    :param nvec_arr: array of nvecs
+    :type nvec_arr: numpy.ndarray
+    :param build_shell_acc: whether to build the data to accelerate the
+    evaluations by shell
     :type build_shell_acc: bool
-    :param nvec_arry: gives the defining list of three-vectors
-    :type nvec_arry: np.ndarray of ints, shape (n, 3)
-    :param verbosity: determines how verbose the output is
+    :param verbosity: verbosity level
     :type verbosity: int
+    :param nPSQ: total momentum squared in the finite-volume frame
+    :type nPSQ: int
+    :param nPmag: magnitude of the total momentum in the finite-volume frame
+    :type nPmag: float
+    :param shells: list of shells
+    :type shells: list
+    :param nvecSQ_arr: array of nvec squared
+    :type nvecSQ_arr: numpy.ndarray
+    :param n1vec_mat: matrix of n1vecs
+    :type n1vec_mat: numpy.ndarray
+    :param n2vec_mat: matrix of n2vecs
+    :type n2vec_mat: numpy.ndarray
+    :param n3vec_mat: matrix of n3vecs
+    :type n3vec_mat: numpy.ndarray
+    :param nP_minus_nvec_arr: array of nP - nvecs
+    :type nP_minus_nvec_arr: numpy.ndarray
+    :param nP_minus_nvec_SQ_arr: array of (nP - nvecs)^2
+    :type nP_minus_nvec_SQ_arr: numpy.ndarray
+    :param nvecmag_arr: array of nvec magnitudes
+    :type nvecmag_arr: numpy.ndarray
+    :param nP_minus_nvec_mag_arr: array of |nP - nvec|
+    :type nP_minus_nvec_mag_arr: numpy.ndarray
+    :param n1vecSQ_mat: matrix of n1vec squared
+    :type n1vecSQ_mat: numpy.ndarray
+    :param n2vecSQ_mat: matrix of n2vec squared
+    :type n2vecSQ_mat: numpy.ndarray
+    :param n3vecSQ_mat: matrix of n3vec squared
+    :type n3vecSQ_mat: numpy.ndarray
+    :param nP_minus_n1vec_mat: matrix of nP - n1vecs
+    :type nP_minus_n1vec_mat: numpy.ndarray
+    :param nP_minus_n2vec_mat: matrix of nP - n2vecs
+    :type nP_minus_n2vec_mat: numpy.ndarray
+    :param n1vec_stacked: stacked n1vecs
+    :type n1vec_stacked: numpy.ndarray
+    :param n2vec_stacked: stacked n2vecs
+    :type n2vec_stacked: numpy.ndarray
+    :param n3vec_stacked: stacked n3vecs
+    :type n3vec_stacked: numpy.ndarray
+    :param stack_multiplicities: multiplicities of the stacked nvecs
+    :type stack_multiplicities: numpy.ndarray
+    :param n1vecSQ_stacked: stacked n1vec^2
+    :type n1vecSQ_stacked: numpy.ndarray
+    :param n2vecSQ_stacked: stacked n2vec^2
+    :type n2vecSQ_stacked: numpy.ndarray
+    :param n3vecSQ_stacked: stacked n3vec^2
+    :type n3vecSQ_stacked: numpy.ndarray
+    :param n1vec_arr_all_shells: array of n1vecs for all shells
+    :type n1vec_arr_all_shells: numpy.ndarray
+    :param n2vec_arr_all_shells: array of n2vecs for all shells
+    :type n2vec_arr_all_shells: numpy.ndarray
+    :param n1vecSQ_arr_all_shells: array of n1vec^2 for all shells
+    :type n1vecSQ_arr_all_shells: numpy.ndarray
+    :param n2vecSQ_arr_all_shells: array of n2vec^2 for all shells
+    :type n2vecSQ_arr_all_shells: numpy.ndarray
+    :param n3vecSQ_arr_all_shells: array of n3vec^2 for all shells
+    :type n1vec_mat_all_shells: numpy.ndarray
+    :param n2vec_mat_all_shells: matrix of n2vecs for all shells
+    :type n2vec_mat_all_shells: numpy.ndarray
+    :param n3vec_mat_all_shells: matrix of n3vecs for all shells
+    :type n3vec_mat_all_shells: numpy.ndarray
+    :param n1vecSQ_mat_all_shells: matrix of n1vec^2 for all shells
+    :type n1vecSQ_mat_all_shells: numpy.ndarray
+    :param n2vecSQ_mat_all_shells: matrix of n2vec^2 for all shells
+    :type n2vecSQ_mat_all_shells: numpy.ndarray
+    :param n3vecSQ_mat_all_shells: matrix of n3vec^2 for all shells
+    :type n3vecSQ_mat_all_shells: numpy.ndarray
     """
 
     def __init__(self, nP=np.array([0, 0, 0]), nvec_arr=np.array([]),
@@ -1224,11 +1399,12 @@ class ThreeBodyKinematicSpace:
 
     @property
     def nP(self):
-        """Get the total three-momentum (np.ndarray with shape (3,))."""
+        """Total momentum in the finite-volume frame."""
         return self._nP
 
     @nP.setter
     def nP(self, nP):
+        """Set the total momentum in the finite-volume frame."""
         if not isinstance(nP, np.ndarray):
             raise ValueError("nP must be a numpy array")
         elif not np.array(nP).shape == (3,):
@@ -1244,7 +1420,7 @@ class ThreeBodyKinematicSpace:
 
     @property
     def nvec_arr(self):
-        """Get the array of spectator nvecs (np.ndarray)."""
+        """Array of spectator-momentum vectors in the finite-volume frame."""
         return self._nvec_arr
 
     def _get_first_sort(self, nvec_arr):
@@ -1389,6 +1565,7 @@ class ThreeBodyKinematicSpace:
 
     @nvec_arr.setter
     def nvec_arr(self, nvec_arr):
+        """Set the nvec_arr attribute."""
         if self.build_shell_acc:
             if len(nvec_arr) == 0:
                 self._nvec_arr = nvec_arr
@@ -1575,29 +1752,105 @@ class ThreeBodyKinematicSpace:
             self._nvec_arr = nvec_arr
 
     def __str__(self):
-        """Summary of the three-body kinematic space."""
+        """Return a string representation of the ThreeBodyKinematicSpace."""
         np.set_printoptions(threshold=10)
-        strtmp = "ThreeBodyKinematicSpace with the following data:\n"
-        strtmp = strtmp+"    nvec_arr="\
+        three_body_kinematic_space_str =\
+            "ThreeBodyKinematicSpace with the following data:\n"
+        three_body_kinematic_space_str += "    nvec_arr="\
             + str(self.nvec_arr).replace("\n", "\n             ")+",\n"
         np.set_printoptions(threshold=PRINT_THRESHOLD_DEFAULT)
-        return strtmp[:-2]+"."
+        return three_body_kinematic_space_str[:-2]+"."
 
 
 class QCIndexSpace:
-    r"""
-    Class encoding the quantizaiton condition index space.
+    """
+    Class representing the quantization condition index space.
 
-    :param fcs: flavor-channel space defining the index space
+    :param fcs: flavor-channel space
     :type fcs: FlavorChannelSpace
-    :param fvs: finite-volume set-up defining the index space
+    :param fvs: finite-volume setup
     :type fvs: FiniteVolumeSetup
-    :param tbis: three-body interaction scheme defining the index space
+    :param tbis: three-body interaction scheme
     :type tbis: ThreeBodyInteractionScheme
-    :param Emax: maximum energy for building the space
+    :param Emax: maximum energy
     :type Emax: float
-    :param Lmax: maximum volume for building the space
+    :param Lmax: maximum volume
     :type Lmax: float
+    :param verbosity: verbosity level
+    :type verbosity: int
+    :param nP: total momentum in the finite-volume frame
+    :type nP: numpy.ndarray
+    :param nPSQ: squared total momentum in the finite-volume frame
+    :type nPSQ: int
+    :param nPmag: magnitude of the total momentum in the finite-volume frame
+    :type nPmag: float
+    :param Evals: energy values used to build the grid for non-zero nP
+    :type Evals: numpy.ndarray
+    :param Lvals: volume values used to build the grid for non-zero nP
+    :type Lvals: numpy.ndarray
+    :param param_structure: structure of the quantization condition parameters
+    :type param_structure: list
+    :param ell_sets: list of sets of angular momenta
+    :type ell_sets: list
+    :param ellm_sets: list of sets of angular momenta and their azimuthal
+    values
+    :type ellm_sets: list
+    :param proj_dict: dictionary of projection matrices
+    :type proj_dict: dict
+    :param non_int_proj_dict: dictionary of projection matrices for the
+    non-interacting states
+    :type non_int_proj_dict: dict
+    :param group: relevant symmetry group
+    :type group: Group
+    :param n_channels: number of channels
+    :type n_channels: int
+    :param n_two_channels: number of two-particle channels
+    :type n_two_channels: int
+    :param n_three_channels: number of three-particle channels
+    :type n_three_channels: int
+    :param tbks_list: list of three-body kinematic spaces
+    :type tbks_list: list of ThreeBodyKinematicSpace
+    :param kellm_spaces: list of spectator + angular-momentum spaces
+    :type kellm_spaces: list
+    :param kellm_shells: list of spectator + angular-momentum spaces,
+    organized by shell
+    :type kellm_shells: list
+    :param sc_proj_dicts: list of projection dictionaries by spectator channel
+    :type sc_proj_dicts: list
+    :param sc_proj_dicts_by_shell: list of projection dictionaries by spectator
+    channel, organized by momentum shell
+    :type sc_proj_dicts_by_shell: list
+
+    :param nvecset_arr: nvecs
+    :type nvecset_arr: numpy.ndarray
+    :param nvecset_SQs: nvecs^2
+    :type nvecset_SQs: numpy.ndarray
+    :param nvecset_reps: nvec representatives
+    :type nvecset_reps: numpy.ndarray
+    :param nvecset_SQreps: nvec^2 representatives
+    :type nvecset_SQreps: numpy.ndarray
+    :param nvecset_inds: indices for the nvecs
+    :type nvecset_inds: numpy.ndarray
+    :param nvecset_counts: counts for the nvecs
+    :type nvecset_counts: numpy.ndarray
+    :param nvecset_batched: nvecs organized by batch
+    :type nvecset_batched: numpy.ndarray
+
+    :param nvecset_ident: nvecs for identical particles
+    :type nvecset_ident: numpy.ndarray
+    :param nvecset_ident_SQs: nvecs^2 for identical particles
+    :type nvecset_ident_SQs: numpy.ndarray
+    :param nvecset_ident_reps: nvec representatives for identical particles
+    :type nvecset_ident_reps: numpy.ndarray
+    :param nvecset_ident_SQreps: nvec^2 representatives for identical particles
+    :type nvecset_ident_SQreps: numpy.ndarray
+    :param nvecset_ident_inds: indices for the nvecs for identical particles
+    :type nvecset_ident_inds: numpy.ndarray
+    :param nvecset_ident_counts: counts for the nvecs for identical particles
+    :type nvecset_ident_counts: numpy.ndarray
+    :param nvecset_ident_batched: nvecs organized by batch for identical
+    particles
+    :type nvecset_ident_batched: numpy.ndarray
     """
 
     def __init__(self, fcs=None, fvs=None, tbis=None,
@@ -1641,15 +1894,18 @@ class QCIndexSpace:
         self.fcs = self._fcs
 
     def populate(self):
+        """Populate the index space."""
         ell_max = 4
-        for sc in self.fcs.sc_list:
+        for sc in self.fcs.sc_list_sorted:
             if np.max(sc.ell_set) > ell_max:
                 ell_max = np.max(sc.ell_set)
         for nic in self.fcs.ni_list:
-            maxspin_float = np.max(nic.twospins)*0.5
-            maxspin = int(maxspin_float)
-            if np.abs(maxspin_float-maxspin) > EPSILON10:
-                raise ValueError("only integer spin currently supported")
+            spins = nic.spins
+            for spin in spins:
+                spin_int = int(spin)
+                if np.abs(spin-spin_int) > EPSILON10:
+                    raise ValueError("only integer spin currently supported")
+            maxspin = int(np.max(nic.spins))
             if maxspin > ell_max:
                 ell_max = maxspin
         self.group = Groups(ell_max=ell_max)
@@ -1666,20 +1922,19 @@ class QCIndexSpace:
             self.Lvals = None
             self.Evals = None
 
-        self.param_structure = [[]]
-        two_param_struc_tmp = [[]]
-        for sc in self.fcs.sc_list:
-            tmp_entry = [[]]
+        parametrization_structure = []
+        two_param_struc_tmp = []
+        for sc in self.fcs.sc_list_sorted:
+            tmp_entry = []
             for n_params_tmp in sc.n_params_set:
-                tmp_entry = tmp_entry+[[0.0]*n_params_tmp]
-            two_param_struc_tmp = two_param_struc_tmp+[tmp_entry[1:]]
-        two_param_struc_tmp = two_param_struc_tmp[1:]
-        self.param_structure = self.param_structure+[two_param_struc_tmp]
-        tmp_entry = []
-        for kdf in self.tbis.kdf_functions:
-            tmp_entry = tmp_entry+[0.0]
-        self.param_structure = self.param_structure+[tmp_entry]
-        self.param_structure = self.param_structure[1:]
+                tmp_entry.append([0.0]*n_params_tmp)
+            two_param_struc_tmp.append(tmp_entry)
+        parametrization_structure.append(two_param_struc_tmp)
+        three_param_struc_tmp = []
+        for _ in self.tbis.kdf_functions:
+            three_param_struc_tmp = three_param_struc_tmp+[0.0]
+        parametrization_structure.append(three_param_struc_tmp)
+        self.param_structure = parametrization_structure
 
         self.populate_all_nvec_arr()
         self.ell_sets = self._get_ell_sets()
@@ -1687,23 +1942,26 @@ class QCIndexSpace:
         self.populate_all_proj_dicts()
         self.proj_dict = self.group.get_full_proj_dict(qcis=self)
         self.populate_all_nonint_data()
-        self.nonint_proj_dict = []
-        for cindex in range(len(self.fcs.ni_list)):
-            if self.fcs.ni_list[cindex].n_particles == 2:
-                isospin_channel = self.fcs.ni_list[cindex].isospin_channel
-                self.nonint_proj_dict = self.nonint_proj_dict\
-                    + [self.group.
-                       get_noninttwo_proj_dict(qcis=self,
-                                               cindex=cindex,
-                                               definite_iso=isospin_channel)
-                       ]
-            elif self.fcs.ni_list[cindex].n_particles == 3:
-                self.nonint_proj_dict = self.nonint_proj_dict\
-                    + [self.group.get_nonint_proj_dict(qcis=self,
-                                                       cindex=cindex)]
+        self.populate_nonint_proj_dict()
+
+    def populate_nonint_proj_dict(self):
+        """Populate the non-interacting projection dictionary."""
+        nonint_proj_dict = []
+        for nic_index in range(len(self.fcs.ni_list)):
+            if self.fcs.ni_list[nic_index].n_particles == 2:
+                isospin_channel = self.fcs.ni_list[nic_index].isospin_channel
+                nonint_proj_dict\
+                    .append(self.group.get_noninttwo_proj_dict(
+                        qcis=self, nic_index=nic_index,
+                        isospin_channel=isospin_channel))
+            elif self.fcs.ni_list[nic_index].n_particles == 3:
+                nonint_proj_dict.append(
+                    self.group.get_nonint_proj_dict(qcis=self,
+                                                    nic_index=nic_index))
             else:
                 raise ValueError("only two and three particles supported "
                                  + "by nonint_proj_dict")
+        self.nonint_proj_dict = nonint_proj_dict
 
     def _get_grid_nonzero_nP(self, Emax, Lmax):
         deltaL = DELTA_L_FOR_GRID
@@ -1722,11 +1980,12 @@ class QCIndexSpace:
 
     @property
     def nP(self):
-        """Get the total three-momentum (np.ndarray with shape (3,))."""
+        """Total momentum in the finite-volume frame."""
         return self._nP
 
     @nP.setter
     def nP(self, nP):
+        """Set the total momentum in the finite-volume frame."""
         if not isinstance(nP, np.ndarray):
             raise ValueError("nP must be a numpy array")
         elif not np.array(nP).shape == (3,):
@@ -1742,48 +2001,50 @@ class QCIndexSpace:
 
     @property
     def fcs(self):
-        """Get the flavor-channel space (FlavorChannelSpace)."""
+        """FlavorChannelSpace object."""
         return self._fcs
 
     @fcs.setter
     def fcs(self, fcs):
-        self.n_channels = len(fcs.sc_list)
-        self.n_two_channels = 0
-        self.n_three_channels = 0
-        for sc in fcs.sc_list:
-            if np.sum(sc.fc.masses) > self.Emax:
+        """Set the FlavorChannelSpace object."""
+        self.n_channels = len(fcs.sc_list_sorted)
+        n_two_channels = 0
+        n_three_channels = 0
+        for sc in fcs.sc_list_sorted:
+            if np.sum(sc.masses_indexed) > self.Emax:
                 raise ValueError("QCIndexSpace includes channel with "
-                                 + "threshold exceeding Emax.")
+                                 + "threshold exceeding Emax")
             if sc.fc.n_particles == 2:
-                self.n_two_channels = self.n_two_channels+1
+                n_two_channels += 1
             elif sc.fc.n_particles == 3:
-                self.n_three_channels = self.n_three_channels+1
+                n_three_channels += 1
             else:
                 raise ValueError("QCIndexSpace currently only supports "
                                  + "two- and three-particle channels")
-        tbks_list_tmp = []
+        self.n_two_channels = n_two_channels
+        self.n_three_channels = n_three_channels
+
+        tbks_list = []
         if self.n_two_channels > 0:
-            tbks_list_tmp = tbks_list_tmp\
-                + [ThreeBodyKinematicSpace(nP=self.nP)]
-        for i in range(self.fcs.n_three_slices):
-            tbks_list_tmp = tbks_list_tmp\
-                + [ThreeBodyKinematicSpace(nP=self.nP)]
-        self.tbks_list = tbks_list_tmp
+            tbks_list.append(ThreeBodyKinematicSpace(nP=self.nP))
+        for _ in range(self.fcs.n_three_slices):
+            tbks_list.append(ThreeBodyKinematicSpace(nP=self.nP))
+        self.tbks_list = tbks_list
         self._fcs = fcs
 
     def _get_nPspecmax(self, three_slice_index):
-        sc = self.fcs.sc_list[self.fcs.three_slices[three_slice_index][0]
-                              + self.n_two_channels]
-        mspec = sc.fc.masses[sc.indexing[0]]
+        sc = self.fcs.sc_list_sorted[
+            self.fcs.slices_by_three_masses[three_slice_index][0]]
+        m_spec = sc.masses_indexed[0]
         Emax = self.Emax
         EmaxSQ = Emax**2
-        nPSQ = self.nP@self.nP
+        nPSQ = self.nPSQ
         Lmax = self.Lmax
         EminSQ = self.tbis.Emin**2
         if (EminSQ != 0.0):
             if nPSQ == 0:
                 nPspecmax = (Lmax*np.sqrt(
-                    Emax**4+(EminSQ-mspec**2)**2-2.*Emax**2*(EminSQ+mspec**2)
+                    Emax**4+(EminSQ-m_spec**2)**2-2.*Emax**2*(EminSQ+m_spec**2)
                     ))/(2.*Emax*TWOPI)
                 return nPspecmax
             else:
@@ -1791,14 +2052,14 @@ class QCIndexSpace:
                                  + " supported")
         else:
             if nPSQ == 0:
-                nPspecmax = Lmax*(EmaxSQ-mspec**2)/(2.0*TWOPI*Emax)
+                nPspecmax = Lmax*(EmaxSQ-m_spec**2)/(2.0*TWOPI*Emax)
                 return nPspecmax
             else:
                 nPmag = np.sqrt(nPSQ)
                 nPspecmax = (FOURPI2*nPmag*(
-                    Lmax**2*(EmaxSQ+mspec**2)-FOURPI2*nPSQ
+                    Lmax**2*(EmaxSQ+m_spec**2)-FOURPI2*nPSQ
                     )+np.sqrt(EmaxSQ*FOURPI2*Lmax**2*(
-                        Lmax**2*(-EmaxSQ+mspec**2)+FOURPI2*nPSQ
+                        Lmax**2*(-EmaxSQ+m_spec**2)+FOURPI2*nPSQ
                         )**2))/(2.*FOURPI2*(EmaxSQ*Lmax**2-FOURPI2*nPSQ))
                 return nPspecmax
 
@@ -1809,141 +2070,116 @@ class QCIndexSpace:
                 three_slice_index = slot_index-1
             else:
                 three_slice_index = slot_index
-            if (self.nP == np.array([0, 0, 0])).all():
-                if self.verbosity >= 2:
-                    print("populating nvec array, three_slice_index = ",
-                          str(three_slice_index))
+            if self.nPSQ == 0:
                 nPspecmax = self._get_nPspecmax(three_slice_index)
-                if isinstance(self.tbks_list[slot_index], list):
-                    tbks_tmp = self.tbks_list[slot_index][0]
-                    if self.verbosity >= 2:
-                        print("self.tbks_list[slot_index] is a list,",
-                              "taking first entry")
-                else:
-                    tbks_tmp = self.tbks_list[slot_index]
-                    if self.verbosity >= 2:
-                        print("self.tbks_list[slot_index] is not a list")
-                tbks_copy = deepcopy(tbks_tmp)
-                tbks_copy.verbosity = self.verbosity
-                self.tbks_list[slot_index] = [tbks_copy]
-                nPspec = nPspecmax
                 if self.verbosity >= 2:
-                    print("populating up to nPspecmax = "+str(nPspecmax))
-                while nPspec > 0:
-                    if self.verbosity >= 2:
-                        print("nPspec**2 = ", int(nPspec**2))
-                    rng = range(-int(nPspec), int(nPspec)+1)
-                    mesh = np.meshgrid(*([rng]*3))
-                    nvec_arr = np.vstack([y.flat for y in mesh]).T
-                    carr = (nvec_arr*nvec_arr).sum(1) > nPspec**2
-                    nvec_arr = np.delete(nvec_arr, np.where(carr), axis=0)
-                    self.tbks_list[slot_index][-1].nvec_arr = nvec_arr
-                    if self.verbosity >= 2:
-                        print(self.tbks_list[slot_index][-1])
-                    tbks_copy = deepcopy(tbks_tmp)
-                    tbks_copy.verbosity = self.verbosity
-                    self.tbks_list[slot_index] =\
-                        self.tbks_list[slot_index] + [tbks_copy]
-                    nPspecSQ = nPspec**2-1.0
-                    if nPspecSQ >= 0.0:
-                        nPspec = np.sqrt(nPspecSQ)
-                    else:
-                        nPspec = -1.0
-                self.tbks_list[slot_index] =\
-                    self.tbks_list[slot_index][:-1]
+                    print(f"populating nvec array, three_slice_index = "
+                          f"{three_slice_index}")
+                self._populate_slot_zero_momentum(slot_index, nPspecmax)
             else:
                 nPspecmax = self._get_nPspecmax(three_slice_index)
-                if isinstance(self.tbks_list[slot_index], list):
-                    tbks_tmp = self.tbks_list[slot_index][0]
-                    if self.verbosity >= 2:
-                        print("self.tbks_list[slot_index] is a list,",
-                              "taking first entry")
-                else:
-                    tbks_tmp = self.tbks_list[slot_index]
-                    if self.verbosity >= 2:
-                        print("self.tbks_list[slot_index] is not a list")
-                rng = range(-int(nPspecmax), int(nPspecmax)+1)
-                mesh = np.meshgrid(*([rng]*3))
-                nvec_arr = np.vstack([y.flat for y in mesh]).T
-
-                tbks_copy = deepcopy(tbks_tmp)
-                tbks_copy.verbosity = self.verbosity
-                self.tbks_list[slot_index] = [tbks_copy]
-                Lmax = self.Lmax
-                Emax = self.Emax
-                sc_compact_three_subspace\
-                    = self.fcs.sc_compact[self.fcs.three_index]
-                masses = sc_compact_three_subspace[three_slice_index][1:4]
-                mspec = masses[0]
-                nP = self.nP
-                [Evals, Lvals] = self._get_grid_nonzero_nP(Emax, Lmax)
-                for Ltmp in Lvals:
-                    for Etmp in Evals:
-                        E2CMSQ = (Etmp-np.sqrt(mspec**2
-                                               + FOURPI2/Ltmp**2
-                                               * ((nvec_arr**2)
-                                                  .sum(axis=1))))**2\
-                            - FOURPI2/Ltmp**2*((nP-nvec_arr)**2).sum(axis=1)
-                        carr = E2CMSQ < 0.0
-                        E2CMSQ = E2CMSQ.reshape((len(E2CMSQ), 1))
-                        E2nvec_arr = np.concatenate((E2CMSQ, nvec_arr), axis=1)
-                        E2nvec_arr = np.delete(E2nvec_arr, np.where(carr),
-                                               axis=0)
-                        nvec_arr_tmp = ((E2nvec_arr.T)[1:]).T
-                        nvec_arr_tmp = nvec_arr_tmp.astype(np.int64)
-                        if self.verbosity >= 2:
-                            print("L = ", np.round(Ltmp, 10),
-                                  ", E = ", np.round(Etmp, 10))
-                        self.tbks_list[slot_index][-1].nvec_arr\
-                            = nvec_arr_tmp
-                        if self.verbosity >= 2:
-                            print(self.tbks_list[slot_index][-1])
-                        tbks_copy = deepcopy(tbks_tmp)
-                        tbks_copy.verbosity = self.verbosity
-                        self.tbks_list[slot_index] =\
-                            self.tbks_list[slot_index]\
-                            + [tbks_copy]
-                self.tbks_list[slot_index] =\
-                    self.tbks_list[slot_index][:-1]
+                self._populate_slot_nonzero_momentum(slot_index,
+                                                     three_slice_index,
+                                                     nPspecmax)
         else:
-            nPspecmax = 0.0001
-            if isinstance(self.tbks_list[slot_index], list):
-                tbks_tmp = self.tbks_list[slot_index][0]
-                if self.verbosity >= 2:
-                    print("self.tbks_list[slot_index] is a list,",
-                          "taking first entry")
-            else:
-                tbks_tmp = self.tbks_list[slot_index]
-                if self.verbosity >= 2:
-                    print("self.tbks_list[slot_index] is not a list")
-            tbks_copy = deepcopy(tbks_tmp)
-            tbks_copy.verbosity = self.verbosity
-            self.tbks_list[slot_index] = [tbks_copy]
-            nPspec = nPspecmax
+            nPspecmax = EPSILON4
+            self._populate_slot_zero_momentum(slot_index, nPspecmax)
+
+    def _populate_slot_nonzero_momentum(self, slot_index, three_slice_index,
+                                        nPspecmax):
+        if isinstance(self.tbks_list[slot_index], list):
+            tbks_tmp = self.tbks_list[slot_index][0]
             if self.verbosity >= 2:
-                print("populating up to nPspecmax = "+str(nPspecmax))
-            while nPspec > 0:
-                if self.verbosity >= 2:
-                    print("nPspec**2 = ", int(nPspec**2))
-                rng = range(-int(nPspec), int(nPspec)+1)
-                mesh = np.meshgrid(*([rng]*3))
-                nvec_arr = np.vstack([y.flat for y in mesh]).T
-                carr = (nvec_arr*nvec_arr).sum(1) > nPspec**2
-                nvec_arr = np.delete(nvec_arr, np.where(carr), axis=0)
-                self.tbks_list[slot_index][-1].nvec_arr = nvec_arr
-                if self.verbosity >= 2:
-                    print(self.tbks_list[slot_index][-1])
-                tbks_copy = deepcopy(tbks_tmp)
-                tbks_copy.verbosity = self.verbosity
-                self.tbks_list[slot_index] =\
-                    self.tbks_list[slot_index] + [tbks_copy]
-                nPspecSQ = nPspec**2-1.0
-                if nPspecSQ >= 0.0:
-                    nPspec = np.sqrt(nPspecSQ)
-                else:
-                    nPspec = -1.0
-            self.tbks_list[slot_index] =\
-                self.tbks_list[slot_index][:-1]
+                print("self.tbks_list[slot_index] is a list, "
+                      "taking first entry")
+        else:
+            tbks_tmp = self.tbks_list[slot_index]
+            if self.verbosity >= 2:
+                print("self.tbks_list[slot_index] is not a list")
+        rng = range(-int(nPspecmax), int(nPspecmax)+1)
+        mesh = np.meshgrid(*([rng]*3))
+        nvec_arr = np.vstack([y.flat for y in mesh]).T
+        tbks_copy = deepcopy(tbks_tmp)
+        tbks_copy.verbosity = self.verbosity
+        self.tbks_list[slot_index] = [tbks_copy]
+        Lmax = self.Lmax
+        Emax = self.Emax
+        masses = self.fcs.sc_list_sorted[
+            self.fcs.slices_by_three_masses[three_slice_index][0]]\
+            .masses_indexed
+        m_spec = masses[0]
+        nP = self.nP
+        [Evals, Lvals] = self._get_grid_nonzero_nP(Emax, Lmax)
+        for Ltmp in Lvals:
+            for Etmp in Evals:
+                self._populate_EL_iteration(slot_index, tbks_tmp, nvec_arr,
+                                            m_spec, nP, Ltmp, Etmp)
+        self.tbks_list[slot_index] = self.tbks_list[slot_index][:-1]
+
+    def _populate_EL_iteration(self, slot_index, tbks_tmp, nvec_arr, m_spec,
+                               nP, Ltmp, Etmp):
+        E2CMSQ = (Etmp-np.sqrt(m_spec**2+FOURPI2/Ltmp**2
+                               * ((nvec_arr**2)
+                                  .sum(axis=1))))**2\
+            - FOURPI2/Ltmp**2*((nP-nvec_arr)**2).sum(axis=1)
+        carr = E2CMSQ < 0.0
+        E2CMSQ = E2CMSQ.reshape((len(E2CMSQ), 1))
+        E2nvec_arr = np.concatenate((E2CMSQ, nvec_arr), axis=1)
+        E2nvec_arr = np.delete(E2nvec_arr, np.where(carr), axis=0)
+        nvec_arr_tmp = ((E2nvec_arr.T)[1:]).T
+        nvec_arr_tmp = nvec_arr_tmp.astype(np.int64)
+        if self.verbosity >= 2:
+            print(f"L = {np.round(Ltmp, 10)}, "
+                  f"E = {np.round(Etmp, 10)}")
+        self.tbks_list[slot_index][-1].nvec_arr = nvec_arr_tmp
+        if self.verbosity >= 2:
+            print(self.tbks_list[slot_index][-1])
+        tbks_copy = deepcopy(tbks_tmp)
+        tbks_copy.verbosity = self.verbosity
+        self.tbks_list[slot_index] = self.tbks_list[slot_index]\
+            + [tbks_copy]
+
+    def _populate_slot_zero_momentum(self, slot_index, nPspecmax):
+        if isinstance(self.tbks_list[slot_index], list):
+            tbks_tmp = self.tbks_list[slot_index][0]
+            if self.verbosity >= 2:
+                print("self.tbks_list[slot_index] is a list, "
+                      "taking first entry")
+        else:
+            tbks_tmp = self.tbks_list[slot_index]
+            if self.verbosity >= 2:
+                print("self.tbks_list[slot_index] is not a list")
+        tbks_copy = deepcopy(tbks_tmp)
+        tbks_copy.verbosity = self.verbosity
+        self.tbks_list[slot_index] = [tbks_copy]
+        nPspec = nPspecmax
+        if self.verbosity >= 2:
+            print("populating up to nPspecmax = "+str(nPspecmax))
+        while nPspec > 0:
+            nPspec = self._populate_nP_iteration(slot_index, tbks_tmp, nPspec)
+        self.tbks_list[slot_index] = self.tbks_list[slot_index][:-1]
+
+    def _populate_nP_iteration(self, slot_index, tbks_tmp, nPspec):
+        if self.verbosity >= 2:
+            print("nPspec**2 = ", int(nPspec**2))
+        rng = range(-int(nPspec), int(nPspec)+1)
+        mesh = np.meshgrid(*([rng]*3))
+        nvec_arr = np.vstack([y.flat for y in mesh]).T
+        carr = (nvec_arr*nvec_arr).sum(1) > nPspec**2
+        nvec_arr = np.delete(nvec_arr, np.where(carr), axis=0)
+        self.tbks_list[slot_index][-1].nvec_arr = nvec_arr
+        if self.verbosity >= 2:
+            print(self.tbks_list[slot_index][-1])
+        tbks_copy = deepcopy(tbks_tmp)
+        tbks_copy.verbosity = self.verbosity
+        self.tbks_list[slot_index] =\
+            self.tbks_list[slot_index]+[tbks_copy]
+        nPspecSQ = nPspec**2-1.0
+        if nPspecSQ >= 0.0:
+            nPspec = np.sqrt(nPspecSQ)
+        else:
+            nPspec = -1.0
+        return nPspec
 
     def populate_all_nvec_arr(self):
         """Populate all nvec_arr slots."""
@@ -1960,37 +2196,39 @@ class QCIndexSpace:
 
     def _get_ell_sets(self):
         ell_sets = [[]]
-        for cindex in range(self.n_channels):
-            ell_set = self.fcs.sc_list[cindex].ell_set
+        for sc_index in range(self.n_channels):
+            ell_set = self.fcs.sc_list_sorted[sc_index].ell_set
             ell_sets = ell_sets+[ell_set]
         return ell_sets[1:]
 
     @property
     def ell_sets(self):
-        """Get the set of angular-momentum value sets."""
+        """Angular-momentum value sets."""
         return self._ell_sets
 
     @ell_sets.setter
     def ell_sets(self, ell_sets):
+        """Set angular-momentum value sets."""
         self._ell_sets = ell_sets
-        tmpset_outer = [[]]
+        ellm_sets = []
         for ell_set in ell_sets:
-            tmpset = [[]]
+            ellm_set = []
             for ell in ell_set:
                 for mazi in range(-ell, ell+1):
-                    tmpset = tmpset+[[ell, mazi]]
-            tmpset_outer = tmpset_outer+[tmpset[1:]]
-        self.ellm_sets = tmpset_outer[1:]
+                    ellm_set.append((ell, mazi))
+            ellm_sets.append(ellm_set)
+        self.ellm_sets = ellm_sets
 
-    def _get_three_slice_index(self, cindex):
-        three_channel_max = self.fcs.three_slices[-1][-1]-1
-        if ((self.n_two_channels == 0) and (cindex > three_channel_max)):
-            raise ValueError(f"Using cindex={cindex} with three_slices="
-                             f"{self.fcs.three_slices} and (no two-particle "
-                             f"channels) is not allowed.")
+    def _get_three_slice_index(self, sc_index):
+        three_channel_max = self.fcs.slices_by_three_masses[-1][-1]-1
+        if ((self.n_two_channels == 0) and (sc_index > three_channel_max)):
+            raise ValueError(f"using cindex = {sc_index} with three_slices = "
+                             f"{self.fcs.slices_by_three_masses} "
+                             f"and (no two-particle channels) "
+                             f"is not allowed")
         slice_index = 0
-        for three_slice in self.fcs.three_slices:
-            if cindex > three_slice[1]:
+        for three_slice in self.fcs.slices_by_three_masses:
+            if sc_index > three_slice[1]:
                 slice_index = slice_index+1
         if self.n_two_channels > 0:
             slice_index = slice_index+1
@@ -2009,8 +2247,8 @@ class QCIndexSpace:
             else:
                 cindex_shift = cindex-self.n_two_channels
                 slot_index = -1
-                for k in range(len(self.fcs.three_slices)):
-                    three_slice = self.fcs.three_slices[k]
+                for k in range(len(self.fcs.slices_by_three_masses)):
+                    three_slice = self.fcs.slices_by_three_masses[k]
                     if three_slice[0] <= cindex_shift < three_slice[1]:
                         slot_index = k
                 if self.n_two_channels > 0:
@@ -2053,18 +2291,20 @@ class QCIndexSpace:
         if self.verbosity >= 2:
             print("getting the dict for following qcis:")
             print(self)
-        for cindex in range(self.n_channels):
-            proj_dict = group.get_channel_proj_dict(qcis=self, cindex=cindex)
+        for sc_index in range(self.n_channels):
+            proj_dict = group.get_channel_proj_dict(qcis=self,
+                                                    sc_index=sc_index)
             sc_proj_dicts = sc_proj_dicts+[proj_dict]
             sc_proj_dict_channel_by_shell = [[]]
-            for kellm_shell_index in range(len(self.kellm_shells[cindex])):
-                kellm_shell_set = self.kellm_shells[cindex][kellm_shell_index]
+            for kellm_shell_index in range(len(self.kellm_shells[sc_index])):
+                kellm_shell_set = self.kellm_shells[sc_index][
+                    kellm_shell_index]
                 sc_proj_dict_shell_set = []
                 for kellm_shell in kellm_shell_set:
                     sc_proj_dict_shell_set = sc_proj_dict_shell_set\
                         + [group.get_shell_proj_dict(
                             qcis=self,
-                            cindex=cindex,
+                            cindex=sc_index,
                             kellm_shell=kellm_shell,
                             shell_index=kellm_shell_index)]
                 sc_proj_dict_channel_by_shell = sc_proj_dict_channel_by_shell\
@@ -2081,71 +2321,77 @@ class QCIndexSpace:
             raise ValueError("get_tbks_sub_indices called with E > Emax")
         if L > self.Lmax:
             raise ValueError("get_tbks_sub_indices called with L > Lmax")
-        tbks_sub_indices = [0]*len(self.tbks_list)
-        if (self.nP)@(self.nP) != 0:
-            for slice_index in range(self.fcs.n_three_slices):
-                cindex = self.fcs.three_slices[slice_index][0]
-                sc = self.fcs.sc_list[cindex]
-                mspec = sc.fc.masses[sc.indexing[0]]
-                mspec = sc.fc.masses[0]
-                nP = self.nP
-                tbkstmp_set = self.tbks_list[cindex]
-                still_searching = True
-                i = 0
-                while still_searching:
-                    tbkstmp = tbkstmp_set[i]
-                    nvec_arr = tbkstmp.nvec_arr
-                    E2CMSQfull = (E-np.sqrt(mspec**2
-                                            + FOURPI2/L**2
-                                            * ((nvec_arr**2).sum(axis=1)
-                                               )))**2\
-                        - FOURPI2/L**2*((nP-nvec_arr)**2).sum(axis=1)
-                    still_searching = not (np.sort(E2CMSQfull) > 0.0).all()
-                    i = i+1
-                i = i-1
-                tbkstmp = tbkstmp_set[i]
-                nvec_arr = tbkstmp.nvec_arr
-                E2CMSQfull = (E-np.sqrt(mspec**2
-                                        + FOURPI2/L**2
-                                        * ((nvec_arr**2).sum(axis=1)
-                                           )))**2\
-                    - FOURPI2/L**2*((nP-nvec_arr)**2).sum(axis=1)
-                tbks_sub_indices[cindex] = i
-            warnings.warn(f"\n{bcolors.WARNING}"
-                          f"get_tbks_sub_indices is being called with "
-                          f"non_zero nP; this can lead to shells being"
-                          f"missed! result is = {str(tbks_sub_indices)}"
-                          f"{bcolors.ENDC}", stacklevel=1)
+        if self.nPSQ != 0:
+            tbks_sub_indices =\
+                self._get_tbks_sub_indices_nonzero_mom(E, L)
             return tbks_sub_indices
+        tbks_sub_indices = self._get_tbks_sub_indices_zero_mom(E, L)
+        return tbks_sub_indices
+
+    def _get_tbks_sub_indices_zero_mom(self, E, L):
+        tbks_sub_indices = [0]*len(self.tbks_list)
         for slice_index in range(self.fcs.n_three_slices):
-            cindex = self.fcs.three_slices[slice_index][0]
-            nPspecmax = self._get_nPspecmax(cindex)
-            sc = self.fcs.sc_list[cindex]
-            mspec = sc.fc.masses[sc.indexing[0]]
+            sc_index = self.fcs.slices_by_three_masses[slice_index][0]
+            nPspecmax = self._get_nPspecmax(sc_index)
+            sc = self.fcs.sc_list_sorted[sc_index]
+            m_spec = sc.fc.masses[sc.indexing[0]]
             ESQ = E**2
-            nPSQ = self.nP@self.nP
+            nPSQ = self.nPSQ
             EminSQ = self.tbis.Emin**2
             if (EminSQ != 0.0):
                 if nPSQ == 0:
                     nPspecnew = (L*np.sqrt(
-                        E**4+(EminSQ-mspec**2)**2-2.*E**2*(EminSQ+mspec**2)
+                        E**4+(EminSQ-m_spec**2)**2-2.*E**2*(EminSQ+m_spec**2)
                         ))/(2.*E*TWOPI)
                 else:
                     raise ValueError("nonzero nP and Emin not supported")
             else:
                 if nPSQ == 0:
-                    nPspecnew = L*(ESQ-mspec**2)/(2.0*TWOPI*E)
+                    nPspecnew = L*(ESQ-m_spec**2)/(2.0*TWOPI*E)
                 else:
                     nPmag = np.sqrt(nPSQ)
                     nPspecnew = (FOURPI2*nPmag*(
-                        L**2*(ESQ+mspec**2)-FOURPI2*nPSQ
+                        L**2*(ESQ+m_spec**2)-FOURPI2*nPSQ
                         )+np.sqrt(ESQ*FOURPI2*L**2*(
-                            L**2*(-ESQ+mspec**2)+FOURPI2*nPSQ
+                            L**2*(-ESQ+m_spec**2)+FOURPI2*nPSQ
                             )**2))/(2.*FOURPI2*(ESQ*L**2-FOURPI2*nPSQ))
-
             nPmaxintSQ = int(nPspecmax**2)
             nPnewintSQ = int(nPspecnew**2)
-            tbks_sub_indices[cindex] = nPmaxintSQ - nPnewintSQ
+            tbks_sub_indices[sc_index] = nPmaxintSQ - nPnewintSQ
+        return tbks_sub_indices
+
+    def _get_tbks_sub_indices_nonzero_mom(self, E, L, tbks_sub_indices):
+        tbks_sub_indices = [0]*len(self.tbks_list)
+        for slice_index in range(self.fcs.n_three_slices):
+            sc_index = self.fcs.slices_by_three_masses[slice_index][0]
+            sc = self.fcs.sc_list_sorted[sc_index]
+            m_spec = sc.masses_indexed[0]
+            nP = self.nP
+            tbkstmp_set = self.tbks_list[sc_index]
+            still_searching = True
+            i = 0
+            while still_searching:
+                tbkstmp = tbkstmp_set[i]
+                nvec_arr = tbkstmp.nvec_arr
+                E2CMSQfull = (E-np.sqrt(m_spec**2
+                                        + FOURPI2/L**2
+                                        * ((nvec_arr**2).sum(axis=1))))**2\
+                    - FOURPI2/L**2*((nP-nvec_arr)**2).sum(axis=1)
+                still_searching = not (np.sort(E2CMSQfull) > 0.0).all()
+                i += 1
+            i -= 1
+            tbkstmp = tbkstmp_set[i]
+            nvec_arr = tbkstmp.nvec_arr
+            E2CMSQfull = (E-np.sqrt(m_spec**2
+                                    + FOURPI2/L**2
+                                    * ((nvec_arr**2).sum(axis=1))))**2\
+                - FOURPI2/L**2*((nP-nvec_arr)**2).sum(axis=1)
+            tbks_sub_indices[sc_index] = i
+        warnings.warn(f"\n{bcolors.WARNING}"
+                      f"get_tbks_sub_indices is being called with "
+                      f"non_zero nP; this can lead to shells being "
+                      f"missed! result is = {str(tbks_sub_indices)}"
+                      f"{bcolors.ENDC}", stacklevel=1)
         return tbks_sub_indices
 
     def _load_ni_data_three(self, fc):
@@ -2575,7 +2821,7 @@ class QCIndexSpace:
                 nvecset_batched, nvecset_ident_batched]
 
     def populate_all_nonint_data(self):
-        """Get all non-interacting data."""
+        """Populate all non-interacting data."""
         nvecset_arr_all = []
         nvecset_SQs_all = []
         nvecset_reps_all = []
@@ -2755,7 +3001,7 @@ class QCIndexSpace:
     def default_k_params(self):
         """Get the default k-matrix parameters."""
         pcotdelta_parameter_list = [[]]
-        for sc in self.fcs.sc_list:
+        for sc in self.fcs.sc_list_sorted:
             for n_params in sc.n_params_set:
                 pcotdelta_parameter_list = pcotdelta_parameter_list\
                     + [[0.0]*n_params]
@@ -2764,16 +3010,21 @@ class QCIndexSpace:
         return [pcotdelta_parameter_list, k3_params]
 
     def __str__(self):
-        """Summary of the QCIndexSpace."""
-        strtmp = "QCIndexSpace containing:\n"
-        strtmp = strtmp+"    "+str(self.fcs).replace("\n", "\n    ")+"\n\n"
-        strtmp = strtmp+"    "+str(self.fvs).replace("\n", "\n    ")+"\n\n"
-        strtmp = strtmp+"    "+str(self.tbis).replace("\n", "\n    ")+"\n\n"
-        strtmp = strtmp+"    Parameter input structure:\n"
-        strtmp = strtmp+"        "+str(self.param_structure)+"\n\n"
+        """Return a string representation of the QCIndexSpace object."""
+        qc_index_space_str = "QCIndexSpace containing:\n"
+        qc_index_space_str += "    "\
+            + str(self.fcs).replace("\n", "\n    ")+"\n\n"
+        qc_index_space_str += "    "\
+            + str(self.fvs).replace("\n", "\n    ")+"\n\n"
+        qc_index_space_str += "    "\
+            + str(self.tbis).replace("\n", "\n    ")+"\n\n"
+        qc_index_space_str += "    Parameter input structure:\n"
+        qc_index_space_str += "        "\
+            + str(self.param_structure)+"\n\n"
         for tbkstmp in self.tbks_list:
-            strtmp = strtmp+"    "+str(tbkstmp[0]).replace("\n", "\n    ")+"\n"
-        return strtmp[:-1]
+            qc_index_space_str += "    "\
+                + str(tbkstmp[0]).replace("\n", "\n    ")+"\n"
+        return qc_index_space_str[:-1]
 
 
 class G:
@@ -2825,13 +3076,13 @@ class G:
     def _mask_and_shell_helper_nPnonzero(self, E, nP, L, tbks_entry,
                                          row_shell_index, col_shell_index,
                                          three_slice_index):
-        sc_compact_three_subspace\
-            = self.qcis.fcs.sc_compact[self.qcis.fcs.three_index]
-        masses = sc_compact_three_subspace[three_slice_index][1:4]
-        mspec = masses[0]
+        masses = self.qcis.fcs.sc_list_sorted[
+            self.qcis.fcs.slices_by_three_masses[three_slice_index][0]].\
+            masses_indexed
+        m_spec = masses[0]
         kvecSQ_arr = FOURPI2*tbks_entry.nvecSQ_arr/L**2
         kvec_arr = TWOPI*tbks_entry.nvec_arr/L
-        omk_arr = np.sqrt(mspec**2+kvecSQ_arr)
+        omk_arr = np.sqrt(m_spec**2+kvecSQ_arr)
         Pvec = TWOPI*nP/L
         PmkSQ_arr = ((Pvec-kvec_arr)**2).sum(axis=1)
         mask_row = (E-omk_arr)**2-PmkSQ_arr > 0.0
@@ -2843,16 +3094,7 @@ class G:
         row_shells = list(np.array(row_shells)[mask_row_shells])
         row_shell = list(row_shells[row_shell_index])
 
-        sc_compact_three_subspace\
-            = self.qcis.fcs.sc_compact[self.qcis.fcs.three_index]
-        masses = sc_compact_three_subspace[three_slice_index][1:4]
-        mspec = masses[0]
-        kvecSQ_arr = FOURPI2*tbks_entry.nvecSQ_arr/L**2
-        kvec_arr = TWOPI*tbks_entry.nvec_arr/L
-        omk_arr = np.sqrt(mspec**2+kvecSQ_arr)
-        Pvec = TWOPI*nP/L
-        PmkSQ_arr = ((Pvec-kvec_arr)**2).sum(axis=1)
-        mask_col = (E-omk_arr)**2-PmkSQ_arr > 0.0
+        mask_col = mask_row
         col_shells = tbks_entry.shells
         mask_col_shells = []
         for col_shell in col_shells:
@@ -3140,9 +3382,8 @@ class G:
                 g_final_smooth_basis = g_final_smooth_basis+[g_row_tmp]
             g_final_smooth_basis = np.array(g_final_smooth_basis[1:])
             cob_matrix = self.\
-                cob_matrices[irrep][total_cobs
-                                    - self.qcis.get_tbks_sub_indices(E, L)[0]
-                                    - 1]
+                cob_matrices[irrep][
+                    total_cobs-self.qcis.get_tbks_sub_indices(E, L)[0]-1]
             g_matrix_tmp_rotated\
                 = (cob_matrix)@g_final_smooth_basis@(cob_matrix.T)
             return g_matrix_tmp_rotated
@@ -3189,8 +3430,8 @@ class G:
             raise ValueError("irrep "+str(irrep)+" not in "
                              + "qcis.proj_dict.keys()")
 
-        three_compact = self.qcis.fcs.sc_compact[self.qcis.fcs.three_index]
-        masses = three_compact[0][1:4]
+        masses = self.qcis.fcs.sc_list_sorted[
+            self.qcis.fcs.slices_by_three_masses[0][0]].masses_indexed
         [m1, m2, m3] = masses
 
         if nP@nP == 0:
@@ -3236,17 +3477,17 @@ class G:
         g_final = [[]]
         if self.qcis.verbosity >= 2:
             print('iterating over spectator channels, slices')
-        for sc_row_ind in range(len(three_compact)):
+        for sc_row_ind in range(len(self.qcis.fcs.sc_list_sorted)):
             g_outer_row = []
-            row_ell_set = self.qcis.fcs.sc_list[sc_row_ind].ell_set
+            row_ell_set = self.qcis.fcs.sc_list_sorted[sc_row_ind].ell_set
             if len(row_ell_set) != 1:
                 raise ValueError("only length-one ell_set currently "
                                  + "supported in G")
             ell1 = row_ell_set[0]
-            for sc_col_ind in range(len(three_compact)):
+            for sc_col_ind in range(len(self.qcis.fcs.sc_list_sorted)):
                 if self.qcis.verbosity >= 2:
                     print('sc_row_ind, sc_col_ind =', sc_row_ind, sc_col_ind)
-                col_ell_set = self.qcis.fcs.sc_list[sc_col_ind].ell_set
+                col_ell_set = self.qcis.fcs.sc_list_sorted[sc_col_ind].ell_set
                 if len(col_ell_set) != 1:
                     raise ValueError("only length-one ell_set currently "
                                      + "supported in G")
@@ -3302,8 +3543,8 @@ class G:
             raise ValueError("irrep "+str(irrep)+" not in "
                              + "qcis.proj_dict.keys()")
 
-        three_compact = self.qcis.fcs.sc_compact[self.qcis.fcs.three_index]
-        masses = three_compact[0][1:4]
+        masses = self.qcis.fcs.sc_list_sorted[
+            self.qcis.fcs.slices_by_three_masses[0][0]].masses_indexed
         [m1, m2, m3] = masses
 
         if nP@nP == 0:
@@ -3349,17 +3590,17 @@ class G:
         nvecSQs_final = [[]]
         if self.qcis.verbosity >= 2:
             print('iterating over spectator channels, slices')
-        for sc_row_ind in range(len(three_compact)):
+        for sc_row_ind in range(len(self.qcis.fcs.sc_list_sorted)):
             nvecSQs_outer_row = []
-            row_ell_set = self.qcis.fcs.sc_list[sc_row_ind].ell_set
+            row_ell_set = self.qcis.fcs.sc_list_sorted[sc_row_ind].ell_set
             if len(row_ell_set) != 1:
                 raise ValueError("only length-one ell_set currently "
                                  + "supported in G")
             ell1 = row_ell_set[0]
-            for sc_col_ind in range(len(three_compact)):
+            for sc_col_ind in range(len(self.qcis.fcs.sc_list_sorted)):
                 if self.qcis.verbosity >= 2:
                     print('sc_row_ind, sc_col_ind =', sc_row_ind, sc_col_ind)
-                col_ell_set = self.qcis.fcs.sc_list[sc_col_ind].ell_set
+                col_ell_set = self.qcis.fcs.sc_list_sorted[sc_col_ind].ell_set
                 if len(col_ell_set) != 1:
                     raise ValueError("only length-one ell_set currently "
                                      + "supported in G")
@@ -3522,12 +3763,13 @@ class G:
                         = interpolator_matrix_complete[1:]
                     pole_free_interpolator_matrix[i][j][interp_data_index]\
                         = pole_free_interpolator_matrix_complete[1:]
-        warnings.simplefilter('default')
 
         # Build interpolator functions
         function_set = [[]]
+        func_tuple_set = [[]]
         for i in range(interp_mat_dim):
             function_set_row = []
+            func_tuple_set_row = []
             for j in range(interp_mat_dim):
                 if len(interpolator_matrix[i][j][energy_vol_dat_index]) == 4:
                     [Lmin_entry, Lmax_entry, Emin_entry, Emax_entry]\
@@ -3554,10 +3796,65 @@ class G:
                                                     g_pole_free_mesh_grid,
                                                     method='linear')
                     function_set_row = function_set_row+[interp]
+                    func_tuple_set_row = func_tuple_set_row\
+                        + [(E_grid_tmp, L_grid_tmp, g_pole_free_mesh_grid)]
                 else:
                     function_set_row = function_set_row+[None]
+                    func_tuple_set_row = func_tuple_set_row+[None]
             function_set = function_set+[function_set_row]
+            func_tuple_set = func_tuple_set+[func_tuple_set_row]
         function_set = np.array(function_set[1:])
+        func_tuple_set = np.array(func_tuple_set[1:])
+
+        # Get unique E and L sets
+        E_grid_unique = []
+        for i in range(len(func_tuple_set)):
+            for j in range(len(func_tuple_set[i])):
+                if func_tuple_set[i][j] is not None:
+                    E_grid_candidate = func_tuple_set[i][j][0]
+                    for E in E_grid_candidate:
+                        if E not in E_grid_unique:
+                            E_grid_unique.append(E)
+        E_grid_unique = np.unique(np.sort(E_grid_unique).round(decimals=10))
+
+        L_grid_unique = []
+        for i in range(len(func_tuple_set)):
+            for j in range(len(func_tuple_set[i])):
+                if func_tuple_set[i][j] is not None:
+                    L_grid_candidate = func_tuple_set[i][j][1]
+                    for L in L_grid_candidate:
+                        if L not in L_grid_unique:
+                            L_grid_unique.append(L)
+        L_grid_unique = np.unique(np.sort(L_grid_unique).round(decimals=10))
+
+        # Build the rank 4 tensor
+        func_set_tensor = []
+        for E in E_grid_unique:
+            vol_rank = []
+            for L in L_grid_unique:
+                gi_rank = []
+                for i in range(len(func_tuple_set)):
+                    gj_rank = []
+                    for j in range(len(func_tuple_set[i])):
+                        if func_tuple_set[i][j] is None:
+                            gj_rank.append(0.0)
+                        else:
+                            en_bools =\
+                                np.abs(func_tuple_set[i][j][0]-E) < 1.e-10
+                            vol_bools =\
+                                np.abs(func_tuple_set[i][j][1]-L) < 1.e-10
+                            if (not en_bools.any()) or (not vol_bools.any()):
+                                gj_rank.append(0.0)
+                            else:
+                                en_loc = np.where(en_bools)[0][0]
+                                vol_loc = np.where(vol_bools)[0][0]
+                                gj_rank.append(
+                                    func_tuple_set[i][j][2][en_loc][vol_loc])
+                    gi_rank.append(gj_rank)
+                vol_rank.append(gi_rank)
+            func_set_tensor.append(vol_rank)
+        func_set_tensor = np.array(func_set_tensor)
+
         warnings.simplefilter('always')
 
         all_dimensions = []
@@ -3575,8 +3872,8 @@ class G:
         self.all_dimensions[irrep] = all_dimensions
 
     def extract_masses(self):
-        three_compact = self.qcis.fcs.sc_compact[self.qcis.fcs.three_index]
-        masses = three_compact[0][1:4]
+        masses = self.qcis.fcs.sc_list_sorted[
+            self.qcis.fcs.slices_by_three_masses[0][0]].masses_indexed
         [m1, m2, m3] = masses
         return m1, m2, m3
 
@@ -3775,10 +4072,11 @@ class G:
 
     def get_dim_with_shell_index_all(self, irrep):
         dim_with_shell_index_all = [[]]
-        for spectator_channel_index in range(len(self.qcis.fcs.sc_list)):
+        for spectator_channel_index in range(
+             len(self.qcis.fcs.sc_list_sorted)):
             dim_with_shell_index_for_sc = [[]]
             ell_set_tmp = self\
-                .qcis.fcs.sc_list[spectator_channel_index].ell_set
+                .qcis.fcs.sc_list_sorted[spectator_channel_index].ell_set
             ang_mom_dim = 0
             for ell_tmp in ell_set_tmp:
                 ang_mom_dim = ang_mom_dim+(2*ell_tmp+1)
@@ -3861,9 +4159,9 @@ class F:
         if nP@nP == 0:
             slice_entry = tbks_entry.shells[slice_index]
         else:
-            sc_compact_three_subspace\
-                = self.qcis.fcs.sc_compact[self.qcis.fcs.three_index]
-            masses = sc_compact_three_subspace[three_slice_index][1:4]
+            masses = self.qcis.fcs.sc_list_sorted[
+                self.qcis.fcs.slices_by_three_masses[three_slice_index][0]]\
+                .masses_indexed
             mspec = masses[0]
             kvecSQ_arr = FOURPI2*tbks_entry.nvecSQ_arr/L**2
             kvec_arr = TWOPI*tbks_entry.nvec_arr/L
@@ -3939,8 +4237,8 @@ class F:
             raise ValueError("only n_three_slices = 1 is supported")
         three_slice_index = 0
         cindex = 0
-        three_compact = self.qcis.fcs.sc_compact[self.qcis.fcs.three_index]
-        masses = three_compact[three_slice_index][1:4]
+        masses = self.qcis.fcs.sc_list_sorted[
+            self.qcis.fcs.slices_by_three_masses[0][0]].masses_indexed
         [m1, m2, m3] = masses
 
         if nP@nP == 0:
@@ -3982,10 +4280,10 @@ class F:
                 print('mask_slices =')
                 print(mask_slices)
                 print('range for sc_ind =')
-                print(range(len(three_compact)))
+                print(range(len(self.qcis.fcs.sc_list_sorted)))
         f_final_list = []
-        for sc_ind in range(len(three_compact)):
-            ell_set = self.qcis.fcs.sc_list[sc_ind].ell_set
+        for sc_ind in range(len(self.qcis.fcs.sc_list_sorted)):
+            ell_set = self.qcis.fcs.sc_list_sorted[sc_ind].ell_set
             if len(ell_set) != 1:
                 raise ValueError("only length-one ell_set currently "
                                  + "supported in F")
@@ -4019,7 +4317,7 @@ class F:
 
 class FplusG:
     r"""
-    Class for the sum.
+    Class for F+G (typically with interpolation).
     """
 
     def __init__(self, qcis=QCIndexSpace(), alphaKSS=1.0, C1cut=3):
@@ -4054,8 +4352,8 @@ class FplusG:
         f_plus_g_final_smooth_basis = [[]]
         total_cobs = self.total_cobs[irrep]
         matrix_dimension = self.\
-            all_dimensions[irrep][total_cobs
-                                  - self.qcis.get_tbks_sub_indices(E, L)[0]-1]
+            all_dimensions[irrep][
+                total_cobs-self.qcis.get_tbks_sub_indices(E, L)[0]-1]
         m1, m2, m3 = self.extract_masses()
         for i in range(matrix_dimension):
             g_row_tmp = []
@@ -4076,9 +4374,8 @@ class FplusG:
                 + [g_row_tmp]
         f_plus_g_final_smooth_basis = np.array(f_plus_g_final_smooth_basis[1:])
         cob_matrix = self.\
-            cob_matrices[irrep][total_cobs
-                                - self.qcis.get_tbks_sub_indices(E, L)[0]
-                                - 1]
+            cob_matrices[irrep][
+                total_cobs-self.qcis.get_tbks_sub_indices(E, L)[0]-1]
         f_plus_g_matrix_tmp_rotated\
             = (cob_matrix)@f_plus_g_final_smooth_basis@(cob_matrix.T)
         return f_plus_g_matrix_tmp_rotated
@@ -4101,8 +4398,8 @@ class FplusG:
             raise ValueError("irrep "+str(irrep)+" not in "
                              + "qcis.proj_dict.keys()")
 
-        three_compact = self.qcis.fcs.sc_compact[self.qcis.fcs.three_index]
-        masses = three_compact[0][1:4]
+        masses = self.qcis.fcs.sc_list_sorted[
+            self.qcis.fcs.slices_by_three_masses[0][0]].masses_indexed
         [m1, m2, m3] = masses
 
         if nP@nP == 0:
@@ -4148,14 +4445,14 @@ class FplusG:
         nvecSQs_final = [[]]
         if self.qcis.verbosity >= 2:
             print('iterating over spectator channels, slices')
-        for sc_row_ind in range(len(three_compact)):
+        for sc_row_ind in range(len(self.qcis.fcs.sc_list_sorted)):
             nvecSQs_outer_row = []
-            row_ell_set = self.qcis.fcs.sc_list[sc_row_ind].ell_set
+            row_ell_set = self.qcis.fcs.sc_list_sorted[sc_row_ind].ell_set
             if len(row_ell_set) != 1:
                 raise ValueError("only length-one ell_set currently "
                                  + "supported in G")
             ell1 = row_ell_set[0]
-            for sc_col_ind in range(len(three_compact)):
+            for sc_col_ind in range(len(self.qcis.fcs.sc_list_sorted)):
                 if self.qcis.verbosity >= 2:
                     print('sc_row_ind, sc_col_ind =', sc_row_ind, sc_col_ind)
                 col_ell_set = self.qcis.fcs.sc_list[sc_col_ind].ell_set
@@ -4377,8 +4674,8 @@ class FplusG:
         self.all_dimensions[irrep] = all_dimensions
 
     def extract_masses(self):
-        three_compact = self.qcis.fcs.sc_compact[self.qcis.fcs.three_index]
-        masses = three_compact[0][1:4]
+        masses = self.qcis.fcs.sc_list_sorted[
+            self.qcis.fcs.slices_by_three_masses[0][0]].masses_indexed
         [m1, m2, m3] = masses
         return m1, m2, m3
 
@@ -4743,9 +5040,9 @@ class K:
         if nP@nP == 0:
             slice_entry = tbks_entry.shells[slice_index]
         else:
-            sc_compact_three_subspace\
-                = self.qcis.fcs.sc_compact[self.qcis.fcs.three_index]
-            masses = sc_compact_three_subspace[three_slice_index][1:4]
+            masses = self.qcis.fcs.sc_list_sorted[
+                self.qcis.fcs.slices_by_three_masses[three_slice_index][0]]\
+                    .masses_indexed
             mspec = masses[0]
             kvecSQ_arr = FOURPI2*tbks_entry.nvecSQ_arr/L**2
             kvec_arr = TWOPI*tbks_entry.nvec_arr/L
@@ -4810,7 +5107,7 @@ class K:
         """Build the K matrix in a shell-based way."""
         Lmax = self.qcis.Lmax
         Emax = self.qcis.Emax
-        n_two_channels = self.qcis.n_two_channels
+        # n_two_channels = self.qcis.n_two_channels
         if E > Emax:
             raise ValueError("get_value called with E > Emax")
         if L > Lmax:
@@ -4824,8 +5121,9 @@ class K:
             raise ValueError("only n_three_slices = 1 is supported")
         three_slice_index = 0
         cindex = 0
-        three_compact = self.qcis.fcs.sc_compact[self.qcis.fcs.three_index]
-        masses = three_compact[three_slice_index][1:4]
+        masses = self.qcis.fcs.sc_list_sorted[
+            self.qcis.fcs.slices_by_three_masses[three_slice_index][0]]\
+            .masses_indexed
         [m1, m2, m3] = masses
 
         if nP@nP == 0:
@@ -4861,7 +5159,7 @@ class K:
             slices = list((np.array(slices))[mask_slices])
 
         k_final_list = []
-        for sc_ind in range(len(three_compact)):
+        for sc_ind in range(len(self.qcis.fcs.sc_list_sorted)):
             ell_set = self.qcis.fcs.sc_list[sc_ind].ell_set
             if len(ell_set) != 1:
                 raise ValueError("only length-one ell_set currently "

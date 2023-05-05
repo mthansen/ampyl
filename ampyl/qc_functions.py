@@ -35,10 +35,8 @@ Created July 2022.
 ###############################################################################
 
 import numpy as np
-import warnings
-warnings.simplefilter("once")
 from sympy.physics.quantum.cg import CG
-from sympy import S
+# from sympy import S
 from scipy.special import sph_harm
 from scipy.special import erfi
 from scipy.special import erf
@@ -50,6 +48,8 @@ from .global_constants import ROOT4PI
 from .global_constants import EPSILON15
 from .global_constants import QC_IMPL_DEFAULTS
 import functools
+import warnings
+warnings.simplefilter("once")
 
 
 class bcolors:
@@ -923,9 +923,9 @@ class QCFunctions:
         n2vec_mat_shell\
             = tbks_entry.n2vec_mat_all_shells[row_shell_index][
                 col_shell_index]
-        n3vec_mat_shell\
-            = tbks_entry.n3vec_mat_all_shells[row_shell_index][
-                col_shell_index]
+        # n3vec_mat_shell\
+        #     = tbks_entry.n3vec_mat_all_shells[row_shell_index][
+        #         col_shell_index]
         n1vecSQ_mat_shell\
             = tbks_entry.n1vecSQ_mat_all_shells[row_shell_index][
                 col_shell_index]
@@ -1288,12 +1288,10 @@ class QCFunctions:
 
                 if smarter_q_rescale:
                     sph_harm_value = sph_harm_value\
-                    - (rSQ_arr**ell1-q**(2*ell1))
+                        - (rSQ_arr**ell1-q**(2*ell1))
                 else:
                     sph_harm_value = sph_harm_value\
                         - (rSQ_arr**ell1/q**(2*ell1)-1.0)
-
-
         else:
             if (ell1 == 0 and ell2 == 0):
                 npar_component_arr = ((nvec_arr*nP2).sum(1))/nP2mag
@@ -1331,7 +1329,7 @@ class QCFunctions:
 
                     if smarter_q_rescale:
                         sph_harm_value = sph_harm_value\
-                        - (rSQ_arr**ell1-q**(2*ell1))
+                            - (rSQ_arr**ell1-q**(2*ell1))
                     else:
                         sph_harm_value = sph_harm_value\
                             - (rSQ_arr**ell1/q**(2*ell1)-1.0)
@@ -1382,7 +1380,8 @@ class QCFunctions:
         r"""Evaluate a single entry of \\(Z\\)."""
         return QCFunctions.__T1(nP2, qSQ, gamSQ, alpha_mass, C1cut, alphaKSS,
                                 ell1, mazi1, ell2, mazi2, qc_impl)\
-            + QCFunctions.__T2(qSQ, gamSQ, alphaKSS, ell1, mazi1, ell2, mazi2, qc_impl)
+            + QCFunctions.__T2(qSQ, gamSQ, alphaKSS, ell1, mazi1, ell2, mazi2,
+                               qc_impl)
 
     @staticmethod
     def getFtwo_single_entry(E2=3.0, nP2=np.array([0, 0, 0]), L=5.0,
@@ -1600,7 +1599,8 @@ class QCFunctions:
 
         if smarter_q_rescale:
             pcotdelta = pcotdelta/np.abs(pSQ**(ell))
-            return pre*16.0*PI*ECM/(pcotdelta+q_one_minus_H_tmp)/np.abs(pSQ**(ell))
+            return pre*16.0*PI*ECM/(pcotdelta+q_one_minus_H_tmp)\
+                / np.abs(pSQ**(ell))
         else:
             pcotdelta = pcotdelta/np.abs(pSQ**(ell))
             return pre*16.0*PI*ECM/(pcotdelta+q_one_minus_H_tmp)
@@ -1627,8 +1627,8 @@ class QCFunctions:
         k_list = []
         for nvec in nvec_arr_slice:
             k_tmp = QCFunctions\
-                .getK_single_entry(pcotdelta_function=pcotdelta_function,
-                                   pcotdelta_parameters=pcotdelta_parameter_list,
+                .getK_single_entry(pcotdelta_function,
+                                   pcotdelta_parameter_list,
                                    E=E, nP=nP, L=L,
                                    npspec=nvec,
                                    m1=m2, m2=m3, mspec=m1,
