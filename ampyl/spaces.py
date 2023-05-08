@@ -299,10 +299,10 @@ class ThreeBodyKinematicSpace:
     def __init__(self, nP=np.array([0, 0, 0]), nvec_arr=np.array([]),
                  build_shell_acc=True, verbosity=0):
         self.build_shell_acc = build_shell_acc
+        self.stacked = {}
         self.nP = nP
         self.nvec_arr = nvec_arr
         self.verbosity = verbosity
-        self.stacked = {}
 
     @property
     def nP(self):
