@@ -548,21 +548,21 @@ class ThreeBodyKinematicSpace:
 
     def _populate_nvecSQ_stacks(self):
         n1vecSQ_stacked = []
-        for n1vec_row in self.n1vec_stacked:
+        for n1vec_row in self.stacked['n1vec']:
             n1vecSQ_row = []
             for n1vec in n1vec_row:
                 n1vecSQ_row.append((n1vec*n1vec).sum(1))
             n1vecSQ_stacked.append(n1vecSQ_row)
         self.stacked['n1vecSQ'] = n1vecSQ_stacked
         n2vecSQ_stacked = []
-        for n2vec_row in self.n2vec_stacked:
+        for n2vec_row in self.stacked['n2vec']:
             n2vecSQ_row = []
             for n2vec in n2vec_row:
                 n2vecSQ_row.append((n2vec*n2vec).sum(1))
             n2vecSQ_stacked.append(n2vecSQ_row)
         self.stacked['n2vecSQ'] = n2vecSQ_stacked
         n3vecSQ_stacked = []
-        for n3vec_row in self.n3vec_stacked:
+        for n3vec_row in self.stacked['n3vec']:
             n3vecSQ_row = []
             for n3vec in n3vec_row:
                 n3vecSQ_row.append((n3vec*n3vec).sum(1))
