@@ -22,3 +22,5 @@ ampy.egg-info
 index.rst.txt
 *.DS_Store
 not_on_github
+settings.json
+ampyl_backup.py
