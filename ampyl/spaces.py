@@ -738,90 +738,89 @@ class QCIndexSpace:
     Class representing the quantization condition index space.
 
     :param fcs: flavor-channel space
-    :type fcs: FlavorChannelSpace
+    :type fcs: :class:`FlavorChannelSpace` object
     :param fvs: finite-volume setup
-    :type fvs: FiniteVolumeSetup
+    :type fvs: :class:`FiniteVolumeSetup` object
     :param tbis: three-body interaction scheme
-    :type tbis: ThreeBodyInteractionScheme
-    :param Emax: maximum energy
+    :type tbis: :class:`ThreeBodyInteractionScheme` object
+    :param Emax: maximum energy, used to build the spectator index space
     :type Emax: float
-    :param Lmax: maximum volume
+    :param Lmax: maximum volume, used to build the spectator index space
     :type Lmax: float
     :param verbosity: verbosity level
     :type verbosity: int
-    :param nP: total momentum in the finite-volume frame
-    :type nP: numpy.ndarray of ints with shape (3,)
-    :param nPSQ: squared total momentum in the finite-volume frame
-    :type nPSQ: int
-    :param nPmag: magnitude of the total momentum in the finite-volume frame
-    :type nPmag: float
-    :param Evals: energy values used to build the grid for non-zero nP
-    :type Evals: numpy.ndarray
-    :param Lvals: volume values used to build the grid for non-zero nP
-    :type Lvals: numpy.ndarray
-    :param param_structure: structure of the quantization condition parameters
-    :type param_structure: list
-    :param ell_sets: list of sets of angular momenta
-    :type ell_sets: list
-    :param ellm_sets: list of sets of angular momenta and their azimuthal
-    values
-    :type ellm_sets: list
-    :param proj_dict: dictionary of projection matrices
-    :type proj_dict: dict
-    :param non_int_proj_dict: dictionary of projection matrices for the
-    non-interacting states
-    :type non_int_proj_dict: dict
-    :param group: relevant symmetry group
-    :type group: Group
-    :param n_channels: number of channels
-    :type n_channels: int
-    :param n_two_channels: number of two-particle channels
-    :type n_two_channels: int
-    :param n_three_channels: number of three-particle channels
-    :type n_three_channels: int
-    :param tbks_list: list of three-body kinematic spaces
-    :type tbks_list: list of ThreeBodyKinematicSpace
-    :param kellm_spaces: list of spectator + angular-momentum spaces
-    :type kellm_spaces: list
-    :param kellm_shells: list of spectator + angular-momentum spaces,
-    organized by shell
-    :type kellm_shells: list
-    :param sc_proj_dicts: list of projection dictionaries by spectator channel
-    :type sc_proj_dicts: list
-    :param sc_proj_dicts_by_shell: list of projection dictionaries by spectator
-    channel, organized by momentum shell
-    :type sc_proj_dicts_by_shell: list
 
-    :param nvecset_arr: nvecs
-    :type nvecset_arr: numpy.ndarray
-    :param nvecset_SQs: nvecs^2
-    :type nvecset_SQs: numpy.ndarray
-    :param nvecset_reps: nvec representatives
-    :type nvecset_reps: numpy.ndarray
-    :param nvecset_SQreps: nvec^2 representatives
-    :type nvecset_SQreps: numpy.ndarray
-    :param nvecset_inds: indices for the nvecs
-    :type nvecset_inds: numpy.ndarray
-    :param nvecset_counts: counts for the nvecs
-    :type nvecset_counts: numpy.ndarray
-    :param nvecset_batched: nvecs organized by batch
-    :type nvecset_batched: numpy.ndarray
-
-    :param nvecset_ident: nvecs for identical particles
-    :type nvecset_ident: numpy.ndarray
-    :param nvecset_ident_SQs: nvecs^2 for identical particles
-    :type nvecset_ident_SQs: numpy.ndarray
-    :param nvecset_ident_reps: nvec representatives for identical particles
-    :type nvecset_ident_reps: numpy.ndarray
-    :param nvecset_ident_SQreps: nvec^2 representatives for identical particles
-    :type nvecset_ident_SQreps: numpy.ndarray
-    :param nvecset_ident_inds: indices for the nvecs for identical particles
-    :type nvecset_ident_inds: numpy.ndarray
-    :param nvecset_ident_counts: counts for the nvecs for identical particles
-    :type nvecset_ident_counts: numpy.ndarray
-    :param nvecset_ident_batched: nvecs organized by batch for identical
-    particles
-    :type nvecset_ident_batched: numpy.ndarray
+    :ivar nP: total momentum in the finite-volume frame
+    :vartype nP: numpy.ndarray of ints with shape (3,)
+    :ivar nPSQ: squared total momentum in the finite-volume frame
+    :vartype nPSQ: int
+    :ivar nPmag: magnitude of the total momentum in the finite-volume frame
+    :vartype nPmag: float
+    :ivar group: relevant symmetry group
+    :vartype group: Group
+    :ivar Evals: energy values used to build the grid for non-zero nP
+    :vartype Evals: numpy.ndarray
+    :ivar Lvals: volume values used to build the grid for non-zero nP
+    :vartype Lvals: numpy.ndarray
+    :ivar param_structure: structure of the list used to input the quantization
+        condition parameters
+    :vartype param_structure: list
+    :ivar ell_sets: list of sets of angular momenta
+    :vartype ell_sets: list
+    :ivar ellm_sets: list of sets of angular momenta and their m components
+    :vartype ellm_sets: list
+    :ivar proj_dict: dictionary of projection matrices
+    :vartype proj_dict: dict
+    :ivar non_int_proj_dict: dictionary of projection matrices for the
+        non-interacting states
+    :vartype non_int_proj_dict: dict
+    :ivar n_channels: number of channels
+    :vartype n_channels: int
+    :ivar n_two_channels: number of two-particle channels
+    :vartype n_two_channels: int
+    :ivar n_three_channels: number of three-particle channels
+    :vartype n_three_channels: int
+    :ivar tbks_list: list of three-body kinematic spaces
+    :vartype tbks_list: list of ThreeBodyKinematicSpace
+    :ivar kellm_spaces: list of spectator + angular-momentum spaces
+    :vartype kellm_spaces: list
+    :ivar kellm_shells: list of spectator + angular-momentum spaces,
+        organized by shell
+    :vartype kellm_shells: list
+    :ivar sc_proj_dicts: list of projection dictionaries by spectator channel
+    :vartype sc_proj_dicts: list
+    :ivar sc_proj_dicts_by_shell: list of projection dictionaries by spectator
+        channel, organized by momentum shell
+    :vartype sc_proj_dicts_by_shell: list
+    :ivar nvecset_arr: nvecs
+    :vartype nvecset_arr: numpy.ndarray
+    :ivar nvecset_SQs: nvecs^2
+    :vartype nvecset_SQs: numpy.ndarray
+    :ivar nvecset_reps: nvec representatives
+    :vartype nvecset_reps: numpy.ndarray
+    :ivar nvecset_SQreps: nvec^2 representatives
+    :vartype nvecset_SQreps: numpy.ndarray
+    :ivar nvecset_inds: indices for the nvecs
+    :vartype nvecset_inds: numpy.ndarray
+    :ivar nvecset_counts: counts for the nvecs
+    :vartype nvecset_counts: numpy.ndarray
+    :ivar nvecset_batched: nvecs organized by batch
+    :vartype nvecset_batched: numpy.ndarray
+    :ivar nvecset_ident: nvecs for identical particles
+    :vartype nvecset_ident: numpy.ndarray
+    :ivar nvecset_ident_SQs: nvecs^2 for identical particles
+    :vartype nvecset_ident_SQs: numpy.ndarray
+    :ivar nvecset_ident_reps: nvec representatives for identical particles
+    :vartype nvecset_ident_reps: numpy.ndarray
+    :ivar nvecset_ident_SQreps: nvec^2 representatives for identical particles
+    :vartype nvecset_ident_SQreps: numpy.ndarray
+    :ivar nvecset_ident_inds: indices for the nvecs for identical particles
+    :vartype nvecset_ident_inds: numpy.ndarray
+    :ivar nvecset_ident_counts: counts for the nvecs for identical particles
+    :vartype nvecset_ident_counts: numpy.ndarray
+    :ivar nvecset_ident_batched: nvecs organized by batch for identical
+        particles
+    :vartype nvecset_ident_batched: numpy.ndarray
     """
 
     def __init__(self, fcs=None, fvs=None, tbis=None,
