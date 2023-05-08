@@ -3804,7 +3804,7 @@ class G:
             function_set = function_set+[function_set_row]
             func_tuple_set = func_tuple_set+[func_tuple_set_row]
         function_set = np.array(function_set[1:])
-        func_tuple_set = np.array(func_tuple_set[1:])
+        func_tuple_set = np.array(func_tuple_set[1:], dtype=object)
 
         # Get unique E and L sets
         E_grid_unique = []
