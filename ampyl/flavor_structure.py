@@ -9,7 +9,7 @@ Created July 2022.
 
 ###############################################################################
 #
-# ampyl.py
+# flavor_structure.py
 #
 # MIT License
 # Copyright (c) 2022 Maxwell T. Hansen
@@ -35,8 +35,8 @@ Created July 2022.
 ###############################################################################
 
 import numpy as np
-from .qc_functions import QCFunctions
 from inspect import signature
+from .qc_functions import QCFunctions
 from .global_constants import EPSILON4
 from .global_constants import G_TEMPLATE_DICT
 from .global_constants import bcolors
