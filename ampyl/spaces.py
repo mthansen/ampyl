@@ -542,7 +542,7 @@ class ThreeBodyKinematicSpace:
             n2vec_stacked.append(n2vec_stacked_row)
             n3vec_stacked.append(n3vec_stacked_row)
             multiplicities_stacked.append(mult_stacked_row)
-            multiplicities_stacked = np.array(multiplicities_stacked)
+        multiplicities_stacked = np.array(multiplicities_stacked)
         return n1vec_stacked, n2vec_stacked, n3vec_stacked,\
             multiplicities_stacked
 
