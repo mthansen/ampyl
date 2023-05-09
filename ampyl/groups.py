@@ -38,14 +38,14 @@ import numpy as np
 from scipy.linalg import block_diag
 import quaternionic
 import spherical
-from .global_constants import ROOT_THREE
-from .global_constants import ROOT_TWO
-from .global_constants import EPSPROJ
-from .global_constants import ISO_PROJECTORS
-from .global_constants import CAL_C_ISO
-from .global_constants import PION_ORDERS
-from .global_constants import EPSILON15
-from .global_constants import EPSILON10
+from .constants import ROOT_THREE
+from .constants import ROOT_TWO
+from .constants import EPSPROJ
+from .constants import ISO_PROJECTORS
+from .constants import CAL_C_ISO
+from .constants import PION_ORDERS
+from .constants import EPSILON15
+from .constants import EPSILON10
 import warnings
 warnings.simplefilter("once")
 

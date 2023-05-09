@@ -41,12 +41,12 @@ from scipy.special import sph_harm
 from scipy.special import erfi
 from scipy.special import erf
 from scipy.linalg import block_diag
-from .global_constants import PI
-from .global_constants import TWOPI
-from .global_constants import FOURPI2
-from .global_constants import ROOT4PI
-from .global_constants import EPSILON15
-from .global_constants import QC_IMPL_DEFAULTS
+from .constants import PI
+from .constants import TWOPI
+from .constants import FOURPI2
+from .constants import ROOT4PI
+from .constants import EPSILON15
+from .constants import QC_IMPL_DEFAULTS
 import functools
 import warnings
 warnings.simplefilter("once")

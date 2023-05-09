@@ -37,23 +37,23 @@ Created July 2022.
 import numpy as np
 from copy import deepcopy
 import functools
-from .group_theory import Groups
-from .group_theory import Irreps
-from .global_constants import TWOPI
-from .global_constants import FOURPI2
-from .global_constants import EPSILON4
-from .global_constants import EPSILON10
-from .global_constants import EPSILON20
-from .global_constants import DELTA_L_FOR_GRID
-from .global_constants import DELTA_E_FOR_GRID
-from .global_constants import L_GRID_SHIFT
-from .global_constants import E_GRID_SHIFT
-from .global_constants import ISO_PROJECTORS
-from .global_constants import CAL_C_ISO
-from .global_constants import QC_IMPL_DEFAULTS
-from .global_constants import bcolors
-from .flavor_structure import FlavorChannel
-from .flavor_structure import FlavorChannelSpace
+from .groups import Groups
+from .groups import Irreps
+from .constants import TWOPI
+from .constants import FOURPI2
+from .constants import EPSILON4
+from .constants import EPSILON10
+from .constants import EPSILON20
+from .constants import DELTA_L_FOR_GRID
+from .constants import DELTA_E_FOR_GRID
+from .constants import L_GRID_SHIFT
+from .constants import E_GRID_SHIFT
+from .constants import ISO_PROJECTORS
+from .constants import CAL_C_ISO
+from .constants import QC_IMPL_DEFAULTS
+from .constants import bcolors
+from .flavors import FlavorChannel
+from .flavors import FlavorChannelSpace
 import warnings
 warnings.simplefilter("once")
 
@@ -239,7 +239,9 @@ class ThreeBodyKinematicSpace:
     :param verbosity: verbosity level
     :type verbosity: int
 
-    :ivar stacked: dictionary of stacked data
+    :ivar stacked: dictionary of stacked data. Possible keys are:
+        ``'n1vec'``, ``'n2vec'``, ``'n3vec'``, ``'n1vecSQ'``, ``'n2vecSQ'``,
+        ``'n3vecSQ'``, ``'multiplicities'``.
     :vartype stacked: dict
     :ivar nPSQ: total momentum squared in the finite-volume frame
     :vartype nPSQ: int
