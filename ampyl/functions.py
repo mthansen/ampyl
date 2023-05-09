@@ -9,7 +9,7 @@ Created July 2022.
 
 ###############################################################################
 #
-# qc_functions.py
+# functions.py
 #
 # MIT License
 # Copyright (c) 2022 Maxwell T. Hansen
@@ -44,7 +44,7 @@ from scipy.linalg import block_diag
 from .constants import PI
 from .constants import TWOPI
 from .constants import FOURPI2
-from .constants import ROOT4PI
+from .constants import R4PI
 from .constants import EPSILON15
 from .constants import QC_IMPL_DEFAULTS
 import functools
@@ -258,7 +258,7 @@ class BKFunctions:
         thetas = np.arccos(nzs/(nmags+EPSILON15))
         phis = np.arctan(nys/(nxs+EPSILON15))\
             + (1.0-np.sign(nxs+EPSILON15))*PI/2.0
-        return ROOT4PI*(nmags**ell)*sph_harm(mazi, ell, phis, thetas)
+        return R4PI*(nmags**ell)*sph_harm(mazi, ell, phis, thetas)
 
     @staticmethod
     def cart_sph_harm_real(ell=0, mazi=0,
@@ -1346,7 +1346,7 @@ class QCFunctions:
         return np.sum(QCFunctions.summand(nP2, qSQ, gamSQ, alpha_mass,
                                           nvec_arr, alphaKSS,
                                           ell1, mazi1, ell2, mazi2,
-                                          qc_impl))/ROOT4PI
+                                          qc_impl))/R4PI
 
     @staticmethod
     def __T2(qSQ=1.5, gamSQ=1.0, alphaKSS=1.0,

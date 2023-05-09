@@ -9,7 +9,7 @@ Created July 2022.
 
 ###############################################################################
 #
-# group_theory.py
+# groups.py
 #
 # MIT License
 # Copyright (c) 2022 Maxwell T. Hansen
@@ -38,14 +38,14 @@ import numpy as np
 from scipy.linalg import block_diag
 import quaternionic
 import spherical
-from .constants import ROOT_THREE
-from .constants import ROOT_TWO
-from .constants import EPSPROJ
+from .constants import RTHREE
+from .constants import RTWO
 from .constants import ISO_PROJECTORS
 from .constants import CAL_C_ISO
 from .constants import PION_ORDERS
-from .constants import EPSILON15
+from .constants import EPSILON8
 from .constants import EPSILON10
+from .constants import EPSILON15
 import warnings
 warnings.simplefilter("once")
 
@@ -177,23 +177,23 @@ class Groups:
                                               -2., -2., 1., -2., -2., 1., -2.,
                                               1., 1., -2., 1., 1., -2., -2.,
                                               1., 1., 1., 1., 1.],
-                                             [-ROOT_THREE, ROOT_THREE,
-                                              ROOT_THREE, -ROOT_THREE,
-                                              -ROOT_THREE, 0., 0., ROOT_THREE,
-                                              0., 0., ROOT_THREE, 0.,
-                                              ROOT_THREE, ROOT_THREE, 0.,
-                                              ROOT_THREE, ROOT_THREE, 0., 0.,
-                                              -ROOT_THREE, -ROOT_THREE,
-                                              -ROOT_THREE, -ROOT_THREE,
-                                              -ROOT_THREE, -ROOT_THREE,
-                                              ROOT_THREE, ROOT_THREE,
-                                              -ROOT_THREE, -ROOT_THREE, 0., 0.,
-                                              ROOT_THREE, 0., 0., ROOT_THREE,
-                                              0., ROOT_THREE, ROOT_THREE, 0.,
-                                              ROOT_THREE, ROOT_THREE, 0., 0.,
-                                              -ROOT_THREE, -ROOT_THREE,
-                                              -ROOT_THREE, -ROOT_THREE,
-                                              -ROOT_THREE]])
+                                             [-RTHREE, RTHREE,
+                                              RTHREE, -RTHREE,
+                                              -RTHREE, 0., 0., RTHREE,
+                                              0., 0., RTHREE, 0.,
+                                              RTHREE, RTHREE, 0.,
+                                              RTHREE, RTHREE, 0., 0.,
+                                              -RTHREE, -RTHREE,
+                                              -RTHREE, -RTHREE,
+                                              -RTHREE, -RTHREE,
+                                              RTHREE, RTHREE,
+                                              -RTHREE, -RTHREE, 0., 0.,
+                                              RTHREE, 0., 0., RTHREE,
+                                              0., RTHREE, RTHREE, 0.,
+                                              RTHREE, RTHREE, 0., 0.,
+                                              -RTHREE, -RTHREE,
+                                              -RTHREE, -RTHREE,
+                                              -RTHREE]])
 
         self.chardict['OhP_EPLUS'] = np.array(2*[[2., 0., 0., 0., 0., 0., 0.,
                                                   -1., -1., -1., -1., -1., -1.,
@@ -220,22 +220,22 @@ class Groups:
                                                -1.-1.*1j, 1.+1.*1j, 1.+1.*1j,
                                                -1.+1.*1j, -1.-1.*1j, -1.+1.*1j,
                                                1.-1.*1j, 1.+1.*1j, -1.-1.*1j],
-                                              [ROOT_TWO, -ROOT_TWO, -ROOT_TWO,
-                                               ROOT_TWO, -ROOT_TWO, ROOT_TWO,
-                                               -ROOT_TWO, -ROOT_TWO, ROOT_TWO,
-                                               -ROOT_TWO, ROOT_TWO, ROOT_TWO,
-                                               ROOT_TWO, -ROOT_TWO, -ROOT_TWO,
-                                               ROOT_TWO, ROOT_TWO, ROOT_TWO,
-                                               -ROOT_TWO, ROOT_TWO, -ROOT_TWO,
-                                               ROOT_TWO, -ROOT_TWO, -ROOT_TWO,
-                                               ROOT_TWO, -ROOT_TWO, -ROOT_TWO,
-                                               ROOT_TWO, -ROOT_TWO, ROOT_TWO,
-                                               -ROOT_TWO, -ROOT_TWO, ROOT_TWO,
-                                               -ROOT_TWO, ROOT_TWO, ROOT_TWO,
-                                               ROOT_TWO, -ROOT_TWO, -ROOT_TWO,
-                                               ROOT_TWO, ROOT_TWO, ROOT_TWO,
-                                               -ROOT_TWO, ROOT_TWO, -ROOT_TWO,
-                                               ROOT_TWO, -ROOT_TWO, -ROOT_TWO],
+                                              [RTWO, -RTWO, -RTWO,
+                                               RTWO, -RTWO, RTWO,
+                                               -RTWO, -RTWO, RTWO,
+                                               -RTWO, RTWO, RTWO,
+                                               RTWO, -RTWO, -RTWO,
+                                               RTWO, RTWO, RTWO,
+                                               -RTWO, RTWO, -RTWO,
+                                               RTWO, -RTWO, -RTWO,
+                                               RTWO, -RTWO, -RTWO,
+                                               RTWO, -RTWO, RTWO,
+                                               -RTWO, -RTWO, RTWO,
+                                               -RTWO, RTWO, RTWO,
+                                               RTWO, -RTWO, -RTWO,
+                                               RTWO, RTWO, RTWO,
+                                               -RTWO, RTWO, -RTWO,
+                                               RTWO, -RTWO, -RTWO],
                                               [1.+1.*1j, 1.+1.*1j, -1.-1.*1j,
                                                -1.+1.*1j, -1.-1.*1j, 1.-1.*1j,
                                                -1.-1.*1j, 1.-1.*1j, -1.-1.*1j,
@@ -279,22 +279,22 @@ class Groups:
                                                -1.+1.*1j, 1.-1.*1j, -1.-1.*1j,
                                                1.-1.*1j, -1.-1.*1j, -1.+1.*1j,
                                                -1.-1.*1j, -1.+1.*1j, 1.-1.*1j],
-                                              [ROOT_TWO, ROOT_TWO, ROOT_TWO,
-                                               ROOT_TWO, -ROOT_TWO, ROOT_TWO,
-                                               -ROOT_TWO, ROOT_TWO, -ROOT_TWO,
-                                               ROOT_TWO, -ROOT_TWO, -ROOT_TWO,
-                                               -ROOT_TWO, ROOT_TWO, ROOT_TWO,
-                                               -ROOT_TWO, -ROOT_TWO, ROOT_TWO,
-                                               -ROOT_TWO, ROOT_TWO, -ROOT_TWO,
-                                               ROOT_TWO, -ROOT_TWO, -ROOT_TWO,
-                                               ROOT_TWO, ROOT_TWO, ROOT_TWO,
-                                               ROOT_TWO, -ROOT_TWO, ROOT_TWO,
-                                               -ROOT_TWO, ROOT_TWO, -ROOT_TWO,
-                                               ROOT_TWO, -ROOT_TWO, -ROOT_TWO,
-                                               -ROOT_TWO, ROOT_TWO, ROOT_TWO,
-                                               -ROOT_TWO, -ROOT_TWO, ROOT_TWO,
-                                               -ROOT_TWO, ROOT_TWO, -ROOT_TWO,
-                                               ROOT_TWO, -ROOT_TWO, -ROOT_TWO],
+                                              [RTWO, RTWO, RTWO,
+                                               RTWO, -RTWO, RTWO,
+                                               -RTWO, RTWO, -RTWO,
+                                               RTWO, -RTWO, -RTWO,
+                                               -RTWO, RTWO, RTWO,
+                                               -RTWO, -RTWO, RTWO,
+                                               -RTWO, RTWO, -RTWO,
+                                               RTWO, -RTWO, -RTWO,
+                                               RTWO, RTWO, RTWO,
+                                               RTWO, -RTWO, RTWO,
+                                               -RTWO, RTWO, -RTWO,
+                                               RTWO, -RTWO, -RTWO,
+                                               -RTWO, RTWO, RTWO,
+                                               -RTWO, -RTWO, RTWO,
+                                               -RTWO, RTWO, -RTWO,
+                                               RTWO, -RTWO, -RTWO],
                                               [1.-1.*1j, -1.+1.*1j, 1.-1.*1j,
                                                1.-1.*1j, 1.+1.*1j, 1.-1.*1j,
                                                -1.-1.*1j, -1.+1.*1j, -1.-1.*1j,
@@ -344,23 +344,23 @@ class Groups:
                                                -1., 2., 2., -1., 2., 2., -1.,
                                                2., -1., -1., 2., -1., -1., 2.,
                                                2., -1., -1., -1., -1., -1.],
-                                              [-ROOT_THREE, ROOT_THREE,
-                                               ROOT_THREE, -ROOT_THREE,
-                                               -ROOT_THREE, 0., 0., ROOT_THREE,
-                                               0., 0., ROOT_THREE, 0.,
-                                               ROOT_THREE, ROOT_THREE, 0.,
-                                               ROOT_THREE, ROOT_THREE, 0., 0.,
-                                               -ROOT_THREE, -ROOT_THREE,
-                                               -ROOT_THREE, -ROOT_THREE,
-                                               -ROOT_THREE, ROOT_THREE,
-                                               -ROOT_THREE, -ROOT_THREE,
-                                               ROOT_THREE, ROOT_THREE, 0., 0.,
-                                               -ROOT_THREE, 0., 0.,
-                                               -ROOT_THREE, 0., -ROOT_THREE,
-                                               -ROOT_THREE, 0., -ROOT_THREE,
-                                               -ROOT_THREE, 0., 0., ROOT_THREE,
-                                               ROOT_THREE, ROOT_THREE,
-                                               ROOT_THREE, ROOT_THREE]])
+                                              [-RTHREE, RTHREE,
+                                               RTHREE, -RTHREE,
+                                               -RTHREE, 0., 0., RTHREE,
+                                               0., 0., RTHREE, 0.,
+                                               RTHREE, RTHREE, 0.,
+                                               RTHREE, RTHREE, 0., 0.,
+                                               -RTHREE, -RTHREE,
+                                               -RTHREE, -RTHREE,
+                                               -RTHREE, RTHREE,
+                                               -RTHREE, -RTHREE,
+                                               RTHREE, RTHREE, 0., 0.,
+                                               -RTHREE, 0., 0.,
+                                               -RTHREE, 0., -RTHREE,
+                                               -RTHREE, 0., -RTHREE,
+                                               -RTHREE, 0., 0., RTHREE,
+                                               RTHREE, RTHREE,
+                                               RTHREE, RTHREE]])
 
         self.chardict['OhP_EMINUS'] = np.array(2*[[2., 0., 0., 0., 0., 0., 0.,
                                                    -1., -1., -1., -1., -1.,
@@ -388,23 +388,23 @@ class Groups:
                                                 -1.-1.*1j, -1.-1.*1j, 1.-1.*1j,
                                                 1.+1.*1j, 1.-1.*1j, -1.+1.*1j,
                                                 -1.-1.*1j, 1.+1.*1j],
-                                               [ROOT_TWO, -ROOT_TWO, -ROOT_TWO,
-                                                ROOT_TWO, -ROOT_TWO, ROOT_TWO,
-                                                -ROOT_TWO, -ROOT_TWO, ROOT_TWO,
-                                                -ROOT_TWO, ROOT_TWO, ROOT_TWO,
-                                                ROOT_TWO, -ROOT_TWO, -ROOT_TWO,
-                                                ROOT_TWO, ROOT_TWO, ROOT_TWO,
-                                                -ROOT_TWO, ROOT_TWO, -ROOT_TWO,
-                                                ROOT_TWO, -ROOT_TWO, -ROOT_TWO,
-                                                -ROOT_TWO, ROOT_TWO, ROOT_TWO,
-                                                -ROOT_TWO, ROOT_TWO, -ROOT_TWO,
-                                                ROOT_TWO, ROOT_TWO, -ROOT_TWO,
-                                                ROOT_TWO, -ROOT_TWO, -ROOT_TWO,
-                                                -ROOT_TWO, ROOT_TWO, ROOT_TWO,
-                                                -ROOT_TWO, -ROOT_TWO,
-                                                -ROOT_TWO, ROOT_TWO, -ROOT_TWO,
-                                                ROOT_TWO, -ROOT_TWO, ROOT_TWO,
-                                                ROOT_TWO],
+                                               [RTWO, -RTWO, -RTWO,
+                                                RTWO, -RTWO, RTWO,
+                                                -RTWO, -RTWO, RTWO,
+                                                -RTWO, RTWO, RTWO,
+                                                RTWO, -RTWO, -RTWO,
+                                                RTWO, RTWO, RTWO,
+                                                -RTWO, RTWO, -RTWO,
+                                                RTWO, -RTWO, -RTWO,
+                                                -RTWO, RTWO, RTWO,
+                                                -RTWO, RTWO, -RTWO,
+                                                RTWO, RTWO, -RTWO,
+                                                RTWO, -RTWO, -RTWO,
+                                                -RTWO, RTWO, RTWO,
+                                                -RTWO, -RTWO,
+                                                -RTWO, RTWO, -RTWO,
+                                                RTWO, -RTWO, RTWO,
+                                                RTWO],
                                                [1.+1.*1j, 1.+1.*1j, -1.-1.*1j,
                                                 -1.+1.*1j, -1.-1.*1j, 1.-1.*1j,
                                                 -1.-1.*1j, 1.-1.*1j, -1.-1.*1j,
@@ -432,30 +432,30 @@ class Groups:
                                                     0., 0., -1., -1., -1., -1.,
                                                     -1., -1., 1., 1., 1.]])
 
-        self.bTdict['OhP_T2MINUS'] = np.array([[ROOT_TWO, -ROOT_TWO, ROOT_TWO,
-                                                ROOT_TWO, 0.-ROOT_TWO*1j,
-                                                ROOT_TWO, 0.+ROOT_TWO*1j,
-                                                -ROOT_TWO, 0.+ROOT_TWO*1j,
-                                                -ROOT_TWO, 0.-ROOT_TWO*1j,
-                                                0.-ROOT_TWO*1j, 0.+ROOT_TWO*1j,
-                                                ROOT_TWO, ROOT_TWO,
-                                                0.+ROOT_TWO*1j, 0.-ROOT_TWO*1j,
-                                                -ROOT_TWO, 0.-ROOT_TWO*1j,
-                                                -ROOT_TWO, 0.+ROOT_TWO*1j,
-                                                -ROOT_TWO, 0.+ROOT_TWO*1j,
-                                                0.-ROOT_TWO*1j, -ROOT_TWO,
-                                                ROOT_TWO, -ROOT_TWO, -ROOT_TWO,
-                                                0.+ROOT_TWO*1j, -ROOT_TWO,
-                                                0.-ROOT_TWO*1j, ROOT_TWO,
-                                                0.-ROOT_TWO*1j, ROOT_TWO,
-                                                0.+ROOT_TWO*1j, 0.+ROOT_TWO*1j,
-                                                0.-ROOT_TWO*1j, -ROOT_TWO,
-                                                -ROOT_TWO, 0.-ROOT_TWO*1j,
-                                                0.+ROOT_TWO*1j, ROOT_TWO,
-                                                0.+ROOT_TWO*1j, ROOT_TWO,
-                                                0.-ROOT_TWO*1j, ROOT_TWO,
-                                                0.-ROOT_TWO*1j,
-                                                0.+ROOT_TWO*1j],
+        self.bTdict['OhP_T2MINUS'] = np.array([[RTWO, -RTWO, RTWO,
+                                                RTWO, 0.-RTWO*1j,
+                                                RTWO, 0.+RTWO*1j,
+                                                -RTWO, 0.+RTWO*1j,
+                                                -RTWO, 0.-RTWO*1j,
+                                                0.-RTWO*1j, 0.+RTWO*1j,
+                                                RTWO, RTWO,
+                                                0.+RTWO*1j, 0.-RTWO*1j,
+                                                -RTWO, 0.-RTWO*1j,
+                                                -RTWO, 0.+RTWO*1j,
+                                                -RTWO, 0.+RTWO*1j,
+                                                0.-RTWO*1j, -RTWO,
+                                                RTWO, -RTWO, -RTWO,
+                                                0.+RTWO*1j, -RTWO,
+                                                0.-RTWO*1j, RTWO,
+                                                0.-RTWO*1j, RTWO,
+                                                0.+RTWO*1j, 0.+RTWO*1j,
+                                                0.-RTWO*1j, -RTWO,
+                                                -RTWO, 0.-RTWO*1j,
+                                                0.+RTWO*1j, RTWO,
+                                                0.+RTWO*1j, RTWO,
+                                                0.-RTWO*1j, RTWO,
+                                                0.-RTWO*1j,
+                                                0.+RTWO*1j],
                                                [1.-1.*1j, 1.-1.*1j, 1.-1.*1j,
                                                 1.-1.*1j, -1.+1.*1j, 1.-1.*1j,
                                                 -1.+1.*1j, 1.-1.*1j, -1.+1.*1j,
@@ -473,30 +473,30 @@ class Groups:
                                                 -1.+1.*1j, 1.-1.*1j, -1.+1.*1j,
                                                 1.-1.*1j, -1.+1.*1j, 1.-1.*1j,
                                                 1.-1.*1j],
-                                               [0.-ROOT_TWO*1j, 0.+ROOT_TWO*1j,
-                                                0.-ROOT_TWO*1j, 0.-ROOT_TWO*1j,
-                                                ROOT_TWO, 0.-ROOT_TWO*1j,
-                                                -ROOT_TWO, 0.+ROOT_TWO*1j,
-                                                -ROOT_TWO, 0.+ROOT_TWO*1j,
-                                                ROOT_TWO, ROOT_TWO, -ROOT_TWO,
-                                                0.-ROOT_TWO*1j, 0.-ROOT_TWO*1j,
-                                                -ROOT_TWO, ROOT_TWO,
-                                                0.+ROOT_TWO*1j, ROOT_TWO,
-                                                0.+ROOT_TWO*1j, -ROOT_TWO,
-                                                0.+ROOT_TWO*1j, -ROOT_TWO,
-                                                ROOT_TWO, 0.+ROOT_TWO*1j,
-                                                0.-ROOT_TWO*1j, 0.+ROOT_TWO*1j,
-                                                0.+ROOT_TWO*1j, -ROOT_TWO,
-                                                0.+ROOT_TWO*1j, ROOT_TWO,
-                                                0.-ROOT_TWO*1j, ROOT_TWO,
-                                                0.-ROOT_TWO*1j, -ROOT_TWO,
-                                                -ROOT_TWO, ROOT_TWO,
-                                                0.+ROOT_TWO*1j, 0.+ROOT_TWO*1j,
-                                                ROOT_TWO, -ROOT_TWO,
-                                                0.-ROOT_TWO*1j, -ROOT_TWO,
-                                                0.-ROOT_TWO*1j, ROOT_TWO,
-                                                0.-ROOT_TWO*1j, ROOT_TWO,
-                                                -ROOT_TWO]])
+                                               [0.-RTWO*1j, 0.+RTWO*1j,
+                                                0.-RTWO*1j, 0.-RTWO*1j,
+                                                RTWO, 0.-RTWO*1j,
+                                                -RTWO, 0.+RTWO*1j,
+                                                -RTWO, 0.+RTWO*1j,
+                                                RTWO, RTWO, -RTWO,
+                                                0.-RTWO*1j, 0.-RTWO*1j,
+                                                -RTWO, RTWO,
+                                                0.+RTWO*1j, RTWO,
+                                                0.+RTWO*1j, -RTWO,
+                                                0.+RTWO*1j, -RTWO,
+                                                RTWO, 0.+RTWO*1j,
+                                                0.-RTWO*1j, 0.+RTWO*1j,
+                                                0.+RTWO*1j, -RTWO,
+                                                0.+RTWO*1j, RTWO,
+                                                0.-RTWO*1j, RTWO,
+                                                0.-RTWO*1j, -RTWO,
+                                                -RTWO, RTWO,
+                                                0.+RTWO*1j, 0.+RTWO*1j,
+                                                RTWO, -RTWO,
+                                                0.-RTWO*1j, -RTWO,
+                                                0.-RTWO*1j, RTWO,
+                                                0.-RTWO*1j, RTWO,
+                                                -RTWO]])
 
         self.chardict['OhP_T2MINUS'] = np.array(3*[[3., 1., 1., 1., 1., 1., 1.,
                                                     0., 0., 0., 0., 0., 0., 0.,
@@ -535,10 +535,10 @@ class Groups:
 
         self.chardict['Dic4_B2'] = self.bTdict['Dic4_B2']
 
-        self.bTdict['Dic4_E2'] = np.array([[0., -1j*ROOT_TWO, 1j*ROOT_TWO, 0.,
-                                            -1j*ROOT_TWO, 1j*ROOT_TWO, 0., 0.],
-                                           [ROOT_TWO, 0., 0., -ROOT_TWO,
-                                            0., 0., ROOT_TWO, -ROOT_TWO]])
+        self.bTdict['Dic4_E2'] = np.array([[0., -1j*RTWO, 1j*RTWO, 0.,
+                                            -1j*RTWO, 1j*RTWO, 0., 0.],
+                                           [RTWO, 0., 0., -RTWO,
+                                            0., 0., RTWO, -RTWO]])
 
         self.chardict['Dic4_E2'] = np.array(2*[[2., 0., 0., -2.,
                                                 0., 0., 0., 0.]])
@@ -617,7 +617,7 @@ class Groups:
                         U[m_real+ell][m_imag+ell] = 1./np.sqrt(2.)
             Udagger = np.conjugate(U).T
             wig_d = U@wig_d@Udagger
-            if not (np.abs(wig_d.imag) < EPSPROJ).all():
+            if not (np.abs(wig_d.imag) < EPSILON8).all():
                 raise ValueError("real Wigner-D is complex")
             wig_d = wig_d.real
         wig_d = wig_d*multiplier
@@ -841,12 +841,12 @@ class Groups:
         eigvecsT = eigvecs.T
         eigvals_chop = []
         for eigval in eigvals:
-            if (np.abs(eigval.imag) < EPSPROJ):
+            if (np.abs(eigval.imag) < EPSILON8):
                 eigval = eigval.real
             if isinstance(eigval, float)\
-               and (np.abs(eigval) < EPSPROJ):
+               and (np.abs(eigval) < EPSILON8):
                 eigval = 0.0
-            if (np.abs(eigval.real) < EPSPROJ):
+            if (np.abs(eigval.real) < EPSILON8):
                 eigval = eigval.imag*1j
             eigvals_chop = eigvals_chop+[eigval]
         eigvals_chop = np.array(eigvals_chop)
@@ -857,12 +857,12 @@ class Groups:
         for i in range(len(eigvecsT_nonzero)):
             for j in range(len(eigvecsT_nonzero[i])):
                 eigvecT_entry = eigvecsT_nonzero[i][j]
-                if (np.abs(eigvecT_entry.imag) < EPSPROJ):
+                if (np.abs(eigvecT_entry.imag) < EPSILON8):
                     eigvecT_entry = eigvecT_entry.real
                 if isinstance(eigvecT_entry, float)\
-                   and (np.abs(eigvecT_entry) < EPSPROJ):
+                   and (np.abs(eigvecT_entry) < EPSILON8):
                     eigvecT_entry = 0.0
-                if (np.abs(eigvecT_entry.real) < EPSPROJ):
+                if (np.abs(eigvecT_entry.real) < EPSILON8):
                     eigvecT_entry = eigvecT_entry.imag*1j
                 eigvecsT_chop[i][j] = eigvecT_entry
         eigvecs_chop_orthog, r = np.linalg.qr(eigvecsT_chop.T)
@@ -877,12 +877,12 @@ class Groups:
         for i in range(len(eigvecsT_chop_onorm)):
             for j in range(len(eigvecsT_chop_onorm[i])):
                 eigvecT_entry = eigvecsT_chop_onorm[i][j]
-                if (np.abs(eigvecT_entry.imag) < EPSPROJ):
+                if (np.abs(eigvecT_entry.imag) < EPSILON8):
                     eigvecT_entry = eigvecT_entry.real
                 if isinstance(eigvecT_entry, float)\
-                   and (np.abs(eigvecT_entry) < EPSPROJ):
+                   and (np.abs(eigvecT_entry) < EPSILON8):
                     eigvecT_entry = 0.0
-                if (np.abs(eigvecT_entry.real) < EPSPROJ):
+                if (np.abs(eigvecT_entry.real) < EPSILON8):
                     eigvecT_entry = eigvecT_entry.imag*1j
                 eigvecsT_final[i][j] = eigvecT_entry
         finalproj = np.array(eigvecsT_final).T
@@ -1408,9 +1408,9 @@ class Groups:
                 nshell = [int(kellm_shell[0]/len(ellm_set)),
                           int(kellm_shell[1]/len(ellm_set))]
                 assert np.abs(int(kellm_shell[0]/len(ellm_set))
-                              - kellm_shell[0]/len(ellm_set)) < EPSPROJ
+                              - kellm_shell[0]/len(ellm_set)) < EPSILON8
                 assert np.abs(int(kellm_shell[1]/len(ellm_set))
-                              - kellm_shell[1]/len(ellm_set)) < EPSPROJ
+                              - kellm_shell[1]/len(ellm_set)) < EPSILON8
                 nvec_arr = qcis.tbks_list[slot_index][shell_index].nvec_arr[
                     nshell[0]:nshell[1]]
                 ellm_set = qcis.ellm_sets[cindex]
