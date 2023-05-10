@@ -50,50 +50,6 @@ import warnings
 warnings.simplefilter("once")
 
 
-class Irreps:
-    """Class collecting data for finite-volume irreducible representations."""
-
-    def __init__(self, nP=np.array([0, 0, 0])):
-        self._nP = nP
-        if (self._nP == np.array([0, 0, 0])).all():
-            self.A1PLUS = 'A1PLUS'
-            self.A2PLUS = 'A2PLUS'
-            self.T1PLUS = 'T1PLUS'
-            self.T2PLUS = 'T2PLUS'
-            self.EPLUS = 'EPLUS'
-            self.A1MINUS = 'A1MINUS'
-            self.A2MINUS = 'A2MINUS'
-            self.T1MINUS = 'T1MINUS'
-            self.T2MINUS = 'T2MINUS'
-            self.EMINUS = 'EMINUS'
-            self.set = [self.A1PLUS, self.A2PLUS, self.EPLUS, self.T1PLUS,
-                        self.T2PLUS, self.A1MINUS, self.A2MINUS, self.EMINUS,
-                        self.T1MINUS, self.T2MINUS]
-        elif (self._nP == np.array([0, 0, 1])).all():
-            self.A1 = 'A1'
-            self.A2 = 'A2'
-            self.B1 = 'B1'
-            self.B2 = 'B2'
-            self.E = 'E2'
-            self.set = [self.A1, self.A2, self.B1, self.B2, self.E]
-        elif (self._nP == np.array([0, 1, 1])).all():
-            self.A1 = 'A1'
-            self.A2 = 'A2'
-            self.B1 = 'B1'
-            self.B2 = 'B2'
-            self.set = [self.A1, self.A2, self.B1, self.B2]
-        else:
-            raise ValueError("unsupported value of nP in irreps: "
-                             + str(self._nP))
-
-    def __str__(self):
-        """Summary of the irrep set."""
-        strtmp = ''
-        for enttmp in self.set:
-            strtmp = strtmp+enttmp+', '
-        return strtmp[:-2]
-
-
 class Groups:
     """Class for finite-volume group-theory relevant for three particles."""
 
@@ -978,7 +934,7 @@ class Groups:
         if qcis is None:
             raise ValueError("qcis cannot be None")
         nP = qcis.nP
-        irrep_set = Irreps(nP=nP).set
+        irrep_set = qcis.fvs.irrep_set
         identical_arr = qcis.nvecset_ident_batched[cindex][shell_index]
         nonidentical_arr = qcis.nvecset_batched[cindex][shell_index]
 
@@ -1035,7 +991,7 @@ class Groups:
         if qcis is None:
             raise ValueError("qcis cannot be None")
         nP = qcis.nP
-        irrep_set = Irreps(nP=nP).set
+        irrep_set = qcis.fvs.irrep_set
         flavors = qcis.fcs.ni_list[cindex].flavors
         particles_are_identical = (flavors[0] == flavors[1])
         if particles_are_identical:
@@ -1319,7 +1275,7 @@ class Groups:
         if qcis is None:
             raise ValueError("qcis cannot be None")
         nP = qcis.nP
-        irrep_set = Irreps(nP=nP).set
+        irrep_set = qcis.fvs.irrep_set
         if (nP@nP != 0) and (nP@nP != 1) and (nP@nP != 2):
             raise ValueError("momentum = ", nP, " is not yet supported")
         proj_dict = {}
@@ -1377,7 +1333,7 @@ class Groups:
         if kellm_shell is None:
             raise ValueError("kellm_shell cannot be None")
         nP = qcis.nP
-        irrep_set = Irreps(nP=nP).set
+        irrep_set = qcis.fvs.irrep_set
         if (nP@nP != 0) and (nP@nP != 1) and (nP@nP != 2):
             raise ValueError("momentum = ", nP, " is not yet supported")
         proj_dict = {}
@@ -1440,8 +1396,8 @@ class Groups:
             group_str = 'Dic4'
         if (nP@nP == 2):
             group_str = 'Dic2'
-        for i in range(len(qcis.fvs.irreps.set)):
-            irrep = qcis.fvs.irreps.set[i]
+        for i in range(len(qcis.fvs.irrep_set)):
+            irrep = qcis.fvs.irrep_set[i]
             for irow in range(len(self.bTdict[group_str+'_'+irrep])):
                 proj_list = []
                 for cindex in range(qcis.n_channels):

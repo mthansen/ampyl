@@ -47,19 +47,22 @@ PI = np.pi
 TWOPI = 2.*PI
 FOURPI2 = 4.0*PI**2
 R4PI = np.sqrt(4.*PI)
-RTHREE = np.sqrt(3.)
+
 RTWO = np.sqrt(2.)
+RTHREE = np.sqrt(3.)
 RFIVE = np.sqrt(5.)
 RSIX = np.sqrt(6.)
 RTEN = np.sqrt(10.)
 RTWELVE = np.sqrt(12.)
 RFIFTEEN = np.sqrt(15.)
 RTWENTY = np.sqrt(20.)
+
 EPSILON4 = 1.0e-4
 EPSILON8 = 1.0e-8
 EPSILON10 = 1.0e-10
 EPSILON15 = 1.0e-15
 EPSILON20 = 1.0e-20
+
 SPARSE_CUT = 1.5
 BAD_MIN_GUESS = 100.
 BAD_MAX_GUESS = 0.
@@ -85,11 +88,11 @@ ISO_PROJECTOR_ONE = np.array([[0., 0., 0., 1., 0., 0., 0.],
 ISO_PROJECTOR_ZERO = np.array([[0., 0., 0., 0., 0., 0., 1.]])
 ISO_PROJECTORS = [ISO_PROJECTOR_ZERO, ISO_PROJECTOR_ONE,
                   ISO_PROJECTOR_TWO, ISO_PROJECTOR_THREE]
-CAL_C_ISO = np.array([[1./RTEN, 1./RTEN, 1./RTEN, RTWO/RFIVE, 1./RTEN, 1./RTEN,
-                       1./RTEN],
+CAL_C_ISO = np.array([[1./RTEN, 1./RTEN, 1./RTEN, RTWO/RFIVE,
+                       1./RTEN, 1./RTEN, 1./RTEN],
                       [-0.5, -0.5, 0., 0., 0., 0.5, 0.5],
-                      [-1./RTWELVE, 1./RTWELVE, -1./RTHREE, 0., 1./RTHREE,
-                       -1./RTWELVE, 1./RTWELVE],
+                      [-1./RTWELVE, 1./RTWELVE, -1./RTHREE, 0.,
+                       1./RTHREE, -1./RTWELVE, 1./RTWELVE],
                       [RTHREE/RTWENTY, RTHREE/RTWENTY, -1./RFIFTEEN,
                        -2./RFIFTEEN, -1./RFIFTEEN, RTHREE/RTWENTY,
                        RTHREE/RTWENTY],
@@ -97,7 +100,8 @@ CAL_C_ISO = np.array([[1./RTEN, 1./RTEN, 1./RTEN, RTWO/RFIVE, 1./RTEN, 1./RTEN,
                       [0., 0., 1./RTHREE, -1./RTHREE, 1./RTHREE, 0., 0.],
                       [-1./RSIX, 1./RSIX, 1./RSIX, 0., -1./RSIX, -1./RSIX,
                        1./RSIX]])
-PION_ORDERS = [[0, 1, 2], [1, 0, 2], [0, 2, 1], [1, 2, 0], [2, 0, 1], [2, 1, 0]]
+PION_ORDERS = [[0, 1, 2], [1, 0, 2], [0, 2, 1],
+               [1, 2, 0], [2, 0, 1], [2, 1, 0]]
 
 
 class bcolors:

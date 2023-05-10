@@ -38,7 +38,6 @@ import numpy as np
 from copy import deepcopy
 import functools
 from .groups import Groups
-from .groups import Irreps
 from .constants import TWOPI
 from .constants import FOURPI2
 from .constants import EPSILON4
@@ -70,10 +69,9 @@ class FiniteVolumeSetup:
     :type nP: numpy.ndarray of ints with shape (3,)
     :param qc_impl: implementation details of the quantization condition
     :type qc_impl: dict with keys from QC_IMPL_DEFAULTS
-    :param irreps: irreducible representations of the finite-volume
-        symmetry group
-    :type irreps: :class:``Irreps`` object
 
+    :ivar irrep_set: set of irreps relevant for the finite-volume setup
+    :vartype irrep_set: list
     :ivar nPSQ: squared magnitude of the total momentum
     :vartype nPSQ: int
     :ivar nPmag: magnitude of the total momentum
@@ -89,7 +87,7 @@ class FiniteVolumeSetup:
         self.formalism = formalism
         self.qc_impl = qc_impl
         self.nP = nP
-        self.irreps = Irreps(nP=self.nP)
+        self.set_irreps()
 
     @property
     def nP(self):
@@ -138,12 +136,47 @@ class FiniteVolumeSetup:
                                  f"{type(QC_IMPL_DEFAULTS[key])}")
         self._qc_impl = qc_impl
 
+    def set_irreps(self):
+        """Set the irreps relevant for the finite-volume setup."""
+        if (self._nP == np.array([0, 0, 0])).all():
+            self.A1PLUS = 'A1PLUS'
+            self.A2PLUS = 'A2PLUS'
+            self.T1PLUS = 'T1PLUS'
+            self.T2PLUS = 'T2PLUS'
+            self.EPLUS = 'EPLUS'
+            self.A1MINUS = 'A1MINUS'
+            self.A2MINUS = 'A2MINUS'
+            self.T1MINUS = 'T1MINUS'
+            self.T2MINUS = 'T2MINUS'
+            self.EMINUS = 'EMINUS'
+            self.irrep_set = [self.A1PLUS, self.A2PLUS, self.EPLUS,
+                              self.T1PLUS, self.T2PLUS, self.A1MINUS,
+                              self.A2MINUS, self.EMINUS, self.T1MINUS,
+                              self.T2MINUS]
+        elif (self._nP == np.array([0, 0, 1])).all():
+            self.A1 = 'A1'
+            self.A2 = 'A2'
+            self.B1 = 'B1'
+            self.B2 = 'B2'
+            self.E = 'E2'
+            self.irrep_set = [self.A1, self.A2, self.B1, self.B2, self.E]
+        elif (self._nP == np.array([0, 1, 1])).all():
+            self.A1 = 'A1'
+            self.A2 = 'A2'
+            self.B1 = 'B1'
+            self.B2 = 'B2'
+            self.irrep_set = [self.A1, self.A2, self.B1, self.B2]
+        else:
+            raise ValueError("unsupported value of nP in irreps: "
+                             + str(self._nP))
+
     def __str__(self):
         """Return a string representation of the FiniteVolumeSetup object."""
         finite_volume_setup_str =\
             f"FiniteVolumeSetup using the {self.formalism}:\n"
         finite_volume_setup_str += f"    nP = {self._nP},\n"
         finite_volume_setup_str += f"    qc_impl = {self.qc_impl},\n"
+        finite_volume_setup_str += f"    irrep_set = {self.irrep_set},\n"
         return finite_volume_setup_str[:-2]+"."
 
 
