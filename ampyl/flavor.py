@@ -207,9 +207,20 @@ class FlavorChannel:
 
     :Example:
 
-    >>> pion = Particle(mass=0.13957, spin=0.0, flavor="pion", isospin=1.0)
-    >>> fc = FlavorChannel(n_particles=3, particles=[pion, pion, pion],
-    ...                    isospin_channel=True, isospin=3.0)
+    >>> import ampyl
+    >>> pion = ampyl.Particle(mass=1., spin=0., flavor='pion', isospin=1.)
+    >>> fc = ampyl.FlavorChannel(3, particles=[pion, pion, pion],
+    ...                          isospin_channel=True, isospin=3.)
+    >>> print(fc)
+    FlavorChannel with the following details:
+        3 particles,
+        masses: [1.0, 1.0, 1.0],
+        spins: [0.0, 0.0, 0.0],
+        flavors: ['pion', 'pion', 'pion'],
+        isospin_channel: True,
+        isospins: [1.0, 1.0, 1.0],
+        allowed_total_isospins: [0.0, 1.0, 2.0, 3.0],
+        isospin: 3.0.
 
     """
 
