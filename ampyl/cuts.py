@@ -70,18 +70,42 @@ class Interpolable:
 
     def build_interpolator(self, Emin, Emax, Estep,
                            Lmin, Lmax, Lstep, project, irrep):
-        """Build interpolator."""
+        """
+        Builds an interpolator.
+
+        Constructs an interpolator by generating grids and matrices based on
+        specified energy and volume ranges. The method determines the smooth
+        basis, removes poles, and builds the interpolator functions. Relevant
+        data is stored in the class for future use.
+
+        :param Emin: minimum energy value
+        :type Emin: float
+        :param Emax: maximum energy value
+        :type Emax: float
+        :param Estep: energy step size
+        :type Estep: float
+        :param Lmin: minimum volume value
+        :type Lmin: float
+        :param Lmax: Maximum volume value
+        :type Lmax: float
+        :param Lstep: volume step size
+        :type Lstep: float
+        :param project: flag indicating whether to an irrep
+        :type project: bool
+        :param irrep: irrep identifier
+        :type irrep: tuple
+        """
         assert project
-        # Generate grides and matrix structures
+        # Generate grids and matrix structures
         L_grid, E_grid, interp_mat_dim, interpolator_matrix = self\
-            .grids_and_matrix(Emin, Emax, Estep, Lmin, Lmax, Lstep,
-                              project, irrep)
+            ._grids_and_matrix(Emin, Emax, Estep, Lmin, Lmax, Lstep,
+                               project, irrep)
 
         # Determine basis where entries are smooth
-        dim_with_shell_index_all = self.get_dim_with_shell_index_all(irrep)
+        dim_with_shell_index_all = self._get_dim_with_shell_index_all(irrep)
         final_set_for_change_of_basis = self\
-            .get_final_set_for_change_of_basis(dim_with_shell_index_all)
-        cob_matrices = self.get_cob_matrices(final_set_for_change_of_basis)
+            ._get_final_set_for_change_of_basis(dim_with_shell_index_all)
+        cob_matrices = self._get_cob_matrices(final_set_for_change_of_basis)
 
         # Populate interpolation data
         energy_vol_dat_index = 0
@@ -111,24 +135,10 @@ class Interpolable:
                 else:
                     for interpolator_entry in\
                        interpolator_matrix[i][j][interp_data_index]:
-                        [E, L, g_val] = interpolator_entry
-                        # [Lmin, Lmax, Emin, Emax]
-                        if L < interpolator_matrix[i][j][
-                                energy_vol_dat_index][0]:
-                            interpolator_matrix[i][j][
-                                energy_vol_dat_index][0] = L
-                        if L > interpolator_matrix[i][j][
-                                energy_vol_dat_index][1]:
-                            interpolator_matrix[i][j][
-                                energy_vol_dat_index][1] = L
-                        if E < interpolator_matrix[i][j][
-                                energy_vol_dat_index][2]:
-                            interpolator_matrix[i][j][
-                                energy_vol_dat_index][2] = E
-                        if E > interpolator_matrix[i][j][
-                                energy_vol_dat_index][3]:
-                            interpolator_matrix[i][j][
-                                energy_vol_dat_index][3] = E
+                        interpolator_matrix = self\
+                            ._update_mins_and_maxes(interpolator_matrix,
+                                                    energy_vol_dat_index,
+                                                    i, j, interpolator_entry)
                     interpolator_matrix[i][j][energy_vol_dat_index][0]\
                         = interpolator_matrix[i][j][energy_vol_dat_index][0]\
                         - Lstep
@@ -137,22 +147,22 @@ class Interpolable:
                         - Estep
 
         # Identify all poles in projected entries
-        nvecSQs_by_shell = self.get_all_nvecSQs_by_shell(E=Emax, L=Lmax,
-                                                         project=project,
-                                                         irrep=irrep)
-        all_nvecSQs = self.get_all_nvecSQs(nvecSQs_by_shell)
-        m1, m2, m3 = self.extract_masses()
+        nvecSQs_by_shell = self._get_all_nvecSQs_by_shell(E=Emax, L=Lmax,
+                                                          project=project,
+                                                          irrep=irrep)
+        all_nvecSQs = self._get_all_nvecSQs(nvecSQs_by_shell)
+        m1, m2, m3 = self._extract_masses()
         all_relevant_nvecSQs = self\
-            .get_all_relevant_nvecSQs(Emax, project, irrep, interp_mat_dim,
-                                      interpolator_matrix, cob_matrices,
-                                      all_nvecSQs, m1, m2, m3)
+            ._get_all_relevant_nvecSQs(Emax, project, irrep, interp_mat_dim,
+                                       interpolator_matrix, cob_matrices,
+                                       all_nvecSQs, m1, m2, m3)
 
         # Remove poles
         pole_free_interpolator_matrix = self\
-            .get_pole_free_interpolator_matrix(interp_mat_dim,
-                                               interpolator_matrix,
-                                               interp_data_index, m1, m2, m3,
-                                               all_relevant_nvecSQs)
+            ._get_pole_free_interpolator_matrix(interp_mat_dim,
+                                                interpolator_matrix,
+                                                interp_data_index, m1, m2, m3,
+                                                all_relevant_nvecSQs)
 
         for i in range(interp_mat_dim):
             for j in range(interp_mat_dim):
@@ -277,9 +287,9 @@ class Interpolable:
                             gj_rank.append(0.0)
                         else:
                             en_bools =\
-                                np.abs(func_tuple_set[i][j][0]-E) < 1.e-10
+                                np.abs(func_tuple_set[i][j][0]-E) < EPSILON10
                             vol_bools =\
-                                np.abs(func_tuple_set[i][j][1]-L) < 1.e-10
+                                np.abs(func_tuple_set[i][j][1]-L) < EPSILON10
                             if (not en_bools.any()) or (not vol_bools.any()):
                                 gj_rank.append(0.0)
                             else:
@@ -306,8 +316,8 @@ class Interpolable:
         self.function_set[irrep] = function_set
         self.all_dimensions[irrep] = all_dimensions
 
-    def grids_and_matrix(self, Emin, Emax, Estep, Lmin, Lmax, Lstep,
-                         project, irrep):
+    def _grids_and_matrix(self, Emin, Emax, Estep, Lmin, Lmax, Lstep,
+                          project, irrep):
         L_grid = np.arange(Lmin, Lmax+EPSILON4, Lstep)
         E_grid = np.arange(Emin, Emax+EPSILON4, Estep)
         interp_mat_shape = (self.get_value(E=Emax, L=Lmax,
@@ -325,7 +335,7 @@ class Interpolable:
         interpolator_matrix = interpolator_matrix[1:]
         return L_grid, E_grid, interp_mat_dim, interpolator_matrix
 
-    def get_dim_with_shell_index_all(self, irrep):
+    def _get_dim_with_shell_index_all(self, irrep):
         dim_with_shell_index_all = [[]]
         for spectator_channel_index in range(
              len(self.qcis.fcs.sc_list_sorted)):
@@ -360,7 +370,7 @@ class Interpolable:
         dim_with_shell_index_all = dim_with_shell_index_all[1:]
         return dim_with_shell_index_all
 
-    def get_final_set_for_change_of_basis(self, dim_with_shell_index_all):
+    def _get_final_set_for_change_of_basis(self, dim_with_shell_index_all):
         final_set_for_change_of_basis = [[]]
         for shell_index in range(len(self.qcis.tbks_list[0][0].shells)):
             dim_shell_counter_all = [[]]
@@ -382,32 +392,49 @@ class Interpolable:
         final_set_for_change_of_basis = final_set_for_change_of_basis[1:]
         return final_set_for_change_of_basis
 
-    def get_cob_matrices(self, final_set_for_change_of_basis):
-        all_restacks = [[]]
+    def _get_cob_matrices(self, final_set_for_change_of_basis):
+        all_restacks = []
         for dim_shell_counter_all in final_set_for_change_of_basis:
-            restack = [[]]
+            restack = []
             for shell_index in range(len(dim_shell_counter_all)):
                 for dim_shell_counter in dim_shell_counter_all[shell_index]:
-                    restack = restack+[[([dim_shell_counter[0][1],
-                                          shell_index]), dim_shell_counter[1]]]
-            all_restacks = all_restacks+[sorted(restack[1:])]
-        all_restacks = all_restacks[1:]
-        all_restacks_second = [[]]
+                    restack.append([([dim_shell_counter[0][1],
+                                      shell_index]), dim_shell_counter[1]])
+            all_restacks.append(sorted(restack))
+        all_restacks_second = []
         for restack in all_restacks:
             second_restack = []
             for entry in restack:
-                second_restack = second_restack+(entry[1])
-            all_restacks_second = all_restacks_second+[second_restack]
-        all_restacks_second = all_restacks_second[1:]
+                second_restack.append(entry[1])
+            all_restacks_second.append(second_restack)
         cob_matrices = []
         for restack in all_restacks_second:
-            cob_matrices = cob_matrices\
-                + [(np.identity(len(restack))[restack]).T]
+            cob_matrices.append((np.identity(len(restack))[restack]).T)
         return cob_matrices
 
-    def get_all_nvecSQs_by_shell(self, E=5.0, L=5.0, project=False,
-                                 irrep=None):
-        """Build the G matrix in a shell-based way."""
+    def _update_mins_and_maxes(self, interpolator_matrix, energy_vol_dat_index,
+                               i, j, interpolator_entry):
+        [E, L, _] = interpolator_entry
+        if L < interpolator_matrix[i][j][
+                                energy_vol_dat_index][0]:
+            interpolator_matrix[i][j][
+                                energy_vol_dat_index][0] = L
+        if L > interpolator_matrix[i][j][
+                                energy_vol_dat_index][1]:
+            interpolator_matrix[i][j][
+                                energy_vol_dat_index][1] = L
+        if E < interpolator_matrix[i][j][
+                                energy_vol_dat_index][2]:
+            interpolator_matrix[i][j][
+                                energy_vol_dat_index][2] = E
+        if E > interpolator_matrix[i][j][
+                                energy_vol_dat_index][3]:
+            interpolator_matrix[i][j][
+                                energy_vol_dat_index][3] = E
+        return interpolator_matrix
+
+    def _get_all_nvecSQs_by_shell(self, E=5.0, L=5.0, project=False,
+                                  irrep=None):
         Lmax = self.qcis.Lmax
         Emax = self.qcis.Emax
         if E > Emax:
@@ -425,7 +452,7 @@ class Interpolable:
 
         masses = self.qcis.fcs.sc_list_sorted[
             self.qcis.fcs.slices_by_three_masses[0][0]].masses_indexed
-        [m1, m2, m3] = masses
+        m1 = masses[0]
 
         if nP@nP == 0:
             if self.qcis.verbosity >= 2:
@@ -489,14 +516,14 @@ class Interpolable:
                     nvecSQs_inner_row = []
                     for col_shell_index in range(len(slices)):
                         nvecSQs_tmp = self\
-                            .get_shell_nvecSQs_projs(E, L,
-                                                     cindex_row, cindex_col,
-                                                     # only for non-zero P
-                                                     sc_row_ind, sc_col_ind,
-                                                     tbks_entry,
-                                                     row_shell_index,
-                                                     col_shell_index,
-                                                     project, irrep)
+                            ._get_shell_nvecSQs_projs(E, L,
+                                                      cindex_row, cindex_col,
+                                                      # only for non-zero P
+                                                      sc_row_ind, sc_col_ind,
+                                                      tbks_entry,
+                                                      row_shell_index,
+                                                      col_shell_index,
+                                                      project, irrep)
                         nvecSQs_inner_row = nvecSQs_inner_row+[nvecSQs_tmp]
                     nvecSQs_inner = nvecSQs_inner+[nvecSQs_inner_row]
                 nvecSQs_block_tmp = nvecSQs_inner[1:]
@@ -506,15 +533,14 @@ class Interpolable:
         nvecSQs_final = nvecSQs_final[1:]
         return nvecSQs_final
 
-    def get_shell_nvecSQs_projs(self, E=5.0, L=5.0,
-                                cindex_row=None, cindex_col=None,
-                                # only for non-zero P
-                                sc_index_row=None, sc_index_col=None,
-                                tbks_entry=None,
-                                row_shell_index=None,
-                                col_shell_index=None,
-                                project=False, irrep=None):
-        """Build the G matrix on a single shell."""
+    def _get_shell_nvecSQs_projs(self, E=5.0, L=5.0,
+                                 cindex_row=None, cindex_col=None,
+                                 # only for non-zero P
+                                 sc_index_row=None, sc_index_col=None,
+                                 tbks_entry=None,
+                                 row_shell_index=None,
+                                 col_shell_index=None,
+                                 project=False, irrep=None):
         nP = self.qcis.nP
 
         mask_row_shells, mask_col_shells, row_shell, col_shell\
@@ -610,7 +636,7 @@ class Interpolable:
         col_shell = list(col_shells[col_shell_index])
         return mask_row_shells, mask_col_shells, row_shell, col_shell
 
-    def get_all_nvecSQs(self, nvecSQs_by_shell):
+    def _get_all_nvecSQs(self, nvecSQs_by_shell):
         all_nvecSQs = []
         for outer_nvecSQ_row in nvecSQs_by_shell:
             for outer_nvecSQ_entry in outer_nvecSQ_row:
@@ -630,9 +656,15 @@ class Interpolable:
                                         all_nvecSQs = all_nvecSQs+[nvecSQ_sets]
         return all_nvecSQs
 
-    def get_all_relevant_nvecSQs(self, Emax, project, irrep, interp_mat_dim,
-                                 interpolator_matrix, cob_matrices,
-                                 all_nvecSQs, m1, m2, m3):
+    def _extract_masses(self):
+        masses = self.qcis.fcs.sc_list_sorted[
+            self.qcis.fcs.slices_by_three_masses[0][0]].masses_indexed
+        [m1, m2, m3] = masses
+        return m1, m2, m3
+
+    def _get_all_relevant_nvecSQs(self, Emax, project, irrep, interp_mat_dim,
+                                  interpolator_matrix, cob_matrices,
+                                  all_nvecSQs, m1, m2, m3):
         interp_data_index = 1
         all_relevant_nvecSQs = [[]]
         for i in range(interp_mat_dim):
@@ -678,8 +710,9 @@ class Interpolable:
                         Lvals_tmp = [Lmin_tmp+EPSILON4, Lmax_tmp-EPSILON4]
                         for Ltmp in Lvals_tmp:
                             Etmp = self\
-                                .get_pole_candidate_eps(Ltmp, n1vecSQ, n2vecSQ,
-                                                        n3vecSQ, m1, m2, m3)
+                                ._get_pole_candidate_eps(Ltmp,
+                                                         n1vecSQ, n2vecSQ,
+                                                         n3vecSQ, m1, m2, m3)
                             if Etmp < Emax:
                                 try:
                                     g_tmp = self\
@@ -706,16 +739,17 @@ class Interpolable:
         all_relevant_nvecSQs = all_relevant_nvecSQs[1:]
         return all_relevant_nvecSQs
 
-    def get_pole_candidate_eps(self, L, n1vecSQ, n2vecSQ, n3vecSQ, m1, m2, m3):
+    def _get_pole_candidate_eps(self, L, n1vecSQ, n2vecSQ, n3vecSQ,
+                                m1, m2, m3):
         pole_candidate_eps = np.sqrt(m1**2+(FOURPI2/L**2)*n1vecSQ)\
                            + np.sqrt(m2**2+(FOURPI2/L**2)*n2vecSQ)\
                            + np.sqrt(m3**2+(FOURPI2/L**2)*n3vecSQ)+EPSILON10
         return pole_candidate_eps
 
-    def get_pole_free_interpolator_matrix(self, interp_mat_dim,
-                                          interpolator_matrix,
-                                          interp_data_index, m1, m2, m3,
-                                          all_relevant_nvecSQs):
+    def _get_pole_free_interpolator_matrix(self, interp_mat_dim,
+                                           interpolator_matrix,
+                                           interp_data_index, m1, m2, m3,
+                                           all_relevant_nvecSQs):
         pole_free_interpolator_matrix = [[]]
         for i in range(interp_mat_dim):
             rowtmp = [[]]
@@ -764,12 +798,6 @@ class G(Interpolable):
         the class
     :type qcis: QCIndexSpace
     """
-
-    def extract_masses(self):
-        masses = self.qcis.fcs.sc_list_sorted[
-            self.qcis.fcs.slices_by_three_masses[0][0]].masses_indexed
-        [m1, m2, m3] = masses
-        return m1, m2, m3
 
     def get_value(self, E=5.0, L=5.0, project=False, irrep=None):
         """Build the G matrix in a shell-based way."""
@@ -820,7 +848,7 @@ class G(Interpolable):
         matrix_dimension = self.\
             all_dimensions[irrep][total_cobs-self.
                                   qcis.get_tbks_sub_indices(E, L)[0]-1]
-        m1, m2, m3 = self.extract_masses()
+        m1, m2, m3 = self._extract_masses()
         for i in range(matrix_dimension):
             g_row_tmp = []
             for j in range(matrix_dimension):
@@ -1283,7 +1311,7 @@ class FplusG(Interpolable):
         matrix_dimension = self.\
             all_dimensions[irrep][
                 total_cobs-self.qcis.get_tbks_sub_indices(E, L)[0]-1]
-        m1, m2, m3 = self.extract_masses()
+        m1, m2, m3 = self._extract_masses()
         for i in range(matrix_dimension):
             g_row_tmp = []
             for j in range(matrix_dimension):
@@ -1309,19 +1337,13 @@ class FplusG(Interpolable):
             = (cob_matrix)@f_plus_g_final_smooth_basis@(cob_matrix.T)
         return f_plus_g_matrix_tmp_rotated
 
-    def extract_masses(self):
-        masses = self.qcis.fcs.sc_list_sorted[
-            self.qcis.fcs.slices_by_three_masses[0][0]].masses_indexed
-        [m1, m2, m3] = masses
-        return m1, m2, m3
-
     def get_pole_candidate(self, L, n1vecSQ, n2vecSQ, n3vecSQ, m1, m2, m3):
         pole_candidate = np.sqrt(m1**2+(FOURPI2/L**2)*n1vecSQ)\
                        + np.sqrt(m2**2+(FOURPI2/L**2)*n2vecSQ)\
                        + np.sqrt(m3**2+(FOURPI2/L**2)*n3vecSQ)
         return pole_candidate
 
-    def get_all_nvecSQs(self, nvecSQs_by_shell):
+    def _get_all_nvecSQs(self, nvecSQs_by_shell):
         all_nvecSQs = []
         for outer_nvecSQ_row in nvecSQs_by_shell:
             for outer_nvecSQ_entry in outer_nvecSQ_row:
