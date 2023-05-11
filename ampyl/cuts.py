@@ -45,7 +45,6 @@ from .constants import EPSILON10
 from .constants import BAD_MIN_GUESS
 from .constants import BAD_MAX_GUESS
 from .constants import POLE_CUT
-from .constants import bcolors
 from .functions import QCFunctions
 from .spaces import QCIndexSpace
 import warnings
@@ -477,7 +476,6 @@ class Interpolable:
             if len(row_ell_set) != 1:
                 raise ValueError("only length-one ell_set currently "
                                  + "supported in G")
-            ell1 = row_ell_set[0]
             for sc_col_ind in range(len(self.qcis.fcs.sc_list_sorted)):
                 if self.qcis.verbosity >= 2:
                     print('sc_row_ind, sc_col_ind =', sc_row_ind, sc_col_ind)
@@ -485,20 +483,16 @@ class Interpolable:
                 if len(col_ell_set) != 1:
                     raise ValueError("only length-one ell_set currently "
                                      + "supported in G")
-                ell2 = col_ell_set[0]
-                g_rescale = self.qcis.fcs.g_templates[0][0][
-                    sc_row_ind][sc_col_ind]
 
                 nvecSQs_inner = [[]]
                 for row_shell_index in range(len(slices)):
                     nvecSQs_inner_row = []
                     for col_shell_index in range(len(slices)):
                         nvecSQs_tmp = self\
-                            .get_shell_nvecSQs_projs(E, L, m1, m2, m3,
+                            .get_shell_nvecSQs_projs(E, L,
                                                      cindex_row, cindex_col,
                                                      # only for non-zero P
                                                      sc_row_ind, sc_col_ind,
-                                                     ell1, ell2, g_rescale,
                                                      tbks_entry,
                                                      row_shell_index,
                                                      col_shell_index,
@@ -512,21 +506,16 @@ class Interpolable:
         nvecSQs_final = nvecSQs_final[1:]
         return nvecSQs_final
 
-    def get_shell_nvecSQs_projs(self, E=5.0, L=5.0, m1=1.0, m2=1.0, m3=1.0,
+    def get_shell_nvecSQs_projs(self, E=5.0, L=5.0,
                                 cindex_row=None, cindex_col=None,
                                 # only for non-zero P
                                 sc_index_row=None, sc_index_col=None,
-                                ell1=0, ell2=0,
-                                g_rescale=1.0, tbks_entry=None,
+                                tbks_entry=None,
                                 row_shell_index=None,
                                 col_shell_index=None,
                                 project=False, irrep=None):
         """Build the G matrix on a single shell."""
-        three_scheme = self.qcis.tbis.three_scheme
         nP = self.qcis.nP
-        qc_impl = self.qcis.fvs.qc_impl
-        alpha = self.alpha
-        beta = self.beta
 
         mask_row_shells, mask_col_shells, row_shell, col_shell\
             = self._get_masks_and_shells(E, nP, L, tbks_entry,
@@ -555,25 +544,8 @@ class Interpolable:
                         ).T)
             except KeyError:
                 return np.array([])
-
-        g_uses_prep_mat = QC_IMPL_DEFAULTS['g_uses_prep_mat']
-        if 'g_uses_prep_mat' in self.qcis.fvs.qc_impl:
-            g_uses_prep_mat = self.qcis.fvs.qc_impl['g_uses_prep_mat']
-        if g_uses_prep_mat and (nP@nP == 0):
-            warnings.warn(f"\n{bcolors.WARNING}"
-                          "g_uses_prep_mat is True and but nP@nP == 0 inside "
-                          "get_shell_nvecSQs_projs. As a result, "
-                          "getG_array_prep_mat will be called, to define "
-                          "nvecSQ_mat_shells."
-                          f"{bcolors.ENDC}")
-            nvecSQ_mat_shells = QCFunctions\
-                .getG_array_prep_mat(E, nP, L, m1, m2, m3, tbks_entry,
-                                     row_shell_index, col_shell_index,
-                                     ell1, ell2, alpha, beta, qc_impl,
-                                     three_scheme, g_rescale)
-        else:
-            nvecSQ_mat_shells = QCFunctions\
-                .get_nvecSQ_mat_shells(tbks_entry, row_shell, col_shell)
+        nvecSQ_mat_shells = QCFunctions\
+            .get_nvecSQ_mat_shells(tbks_entry, row_shell, col_shell)
         return [nvecSQ_mat_shells, proj_tmp_left, proj_tmp_right]
 
     def _get_masks_and_shells(self, E, nP, L, tbks_entry,
