@@ -901,6 +901,7 @@ class QCIndexSpace:
     def populate(self):
         """Populate the index space."""
         ell_max = 4
+        half_spin = False
         for sc in self.fcs.sc_list_sorted:
             if np.max(sc.ell_set) > ell_max:
                 ell_max = np.max(sc.ell_set)
@@ -908,12 +909,21 @@ class QCIndexSpace:
             spins = nic.spins
             for spin in spins:
                 spin_int = int(spin)
-                if np.abs(spin-spin_int) > EPSILON10:
-                    raise ValueError("only integer spin currently supported")
+                if (np.abs(spin-spin_int) > EPSILON10
+                   and np.abs(spin-0.5) < EPSILON10):
+                    warnings.warn(f"\n{bcolors.WARNING}"
+                                  "Spin half detected; certain objects may "
+                                  "not be supported"
+                                  f"{bcolors.ENDC}", stacklevel=2)
+                    half_spin = True
+                elif np.abs(spin-spin_int) > EPSILON10:
+                    raise ValueError("only integer spin and (partially spin "
+                                     "half) currently supported")
             maxspin = int(np.max(nic.spins))
             if maxspin > ell_max:
                 ell_max = maxspin
-        self.group = Groups(ell_max=ell_max)
+        self.group = Groups(ell_max=ell_max, half_spin=half_spin)
+        self.half_spin = half_spin
 
         if self.nPSQ != 0:
             if self.verbosity == 2:
@@ -1081,14 +1091,22 @@ class QCIndexSpace:
                     print(f"populating nvec array, three_slice_index = "
                           f"{three_slice_index}")
                 self._populate_slot_zero_momentum(slot_index, nPspecmax)
+                if self.half_spin:
+                    self._populate_spin_zero_momentum(slot_index, nPspecmax)
             else:
                 nPspecmax = self._get_nPspecmax(three_slice_index)
                 self._populate_slot_nonzero_momentum(slot_index,
                                                      three_slice_index,
                                                      nPspecmax)
-        else:
+                if self.half_spin:
+                    raise ValueError("half spin not yet supported for "
+                                     "nonzero nP")
+        elif not three_particle_channel and not self.half_spin:
             nPspecmax = EPSILON4
             self._populate_slot_zero_momentum(slot_index, nPspecmax)
+        else:
+            raise ValueError("half spin not yet supported for two-particle "
+                             "channels")
 
     def _populate_slot_nonzero_momentum(self, slot_index, three_slice_index,
                                         nPspecmax):
@@ -1163,6 +1181,12 @@ class QCIndexSpace:
         while nPspec > 0:
             nPspec = self._populate_nP_iteration(slot_index, tbks_tmp, nPspec)
         self.tbks_list[slot_index] = self.tbks_list[slot_index][:-1]
+
+    def _populate_spin_zero_momentum(self, slot_index, nPspecmax):
+        warnings.warn(f"\n{bcolors.WARNING}"
+                      f"Populate for spin not yet implemented"
+                      f"{bcolors.ENDC}", stacklevel=2)
+        pass
 
     def _populate_nP_iteration(self, slot_index, tbks_tmp, nPspec):
         if self.verbosity >= 2:
@@ -1396,7 +1420,7 @@ class QCIndexSpace:
                       f"get_tbks_sub_indices is being called with "
                       f"non_zero nP; this can lead to shells being "
                       f"missed! result is = {str(tbks_sub_indices)}"
-                      f"{bcolors.ENDC}", stacklevel=1)
+                      f"{bcolors.ENDC}", stacklevel=2)
         return tbks_sub_indices
 
     def _load_ni_data_three(self, fc):

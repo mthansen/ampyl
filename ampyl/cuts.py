@@ -9,7 +9,7 @@ Created July 2022.
 
 ###############################################################################
 #
-# cut.py
+# cuts.py
 #
 # MIT License
 # Copyright (c) 2022 Maxwell T. Hansen
@@ -44,8 +44,8 @@ from .constants import EPSILON4
 from .constants import EPSILON10
 from .constants import BAD_MIN_GUESS
 from .constants import BAD_MAX_GUESS
-from .constants import SPARSE_CUT
 from .constants import POLE_CUT
+from .constants import bcolors
 from .functions import QCFunctions
 from .spaces import QCIndexSpace
 import warnings
@@ -555,32 +555,25 @@ class Interpolable:
                         ).T)
             except KeyError:
                 return np.array([])
-            proj_support_right = np.diag(proj_tmp_right@(proj_tmp_right.T))
-            zero_frac_right = float(np.count_nonzero(proj_support_right
-                                                     == 0.))\
-                / float(len(proj_support_right))
-            proj_support_left = np.diag((proj_tmp_left.T)@proj_tmp_left)
-            zero_frac_left = float(np.count_nonzero(proj_support_left
-                                                    == 0.))\
-                / float(len(proj_support_left))
-            sparse = ((zero_frac_right > SPARSE_CUT)
-                      and (zero_frac_left > SPARSE_CUT))
-        else:
-            sparse = False
 
-        if not sparse:
-            g_uses_prep_mat = QC_IMPL_DEFAULTS['g_uses_prep_mat']
-            if 'g_uses_prep_mat' in self.qcis.fvs.qc_impl:
-                g_uses_prep_mat = self.qcis.fvs.qc_impl['g_uses_prep_mat']
-            if g_uses_prep_mat and (nP@nP == 0):
-                nvecSQ_mat_shells = QCFunctions\
-                    .getG_array_prep_mat(E, nP, L, m1, m2, m3, tbks_entry,
-                                         row_shell_index, col_shell_index,
-                                         ell1, ell2, alpha, beta, qc_impl,
-                                         three_scheme, g_rescale)
-            else:
-                nvecSQ_mat_shells = QCFunctions\
-                    .get_nvecSQ_mat_shells(tbks_entry, row_shell, col_shell)
+        g_uses_prep_mat = QC_IMPL_DEFAULTS['g_uses_prep_mat']
+        if 'g_uses_prep_mat' in self.qcis.fvs.qc_impl:
+            g_uses_prep_mat = self.qcis.fvs.qc_impl['g_uses_prep_mat']
+        if g_uses_prep_mat and (nP@nP == 0):
+            warnings.warn(f"\n{bcolors.WARNING}"
+                          "g_uses_prep_mat is True and but nP@nP == 0 inside "
+                          "get_shell_nvecSQs_projs. As a result, "
+                          "getG_array_prep_mat will be called, to define "
+                          "nvecSQ_mat_shells."
+                          f"{bcolors.ENDC}")
+            nvecSQ_mat_shells = QCFunctions\
+                .getG_array_prep_mat(E, nP, L, m1, m2, m3, tbks_entry,
+                                     row_shell_index, col_shell_index,
+                                     ell1, ell2, alpha, beta, qc_impl,
+                                     three_scheme, g_rescale)
+        else:
+            nvecSQ_mat_shells = QCFunctions\
+                .get_nvecSQ_mat_shells(tbks_entry, row_shell, col_shell)
         return [nvecSQ_mat_shells, proj_tmp_left, proj_tmp_right]
 
     def _get_masks_and_shells(self, E, nP, L, tbks_entry,
@@ -799,9 +792,6 @@ class G(Interpolable):
         the class
     :type qcis: QCIndexSpace
     """
-
-    def __init__(self, qcis=QCIndexSpace()):
-        super().__init__(qcis)
 
     def extract_masses(self):
         masses = self.qcis.fcs.sc_list_sorted[
@@ -1035,38 +1025,27 @@ class G(Interpolable):
                                            irrep)
             except KeyError:
                 return np.array([])
-            proj_support_right, proj_support_left, sparse = self.\
-                _get_sparse(proj_tmp_right, proj_tmp_left)
-        else:
-            sparse = False
 
-        if not sparse:
-            g_uses_prep_mat = QC_IMPL_DEFAULTS['g_uses_prep_mat']
-            if 'g_uses_prep_mat' in self.qcis.fvs.qc_impl:
-                g_uses_prep_mat = self.qcis.fvs.qc_impl['g_uses_prep_mat']
-            if g_uses_prep_mat and (nP@nP == 0):
-                Gshell = QCFunctions.getG_array_prep_mat(E, nP, L, m1, m2, m3,
-                                                         tbks_entry,
-                                                         row_shell_index,
-                                                         col_shell_index,
-                                                         ell1, ell2,
-                                                         alpha, beta,
-                                                         qc_impl, three_scheme,
-                                                         g_rescale)
-            else:
-                Gshell = QCFunctions.getG_array(E, nP, L, m1, m2, m3,
-                                                tbks_entry,
-                                                row_shell, col_shell,
-                                                ell1, ell2,
-                                                alpha, beta,
-                                                qc_impl, three_scheme,
-                                                g_rescale)
+        g_uses_prep_mat = QC_IMPL_DEFAULTS['g_uses_prep_mat']
+        if 'g_uses_prep_mat' in self.qcis.fvs.qc_impl:
+            g_uses_prep_mat = self.qcis.fvs.qc_impl['g_uses_prep_mat']
+        if g_uses_prep_mat and (nP@nP == 0):
+            Gshell = QCFunctions.getG_array_prep_mat(E, nP, L, m1, m2, m3,
+                                                     tbks_entry,
+                                                     row_shell_index,
+                                                     col_shell_index,
+                                                     ell1, ell2,
+                                                     alpha, beta,
+                                                     qc_impl, three_scheme,
+                                                     g_rescale)
         else:
-            Gshell = self.\
-                _getG_array_sparse(E, nP, L, m1, m2, m3, ell1, ell2, g_rescale,
-                                   tbks_entry, three_scheme, qc_impl,
-                                   alpha, beta, row_shell, col_shell,
-                                   proj_support_right, proj_support_left)
+            Gshell = QCFunctions.getG_array(E, nP, L, m1, m2, m3,
+                                            tbks_entry,
+                                            row_shell, col_shell,
+                                            ell1, ell2,
+                                            alpha, beta,
+                                            qc_impl, three_scheme,
+                                            g_rescale)
         if project:
             Gshell = proj_tmp_left@Gshell@proj_tmp_right
         return Gshell
@@ -1093,59 +1072,6 @@ class G(Interpolable):
                             sc_index_row][0][row_shell_index][irrep]
                         ).T)
         return proj_tmp_right, proj_tmp_left
-
-    def _get_sparse(self, proj_tmp_right, proj_tmp_left):
-        proj_support_right = np.diag(proj_tmp_right@(proj_tmp_right.T))
-        zero_frac_right = float(
-            np.count_nonzero(proj_support_right == 0.))\
-            / float(len(proj_support_right))
-        proj_support_left = np.diag((proj_tmp_left.T)@proj_tmp_left)
-        zero_frac_left = float(
-            np.count_nonzero(proj_support_left == 0.))\
-            / float(len(proj_support_left))
-        sparse = ((zero_frac_right > SPARSE_CUT)
-                  and (zero_frac_left > SPARSE_CUT))
-
-        return proj_support_right, proj_support_left, sparse
-
-    def _getG_array_sparse(self, E, nP, L, m1, m2, m3, ell1, ell2, g_rescale,
-                           tbks_entry, three_scheme, qc_impl, alpha, beta,
-                           row_shell, col_shell,
-                           proj_support_right, proj_support_left):
-        J_slow = False
-        n1vec_arr_shell = tbks_entry.nvec_arr[row_shell[0]:row_shell[1]]
-        n1vecSQ_arr_shell = tbks_entry.nvecSQ_arr[
-                row_shell[0]:row_shell[1]]
-
-        n2vec_arr_shell = tbks_entry.nvec_arr[col_shell[0]:col_shell[1]]
-        n2vecSQ_arr_shell = tbks_entry.nvecSQ_arr[
-                col_shell[0]:col_shell[1]]
-        Gshell = np.zeros((len(n1vecSQ_arr_shell)*(2*ell1+1),
-                           len(n2vecSQ_arr_shell)*(2*ell2+1)))
-        for i1 in range(len(n1vecSQ_arr_shell)):
-            for i2 in range(2*ell1+1):
-                ifull = i1*(2*ell1+1)+i2
-                np1spec = n1vec_arr_shell[i1]
-                mazi1 = i2-ell1
-                for j1 in range(len(n2vecSQ_arr_shell)):
-                    for j2 in range(2*ell2+1):
-                        jfull = j1*(2*ell2+1)+j2
-                        np2spec = n2vec_arr_shell[j1]
-                        mazi2 = j2-ell2
-                        if ((proj_support_left[ifull] != 0.0)
-                           and (proj_support_right[jfull] != 0.0)):
-                            Gshell[ifull][jfull] = QCFunctions\
-                                    .getG_single_entry(E, nP, L,
-                                                       np1spec, np2spec,
-                                                       ell1, mazi1,
-                                                       ell2, mazi2,
-                                                       m1, m2, m3,
-                                                       alpha, beta,
-                                                       J_slow,
-                                                       three_scheme,
-                                                       qc_impl,
-                                                       g_rescale)
-        return Gshell
 
     def _clean_shape(self, g_collection):
         rowsizes = [0]*len(g_collection)

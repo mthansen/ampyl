@@ -53,8 +53,9 @@ warnings.simplefilter("once")
 class Groups:
     """Class for finite-volume group-theory relevant for three particles."""
 
-    def __init__(self, ell_max):
+    def __init__(self, ell_max, half_spin=False):
         self.wigner = spherical.Wigner(ell_max=ell_max)
+        self.half_spin = half_spin
 
         self.OhP = np.array(
             [[[1, 0, 0], [0, 1, 0], [0, 0, 1]],
