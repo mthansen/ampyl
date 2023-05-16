@@ -62,14 +62,14 @@ class Interpolable:
            or (three_scheme == 'relativistic pole'):
             [self.alpha, self.beta] = self.qcis.tbis.scheme_data
         self.all_relevant_nvecSQ_lists = {}
-        self.spline_data_lists = {}
-        self.polefree_spline_data_lists = {}
+        self.interp_data_lists = {}
+        self.polefree_interp_data_lists = {}
         self.cob_matrix_lists = {}
-        self.spline_arrays = {}
+        self.interp_arrays = {}
         self.matrix_dim_lists = {}
         self.cob_list_lens = {}
-        self.smart_spline_tensors = {}
-        self.smart_splines = {}
+        self.smart_interp_tensors = {}
+        self.smart_interps = {}
 
     def build_interpolator(self, Emin, Emax, Estep,
                            Lmin, Lmax, Lstep, project, irrep):
@@ -100,8 +100,8 @@ class Interpolable:
         """
         assert project
         # Generate grids and matrix structures
-        L_grid, E_grid, max_spline_dim, spline_data_list = self\
-            ._grids_and_spline(Emin, Emax, Estep, Lmin, Lmax, Lstep,
+        L_grid, E_grid, max_interp_dim, interp_data_list = self\
+            ._grids_and_interp(Emin, Emax, Estep, Lmin, Lmax, Lstep,
                                project, irrep)
 
         # Determine basis where entries are smooth
@@ -114,7 +114,7 @@ class Interpolable:
 
         # Populate interpolation data
         energy_volume_index = 0
-        spline_data_index = 1
+        interp_data_index = 1
         for L in L_grid:
             for E in E_grid:
                 matrix_tmp = self.get_value(E=E, L=L,
@@ -129,27 +129,27 @@ class Interpolable:
                         interpolable_value = matrix_tmp[i][j]
                         if (not np.isnan(interpolable_value)
                            and (interpolable_value != 0.)):
-                            spline_data_list[i][j][spline_data_index]\
-                                = spline_data_list[i][j][spline_data_index]\
+                            interp_data_list[i][j][interp_data_index]\
+                                = interp_data_list[i][j][interp_data_index]\
                                 + [[E, L, interpolable_value]]
-        for i in range(max_spline_dim):
-            for j in range(max_spline_dim):
-                spline_data_list[i][j][spline_data_index] =\
-                    spline_data_list[i][j][spline_data_index][1:]
-                if len(spline_data_list[i][j][spline_data_index]) == 0:
-                    spline_data_list[i][j][energy_volume_index] = []
+        for i in range(max_interp_dim):
+            for j in range(max_interp_dim):
+                interp_data_list[i][j][interp_data_index] =\
+                    interp_data_list[i][j][interp_data_index][1:]
+                if len(interp_data_list[i][j][interp_data_index]) == 0:
+                    interp_data_list[i][j][energy_volume_index] = []
                 else:
-                    for spline_entry in\
-                       spline_data_list[i][j][spline_data_index]:
-                        spline_data_list = self\
-                            ._update_mins_and_maxes(spline_data_list,
+                    for interp_entry in\
+                       interp_data_list[i][j][interp_data_index]:
+                        interp_data_list = self\
+                            ._update_mins_and_maxes(interp_data_list,
                                                     energy_volume_index,
-                                                    i, j, spline_entry)
-                    spline_data_list[i][j][energy_volume_index][0]\
-                        = spline_data_list[i][j][energy_volume_index][0]\
+                                                    i, j, interp_entry)
+                    interp_data_list[i][j][energy_volume_index][0]\
+                        = interp_data_list[i][j][energy_volume_index][0]\
                         - Lstep
-                    spline_data_list[i][j][energy_volume_index][2]\
-                        = spline_data_list[i][j][energy_volume_index][2]\
+                    interp_data_list[i][j][energy_volume_index][2]\
+                        = interp_data_list[i][j][energy_volume_index][2]\
                         - Estep
                     warnings.warn(f"\n{bcolors.WARNING}"
                                   f"Subtracting {Lstep} from Lmin and "
@@ -164,24 +164,24 @@ class Interpolable:
         m1, m2, m3 = self._extract_masses()
         all_relevant_nvecSQs_list = self\
             ._get_all_relevant_nvecSQs_list(Emax, project, irrep,
-                                            max_spline_dim,
-                                            spline_data_list, cob_matrix_list,
+                                            max_interp_dim,
+                                            interp_data_list, cob_matrix_list,
                                             all_nvecSQs, m1, m2, m3)
 
         # Remove poles
-        polefree_spline_data_list = self\
-            ._get_polefree_spline_data_list(max_spline_dim,
-                                            spline_data_list,
-                                            spline_data_index, m1, m2, m3,
+        polefree_interp_data_list = self\
+            ._get_polefree_interp_data_list(max_interp_dim,
+                                            interp_data_list,
+                                            interp_data_index, m1, m2, m3,
                                             all_relevant_nvecSQs_list)
 
-        for i in range(max_spline_dim):
-            for j in range(max_spline_dim):
-                spline_data_entry_complete = []
-                polefree_spline_data_entry_complete = []
-                if len(spline_data_list[i][j][energy_volume_index]) == 4:
+        for i in range(max_interp_dim):
+            for j in range(max_interp_dim):
+                interp_data_entry_complete = []
+                polefree_interp_data_entry_complete = []
+                if len(interp_data_list[i][j][energy_volume_index]) == 4:
                     [Lmin_entry, Lmax_entry, Emin_entry, Emax_entry]\
-                        = spline_data_list[i][j][energy_volume_index]
+                        = interp_data_list[i][j][energy_volume_index]
                     Lgrid_entry = np.arange(Lmin_entry, Lmax_entry+EPSILON4,
                                             Lstep)
                     Egrid_entry = np.arange(Emin_entry, Emax_entry+EPSILON4,
@@ -189,47 +189,47 @@ class Interpolable:
                     for L_loop in Lgrid_entry:
                         for E_loop in Egrid_entry:
                             not_found = True
-                            for spline_loop_index in\
-                                range(len(spline_data_list[i][j][
-                                    spline_data_index])):
-                                spline_entry = spline_data_list[i][j][
-                                    spline_data_index][
-                                        spline_loop_index]
-                                E_candidate = spline_entry[0]
-                                L_candidate = spline_entry[1]
+                            for interp_loop_index in\
+                                range(len(interp_data_list[i][j][
+                                    interp_data_index])):
+                                interp_entry = interp_data_list[i][j][
+                                    interp_data_index][
+                                        interp_loop_index]
+                                E_candidate = interp_entry[0]
+                                L_candidate = interp_entry[1]
                                 if ((np.abs(E_candidate-E_loop)
                                     < EPSILON10)
                                     and (np.abs(L_candidate-L_loop)
                                          < EPSILON10)):
                                     not_found = False
-                                    spline_data_entry_complete.\
-                                        append(spline_entry)
-                                    polefree_spline_entry\
-                                        = polefree_spline_data_list[i][j][
-                                            spline_data_index][
-                                                spline_loop_index]
-                                    polefree_spline_data_entry_complete.\
-                                        append(polefree_spline_entry)
+                                    interp_data_entry_complete.\
+                                        append(interp_entry)
+                                    polefree_interp_entry\
+                                        = polefree_interp_data_list[i][j][
+                                            interp_data_index][
+                                                interp_loop_index]
+                                    polefree_interp_data_entry_complete.\
+                                        append(polefree_interp_entry)
                             if not_found:
-                                spline_data_entry_complete.\
+                                interp_data_entry_complete.\
                                     append([E_loop, L_loop, 0.])
-                                polefree_spline_data_entry_complete.\
+                                polefree_interp_data_entry_complete.\
                                     append([E_loop, L_loop, 0.])
-                    spline_data_list[i][j][spline_data_index]\
-                        = spline_data_entry_complete
-                    polefree_spline_data_list[i][j][spline_data_index]\
-                        = polefree_spline_data_entry_complete
+                    interp_data_list[i][j][interp_data_index]\
+                        = interp_data_entry_complete
+                    polefree_interp_data_list[i][j][interp_data_index]\
+                        = polefree_interp_data_entry_complete
 
         # Build interpolator functions
-        spline_array = []
-        spline_tuple_array = []
-        for i in range(max_spline_dim):
-            spline_row = []
-            spline_tuple_row = []
-            for j in range(max_spline_dim):
-                if len(spline_data_list[i][j][energy_volume_index]) == 4:
+        interp_array = []
+        interp_tuple_array = []
+        for i in range(max_interp_dim):
+            interp_row = []
+            interp_tuple_row = []
+            for j in range(max_interp_dim):
+                if len(interp_data_list[i][j][energy_volume_index]) == 4:
                     [Lmin_entry, Lmax_entry, Emin_entry, Emax_entry]\
-                        = polefree_spline_data_list[i][j][
+                        = polefree_interp_data_list[i][j][
                             energy_volume_index]
                     L_grid_tmp\
                         = np.arange(Lmin_entry, Lmax_entry+EPSILON4, Lstep)
@@ -238,46 +238,46 @@ class Interpolable:
                     E_mesh_grid, L_mesh_grid\
                         = np.meshgrid(E_grid_tmp, L_grid_tmp)
                     g_pole_free_mesh_grid\
-                        = (np.array(polefree_spline_data_list[i][j][
-                            spline_data_index]).T)[2].\
+                        = (np.array(polefree_interp_data_list[i][j][
+                            interp_data_index]).T)[2].\
                         reshape(L_mesh_grid.shape).T
                     try:
-                        spline_entry =\
+                        interp_entry =\
                             RegularGridInterpolator((E_grid_tmp, L_grid_tmp),
                                                     g_pole_free_mesh_grid,
                                                     method='cubic')
                     except ValueError:
-                        spline_entry =\
+                        interp_entry =\
                             RegularGridInterpolator((E_grid_tmp, L_grid_tmp),
                                                     g_pole_free_mesh_grid,
                                                     method='linear')
-                    spline_row.append(spline_entry)
-                    spline_tuple_row.append([E_grid_tmp, L_grid_tmp,
+                    interp_row.append(interp_entry)
+                    interp_tuple_row.append([E_grid_tmp, L_grid_tmp,
                                              g_pole_free_mesh_grid])
                 else:
-                    spline_row.append(None)
-                    spline_tuple_row.append(None)
-            spline_array.append(spline_row)
-            spline_tuple_array.append(spline_tuple_row)
-        spline_array = np.array(spline_array)
-        spline_tuple_array = np.array(spline_tuple_array, dtype=object)
+                    interp_row.append(None)
+                    interp_tuple_row.append(None)
+            interp_array.append(interp_row)
+            interp_tuple_array.append(interp_tuple_row)
+        interp_array = np.array(interp_array)
+        interp_tuple_array = np.array(interp_tuple_array, dtype=object)
 
         # Get unique E and L sets
         E_grid_unique = []
-        for i in range(len(spline_tuple_array)):
-            for j in range(len(spline_tuple_array[i])):
-                if spline_tuple_array[i][j] is not None:
-                    E_grid_candidate = spline_tuple_array[i][j][0]
+        for i in range(len(interp_tuple_array)):
+            for j in range(len(interp_tuple_array[i])):
+                if interp_tuple_array[i][j] is not None:
+                    E_grid_candidate = interp_tuple_array[i][j][0]
                     for E in E_grid_candidate:
                         if E not in E_grid_unique:
                             E_grid_unique.append(E)
         E_grid_unique = np.unique(np.sort(E_grid_unique).round(decimals=10))
 
         L_grid_unique = []
-        for i in range(len(spline_tuple_array)):
-            for j in range(len(spline_tuple_array[i])):
-                if spline_tuple_array[i][j] is not None:
-                    L_grid_candidate = spline_tuple_array[i][j][1]
+        for i in range(len(interp_tuple_array)):
+            for j in range(len(interp_tuple_array[i])):
+                if interp_tuple_array[i][j] is not None:
+                    L_grid_candidate = interp_tuple_array[i][j][1]
                     for L in L_grid_candidate:
                         if L not in L_grid_unique:
                             L_grid_unique.append(L)
@@ -289,22 +289,22 @@ class Interpolable:
         warnings.warn(f"\n{bcolors.WARNING}"
                       "Discarding the first energy and volume points"
                       f"{bcolors.ENDC}")
-        smart_spline_tensor = []
+        smart_interp_tensor = []
         for E in E_grid_unique:
             vol_rank = []
             for L in L_grid_unique:
                 xi_rank = []
-                for i in range(len(spline_tuple_array)):
+                for i in range(len(interp_tuple_array)):
                     xj_rank = []
-                    for j in range(len(spline_tuple_array[i])):
-                        if spline_tuple_array[i][j] is None:
+                    for j in range(len(interp_tuple_array[i])):
+                        if interp_tuple_array[i][j] is None:
                             xj_rank.append(0.0)
                         else:
                             en_bools =\
-                                (np.abs(spline_tuple_array[i][j][0]-E)
+                                (np.abs(interp_tuple_array[i][j][0]-E)
                                  < EPSILON10)
                             vol_bools =\
-                                (np.abs(spline_tuple_array[i][j][1]-L)
+                                (np.abs(interp_tuple_array[i][j][1]-L)
                                  < EPSILON10)
                             if (not en_bools.any()) or (not vol_bools.any()):
                                 xj_rank.append(0.0)
@@ -312,21 +312,21 @@ class Interpolable:
                                 en_loc = np.where(en_bools)[0][0]
                                 vol_loc = np.where(vol_bools)[0][0]
                                 xj_rank.append(
-                                    spline_tuple_array[i][j][2][
+                                    interp_tuple_array[i][j][2][
                                         en_loc][vol_loc])
                     xi_rank.append(xj_rank)
                 vol_rank.append(xi_rank)
-            smart_spline_tensor.append(vol_rank)
-        smart_spline_tensor = np.array(smart_spline_tensor)
+            smart_interp_tensor.append(vol_rank)
+        smart_interp_tensor = np.array(smart_interp_tensor)
         try:
-            smart_spline = RegularGridInterpolator((E_grid_unique,
+            smart_interp = RegularGridInterpolator((E_grid_unique,
                                                     L_grid_unique),
-                                                   smart_spline_tensor,
+                                                   smart_interp_tensor,
                                                    method='cubic')
         except ValueError:
-            smart_spline = RegularGridInterpolator((E_grid_unique,
+            smart_interp = RegularGridInterpolator((E_grid_unique,
                                                     L_grid_unique),
-                                                   smart_spline_tensor,
+                                                   smart_interp_tensor,
                                                    method='linear')
 
         matrix_dim_list = []
@@ -335,32 +335,32 @@ class Interpolable:
 
         # Add relevant data to self
         self.all_relevant_nvecSQ_lists[irrep] = all_relevant_nvecSQs_list
-        self.polefree_spline_data_lists[irrep]\
-            = polefree_spline_data_list
-        self.spline_data_lists[irrep] = spline_data_list
+        self.polefree_interp_data_lists[irrep]\
+            = polefree_interp_data_list
+        self.interp_data_lists[irrep] = interp_data_list
         self.cob_matrix_lists[irrep] = cob_matrix_list
         self.cob_list_lens[irrep] = len(cob_matrix_list)
-        self.spline_arrays[irrep] = spline_array
+        self.interp_arrays[irrep] = interp_array
         self.matrix_dim_lists[irrep] = matrix_dim_list
-        self.smart_spline_tensors[irrep] = smart_spline_tensor
-        self.smart_splines[irrep] = smart_spline
+        self.smart_interp_tensors[irrep] = smart_interp_tensor
+        self.smart_interps[irrep] = smart_interp
 
-    def _grids_and_spline(self, Emin, Emax, Estep, Lmin, Lmax, Lstep,
+    def _grids_and_interp(self, Emin, Emax, Estep, Lmin, Lmax, Lstep,
                           project, irrep):
         L_grid = np.arange(Lmin, Lmax+EPSILON4, Lstep)
         E_grid = np.arange(Emin, Emax+EPSILON4, Estep)
-        max_spline_matrix_shape = (self.get_value(E=Emax, L=Lmax,
+        max_interp_matrix_shape = (self.get_value(E=Emax, L=Lmax,
                                                   project=project,
                                                   irrep=irrep)).shape
-        max_spline_dim = max_spline_matrix_shape[0]
-        spline_data_list = []
-        for _ in range(max_spline_dim):
+        max_interp_dim = max_interp_matrix_shape[0]
+        interp_data_list = []
+        for _ in range(max_interp_dim):
             interp_mat_row = []
-            for _ in range(max_spline_dim):
+            for _ in range(max_interp_dim):
                 interp_mat_row.append([[BAD_MIN_GUESS, BAD_MAX_GUESS,
                                         BAD_MIN_GUESS, BAD_MAX_GUESS], [[]]])
-            spline_data_list.append(interp_mat_row)
-        return L_grid, E_grid, max_spline_dim, spline_data_list
+            interp_data_list.append(interp_mat_row)
+        return L_grid, E_grid, max_interp_dim, interp_data_list
 
     def _get_dim_with_shell_index_all_scs(self, irrep):
         dim_with_shell_index_all_scs = []
@@ -689,21 +689,21 @@ class Interpolable:
         return m1, m2, m3
 
     def _get_all_relevant_nvecSQs_list(self, Emax, project, irrep,
-                                       max_spline_dim, spline_data_list,
+                                       max_interp_dim, interp_data_list,
                                        cob_matrix_list, all_nvecSQs,
                                        m1, m2, m3):
-        spline_data_index = 1
+        interp_data_index = 1
         all_relevant_nvecSQs = []
-        for i in range(max_spline_dim):
-            for j in range(max_spline_dim):
-                spline_data_matrix_entry = spline_data_list[i][j][
-                    spline_data_index][1:]
-                if len(spline_data_matrix_entry) != 0:
+        for i in range(max_interp_dim):
+            for j in range(max_interp_dim):
+                interp_data_matrix_entry = interp_data_list[i][j][
+                    interp_data_index][1:]
+                if len(interp_data_matrix_entry) != 0:
                     Lmin_tmp = BAD_MIN_GUESS
                     Lmax_tmp = BAD_MAX_GUESS
                     Emin_tmp = BAD_MIN_GUESS
                     Emax_tmp = BAD_MAX_GUESS
-                    for single_interp_entry in spline_data_matrix_entry:
+                    for single_interp_entry in interp_data_matrix_entry:
                         energy_volume_set = single_interp_entry[:-1]
                         [E_candidate, L_candidate] = energy_volume_set
                         if E_candidate < Emin_tmp:
@@ -772,16 +772,16 @@ class Interpolable:
                            + np.sqrt(m3**2+(FOURPI2/L**2)*n3vecSQ)+EPSILON10
         return pole_candidate_eps
 
-    def _get_polefree_spline_data_list(self, max_spline_dim,
-                                       spline_data_list,
-                                       spline_data_index, m1, m2, m3,
+    def _get_polefree_interp_data_list(self, max_interp_dim,
+                                       interp_data_list,
+                                       interp_data_index, m1, m2, m3,
                                        all_relevant_nvecSQs_list):
-        polefree_spline_data_list = []
-        for i in range(max_spline_dim):
-            polefree_spline_data_row = []
-            for j in range(max_spline_dim):
-                matrix_entry_interp_data = spline_data_list[i][j][
-                    spline_data_index]
+        polefree_interp_data_list = []
+        for i in range(max_interp_dim):
+            polefree_interp_data_row = []
+            for j in range(max_interp_dim):
+                matrix_entry_interp_data = interp_data_list[i][j][
+                    interp_data_index]
                 relevant_poles = []
                 for relevant_candidate in all_relevant_nvecSQs_list:
                     if ((relevant_candidate[0] == i)
@@ -804,12 +804,12 @@ class Interpolable:
                             = pole_removal_factor*interpolable_value
                     matrix_entry_interp_data[entry_index]\
                         = [E, L, interpolable_value]
-                entry = [spline_data_list[i][j][0],
+                entry = [interp_data_list[i][j][0],
                          matrix_entry_interp_data,
                          relevant_poles]
-                polefree_spline_data_row.append(entry)
-            polefree_spline_data_list.append(polefree_spline_data_row)
-        return polefree_spline_data_list
+                polefree_interp_data_row.append(entry)
+            polefree_interp_data_list.append(polefree_interp_data_row)
+        return polefree_interp_data_list
 
 
 class G(Interpolable):
@@ -887,10 +887,10 @@ class G(Interpolable):
         for i in range(matrix_dimension):
             g_row_tmp = []
             for j in range(matrix_dimension):
-                spline_tmp = self.spline_arrays[irrep][i][j]
-                if spline_tmp is not None:
-                    value_tmp = float(spline_tmp((E, L)))
-                    for pole_data in (self.polefree_spline_data_lists[
+                interp_tmp = self.interp_arrays[irrep][i][j]
+                if interp_tmp is not None:
+                    value_tmp = float(interp_tmp((E, L)))
+                    for pole_data in (self.polefree_interp_data_lists[
                        irrep][i][j][2]):
                         factor_tmp = E-self.\
                             get_pole_candidate(L, *pole_data[2], m1, m2, m3)
@@ -919,7 +919,7 @@ class G(Interpolable):
             pole_row_tmp = []
             for j in range(matrix_dimension):
                 value_tmp = 1.
-                for pole_data in (self.polefree_spline_data_lists[
+                for pole_data in (self.polefree_interp_data_lists[
                    irrep][i][j][2]):
                     factor_tmp = E-self.\
                         get_pole_candidate(L, *pole_data[2], m1, m2, m3)
@@ -931,7 +931,7 @@ class G(Interpolable):
             self.cob_matrix_lists[irrep][cob_list_len
                                          - self.qcis.
                                          get_tbks_sub_indices(E, L)[0]-1]
-        g_smooth = self.smart_splines[irrep]((E, L))
+        g_smooth = self.smart_interps[irrep]((E, L))
         warnings.warn(f"\n{bcolors.WARNING}"
                       "Resizing g_smooth to match the dimension of the "
                       "cob_matrix matrix. This is a temporary fix."
@@ -1386,11 +1386,11 @@ class FplusG(Interpolable):
         for i in range(matrix_dimension):
             f_plus_g_row_tmp = []
             for j in range(matrix_dimension):
-                spline_tmp = self.spline_arrays[irrep][i][j]
-                if spline_tmp is not None:
-                    value_tmp = float(spline_tmp((E, L)))
+                interp_tmp = self.interp_arrays[irrep][i][j]
+                if interp_tmp is not None:
+                    value_tmp = float(interp_tmp((E, L)))
                     for pole_data in (self.
-                                      polefree_spline_data_lists[
+                                      polefree_interp_data_lists[
                                           irrep][i][j][2]):
                         factor_tmp = E-self.\
                             get_pole_candidate(L, *pole_data[2], m1, m2, m3)
