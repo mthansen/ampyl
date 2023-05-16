@@ -45,6 +45,7 @@ from .constants import EPSILON10
 from .constants import BAD_MIN_GUESS
 from .constants import BAD_MAX_GUESS
 from .constants import POLE_CUT
+from .constants import bcolors
 from .functions import QCFunctions
 from .spaces import QCIndexSpace
 import warnings
@@ -67,6 +68,8 @@ class Interpolable:
         self.function_set = {}
         self.all_dimensions = {}
         self.total_cobs = {}
+        self.func_set_tensor = {}
+        self.smart_interp = {}
 
     def build_interpolator(self, Emin, Emax, Estep,
                            Lmin, Lmax, Lstep, project, irrep):
@@ -212,8 +215,8 @@ class Interpolable:
                         = pole_free_interpolator_matrix_complete[1:]
 
         # Build interpolator functions
-        function_set = [[]]
-        func_tuple_set = [[]]
+        function_set = []
+        func_tuple_set = []
         for i in range(interp_mat_dim):
             function_set_row = []
             func_tuple_set_row = []
@@ -242,16 +245,16 @@ class Interpolable:
                             RegularGridInterpolator((E_grid_tmp, L_grid_tmp),
                                                     g_pole_free_mesh_grid,
                                                     method='linear')
-                    function_set_row = function_set_row+[interp]
-                    func_tuple_set_row = func_tuple_set_row\
-                        + [(E_grid_tmp, L_grid_tmp, g_pole_free_mesh_grid)]
+                    function_set_row.append(interp)
+                    func_tuple_set_row.append([E_grid_tmp, L_grid_tmp,
+                                               g_pole_free_mesh_grid])
                 else:
-                    function_set_row = function_set_row+[None]
-                    func_tuple_set_row = func_tuple_set_row+[None]
-            function_set = function_set+[function_set_row]
-            func_tuple_set = func_tuple_set+[func_tuple_set_row]
-        function_set = np.array(function_set[1:])
-        func_tuple_set = np.array(func_tuple_set[1:], dtype=object)
+                    function_set_row.append(None)
+                    func_tuple_set_row.append(None)
+            function_set.append(function_set_row)
+            func_tuple_set.append(func_tuple_set_row)
+        function_set = np.array(function_set)
+        func_tuple_set = np.array(func_tuple_set, dtype=object)
 
         # Get unique E and L sets
         E_grid_unique = []
@@ -275,6 +278,11 @@ class Interpolable:
         L_grid_unique = np.unique(np.sort(L_grid_unique).round(decimals=10))
 
         # Build the rank 4 tensor
+        L_grid_unique = L_grid_unique[1:]
+        E_grid_unique = E_grid_unique[1:]
+        warnings.warn(f"\n{bcolors.WARNING}"
+                      "Discarding the first energy and volume points"
+                      f"{bcolors.ENDC}")
         func_set_tensor = []
         for E in E_grid_unique:
             vol_rank = []
@@ -301,6 +309,16 @@ class Interpolable:
                 vol_rank.append(gi_rank)
             func_set_tensor.append(vol_rank)
         func_set_tensor = np.array(func_set_tensor)
+        try:
+            smart_interp = RegularGridInterpolator((E_grid_unique,
+                                                    L_grid_unique),
+                                                   func_set_tensor,
+                                                   method='cubic')
+        except ValueError:
+            smart_interp = RegularGridInterpolator((E_grid_unique,
+                                                    L_grid_unique),
+                                                   func_set_tensor,
+                                                   method='linear')
 
         all_dimensions = []
         for cob_matrix in cob_matrices:
@@ -315,6 +333,8 @@ class Interpolable:
         self.total_cobs[irrep] = len(cob_matrices)
         self.function_set[irrep] = function_set
         self.all_dimensions[irrep] = all_dimensions
+        self.func_set_tensor[irrep] = func_set_tensor
+        self.smart_interp[irrep] = smart_interp
 
     def _grids_and_matrix(self, Emin, Emax, Estep, Lmin, Lmax, Lstep,
                           project, irrep):
@@ -398,14 +418,14 @@ class Interpolable:
             restack = []
             for shell_index in range(len(dim_shell_counter_all)):
                 for dim_shell_counter in dim_shell_counter_all[shell_index]:
-                    restack.append([([dim_shell_counter[0][1],
-                                      shell_index]), dim_shell_counter[1]])
+                    restack.append([[dim_shell_counter[0][1],
+                                     shell_index], dim_shell_counter[1]])
             all_restacks.append(sorted(restack))
         all_restacks_second = []
         for restack in all_restacks:
             second_restack = []
             for entry in restack:
-                second_restack.append(entry[1])
+                second_restack = second_restack+entry[1]
             all_restacks_second.append(second_restack)
         cob_matrices = []
         for restack in all_restacks_second:
@@ -810,10 +830,20 @@ class G(Interpolable):
         nP = self.qcis.nP
 
         g_interpolate = QC_IMPL_DEFAULTS['g_interpolate']
+        g_smart_interpolate = QC_IMPL_DEFAULTS['g_smart_interpolate']
         if 'g_interpolate' in self.qcis.fvs.qc_impl:
             g_interpolate = self.qcis.fvs.qc_impl['g_interpolate']
+        if 'g_smart_interpolate' in self.qcis.fvs.qc_impl:
+            g_smart_interpolate = self.qcis.fvs.qc_impl[
+                'g_smart_interpolate']
+        if g_interpolate and g_smart_interpolate:
+            raise ValueError("g_interpolate and g_smart_interpolate "
+                             "cannot both be True")
         if g_interpolate:
             g_final = self._get_value_interpolated(E, L, irrep)
+            return g_final
+        elif g_smart_interpolate:
+            g_final = self._get_value_smart_interpolated(E, L, irrep)
             return g_final
 
         if self.qcis.verbosity >= 2:
@@ -869,6 +899,42 @@ class G(Interpolable):
             self.cob_matrices[irrep][total_cobs
                                      - self.qcis.get_tbks_sub_indices(E, L)[0]
                                      - 1]
+        g_final =\
+            (cob_matrix)@g_final_smooth_basis@(cob_matrix.T)
+        return g_final
+
+    def _get_value_smart_interpolated(self, E, L, irrep):
+        pole_parts_smooth_basis = []
+        total_cobs = self.total_cobs[irrep]
+        matrix_dimension = self.\
+            all_dimensions[irrep][total_cobs-self.
+                                  qcis.get_tbks_sub_indices(E, L)[0]-1]
+        m1, m2, m3 = self._extract_masses()
+        for i in range(matrix_dimension):
+            pole_row_tmp = []
+            for j in range(matrix_dimension):
+                value_tmp = 1.
+                for pole_data in (self.pole_free_interpolator_matrix[
+                   irrep][i][j][2]):
+                    factor_tmp = E-self.\
+                        get_pole_candidate(L, *pole_data[2], m1, m2, m3)
+                    value_tmp = value_tmp/factor_tmp
+                pole_row_tmp = pole_row_tmp+[value_tmp]
+            pole_parts_smooth_basis.append(pole_row_tmp)
+        pole_parts_smooth_basis = np.array(pole_parts_smooth_basis)
+        cob_matrix =\
+            self.cob_matrices[irrep][total_cobs
+                                     - self.qcis.get_tbks_sub_indices(E, L)[0]
+                                     - 1]
+        g_smooth = self.smart_interp[irrep]((E, L))
+        warnings.warn(f"\n{bcolors.WARNING}"
+                      "Resizing g_smooth to match the dimension of the "
+                      "cob_matrix matrix. This is a temporary fix."
+                      f"{bcolors.ENDC}")
+        g_smooth = g_smooth[:len(cob_matrix)]
+        g_smooth_T = (g_smooth.T)[:len(cob_matrix)]
+        g_smooth = g_smooth_T.T
+        g_final_smooth_basis = g_smooth*pole_parts_smooth_basis
         g_final =\
             (cob_matrix)@g_final_smooth_basis@(cob_matrix.T)
         return g_final

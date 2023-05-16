@@ -42,6 +42,7 @@ QC_IMPL_DEFAULTS = {'hermitian': True,
                     'sph_harm_clebsch': False,
                     'g_uses_prep_mat': False,
                     'g_interpolate': False,
+                    'g_smart_interpolate': False,
                     'smarter_q_rescale': False}
 PI = np.pi
 TWOPI = 2.*PI
