@@ -105,12 +105,19 @@ class Interpolable:
                                project, irrep)
 
         # Determine basis where entries are smooth
-        dim_with_shell_index_all_scs = self\
-            ._get_dim_with_shell_index_all_scs(irrep)
-        final_set_for_change_of_basis = self\
-            ._get_final_set_for_change_of_basis(dim_with_shell_index_all_scs)
-        cob_matrix_list = self\
-            ._get_cob_matrix_list(final_set_for_change_of_basis)
+        use_cob_matrices = QC_IMPL_DEFAULTS['use_cob_matrices']
+        if 'use_cob_matrices' in self.qcis.fvs.qc_impl:
+            use_cob_matrices = QC_IMPL_DEFAULTS['use_cob_matrices']
+        if use_cob_matrices:
+            dim_with_shell_index_all_scs = self\
+                ._get_dim_with_shell_index_all_scs(irrep)
+            final_set_for_change_of_basis = self\
+                ._get_final_set_for_change_of_basis(
+                    dim_with_shell_index_all_scs)
+            cob_matrix_list = self\
+                ._get_cob_matrix_list(final_set_for_change_of_basis)
+        else:
+            cob_matrix_list = None
 
         # Populate interpolation data
         energy_volume_index = 0
