@@ -70,7 +70,7 @@ class TestQCIndexSpace(unittest.TestCase):
         qcis.populate()
         self.assertIsInstance(qcis.kellm_spaces, list)
         kellm_spaces_as_numpy = np.array(qcis.kellm_spaces, dtype=object)
-        self.assertEqual(kellm_spaces_as_numpy.shape, (1, 12))
+        self.assertEqual(kellm_spaces_as_numpy.shape, (1, 16))
         self.assertIsInstance(qcis.kellm_spaces[0][0], np.ndarray)
         self.assertEqual(qcis.kellm_spaces[0][0].shape, (28, 5))
 

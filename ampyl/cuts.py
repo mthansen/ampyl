@@ -99,7 +99,11 @@ class Interpolable:
         :type irrep: tuple
         """
         assert project
-        # Generate grids and matrix structures
+        nP = self.qcis.nP
+        if nP@nP != 0:
+            assert self.qcis.fvs.qc_impl['use_cob_matrices'] is False
+            assert self.qcis.fvs.qc_impl['reduce_size'] is False
+        # Generate grids and interp structure
         L_grid, E_grid, max_interp_dim, interp_data_list = self\
             ._grids_and_interp(Emin, Emax, Estep, Lmin, Lmax, Lstep,
                                project, irrep)
@@ -107,7 +111,7 @@ class Interpolable:
         # Determine basis where entries are smooth
         use_cob_matrices = QC_IMPL_DEFAULTS['use_cob_matrices']
         if 'use_cob_matrices' in self.qcis.fvs.qc_impl:
-            use_cob_matrices = QC_IMPL_DEFAULTS['use_cob_matrices']
+            use_cob_matrices = self.qcis.fvs.qc_impl['use_cob_matrices']
         if use_cob_matrices:
             dim_with_shell_index_all_scs = self\
                 ._get_dim_with_shell_index_all_scs(irrep)
@@ -117,7 +121,7 @@ class Interpolable:
             cob_matrix_list = self\
                 ._get_cob_matrix_list(final_set_for_change_of_basis)
         else:
-            cob_matrix_list = None
+            cob_matrix_list = []
 
         # Populate interpolation data
         energy_volume_index = 0
@@ -152,16 +156,6 @@ class Interpolable:
                             ._update_mins_and_maxes(interp_data_list,
                                                     energy_volume_index,
                                                     i, j, interp_entry)
-                    interp_data_list[i][j][energy_volume_index][0]\
-                        = interp_data_list[i][j][energy_volume_index][0]\
-                        - Lstep
-                    interp_data_list[i][j][energy_volume_index][2]\
-                        = interp_data_list[i][j][energy_volume_index][2]\
-                        - Estep
-                    warnings.warn(f"\n{bcolors.WARNING}"
-                                  f"Subtracting {Lstep} from Lmin and "
-                                  f"{Estep} from Emin"
-                                  f"{bcolors.ENDC}")
 
         # Identify all poles in projected entries
         nvecSQs_by_shell = self._get_all_nvecSQs_by_shell(E=Emax, L=Lmax,
@@ -187,7 +181,7 @@ class Interpolable:
                 interp_data_entry_complete = []
                 polefree_interp_data_entry_complete = []
                 if len(interp_data_list[i][j][energy_volume_index]) == 4:
-                    [Lmin_entry, Lmax_entry, Emin_entry, Emax_entry]\
+                    [Emin_entry, Emax_entry, Lmin_entry, Lmax_entry]\
                         = interp_data_list[i][j][energy_volume_index]
                     Lgrid_entry = np.arange(Lmin_entry, Lmax_entry+EPSILON4,
                                             Lstep)
@@ -235,7 +229,7 @@ class Interpolable:
             interp_tuple_row = []
             for j in range(max_interp_dim):
                 if len(interp_data_list[i][j][energy_volume_index]) == 4:
-                    [Lmin_entry, Lmax_entry, Emin_entry, Emax_entry]\
+                    [Emin_entry, Emax_entry, Lmin_entry, Lmax_entry]\
                         = polefree_interp_data_list[i][j][
                             energy_volume_index]
                     L_grid_tmp\
@@ -244,23 +238,24 @@ class Interpolable:
                         = np.arange(Emin_entry, Emax_entry+EPSILON4, Estep)
                     E_mesh_grid, L_mesh_grid\
                         = np.meshgrid(E_grid_tmp, L_grid_tmp)
-                    g_pole_free_mesh_grid\
+                    data_index = 2
+                    pole_free_mesh_grid\
                         = (np.array(polefree_interp_data_list[i][j][
-                            interp_data_index]).T)[2].\
+                            interp_data_index]).T)[data_index].\
                         reshape(L_mesh_grid.shape).T
                     try:
                         interp_entry =\
                             RegularGridInterpolator((E_grid_tmp, L_grid_tmp),
-                                                    g_pole_free_mesh_grid,
+                                                    pole_free_mesh_grid,
                                                     method='cubic')
                     except ValueError:
                         interp_entry =\
                             RegularGridInterpolator((E_grid_tmp, L_grid_tmp),
-                                                    g_pole_free_mesh_grid,
+                                                    pole_free_mesh_grid,
                                                     method='linear')
                     interp_row.append(interp_entry)
                     interp_tuple_row.append([E_grid_tmp, L_grid_tmp,
-                                             g_pole_free_mesh_grid])
+                                             pole_free_mesh_grid])
                 else:
                     interp_row.append(None)
                     interp_tuple_row.append(None)
@@ -291,11 +286,6 @@ class Interpolable:
         L_grid_unique = np.unique(np.sort(L_grid_unique).round(decimals=10))
 
         # Build the rank 4 tensor
-        L_grid_unique = L_grid_unique[1:]
-        E_grid_unique = E_grid_unique[1:]
-        warnings.warn(f"\n{bcolors.WARNING}"
-                      "Discarding the first energy and volume points"
-                      f"{bcolors.ENDC}")
         smart_interp_tensor = []
         for E in E_grid_unique:
             vol_rank = []
@@ -448,22 +438,22 @@ class Interpolable:
     def _update_mins_and_maxes(self, interpolator_matrix, energy_vol_dat_index,
                                i, j, interpolator_entry):
         [E, L, _] = interpolator_entry
-        if L < interpolator_matrix[i][j][
+        if E < interpolator_matrix[i][j][
                                 energy_vol_dat_index][0]:
             interpolator_matrix[i][j][
-                                energy_vol_dat_index][0] = L
-        if L > interpolator_matrix[i][j][
+                                energy_vol_dat_index][0] = E
+        if E > interpolator_matrix[i][j][
                                 energy_vol_dat_index][1]:
             interpolator_matrix[i][j][
-                                energy_vol_dat_index][1] = L
-        if E < interpolator_matrix[i][j][
+                                energy_vol_dat_index][1] = E
+        if L < interpolator_matrix[i][j][
                                 energy_vol_dat_index][2]:
             interpolator_matrix[i][j][
-                                energy_vol_dat_index][2] = E
-        if E > interpolator_matrix[i][j][
+                                energy_vol_dat_index][2] = L
+        if L > interpolator_matrix[i][j][
                                 energy_vol_dat_index][3]:
             interpolator_matrix[i][j][
-                                energy_vol_dat_index][3] = E
+                                energy_vol_dat_index][3] = L
         return interpolator_matrix
 
     def _get_all_nvecSQs_by_shell(self, E=5.0, L=5.0, project=False,
@@ -551,7 +541,7 @@ class Interpolable:
                         nvecSQs_tmp = self\
                             ._get_shell_nvecSQs_projs(E, L,
                                                       cindex_row, cindex_col,
-                                                      # only for non-zero P
+                                                      # only for non-zero nP
                                                       sc_row_ind, sc_col_ind,
                                                       tbks_entry,
                                                       row_shell_index,
@@ -568,7 +558,7 @@ class Interpolable:
 
     def _get_shell_nvecSQs_projs(self, E=5.0, L=5.0,
                                  cindex_row=None, cindex_col=None,
-                                 # only for non-zero P
+                                 # only for non-zero nP
                                  sc_index_row=None, sc_index_col=None,
                                  tbks_entry=None,
                                  row_shell_index=None,
@@ -641,32 +631,45 @@ class Interpolable:
     def _mask_and_shell_helper_nPnonzero(self, E, nP, L, tbks_entry,
                                          row_shell_index, col_shell_index,
                                          three_slice_index):
-        masses = self.qcis.fcs.sc_list_sorted[
-            self.qcis.fcs.slices_by_three_masses[three_slice_index][0]].\
-            masses_indexed
-        m_spec = masses[0]
-        kvecSQ_arr = FOURPI2*tbks_entry.nvecSQ_arr/L**2
-        kvec_arr = TWOPI*tbks_entry.nvec_arr/L
-        omk_arr = np.sqrt(m_spec**2+kvecSQ_arr)
-        Pvec = TWOPI*nP/L
-        PmkSQ_arr = ((Pvec-kvec_arr)**2).sum(axis=1)
-        mask_row = (E-omk_arr)**2-PmkSQ_arr > 0.0
-        row_shells = tbks_entry.shells
-        mask_row_shells = []
-        for row_shell in row_shells:
-            mask_row_shells = mask_row_shells\
-                    + [mask_row[row_shell[0]:row_shell[1]].all()]
-        row_shells = list(np.array(row_shells)[mask_row_shells])
-        row_shell = list(row_shells[row_shell_index])
+        reduce_size = QC_IMPL_DEFAULTS['reduce_size']
+        if 'reduce_size' in self.qcis.fvs.qc_impl:
+            reduce_size = self.qcis.fvs.qc_impl['reduce_size']
+        if reduce_size:
+            masses = self.qcis.fcs.sc_list_sorted[
+                self.qcis.fcs.slices_by_three_masses[three_slice_index][0]].\
+                masses_indexed
+            m_spec = masses[0]
+            kvecSQ_arr = FOURPI2*tbks_entry.nvecSQ_arr/L**2
+            kvec_arr = TWOPI*tbks_entry.nvec_arr/L
+            omk_arr = np.sqrt(m_spec**2+kvecSQ_arr)
+            Pvec = TWOPI*nP/L
+            PmkSQ_arr = ((Pvec-kvec_arr)**2).sum(axis=1)
+            mask_row = (E-omk_arr)**2-PmkSQ_arr > 0.0
+            row_shells = tbks_entry.shells
+            mask_row_shells = []
+            for row_shell in row_shells:
+                mask_row_shells = mask_row_shells\
+                        + [mask_row[row_shell[0]:row_shell[1]].all()]
+            row_shells = list(np.array(row_shells)[mask_row_shells])
+            row_shell = list(row_shells[row_shell_index])
+        else:
+            row_shells = tbks_entry.shells
+            mask_row_shells = len(row_shells)*[True]
+            row_shell = list(row_shells[row_shell_index])
 
-        mask_col = mask_row
-        col_shells = tbks_entry.shells
-        mask_col_shells = []
-        for col_shell in col_shells:
-            mask_col_shells = mask_col_shells\
-                    + [mask_col[col_shell[0]:col_shell[1]].all()]
-        col_shells = list(np.array(col_shells)[mask_col_shells])
-        col_shell = list(col_shells[col_shell_index])
+        if reduce_size:
+            mask_col = mask_row
+            col_shells = tbks_entry.shells
+            mask_col_shells = []
+            for col_shell in col_shells:
+                mask_col_shells = mask_col_shells\
+                        + [mask_col[col_shell[0]:col_shell[1]].all()]
+            col_shells = list(np.array(col_shells)[mask_col_shells])
+            col_shell = list(col_shells[col_shell_index])
+        else:
+            col_shells = tbks_entry.shells
+            mask_col_shells = len(col_shells)*[True]
+            col_shell = list(col_shells[col_shell_index])
         return mask_row_shells, mask_col_shells, row_shell, col_shell
 
     def _get_all_nvecSQs(self, nvecSQs_by_shell):
@@ -1012,10 +1015,14 @@ class G(Interpolable):
                 print(mask)
             mask_slices = []
             slices = tbks_entry.shells
-            for slice_entry in slices:
-                mask_slices = mask_slices\
-                    + [mask[slice_entry[0]:slice_entry[1]].all()]
-            slices = list((np.array(slices))[mask_slices])
+            reduce_size = QC_IMPL_DEFAULTS['reduce_size']
+            if 'reduce_size' in self.qcis.fvs.qc_impl:
+                reduce_size = self.qcis.fvs.qc_impl['reduce_size']
+            if reduce_size:
+                for slice_entry in slices:
+                    mask_slices = mask_slices\
+                        + [mask[slice_entry[0]:slice_entry[1]].all()]
+                slices = list((np.array(slices))[mask_slices])
         return tbks_entry, slices
 
     def _get_value_not_interpolated(self, E, L, project, irrep, cindex_col,
@@ -1048,7 +1055,7 @@ class G(Interpolable):
                         g_tmp = self.get_shell(E, L,
                                                m1, m2, m3,
                                                cindex_row, cindex_col,
-                                               # only for non-zero P
+                                               # only for non-zero nP
                                                sc_row_ind, sc_col_ind,
                                                ell1, ell2,
                                                g_rescale,
@@ -1067,7 +1074,7 @@ class G(Interpolable):
         return g_final
 
     def get_shell(self, E=5.0, L=5.0, m1=1.0, m2=1.0, m3=1.0,
-                  cindex_row=None, cindex_col=None,  # only for non-zero P
+                  cindex_row=None, cindex_col=None,  # only for non-zero nP
                   sc_index_row=None, sc_index_col=None,
                   ell1=0, ell2=0,
                   g_rescale=1.0, tbks_entry=None,
@@ -1131,14 +1138,27 @@ class G(Interpolable):
     def _nP_nonzero_projectors(self, E, L, sc_index_row, sc_index_col,
                                row_shell_index, col_shell_index, irrep,
                                mask_row_shells, mask_col_shells):
-        ibest = self.qcis._get_ibest(E, L)
-        proj_tmp_right = np.array(self.qcis.sc_proj_dicts_by_shell[
-            sc_index_col][ibest])[mask_col_shells][
-                col_shell_index][irrep]
-        proj_tmp_left = np.conjugate((
-            np.array(self.qcis.
-                     sc_proj_dicts_by_shell[sc_index_row][ibest]
-                     )[mask_row_shells][row_shell_index][irrep]).T)
+        reduce_size = QC_IMPL_DEFAULTS['reduce_size']
+        if 'reduce_size' in self.qcis.fvs.qc_impl:
+            reduce_size = self.qcis.fvs.qc_impl['reduce_size']
+        if reduce_size:
+            ibest = self.qcis._get_ibest(E, L)
+            proj_tmp_right = np.array(self.qcis.sc_proj_dicts_by_shell[
+                sc_index_col][ibest])[mask_col_shells][
+                    col_shell_index][irrep]
+            proj_tmp_left = np.conjugate((
+                np.array(self.qcis.
+                         sc_proj_dicts_by_shell[sc_index_row][ibest]
+                         )[mask_row_shells][row_shell_index][irrep]).T)
+        else:
+            ibest = self.qcis._get_ibest(E, L)
+            proj_tmp_right = np.array(self.qcis.sc_proj_dicts_by_shell[
+                sc_index_col][ibest])[
+                    col_shell_index][irrep]
+            proj_tmp_left = np.conjugate((
+                np.array(self.qcis.
+                         sc_proj_dicts_by_shell[sc_index_row][ibest]
+                         )[row_shell_index][irrep]).T)
         return proj_tmp_right, proj_tmp_left
 
     def _nPzero_projectors(self, sc_index_row, sc_index_col,
@@ -1348,7 +1368,7 @@ class F:
                     print(project, irrep)
                 f_tmp = self.get_shell(E, L,
                                        m1, m2, m3,
-                                       cindex,  # only for non-zero P
+                                       cindex,  # only for non-zero nP
                                        sc_ind,
                                        ell1, ell2,
                                        tbks_entry,

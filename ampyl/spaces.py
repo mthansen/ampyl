@@ -125,11 +125,11 @@ class FiniteVolumeSetup:
         """Set the implementation of the quantization condition."""
         if not isinstance(qc_impl, dict):
             raise ValueError("qc_impl must be a dict")
-        for key in qc_impl.keys():
-            if key not in QC_IMPL_DEFAULTS.keys():
+        for key in qc_impl:
+            if key not in QC_IMPL_DEFAULTS:
                 raise ValueError("key", key, "not recognized")
-        for key in QC_IMPL_DEFAULTS.keys():
-            if (key in qc_impl.keys()
+        for key in QC_IMPL_DEFAULTS:
+            if (key in qc_impl
                and (not isinstance(qc_impl[key],
                                    type(QC_IMPL_DEFAULTS[key])))):
                 raise ValueError(f"qc_impl entry {key} mest be a "
@@ -983,8 +983,8 @@ class QCIndexSpace:
         deltaE = DELTA_E_FOR_GRID
         Lmin = np.mod(Lmax-L_GRID_SHIFT, deltaL)+L_GRID_SHIFT
         Emin = np.mod(Emax-E_GRID_SHIFT, deltaE)+E_GRID_SHIFT
-        Lvals = np.arange(Lmin, Lmax, deltaL)
-        Evals = np.arange(Emin, Emax, deltaE)
+        Lvals = np.arange(Lmin, Lmax+EPSILON4, deltaL)
+        Evals = np.arange(Emin, Emax+EPSILON4, deltaE)
         if np.abs(Lvals[-1] - Lmax) > EPSILON20:
             Lvals = np.append(Lvals, Lmax)
         if np.abs(Evals[-1] - Emax) > EPSILON20:
