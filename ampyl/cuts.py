@@ -510,12 +510,19 @@ class Interpolable:
                 print('mask =')
                 print(mask)
 
-            mask_slices = []
-            slices = tbks_entry.shells
-            for slice_entry in slices:
-                mask_slices = mask_slices\
-                    + [mask[slice_entry[0]:slice_entry[1]].all()]
-            slices = list((np.array(slices))[mask_slices])
+            reduce_size = QC_IMPL_DEFAULTS['reduce_size']
+            if 'reduce_size' in self.qcis.fvs.qc_impl:
+                reduce_size = self.qcis.fvs.qc_impl['reduce_size']
+            if reduce_size:
+                mask_slices = []
+                slices = tbks_entry.shells
+                for slice_entry in slices:
+                    mask_slices = mask_slices\
+                        + [mask[slice_entry[0]:slice_entry[1]].all()]
+                slices = list((np.array(slices))[mask_slices])
+            else:
+                slices = tbks_entry.shells
+                mask_slices = [True]*len(slices)
 
         nvecSQs_final = [[]]
         if self.qcis.verbosity >= 2:
@@ -890,16 +897,31 @@ class G(Interpolable):
     def _get_value_interpolated(self, E, L, irrep):
         g_final_smooth_basis = []
         cob_list_len = self.cob_list_lens[irrep]
-        matrix_dimension = self.\
-            matrix_dim_lists[irrep][cob_list_len-self.
-                                    qcis.get_tbks_sub_indices(E, L)[0]-1]
+        if cob_list_len == 0:
+            warnings.warn(f"\n{bcolors.WARNING}"
+                          "No cob_matrices for this irrep. "
+                          "Using mat_dim_lists instead."
+                          f"{bcolors.ENDC}")
+            matrix_dimension = self.interp_arrays[irrep].shape[0]
+        else:
+            matrix_dimension = self.\
+                matrix_dim_lists[irrep][cob_list_len-self.
+                                        qcis.get_tbks_sub_indices(E, L)[0]-1]
         m1, m2, m3 = self._extract_masses()
         for i in range(matrix_dimension):
             g_row_tmp = []
             for j in range(matrix_dimension):
                 interp_tmp = self.interp_arrays[irrep][i][j]
-                if interp_tmp is not None:
-                    value_tmp = float(interp_tmp((E, L)))
+                if (interp_tmp is not None and len(interp_tmp.grid[0]) > 1
+                   and len(interp_tmp.grid[1]) > 1):
+                    try:
+                        value_tmp = float(interp_tmp((E, L)))
+                    except ValueError:
+                        value_tmp = 0.
+                        warnings.warn(f"\n{bcolors.WARNING}"
+                                      "Interpolation failed. "
+                                      "Setting value to zero."
+                                      f"{bcolors.ENDC}")
                     for pole_data in (self.polefree_interp_data_lists[
                        irrep][i][j][2]):
                         factor_tmp = E-self.\
@@ -910,12 +932,15 @@ class G(Interpolable):
                     g_row_tmp = g_row_tmp+[0.]
             g_final_smooth_basis.append(g_row_tmp)
         g_final_smooth_basis = np.array(g_final_smooth_basis)
-        cob_matrix =\
-            self.cob_matrix_lists[irrep][cob_list_len
-                                         - self.qcis.
-                                         get_tbks_sub_indices(E, L)[0]-1]
-        g_final =\
-            (cob_matrix)@g_final_smooth_basis@(cob_matrix.T)
+        if cob_list_len != 0:
+            cob_matrix =\
+                self.cob_matrix_lists[irrep][cob_list_len
+                                             - self.qcis.
+                                             get_tbks_sub_indices(E, L)[0]-1]
+            g_final =\
+                (cob_matrix)@g_final_smooth_basis@(cob_matrix.T)
+        else:
+            g_final = g_final_smooth_basis
         return g_final
 
     def _get_value_smart_interpolated(self, E, L, irrep):
@@ -1138,27 +1163,14 @@ class G(Interpolable):
     def _nP_nonzero_projectors(self, E, L, sc_index_row, sc_index_col,
                                row_shell_index, col_shell_index, irrep,
                                mask_row_shells, mask_col_shells):
-        reduce_size = QC_IMPL_DEFAULTS['reduce_size']
-        if 'reduce_size' in self.qcis.fvs.qc_impl:
-            reduce_size = self.qcis.fvs.qc_impl['reduce_size']
-        if reduce_size:
-            ibest = self.qcis._get_ibest(E, L)
-            proj_tmp_right = np.array(self.qcis.sc_proj_dicts_by_shell[
-                sc_index_col][ibest])[mask_col_shells][
-                    col_shell_index][irrep]
-            proj_tmp_left = np.conjugate((
-                np.array(self.qcis.
-                         sc_proj_dicts_by_shell[sc_index_row][ibest]
-                         )[mask_row_shells][row_shell_index][irrep]).T)
-        else:
-            ibest = self.qcis._get_ibest(E, L)
-            proj_tmp_right = np.array(self.qcis.sc_proj_dicts_by_shell[
-                sc_index_col][ibest])[
-                    col_shell_index][irrep]
-            proj_tmp_left = np.conjugate((
-                np.array(self.qcis.
-                         sc_proj_dicts_by_shell[sc_index_row][ibest]
-                         )[row_shell_index][irrep]).T)
+        ibest = self.qcis._get_ibest(E, L)
+        proj_tmp_right = np.array(self.qcis.sc_proj_dicts_by_shell[
+            sc_index_col][ibest])[mask_col_shells][
+                col_shell_index][irrep]
+        proj_tmp_left = np.conjugate((
+            np.array(self.qcis.
+                     sc_proj_dicts_by_shell[sc_index_row][ibest]
+                     )[mask_row_shells][row_shell_index][irrep]).T)
         return proj_tmp_right, proj_tmp_left
 
     def _nPzero_projectors(self, sc_index_row, sc_index_col,

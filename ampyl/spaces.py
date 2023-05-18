@@ -859,10 +859,14 @@ class QCIndexSpace:
     """
 
     def __init__(self, fcs=None, fvs=None, tbis=None,
-                 Emax=5.0, Lmax=5.0, verbosity=0):
+                 Emax=5.0, Lmax=5.0,
+                 deltaE=DELTA_E_FOR_GRID, deltaL=DELTA_L_FOR_GRID,
+                 verbosity=0):
         self.verbosity = verbosity
         self.Emax = Emax
         self.Lmax = Lmax
+        self.deltaE = deltaE
+        self.deltaL = deltaL
 
         if fcs is None:
             if verbosity == 2:
@@ -929,7 +933,9 @@ class QCIndexSpace:
             if self.verbosity == 2:
                 print('nPSQ is nonzero, will use grid')
             [self.Evals, self.Lvals] = self._get_grid_nonzero_nP(self.Emax,
-                                                                 self.Lmax)
+                                                                 self.Lmax,
+                                                                 self.deltaE,
+                                                                 self.deltaL)
             if self.verbosity == 2:
                 print('Lvals =', self.Lvals)
                 print('Evals =', self.Evals)
@@ -978,9 +984,7 @@ class QCIndexSpace:
                                  + "by nonint_proj_dict")
         self.nonint_proj_dict = nonint_proj_dict
 
-    def _get_grid_nonzero_nP(self, Emax, Lmax):
-        deltaL = DELTA_L_FOR_GRID
-        deltaE = DELTA_E_FOR_GRID
+    def _get_grid_nonzero_nP(self, Emax, Lmax, deltaE, deltaL):
         Lmin = np.mod(Lmax-L_GRID_SHIFT, deltaL)+L_GRID_SHIFT
         Emin = np.mod(Emax-E_GRID_SHIFT, deltaE)+E_GRID_SHIFT
         Lvals = np.arange(Lmin, Lmax+EPSILON4, deltaL)
@@ -1127,12 +1131,14 @@ class QCIndexSpace:
         self.tbks_list[slot_index] = [tbks_copy]
         Lmax = self.Lmax
         Emax = self.Emax
+        deltaE = self.deltaE
+        deltaL = self.deltaL
         masses = self.fcs.sc_list_sorted[
             self.fcs.slices_by_three_masses[three_slice_index][0]]\
             .masses_indexed
         m_spec = masses[0]
         nP = self.nP
-        [Evals, Lvals] = self._get_grid_nonzero_nP(Emax, Lmax)
+        [Evals, Lvals] = self._get_grid_nonzero_nP(Emax, Lmax, deltaE, deltaL)
         for Ltmp in Lvals:
             for Etmp in Evals:
                 self._populate_EL_iteration(slot_index, tbks_tmp, nvec_arr,
@@ -1389,7 +1395,7 @@ class QCIndexSpace:
             tbks_sub_indices[sc_index] = nPmaxintSQ - nPnewintSQ
         return tbks_sub_indices
 
-    def _get_tbks_sub_indices_nonzero_mom(self, E, L, tbks_sub_indices):
+    def _get_tbks_sub_indices_nonzero_mom(self, E, L):
         tbks_sub_indices = [0]*len(self.tbks_list)
         for slice_index in range(self.fcs.n_three_slices):
             sc_index = self.fcs.slices_by_three_masses[slice_index][0]
@@ -1400,14 +1406,22 @@ class QCIndexSpace:
             still_searching = True
             i = 0
             while still_searching:
-                tbkstmp = tbkstmp_set[i]
-                nvec_arr = tbkstmp.nvec_arr
-                E2CMSQfull = (E-np.sqrt(m_spec**2
-                                        + FOURPI2/L**2
-                                        * ((nvec_arr**2).sum(axis=1))))**2\
-                    - FOURPI2/L**2*((nP-nvec_arr)**2).sum(axis=1)
-                still_searching = not (np.sort(E2CMSQfull) > 0.0).all()
-                i += 1
+                try:
+                    tbkstmp = tbkstmp_set[i]
+                    nvec_arr = tbkstmp.nvec_arr
+                    E2CMSQfull = (E-np.sqrt(m_spec**2
+                                            + FOURPI2/L**2
+                                            * ((nvec_arr**2).sum(axis=1))))**2\
+                        - FOURPI2/L**2*((nP-nvec_arr)**2).sum(axis=1)
+                    still_searching = not (np.sort(E2CMSQfull) > 0.0).all()
+                    i += 1
+                except IndexError:
+                    warnings.warn(f"\n{bcolors.WARNING}"
+                                  "Crude search inside of "
+                                  "get_tbks_sub_indices failed; taking last "
+                                  "index before failure"
+                                  f"{bcolors.ENDC}", stacklevel=2)
+                    break
             i -= 1
             tbkstmp = tbkstmp_set[i]
             nvec_arr = tbkstmp.nvec_arr
