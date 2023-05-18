@@ -1421,16 +1421,30 @@ class FplusG(Interpolable):
 
     def get_value(self, E=5.0, L=5.0, project=False, irrep=None):
         """Build the F plus G matrix in a shell-based way."""
-        g_interpolate = QC_IMPL_DEFAULTS['g_interpolate']
-        if 'g_interpolate' in self.qcis.fvs.qc_impl:
-            g_interpolate = self.qcis.fvs.qc_impl['g_interpolate']
         if not project:
             raise ValueError("FplusG().get_value() should only be called "
                              + "with project==True")
-        if not g_interpolate:
+        g_interpolate = QC_IMPL_DEFAULTS['g_interpolate']
+        g_smart_interpolate = QC_IMPL_DEFAULTS['g_smart_interpolate']
+        if 'g_interpolate' in self.qcis.fvs.qc_impl:
+            g_interpolate = self.qcis.fvs.qc_impl['g_interpolate']
+        if 'g_smart_interpolate' in self.qcis.fvs.qc_impl:
+            g_smart_interpolate = self.qcis.fvs.qc_impl[
+                'g_smart_interpolate']
+        if g_interpolate and g_smart_interpolate:
+            raise ValueError("g_interpolate and g_smart_interpolate "
+                             "cannot both be True")
+        if g_interpolate:
+            fplusg_final = self._get_value_interpolated(E, L, irrep)
+            return fplusg_final
+        elif g_smart_interpolate:
+            fplusg_final = self._get_value_smart_interpolated(E, L, irrep)
+            return fplusg_final
+        else:
             return self.g.get_value(E=E, L=L, project=project, irrep=irrep)\
                 + self.f.get_value(E=E, L=L, project=project, irrep=irrep)
 
+    def _get_value_interpolated(self, E, L, irrep):
         f_plus_g_final_smooth_basis = []
         cob_list_len = self.cob_list_lens[irrep]
         matrix_dimension = self.\
@@ -1460,6 +1474,42 @@ class FplusG(Interpolable):
         f_plus_g_matrix_tmp_rotated\
             = (cob_matrix)@f_plus_g_final_smooth_basis@(cob_matrix.T)
         return f_plus_g_matrix_tmp_rotated
+
+    def _get_value_smart_interpolated(self, E, L, irrep):
+        pole_parts_smooth_basis = []
+        cob_list_len = self.cob_list_lens[irrep]
+        matrix_dimension = self.\
+            matrix_dim_lists[irrep][cob_list_len-self.
+                                    qcis.get_tbks_sub_indices(E, L)[0]-1]
+        m1, m2, m3 = self._extract_masses()
+        for i in range(matrix_dimension):
+            pole_row_tmp = []
+            for j in range(matrix_dimension):
+                value_tmp = 1.
+                for pole_data in (self.polefree_interp_data_lists[
+                   irrep][i][j][2]):
+                    factor_tmp = E-self.\
+                        get_pole_candidate(L, *pole_data[2], m1, m2, m3)
+                    value_tmp = value_tmp/factor_tmp
+                pole_row_tmp = pole_row_tmp+[value_tmp]
+            pole_parts_smooth_basis.append(pole_row_tmp)
+        pole_parts_smooth_basis = np.array(pole_parts_smooth_basis)
+        cob_matrix =\
+            self.cob_matrix_lists[irrep][cob_list_len
+                                         - self.qcis.
+                                         get_tbks_sub_indices(E, L)[0]-1]
+        fplusg_smooth = self.smart_interps[irrep]((E, L))
+        warnings.warn(f"\n{bcolors.WARNING}"
+                      "Resizing fplusg_smooth to match the dimension of the "
+                      "cob_matrix matrix. This is a temporary fix."
+                      f"{bcolors.ENDC}")
+        fplusg_smooth = fplusg_smooth[:len(cob_matrix)]
+        fplusg_smooth_T = (fplusg_smooth.T)[:len(cob_matrix)]
+        fplusg_smooth = fplusg_smooth_T.T
+        fplusg_final_smooth_basis = fplusg_smooth*pole_parts_smooth_basis
+        fplusg_final =\
+            (cob_matrix)@fplusg_final_smooth_basis@(cob_matrix.T)
+        return fplusg_final
 
     def get_pole_candidate(self, L, n1vecSQ, n2vecSQ, n3vecSQ, m1, m2, m3):
         pole_candidate = np.sqrt(m1**2+(FOURPI2/L**2)*n1vecSQ)\
