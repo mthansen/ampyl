@@ -828,120 +828,32 @@ class Interpolable:
             polefree_interp_data_list.append(polefree_interp_data_row)
         return polefree_interp_data_list
 
-
-class G(Interpolable):
-    r"""
-    Class for the finite-volume G matrix.
-
-    The G matrix is responsible for finite-volume effects arising from switches
-        in the scattering pair.
-
-    :param qcis: quantization-condition index space, specifying all data for
-        the class
-    :type qcis: QCIndexSpace
-    """
-
     def get_value(self, E=5.0, L=5.0, project=False, irrep=None):
-        """Build the G matrix in a shell-based way."""
-        Lmax = self.qcis.Lmax
+        """Build the interpolable matrix in a shell-based way."""
         Emax = self.qcis.Emax
+        Lmax = self.qcis.Lmax
         if E > Emax:
             raise ValueError("get_value called with E > Emax")
         if L > Lmax:
             raise ValueError("get_value called with L > Lmax")
-        nP = self.qcis.nP
-
-        g_interpolate = QC_IMPL_DEFAULTS['g_interpolate']
-        g_smart_interpolate = QC_IMPL_DEFAULTS['g_smart_interpolate']
+        interpolate = QC_IMPL_DEFAULTS['g_interpolate']
+        smart_interpolate = QC_IMPL_DEFAULTS['g_smart_interpolate']
         if 'g_interpolate' in self.qcis.fvs.qc_impl:
-            g_interpolate = self.qcis.fvs.qc_impl['g_interpolate']
+            interpolate = self.qcis.fvs.qc_impl['g_interpolate']
         if 'g_smart_interpolate' in self.qcis.fvs.qc_impl:
-            g_smart_interpolate = self.qcis.fvs.qc_impl[
+            smart_interpolate = self.qcis.fvs.qc_impl[
                 'g_smart_interpolate']
-        if g_interpolate and g_smart_interpolate:
+        if interpolate and smart_interpolate:
             raise ValueError("g_interpolate and g_smart_interpolate "
                              "cannot both be True")
-        if g_interpolate:
-            g_final = self._get_value_interpolated(E, L, irrep)
-            return g_final
-        elif g_smart_interpolate:
-            g_final = self._get_value_smart_interpolated(E, L, irrep)
-            return g_final
-
-        if self.qcis.verbosity >= 2:
-            self._g_verbose_a(E, L, nP)
-
-        if self.qcis.fcs.n_three_slices != 1:
-            raise ValueError("only n_three_slices = 1 is supported")
-        cindex_row = cindex_col = 0
-        if self.qcis.verbosity >= 2:
-            print('representatives of three_slice:')
-            print('    cindex_row =', cindex_row,
-                  ', cindex_col =', cindex_col)
-
-        if (not ((irrep is None) and (project is False))
-           and (not (irrep in self.qcis.proj_dict.keys()))):
-            raise ValueError("irrep "+str(irrep)+" not in "
-                             + "qcis.proj_dict.keys()")
-
-        masses = self.qcis.fcs.sc_list_sorted[
-            self.qcis.fcs.slices_by_three_masses[0][0]].masses_indexed
-        [m1, m2, m3] = masses
-        tbks_entry, slices = self._get_entry_and_slices(E, L, nP, m1)
-        g_final = self._get_value_not_interpolated(E, L, project, irrep,
-                                                   cindex_col, cindex_row,
-                                                   m1, m2, m3,
-                                                   tbks_entry, slices)
-        return g_final
-
-    def _get_value_interpolated(self, E, L, irrep):
-        g_final_smooth_basis = []
-        cob_list_len = self.cob_list_lens[irrep]
-        if cob_list_len == 0:
-            warnings.warn(f"\n{bcolors.WARNING}"
-                          "No cob_matrices for this irrep. "
-                          "Using mat_dim_lists instead."
-                          f"{bcolors.ENDC}")
-            matrix_dimension = self.interp_arrays[irrep].shape[0]
-        else:
-            matrix_dimension = self.\
-                matrix_dim_lists[irrep][cob_list_len-self.
-                                        qcis.get_tbks_sub_indices(E, L)[0]-1]
-        m1, m2, m3 = self._extract_masses()
-        for i in range(matrix_dimension):
-            g_row_tmp = []
-            for j in range(matrix_dimension):
-                interp_tmp = self.interp_arrays[irrep][i][j]
-                if (interp_tmp is not None and len(interp_tmp.grid[0]) > 1
-                   and len(interp_tmp.grid[1]) > 1):
-                    try:
-                        value_tmp = float(interp_tmp((E, L)))
-                    except ValueError:
-                        value_tmp = 0.
-                        warnings.warn(f"\n{bcolors.WARNING}"
-                                      "Interpolation failed. "
-                                      "Setting value to zero."
-                                      f"{bcolors.ENDC}")
-                    for pole_data in (self.polefree_interp_data_lists[
-                       irrep][i][j][2]):
-                        factor_tmp = E-self.\
-                            get_pole_candidate(L, *pole_data[2], m1, m2, m3)
-                        value_tmp = value_tmp/factor_tmp
-                    g_row_tmp = g_row_tmp+[value_tmp]
-                else:
-                    g_row_tmp = g_row_tmp+[0.]
-            g_final_smooth_basis.append(g_row_tmp)
-        g_final_smooth_basis = np.array(g_final_smooth_basis)
-        if cob_list_len != 0:
-            cob_matrix =\
-                self.cob_matrix_lists[irrep][cob_list_len
-                                             - self.qcis.
-                                             get_tbks_sub_indices(E, L)[0]-1]
-            g_final =\
-                (cob_matrix)@g_final_smooth_basis@(cob_matrix.T)
-        else:
-            g_final = g_final_smooth_basis
-        return g_final
+        if smart_interpolate:
+            final_value = self._get_value_smart_interpolated(E, L, irrep)
+            return final_value
+        if interpolate:
+            final_value = self._get_value_interpolated(E, L, irrep)
+            return final_value
+        final_value = self._get_value_not_interpolated(E, L, project, irrep)
+        return final_value
 
     def _get_value_smart_interpolated(self, E, L, irrep):
         pole_parts_smooth_basis = []
@@ -966,24 +878,110 @@ class G(Interpolable):
             self.cob_matrix_lists[irrep][cob_list_len
                                          - self.qcis.
                                          get_tbks_sub_indices(E, L)[0]-1]
-        g_smooth = self.smart_interps[irrep]((E, L))
+        smooth_value = self.smart_interps[irrep]((E, L))
         warnings.warn(f"\n{bcolors.WARNING}"
-                      "Resizing g_smooth to match the dimension of the "
+                      "Resizing smooth_value to match the dimension of the "
                       "cob_matrix matrix. This is a temporary fix."
                       f"{bcolors.ENDC}")
-        g_smooth = g_smooth[:len(cob_matrix)]
-        g_smooth_T = (g_smooth.T)[:len(cob_matrix)]
-        g_smooth = g_smooth_T.T
-        g_final_smooth_basis = g_smooth*pole_parts_smooth_basis
-        g_final =\
-            (cob_matrix)@g_final_smooth_basis@(cob_matrix.T)
-        return g_final
+        smooth_value = smooth_value[:len(cob_matrix)]
+        smooth_value_T = (smooth_value.T)[:len(cob_matrix)]
+        smooth_value = smooth_value_T.T
+        final_value_smooth_basis = smooth_value*pole_parts_smooth_basis
+        final_value =\
+            (cob_matrix)@final_value_smooth_basis@(cob_matrix.T)
+        return final_value
+
+    def _get_value_interpolated(self, E, L, irrep):
+        final_value_smooth_basis = []
+        cob_list_len = self.cob_list_lens[irrep]
+        if cob_list_len == 0:
+            warnings.warn(f"\n{bcolors.WARNING}"
+                          "No cob_matrices for this irrep. "
+                          "Using mat_dim_lists instead."
+                          f"{bcolors.ENDC}")
+            matrix_dimension = self.interp_arrays[irrep].shape[0]
+        else:
+            matrix_dimension = self.\
+                matrix_dim_lists[irrep][cob_list_len-self.
+                                        qcis.get_tbks_sub_indices(E, L)[0]-1]
+        m1, m2, m3 = self._extract_masses()
+        for i in range(matrix_dimension):
+            row_tmp = []
+            for j in range(matrix_dimension):
+                interp_tmp = self.interp_arrays[irrep][i][j]
+                if (interp_tmp is not None and len(interp_tmp.grid[0]) > 1
+                   and len(interp_tmp.grid[1]) > 1):
+                    try:
+                        value_tmp = float(interp_tmp((E, L)))
+                    except ValueError:
+                        value_tmp = 0.
+                        warnings.warn(f"\n{bcolors.WARNING}"
+                                      "Interpolation failed. "
+                                      "Setting value to zero."
+                                      f"{bcolors.ENDC}")
+                    for pole_data in (self.polefree_interp_data_lists[
+                       irrep][i][j][2]):
+                        factor_tmp = E-self.\
+                            get_pole_candidate(L, *pole_data[2], m1, m2, m3)
+                        value_tmp = value_tmp/factor_tmp
+                    row_tmp = row_tmp+[value_tmp]
+                else:
+                    row_tmp = row_tmp+[0.]
+            final_value_smooth_basis.append(row_tmp)
+        final_value_smooth_basis = np.array(final_value_smooth_basis)
+        if cob_list_len != 0:
+            cob_matrix =\
+                self.cob_matrix_lists[irrep][cob_list_len
+                                             - self.qcis.
+                                             get_tbks_sub_indices(E, L)[0]-1]
+            final_value =\
+                (cob_matrix)@final_value_smooth_basis@(cob_matrix.T)
+        else:
+            final_value = final_value_smooth_basis
+        return final_value
 
     def get_pole_candidate(self, L, n1vecSQ, n2vecSQ, n3vecSQ, m1, m2, m3):
         pole_candidate = np.sqrt(m1**2+(FOURPI2/L**2)*n1vecSQ)\
                        + np.sqrt(m2**2+(FOURPI2/L**2)*n2vecSQ)\
                        + np.sqrt(m3**2+(FOURPI2/L**2)*n3vecSQ)
         return pole_candidate
+
+    def _get_value_not_interpolated(self, E, L, project, irrep):
+        return None
+
+
+class G(Interpolable):
+    r"""
+    Class for the finite-volume G matrix.
+
+    The G matrix is responsible for finite-volume effects arising from switches
+        in the scattering pair.
+
+    :param qcis: quantization-condition index space, specifying all data for
+        the class
+    :type qcis: QCIndexSpace
+    """
+
+    def _get_value_not_interpolated(self, E, L, project, irrep):
+        nP = self.qcis.nP
+        if self.qcis.verbosity >= 2:
+            self._g_verbose_a(E, L, nP)
+        if self.qcis.fcs.n_three_slices != 1:
+            raise ValueError("only n_three_slices = 1 is supported")
+        cindex_row = cindex_col = 0
+        if self.qcis.verbosity >= 2:
+            print('representatives of three_slice:')
+            print('    cindex_row =', cindex_row,
+                  ', cindex_col =', cindex_col)
+        if (not ((irrep is None) and (project is False))
+           and (not (irrep in self.qcis.proj_dict.keys()))):
+            raise ValueError("irrep "+str(irrep)+" not in "
+                             + "qcis.proj_dict.keys()")
+        tbks_entry, slices = self._get_entry_and_slices(E, L, nP)
+        g_final = self._get_value_from_tbks(E, L, project, irrep,
+                                            cindex_col, cindex_row,
+                                            tbks_entry, slices)
+        return g_final
 
     def _g_verbose_a(self, E, L, nP):
         print('evaluating G using numpy accelerated version')
@@ -1005,7 +1003,10 @@ class G(Interpolable):
             sf = sf+'\n    * 1./(2.0*w3)'
         print('G = YY*H1*H2\n    * '+sf+'\n    * 1./(E-w1-w2-w3)\n')
 
-    def _get_entry_and_slices(self, E, L, nP, m1):
+    def _get_entry_and_slices(self, E, L, nP):
+        masses = self.qcis.fcs.sc_list_sorted[
+            self.qcis.fcs.slices_by_three_masses[0][0]].masses_indexed
+        m1 = masses[0]
         if nP@nP == 0:
             if self.qcis.verbosity >= 2:
                 print('nP = [0 0 0] indexing')
@@ -1050,9 +1051,11 @@ class G(Interpolable):
                 slices = list((np.array(slices))[mask_slices])
         return tbks_entry, slices
 
-    def _get_value_not_interpolated(self, E, L, project, irrep, cindex_col,
-                                    cindex_row, m1, m2, m3,
-                                    tbks_entry, slices):
+    def _get_value_from_tbks(self, E, L, project, irrep, cindex_col,
+                             cindex_row, tbks_entry, slices):
+        masses = self.qcis.fcs.sc_list_sorted[
+            self.qcis.fcs.slices_by_three_masses[0][0]].masses_indexed
+        [m1, m2, m3] = masses
         g_final = []
         if self.qcis.verbosity >= 2:
             print('iterating over spectator channels, slices')
@@ -1419,103 +1422,9 @@ class FplusG(Interpolable):
         self.f = F(qcis=qcis, alphaKSS=alphaKSS, C1cut=C1cut)
         self.g = G(qcis=qcis)
 
-    def get_value(self, E=5.0, L=5.0, project=False, irrep=None):
-        """Build the F plus G matrix in a shell-based way."""
-        if not project:
-            raise ValueError("FplusG().get_value() should only be called "
-                             + "with project==True")
-        g_interpolate = QC_IMPL_DEFAULTS['g_interpolate']
-        g_smart_interpolate = QC_IMPL_DEFAULTS['g_smart_interpolate']
-        if 'g_interpolate' in self.qcis.fvs.qc_impl:
-            g_interpolate = self.qcis.fvs.qc_impl['g_interpolate']
-        if 'g_smart_interpolate' in self.qcis.fvs.qc_impl:
-            g_smart_interpolate = self.qcis.fvs.qc_impl[
-                'g_smart_interpolate']
-        if g_interpolate and g_smart_interpolate:
-            raise ValueError("g_interpolate and g_smart_interpolate "
-                             "cannot both be True")
-        if g_interpolate:
-            fplusg_final = self._get_value_interpolated(E, L, irrep)
-            return fplusg_final
-        elif g_smart_interpolate:
-            fplusg_final = self._get_value_smart_interpolated(E, L, irrep)
-            return fplusg_final
-        else:
-            return self.g.get_value(E=E, L=L, project=project, irrep=irrep)\
+    def _get_value_not_interpolated(self, E, L, project, irrep):
+        return self.g.get_value(E=E, L=L, project=project, irrep=irrep)\
                 + self.f.get_value(E=E, L=L, project=project, irrep=irrep)
-
-    def _get_value_interpolated(self, E, L, irrep):
-        f_plus_g_final_smooth_basis = []
-        cob_list_len = self.cob_list_lens[irrep]
-        matrix_dimension = self.\
-            matrix_dim_lists[irrep][
-                cob_list_len-self.qcis.get_tbks_sub_indices(E, L)[0]-1]
-        m1, m2, m3 = self._extract_masses()
-        for i in range(matrix_dimension):
-            f_plus_g_row_tmp = []
-            for j in range(matrix_dimension):
-                interp_tmp = self.interp_arrays[irrep][i][j]
-                if interp_tmp is not None:
-                    value_tmp = float(interp_tmp((E, L)))
-                    for pole_data in (self.
-                                      polefree_interp_data_lists[
-                                          irrep][i][j][2]):
-                        factor_tmp = E-self.\
-                            get_pole_candidate(L, *pole_data[2], m1, m2, m3)
-                        value_tmp = value_tmp/factor_tmp
-                    f_plus_g_row_tmp = f_plus_g_row_tmp+[value_tmp]
-                else:
-                    f_plus_g_row_tmp = f_plus_g_row_tmp+[0.]
-            f_plus_g_final_smooth_basis.append(f_plus_g_row_tmp)
-        f_plus_g_final_smooth_basis = np.array(f_plus_g_final_smooth_basis)
-        cob_matrix = self.\
-            cob_matrix_lists[irrep][
-                cob_list_len-self.qcis.get_tbks_sub_indices(E, L)[0]-1]
-        f_plus_g_matrix_tmp_rotated\
-            = (cob_matrix)@f_plus_g_final_smooth_basis@(cob_matrix.T)
-        return f_plus_g_matrix_tmp_rotated
-
-    def _get_value_smart_interpolated(self, E, L, irrep):
-        pole_parts_smooth_basis = []
-        cob_list_len = self.cob_list_lens[irrep]
-        matrix_dimension = self.\
-            matrix_dim_lists[irrep][cob_list_len-self.
-                                    qcis.get_tbks_sub_indices(E, L)[0]-1]
-        m1, m2, m3 = self._extract_masses()
-        for i in range(matrix_dimension):
-            pole_row_tmp = []
-            for j in range(matrix_dimension):
-                value_tmp = 1.
-                for pole_data in (self.polefree_interp_data_lists[
-                   irrep][i][j][2]):
-                    factor_tmp = E-self.\
-                        get_pole_candidate(L, *pole_data[2], m1, m2, m3)
-                    value_tmp = value_tmp/factor_tmp
-                pole_row_tmp = pole_row_tmp+[value_tmp]
-            pole_parts_smooth_basis.append(pole_row_tmp)
-        pole_parts_smooth_basis = np.array(pole_parts_smooth_basis)
-        cob_matrix =\
-            self.cob_matrix_lists[irrep][cob_list_len
-                                         - self.qcis.
-                                         get_tbks_sub_indices(E, L)[0]-1]
-        fplusg_smooth = self.smart_interps[irrep]((E, L))
-        warnings.warn(f"\n{bcolors.WARNING}"
-                      "Resizing fplusg_smooth to match the dimension of the "
-                      "cob_matrix matrix. This is a temporary fix."
-                      f"{bcolors.ENDC}")
-        fplusg_smooth = fplusg_smooth[:len(cob_matrix)]
-        fplusg_smooth_T = (fplusg_smooth.T)[:len(cob_matrix)]
-        fplusg_smooth = fplusg_smooth_T.T
-        fplusg_final_smooth_basis = fplusg_smooth*pole_parts_smooth_basis
-        fplusg_final =\
-            (cob_matrix)@fplusg_final_smooth_basis@(cob_matrix.T)
-        return fplusg_final
-
-    def get_pole_candidate(self, L, n1vecSQ, n2vecSQ, n3vecSQ, m1, m2, m3):
-        pole_candidate = np.sqrt(m1**2+(FOURPI2/L**2)*n1vecSQ)\
-                       + np.sqrt(m2**2+(FOURPI2/L**2)*n2vecSQ)\
-                       + np.sqrt(m3**2+(FOURPI2/L**2)*n3vecSQ)
-        return pole_candidate
 
     def _get_all_nvecSQs(self, nvecSQs_by_shell):
         all_nvecSQs = []
