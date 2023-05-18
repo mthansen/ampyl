@@ -1236,23 +1236,31 @@ class F:
         if nP@nP == 0:
             slice_entry = tbks_entry.shells[slice_index]
         else:
-            masses = self.qcis.fcs.sc_list_sorted[
-                self.qcis.fcs.slices_by_three_masses[three_slice_index][0]]\
-                .masses_indexed
-            mspec = masses[0]
-            kvecSQ_arr = FOURPI2*tbks_entry.nvecSQ_arr/L**2
-            kvec_arr = TWOPI*tbks_entry.nvec_arr/L
-            omk_arr = np.sqrt(mspec**2+kvecSQ_arr)
-            Pvec = TWOPI*nP/L
-            PmkSQ_arr = ((Pvec-kvec_arr)**2).sum(axis=1)
-            mask = (E-omk_arr)**2-PmkSQ_arr > 0.0
-            slices = tbks_entry.shells
-            mask_slices = []
-            for slice_entry in slices:
-                mask_slices = mask_slices\
-                    + [mask[slice_entry[0]:slice_entry[1]].all()]
-            slices = list(np.array(slices)[mask_slices])
-            slice_entry = slices[slice_index]
+            reduce_size = QC_IMPL_DEFAULTS['reduce_size']
+            if 'reduce_size' in self.qcis.fvs.qc_impl:
+                reduce_size = self.qcis.fvs.qc_impl['reduce_size']
+            if reduce_size:
+                masses = self.qcis.fcs.sc_list_sorted[
+                    self.qcis.fcs.
+                    slices_by_three_masses[three_slice_index][0]]\
+                    .masses_indexed
+                mspec = masses[0]
+                kvecSQ_arr = FOURPI2*tbks_entry.nvecSQ_arr/L**2
+                kvec_arr = TWOPI*tbks_entry.nvec_arr/L
+                omk_arr = np.sqrt(mspec**2+kvecSQ_arr)
+                Pvec = TWOPI*nP/L
+                PmkSQ_arr = ((Pvec-kvec_arr)**2).sum(axis=1)
+                mask = (E-omk_arr)**2-PmkSQ_arr > 0.0
+                slices = tbks_entry.shells
+                mask_slices = []
+                for slice_entry in slices:
+                    mask_slices = mask_slices\
+                        + [mask[slice_entry[0]:slice_entry[1]].all()]
+                slices = list(np.array(slices)[mask_slices])
+                slice_entry = slices[slice_index]
+            else:
+                slice_entry = tbks_entry.shells[slice_index]
+                mask_slices = [True]*len(tbks_entry.shells)
         return mask_slices, slice_entry
 
     def get_shell(self, E=5.0, L=5.0, m1=1.0, m2=1.0, m3=1.0,
@@ -1328,36 +1336,43 @@ class F:
             slices = tbks_entry.shells
             mask = None
         else:
-            mspec = m1
             ibest = self.qcis._get_ibest(E, L)
-            if len(self.qcis.tbks_list) > 1:
-                raise ValueError("get_value within F assumes tbks_list is "
-                                 + "length one.")
-            tbks_entry = self.qcis.tbks_list[three_slice_index][ibest]
-            kvecSQ_arr = FOURPI2*tbks_entry.nvecSQ_arr/L**2
-            kvec_arr = TWOPI*tbks_entry.nvec_arr/L
-            omk_arr = np.sqrt(mspec**2+kvecSQ_arr)
-            Pvec = TWOPI*nP/L
-            PmkSQ_arr = ((Pvec-kvec_arr)**2).sum(axis=1)
-            mask = (E-omk_arr)**2-PmkSQ_arr > 0.0
-            if self.qcis.verbosity >= 2:
-                print('mask =')
-                print(mask)
-
-            mask_slices = []
-            slices = tbks_entry.shells
-            if self.qcis.verbosity >= 2:
-                print('slices =')
-                print(slices)
-            for slice_entry in slices:
-                mask_slices = mask_slices\
-                    + [mask[slice_entry[0]:slice_entry[1]].all()]
-            slices = list((np.array(slices))[mask_slices])
-            if self.qcis.verbosity >= 2:
-                print('mask_slices =')
-                print(mask_slices)
-                print('range for sc_ind =')
-                print(range(len(self.qcis.fcs.sc_list_sorted)))
+            reduce_size = QC_IMPL_DEFAULTS['reduce_size']
+            if 'reduce_size' in self.qcis.fvs.qc_impl:
+                reduce_size = self.qcis.fvs.qc_impl['reduce_size']
+            if reduce_size:
+                mspec = m1
+                if len(self.qcis.tbks_list) > 1:
+                    raise ValueError("get_value within F assumes tbks_list is "
+                                     "length one.")
+                tbks_entry = self.qcis.tbks_list[three_slice_index][ibest]
+                kvecSQ_arr = FOURPI2*tbks_entry.nvecSQ_arr/L**2
+                kvec_arr = TWOPI*tbks_entry.nvec_arr/L
+                omk_arr = np.sqrt(mspec**2+kvecSQ_arr)
+                Pvec = TWOPI*nP/L
+                PmkSQ_arr = ((Pvec-kvec_arr)**2).sum(axis=1)
+                mask = (E-omk_arr)**2-PmkSQ_arr > 0.0
+                if self.qcis.verbosity >= 2:
+                    print('mask =')
+                    print(mask)
+                mask_slices = []
+                slices = tbks_entry.shells
+                if self.qcis.verbosity >= 2:
+                    print('slices =')
+                    print(slices)
+                for slice_entry in slices:
+                    mask_slices = mask_slices\
+                        + [mask[slice_entry[0]:slice_entry[1]].all()]
+                slices = list((np.array(slices))[mask_slices])
+                if self.qcis.verbosity >= 2:
+                    print('mask_slices =')
+                    print(mask_slices)
+                    print('range for sc_ind =')
+                    print(range(len(self.qcis.fcs.sc_list_sorted)))
+            else:
+                tbks_entry = self.qcis.tbks_list[three_slice_index][ibest]
+                slices = tbks_entry.shells
+                mask = [True]*len(tbks_entry.nvecSQ_arr)
         f_final_list = []
         for sc_ind in range(len(self.qcis.fcs.sc_list_sorted)):
             ell_set = self.qcis.fcs.sc_list_sorted[sc_ind].ell_set
