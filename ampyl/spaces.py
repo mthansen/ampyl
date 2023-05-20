@@ -964,6 +964,7 @@ class QCIndexSpace:
         self.proj_dict = self.group.get_full_proj_dict(qcis=self)
         self.populate_all_nonint_data()
         self.populate_nonint_proj_dict()
+        self.populate_nonint_multiplicities()
 
     def populate_nonint_proj_dict(self):
         """Populate the non-interacting projection dictionary."""
@@ -2014,6 +2015,49 @@ class QCIndexSpace:
             iso_basis_broken_collapsed = iso_basis_broken_collapsed\
                 + [collapsed_entry]
         return counts, iso_basis_broken_collapsed
+
+    def populate_nonint_multiplicities(self):
+        """Populate the non-interacting multiplicities."""
+        nPSQ = self.nPSQ
+        isospin_int = int(self.fcs.fc_list[0].isospin)
+        group = self.group
+        if nPSQ == 0:
+            group_str = 'OhP_'
+        elif nPSQ == 1:
+            group_str = 'Dic4_'
+        elif nPSQ == 2:
+            group_str = 'Dic2_'
+        else:
+            raise ValueError("nPSQ not supported")
+        nonint_multiplicities = []
+        for cindex in range(len(self.fcs.ni_list)):
+            nonint_multis_channel_dict = {}
+            for key_best_irreps in self.proj_dict['best_irreps']:
+                irrep = key_best_irreps[0]
+                irrep_dim = group.chardict[group_str+irrep].shape[0]
+                nonint_proj_dict_entry = self.nonint_proj_dict[cindex]
+                n_shells = len(self.nvecset_ident_SQreps[cindex])
+                channel_multis_summary_list = []
+                for shell_index in range(n_shells):
+                    for key in nonint_proj_dict_entry[(shell_index,
+                                                       isospin_int)]:
+                        if key == key_best_irreps:
+                            if cindex == 0:
+                                nSQs = self.nvecset_ident_SQreps[
+                                    cindex][shell_index]
+                            else:
+                                nSQs = self.nvecset_SQreps[
+                                    cindex][shell_index]
+                            multi = int(
+                                nonint_proj_dict_entry[
+                                    (shell_index, isospin_int)][key].shape[1]
+                                / irrep_dim)
+                            entry = [*nSQs, nPSQ, multi]
+                            channel_multis_summary_list.append(entry)
+                nonint_multis_channel_dict[key_best_irreps]\
+                    = channel_multis_summary_list
+            nonint_multiplicities.append(nonint_multis_channel_dict)
+        self.nonint_multiplicities = nonint_multiplicities
 
     def _get_ibest(self, E, L):
         """Only for non-zero P."""

@@ -37,6 +37,7 @@ Created July 2022.
 import numpy as np
 from scipy.interpolate import RegularGridInterpolator
 from scipy.linalg import block_diag
+from copy import deepcopy
 from .constants import QC_IMPL_DEFAULTS
 from .constants import TWOPI
 from .constants import FOURPI2
@@ -70,6 +71,9 @@ class Interpolable:
         self.cob_list_lens = {}
         self.smart_interp_tensors = {}
         self.smart_interps = {}
+        self.smart_poles_lists = {}
+        self.smart_textures_lists = {}
+        self.complement_textures_lists = {}
 
     def build_interpolator(self, Emin, Emax, Estep,
                            Lmin, Lmax, Lstep, project, irrep):
@@ -330,6 +334,9 @@ class Interpolable:
         for cob_matrix in cob_matrix_list:
             matrix_dim_list.append(len(cob_matrix))
 
+        smart_poles_list, smart_textures_list, complement_textures_list =\
+            self._get_smart_poles(matrix_dim_list, polefree_interp_data_list)
+
         # Add relevant data to self
         self.all_relevant_nvecSQ_lists[irrep] = all_relevant_nvecSQs_list
         self.polefree_interp_data_lists[irrep]\
@@ -341,6 +348,9 @@ class Interpolable:
         self.matrix_dim_lists[irrep] = matrix_dim_list
         self.smart_interp_tensors[irrep] = smart_interp_tensor
         self.smart_interps[irrep] = smart_interp
+        self.smart_poles_lists[irrep] = smart_poles_list
+        self.smart_textures_lists[irrep] = smart_textures_list
+        self.complement_textures_lists[irrep] = complement_textures_list
 
     def _grids_and_interp(self, Emin, Emax, Estep, Lmin, Lmax, Lstep,
                           project, irrep):
@@ -828,6 +838,49 @@ class Interpolable:
             polefree_interp_data_list.append(polefree_interp_data_row)
         return polefree_interp_data_list
 
+    def _get_smart_poles(self, matrix_dim_list, polefree_interp_data_list):
+        smart_poles_list = []
+        smart_textures_list = []
+        complement_textures_list = []
+        for index_tmp in range(len(matrix_dim_list)):
+            smart_pole_dict = {}
+            smart_poles = []
+            smart_textures = []
+            matrix_dimension = matrix_dim_list[index_tmp]
+            for i in range(matrix_dimension):
+                for j in range(matrix_dimension):
+                    if (i >= len(polefree_interp_data_list)
+                       or j >= len(polefree_interp_data_list[i])):
+                        break
+                    for pole_data in (polefree_interp_data_list[i][j][2]):
+                        if tuple(pole_data[2]) not in smart_pole_dict:
+                            texture = np.zeros((matrix_dimension,
+                                                matrix_dimension))
+                            texture[i][j] = 1.
+                            smart_pole_dict[tuple(pole_data[2])] = texture
+                            smart_poles.append(pole_data[2])
+                            smart_textures.append(deepcopy(texture))
+                        else:
+                            texture = np.zeros((matrix_dimension,
+                                                matrix_dimension))
+                            texture[i][j] = 1.
+                            smart_pole_dict[tuple(pole_data[2])] += texture
+                            smart_textures[smart_poles.index(pole_data[2])] +=\
+                                texture
+            complement_textures = []
+            for smart_texture in smart_textures:
+                complement_texture = np.ones((matrix_dimension,
+                                              matrix_dimension))\
+                                    - smart_texture
+                complement_textures.append(complement_texture)
+            smart_poles = np.array(smart_poles)
+            smart_textures = np.array(smart_textures)
+            complement_textures = np.array(complement_textures)
+            smart_poles_list.append(smart_poles)
+            smart_textures_list.append(smart_textures)
+            complement_textures_list.append(complement_textures)
+        return smart_poles_list, smart_textures_list, complement_textures_list
+
     def get_value(self, E=5.0, L=5.0, project=False, irrep=None):
         """Build the interpolable matrix in a shell-based way."""
         Emax = self.qcis.Emax
@@ -856,24 +909,21 @@ class Interpolable:
         return final_value
 
     def _get_value_smart_interpolated(self, E, L, irrep):
-        pole_parts_smooth_basis = []
         cob_list_len = self.cob_list_lens[irrep]
-        matrix_dimension = self.\
-            matrix_dim_lists[irrep][cob_list_len-self.
-                                    qcis.get_tbks_sub_indices(E, L)[0]-1]
         m1, m2, m3 = self._extract_masses()
-        for i in range(matrix_dimension):
-            pole_row_tmp = []
-            for j in range(matrix_dimension):
-                value_tmp = 1.
-                for pole_data in (self.polefree_interp_data_lists[
-                   irrep][i][j][2]):
-                    factor_tmp = E-self.\
-                        get_pole_candidate(L, *pole_data[2], m1, m2, m3)
-                    value_tmp = value_tmp/factor_tmp
-                pole_row_tmp = pole_row_tmp+[value_tmp]
-            pole_parts_smooth_basis.append(pole_row_tmp)
-        pole_parts_smooth_basis = np.array(pole_parts_smooth_basis)
+        smart_poles = self.smart_poles_lists[irrep][
+            cob_list_len-self.qcis.get_tbks_sub_indices(E, L)[0]-1]
+        smart_textures = self.smart_textures_lists[irrep][
+            cob_list_len-self.qcis.get_tbks_sub_indices(E, L)[0]-1]
+        complement_textures = self.complement_textures_lists[irrep][
+            cob_list_len-self.qcis.get_tbks_sub_indices(E, L)[0]-1]
+        omegas =\
+            np.sqrt(smart_poles*FOURPI2/L**2+np.array([m1**2, m2**2, m3**2]))
+        pole_values = 1./(E-omegas.sum(1))
+        pole_matrices =\
+            np.multiply(smart_textures, pole_values[:, None, None])\
+            + complement_textures
+        pole_parts_smooth_basis = pole_matrices.prod(0)
         cob_matrix =\
             self.cob_matrix_lists[irrep][cob_list_len
                                          - self.qcis.
@@ -926,6 +976,13 @@ class Interpolable:
                         value_tmp = value_tmp/factor_tmp
                     row_tmp = row_tmp+[value_tmp]
                 else:
+                    warnings.warn(f"\n{bcolors.WARNING}"
+                                  "Interpolation failed, either because "
+                                  "entry is None or because "
+                                  "length of entry's grid <= 1 in at least "
+                                  "one dimension. "
+                                  "Setting value to zero."
+                                  f"{bcolors.ENDC}")
                     row_tmp = row_tmp+[0.]
             final_value_smooth_basis.append(row_tmp)
         final_value_smooth_basis = np.array(final_value_smooth_basis)
