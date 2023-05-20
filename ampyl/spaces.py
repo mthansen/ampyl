@@ -2018,6 +2018,9 @@ class QCIndexSpace:
 
     def populate_nonint_multiplicities(self):
         """Populate the non-interacting multiplicities."""
+        if len(self.fcs.fc_list) == 0 or self.fcs.fc_list[0].isospin is None:
+            self.nonint_multiplicities = None
+            return
         nPSQ = self.nPSQ
         isospin_int = int(self.fcs.fc_list[0].isospin)
         group = self.group
