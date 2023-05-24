@@ -39,6 +39,8 @@ from scipy.linalg import block_diag
 from scipy.optimize import root_scalar
 from .constants import TWOPI
 from .constants import FOURPI2
+from .constants import EPSILON4
+from .constants import EPSILON10
 from .functions import QCFunctions
 from .functions import BKFunctions
 from .flavor import Particle
@@ -247,7 +249,7 @@ class QC:
 
     def get_value(self, E=None, L=None, k_params=None, project=True,
                   irrep=None, version='kdf_zero_1+',
-                  rescale=1.0):
+                  rescale=1.0, shift=0.):
         r"""
         Get value.
 
@@ -281,7 +283,7 @@ class QC:
                 K = self.k.get_value(E, L, pcotdelta_parameter_lists,
                                      project, irrep)*rescale
                 ident_tmp = np.identity(len(FplusG))
-                return np.linalg.det(ident_tmp+(FplusG)@K)
+                return np.linalg.det(ident_tmp+(FplusG)@K)-shift
 
             F = self.f.get_value(E, L, project, irrep)/rescale
             G = self.g.get_value(E, L, project, irrep)/rescale
@@ -297,6 +299,108 @@ class QC:
 
             if version == 'kdf_zero_f+g_inv':
                 return np.linalg.det(np.linalg.inv(F+G)+K)
+
+    def get_roots_at_Lmax(self, Emax_for_roots=None, L_for_roots=None,
+                          n_steps=10, k_params=None, project=True, irrep=None,
+                          version='kdf_zero_1+_fgcombo', rescale=1.0,
+                          also_search_brackets=False):
+        L = L_for_roots
+        nonint_energies = self\
+            ._get_nonint_energies(Emax_for_roots, k_params, irrep, L)
+        brackets = self._get_brackets(Emax_for_roots, nonint_energies)
+        roots = []
+        for bracket in brackets:
+            roots += self._try_to_find_roots_at_Lmax(L, n_steps, bracket,
+                                                     k_params, project, irrep,
+                                                     version, rescale)
+        roots = np.array(roots)
+        roots_rounded = np.round(roots, 10)
+        roots_unique_rounded = np.unique(roots_rounded)
+        roots_unique = []
+        for unique_root in roots_unique_rounded:
+            locations = np.where(roots_rounded == unique_root)[0]
+            already_included = False
+            for root in roots[locations]:
+                qc_value = self.get_value(E=root, L=L, k_params=k_params,
+                                          project=project, irrep=irrep,
+                                          version=version, rescale=rescale)
+                if np.abs(qc_value) < EPSILON10 and not already_included:
+                    roots_unique.append(root)
+                    already_included = True
+        if not also_search_brackets:
+            return roots
+        roots_down_shift = []
+        for bracket in brackets:
+            neg_shift = -0.1
+            roots_down_shift += self.\
+                _try_to_find_roots_at_Lmax(L, n_steps, bracket,
+                                           k_params, project, irrep,
+                                           version, rescale, shift=neg_shift)
+        roots_down_shift = np.array(roots_down_shift)
+        roots_down_shift = np.unique(np.round(roots_down_shift, 15))
+        roots_up_shift = []
+        for bracket in brackets:
+            pos_shift = 0.1
+            roots_up_shift += self.\
+                _try_to_find_roots_at_Lmax(L, n_steps, bracket,
+                                           k_params, project, irrep,
+                                           version, rescale, shift=pos_shift)
+        roots_up_shift = np.array(roots_up_shift)
+        roots_up_shift = np.unique(np.round(roots_up_shift, 15))
+        return roots, roots_down_shift, roots_up_shift
+
+    def _get_brackets(self, Emax_for_roots, nonint_energies,
+                      Emin_for_roots=2.001):
+        brackets = []
+        brackets.append([Emin_for_roots, nonint_energies[0]])
+        for i in range(len(nonint_energies)-1):
+            brackets.append([nonint_energies[i], nonint_energies[i+1]])
+        brackets.append([nonint_energies[i+1], Emax_for_roots])
+        return brackets
+
+    def _get_nonint_energies(self, Emax_for_roots, k_params, irrep, L):
+        multis_pipipi = self.qcis.nonint_multiplicities[0][irrep]
+        multis_rhopi = self.qcis.nonint_multiplicities[1][irrep]
+        nonint_Evals = []
+        for multi in multis_pipipi:
+            pSQs = FOURPI2*np.array(multi[:3])/L**2
+            m_array = np.array(self.fplusg._extract_masses())
+            omegas = np.sqrt(m_array**2+pSQs)
+            E_nonint = omegas.sum()
+            if E_nonint < Emax_for_roots:
+                nonint_Evals.append(E_nonint)
+        for multi in multis_rhopi:
+            pSQs = FOURPI2*np.array(multi[:2])/L**2
+            mpi = self.fplusg._extract_masses()[0]
+            mrho = k_params[0][0][1]
+            m_array = np.array([mpi, mrho])
+            omegas = np.sqrt(m_array**2+pSQs)
+            E_nonint = omegas.sum()
+            if E_nonint < Emax_for_roots:
+                nonint_Evals.append(E_nonint)
+        nonint_Evals = np.sort(np.array(nonint_Evals))
+        return nonint_Evals
+
+    def _try_to_find_roots_at_Lmax(self, Lmax=6., n_steps=10, bracket=None,
+                                   k_params=None, project=True, irrep=None,
+                                   version='kdf_zero_1+_fgcombo',
+                                   rescale=1.0, shift=0.):
+        Emin = bracket[0]+EPSILON4
+        Emax = bracket[1]-EPSILON4
+        Eslices = np.linspace(Emin, Emax, n_steps)
+        roots = []
+        for i in range(len(Eslices)-1):
+            E1 = Eslices[i]
+            E2 = Eslices[i+1]
+            try:
+                root = root_scalar(self.get_value,
+                                   args=(Lmax, k_params, project, irrep,
+                                         version, rescale, shift),
+                                   bracket=[E1, E2]).root
+                roots = roots+[root]
+            except ValueError:
+                continue
+        return roots
 
     def get_qc_curve(self, Emin=None, Emax=None, Estep=None, L=None,
                      k_params=None, project=True, irrep=None,
@@ -335,28 +439,80 @@ class QC:
         qc_values = np.array(qc_values)
         return E_values, qc_values
 
-    def get_energy_curve(self, Lstart=None, Lfinish=None, deltaL=None,
-                         Estart=None, Eshift=None, dE=None,
+    def get_energy_curve(self, L_start=None, L_finish=None, deltaL_target=None,
+                         Estart=None, dE=None,
                          k_params=None, project=True, irrep=None,
-                         version='kdf_zero_1+_fgcombo', rescale=1.0):
-        L_vals = np.arange(Lstart, Lfinish, deltaL)
-        Estart = Estart+Eshift
-        Evalsfinal = []
-        Lvalsfinal = []
-        for L_val in L_vals:
+                         version='kdf_zero_1+_fgcombo', rescale=1.0,
+                         shift_upper=0.01, shift_lower=-0.01,
+                         max_iterations=500):
+        Evals_final = []
+        deltaL_original_target = deltaL_target
+        lower_Evals_final = []
+        upper_Evals_final = []
+        upper_shifts = []
+        lower_shifts = []
+        Lvals_final = []
+        E_lower = Estart-dE
+        E_upper = Estart+dE
+        L_val = L_start
+        iteration = 0
+        while L_val > L_finish:
+            iteration += 1
+            if iteration > max_iterations:
+                return np.array(Lvals_final), np.array(Evals_final),\
+                    np.array(lower_Evals_final), np.array(upper_Evals_final),\
+                    np.array(upper_shifts), np.array(lower_shifts)
             try:
-                rs = root_scalar(self.get_value,
-                                 args=(L_val,
-                                       k_params,
-                                       project,
-                                       irrep,
-                                       version,
-                                       rescale),
-                                 bracket=[Estart-dE, Estart+dE]).root
-                dE = np.abs(rs-Estart)*5
-                Evalsfinal = Evalsfinal+[rs]
-                Lvalsfinal = Lvalsfinal+[L_val]
-                Estart = rs
+                rs, rs_upper, rs_lower = self.\
+                    _get_root_set(k_params, project, irrep, version, rescale,
+                                  E_lower, E_upper, L_val,
+                                  shift_upper, shift_lower)
+                [E_lower, E_upper] = np.sort([rs_lower, rs_upper])
+                lower_Evals_final = lower_Evals_final+[E_lower]
+                upper_Evals_final = upper_Evals_final+[E_upper]
+                Evals_final = Evals_final+[rs]
+                Lvals_final = Lvals_final+[L_val]
+                upper_shifts = upper_shifts+[shift_upper]
+                lower_shifts = lower_shifts+[shift_lower]
+                if np.abs(deltaL_target) < np.abs(deltaL_original_target):
+                    deltaL_target = deltaL_target*4.
+                if shift_upper < 0.1:
+                    shift_upper = shift_upper*2.
+                    shift_lower = shift_lower*2.
+                L_next = L_val+deltaL_target
+                if len(Evals_final) > 1:
+                    E_lower = np.interp(L_next, Lvals_final, lower_Evals_final)
+                    E_upper = np.interp(L_next, Lvals_final, upper_Evals_final)
+                L_val = L_next
             except ValueError:
-                return np.array(Lvalsfinal), np.array(Evalsfinal)
-        return np.array(Lvalsfinal), np.array(Evalsfinal)
+                if np.abs(deltaL_target) > 1.e-8:
+                    L_val = L_val-deltaL_target
+                    deltaL_target = deltaL_target/2.
+                    L_val = L_val+deltaL_target
+                    continue
+                elif shift_upper > 1.e-3:
+                    shift_upper = shift_upper/2.
+                    shift_lower = shift_lower/2.
+                    continue
+                else:
+                    return np.array(Lvals_final), np.array(Evals_final)
+        return np.array(Lvals_final), np.array(Evals_final),\
+            np.array(lower_Evals_final), np.array(upper_Evals_final),\
+            np.array(upper_shifts), np.array(lower_shifts)
+
+    def _get_root_set(self, k_params, project, irrep, version,
+                      rescale, E_lower, E_upper, L_val,
+                      shift_upper, shift_lower):
+        rs = root_scalar(self.get_value,
+                         args=(L_val, k_params, project, irrep, version,
+                               rescale),
+                         bracket=[E_lower, E_upper]).root
+        rs_upper = root_scalar(self.get_value,
+                               args=(L_val, k_params, project, irrep, version,
+                                     rescale, shift_upper),
+                               bracket=[E_lower, E_upper]).root
+        rs_lower = root_scalar(self.get_value,
+                               args=(L_val, k_params, project, irrep, version,
+                                     rescale, shift_lower),
+                               bracket=[E_lower, E_upper]).root
+        return rs, rs_upper, rs_lower
