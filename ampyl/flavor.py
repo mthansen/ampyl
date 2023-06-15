@@ -59,13 +59,17 @@ class Particle:
     :type isospin_multiplet: bool
     :param isospin: isospin of the particle (default is ``None``)
     :type isospin: float
+
+    :raises ValueError: If `isospin_multiplet` is ``True`` but `isospin` is
+        ``None``.
     """
     def __init__(self, mass=1., spin=0., flavor='pi',
                  isospin_multiplet=False, isospin=None):
         if not isospin_multiplet and isospin is not None:
             isospin_multiplet = True
         if isospin_multiplet and isospin is None:
-            isospin = 1.
+            raise ValueError("isospin cannot be None when isospin_multiplet "
+                             "is True")
 
         self._mass = mass
         self._spin = spin
@@ -143,7 +147,7 @@ class Particle:
         self._isospin = isospin
 
     def __eq__(self, other):
-        """Check if two particles are equal."""
+        """Check if two Particle objects are equivalent."""
         if not isinstance(other, Particle):
             return False
         return (self.mass == other.mass and
@@ -153,7 +157,7 @@ class Particle:
                 self.isospin == other.isospin)
 
     def __str__(self):
-        """Return a string representation of the particle object."""
+        """Return a string representation of the Particle object."""
         particle_str = "Particle with the following properties:\n"
         particle_str += f"    mass: {self.mass},\n"
         particle_str += f"    spin: {self.spin},\n"
@@ -171,7 +175,7 @@ class FlavorChannel:
     :param n_particles: number of particles in the flavor channel
     :type n_particles: int
     :param particles: particles in the flavor channel. If not specified,
-        the channel will be initialized with n_particles default Particle
+        the channel will be initialized with `n_particles` default Particle
         objects.
     :type particles: list of :class:`Particle` objects, optional
     :param isospin_channel: specifies whether this is an isospin channel
@@ -198,12 +202,12 @@ class FlavorChannel:
     :raises ValueError: If `n_particles` is not an int or if `n_particles` is
         less than 2.
 
+    :raises ValueError: If `isospin_channel` is ``True`` but `isospin` is
+        ``None``.
+
     .. note::
         If `particles` is not specified, the channel will be initialized with
         `n_particles` default :class:`Particle` objects.
-
-        If `isospin_channel` is True but `isospin` is None, `isospin_channel`
-        will be set to False and a warning will be issued.
 
     :Example:
 
@@ -240,25 +244,20 @@ class FlavorChannel:
         if not isospin_channel and isospin is not None:
             isospin_channel = True
         if isospin_channel and isospin is None:
-            isospin_channel = False
-            warnings.warn(f"\n{bcolors.WARNING}"
-                          "isospin_channel is True but isospin is None; "
-                          "setting isospin_channel to False"
-                          f"{bcolors.ENDC}", stacklevel=2)
+            raise ValueError("isospin cannot be None when isospin_channel "
+                             "is True")
 
         self._particles = particles
         self._isospin_channel = isospin_channel
         self._isospin = isospin
 
         self.particles = self._particles
-
         self.masses = self._get_masses()
         self.spins = self._get_spins()
         self.flavors = self._get_flavors()
         self.isospins = self._get_isospins()
 
         self.allowed_total_isospins = self._get_allowed_total_isospins()
-
         self.isospin_channel = self._isospin_channel
         self.isospin = self._isospin
         self.n_particles = self._n_particles
@@ -666,7 +665,7 @@ class SpectatorChannel:
         return self._n_params_set
 
     def __eq__(self, other):
-        """Return True if the two SpectatorChannel objects are equal."""
+        """Check if two SpectatorChannel objects are equivalent."""
         if not isinstance(other, SpectatorChannel):
             return False
         if not (self.fc == other.fc):

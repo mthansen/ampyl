@@ -970,19 +970,33 @@ class QCIndexSpace:
         """Populate the non-interacting projection dictionary."""
         nonint_proj_dict = []
         for nic_index in range(len(self.fcs.ni_list)):
-            if self.fcs.ni_list[nic_index].n_particles == 2:
+            n_particles = self.fcs.ni_list[nic_index].n_particles
+            two_particles = (n_particles == 2)
+            three_particles = (n_particles == 3)
+            first_spin = self.fcs.ni_list[nic_index].spins[0]
+            if two_particles:
                 isospin_channel = self.fcs.ni_list[nic_index].isospin_channel
                 nonint_proj_dict\
                     .append(self.group.get_noninttwo_proj_dict(
                         qcis=self, nic_index=nic_index,
                         isospin_channel=isospin_channel))
-            elif self.fcs.ni_list[nic_index].n_particles == 3:
+            elif three_particles and first_spin == 0.:
                 nonint_proj_dict.append(
                     self.group.get_nonint_proj_dict(qcis=self,
                                                     nic_index=nic_index))
+            elif three_particles and first_spin == 1.:
+                nonint_proj_dict.append(
+                    self.group.
+                    get_nonint_proj_dict_vector(qcis=self,
+                                                nic_index=nic_index))
+            elif three_particles and self.half_spin:
+                nonint_proj_dict.append(
+                    self.group.get_nonint_proj_dict_half(qcis=self,
+                                                         nic_index=nic_index))
             else:
-                raise ValueError("only two and three particles supported "
-                                 + "by nonint_proj_dict")
+                raise ValueError("only two and three particles with certain "
+                                 "spin combinations are supported by "
+                                 "nonint_proj_dict")
         self.nonint_proj_dict = nonint_proj_dict
 
     def _get_grid_nonzero_nP(self, Emax, Lmax, deltaE, deltaL):
