@@ -698,6 +698,59 @@ class Groups:
         nonint_rot_matrix = np.array(nonint_rot_matrix[1:])
         return nonint_rot_matrix
 
+    def generate_induced_rep_nonint_spin(self,
+                                         identical_arr=np.zeros((1, 3, 3)),
+                                         nonidentical_arr=np.zeros((1, 3, 3)),
+                                         first_spin=0.0, second_spin=0.0,
+                                         third_spin=0.0,
+                                         g_elem=np.identity(3),
+                                         definite_iso=True):
+        """
+        Generate the non-interacting induced representation matrix,
+        including spin.
+        """
+        loc_inds = []
+        identical_arr_rot = np.moveaxis(
+            g_elem@np.moveaxis(identical_arr, 0, 2), 2, 0)
+        for i in range(len(identical_arr)):
+            identical_arr_rot_entry = identical_arr_rot[i]
+            loc_ind = []
+            for pion_order in PION_ORDERS:
+                loc_ind_tmp = np.where(
+                    np.all(identical_arr
+                           == identical_arr_rot_entry[pion_order],
+                           axis=(1, 2))
+                    )[0]
+                loc_ind = loc_ind+list(loc_ind_tmp)
+            loc_ind = np.unique(loc_ind)
+            assert len(loc_ind) == 1
+            loc_inds = loc_inds+[loc_ind[0]]
+        nonint_rot_matrix = [[]]
+        for loc_ind in loc_inds:
+            nonint_rot_row = np.zeros(len(loc_inds))
+            nonint_rot_row[loc_ind] = 1.0
+            nonint_rot_matrix = nonint_rot_matrix+[nonint_rot_row]
+        nonint_rot_matrix = np.array(nonint_rot_matrix[1:])
+        if np.abs(first_spin - int(first_spin)) > EPSILON10:
+            raise ValueError("first_spin must be an integer")
+        if np.abs(second_spin - int(second_spin)) > EPSILON10:
+            raise ValueError("second_spin must be an integer")
+        if np.abs(third_spin - int(third_spin)) > EPSILON10:
+            raise ValueError("third_spin must be an integer")
+        first_spin = int(first_spin)
+        second_spin = int(second_spin)
+        third_spin = int(third_spin)
+        wig_d_first_spin = self.generate_wigner_d(first_spin, g_elem,
+                                                  real_harmonics=True).T
+        wig_d_second_spin = self.generate_wigner_d(second_spin, g_elem,
+                                                   real_harmonics=True).T
+        wig_d_third_spin = self.generate_wigner_d(third_spin, g_elem,
+                                                  real_harmonics=True).T
+        induced_rep_tmp = np.kron(nonint_rot_matrix, wig_d_first_spin)
+        induced_rep_tmp2 = np.kron(induced_rep_tmp, wig_d_second_spin)
+        induced_rep = np.kron(induced_rep_tmp2, wig_d_third_spin)
+        return induced_rep
+
     def get_large_proj(self, nP=np.array([0, 0, 0]), irrep='A1PLUS', irow=0,
                        nvec_arr=np.zeros((1, 3)),
                        ellm_set=[[0, 0]]):
@@ -756,6 +809,49 @@ class Groups:
                                                            nonidentical_arr,
                                                            g_elem,
                                                            definite_iso)
+            proj = proj+induced_rep*bT[g_ind]
+        return proj
+
+    def get_large_proj_nonint_spin(self, nP=np.array([0, 0, 0]),
+                                   irrep='A1PLUS', irow=0,
+                                   identical_arr=np.zeros((1, 3, 3)),
+                                   nonidentical_arr=np.zeros((1, 3, 3)),
+                                   first_spin=0.0, second_spin=0.0,
+                                   third_spin=0.0,
+                                   definite_iso=True):
+        """Get a particular large projector, including spin."""
+        if (nP == np.array([0, 0, 0])).all():
+            group_str = 'OhP'
+            group = self.OhP
+            bT = self.chardict[group_str+'_'+irrep][irow]
+        elif (nP == np.array([0, 0, 1])).all():
+            group_str = 'Dic4'
+            group = self.Dic4
+            bT = self.chardict[group_str+'_'+irrep][irow]
+        elif (nP == np.array([0, 1, 1])).all():
+            group_str = 'Dic2'
+            group = self.Dic2
+            bT = self.chardict[group_str+'_'+irrep][irow]
+        else:
+            return ValueError("group not yet supported by get_large_proj")
+        if definite_iso:
+            dim = len(identical_arr)+len(nonidentical_arr)
+        else:
+            dim = len(identical_arr)
+        total_spin_dimension = int((2.0*first_spin+1.0)*(2.0*second_spin+1.0)
+                                   * (2.0*third_spin+1.0))
+        dim = dim*total_spin_dimension
+        proj = np.zeros((dim, dim))
+        for g_ind in range(len(group)):
+            g_elem = group[g_ind]
+            induced_rep = self.\
+                generate_induced_rep_nonint_spin(identical_arr,
+                                                 nonidentical_arr,
+                                                 first_spin,
+                                                 second_spin,
+                                                 third_spin,
+                                                 g_elem,
+                                                 definite_iso)
             proj = proj+induced_rep*bT[g_ind]
         return proj
 
@@ -985,6 +1081,69 @@ class Groups:
                         non_proj_dict[keytmp] = proj_tmp.real
         return non_proj_dict
 
+    def get_nonint_proj_dict_shell_vector(self, qcis=None, cindex=0,
+                                          definite_iso=False, isovalue=None,
+                                          shell_index=None):
+        """Get the dictionary of small projectors for a given qcis."""
+        if qcis is None:
+            raise ValueError("qcis cannot be None")
+        nP = qcis.nP
+        irrep_set = qcis.fvs.irrep_set
+        identical_arr = qcis.nvecset_ident_batched[cindex][shell_index]
+        nonidentical_arr = qcis.nvecset_batched[cindex][shell_index]
+
+        if (nP@nP != 0) and (nP@nP != 1) and (nP@nP != 2):
+            raise ValueError("momentum = ", nP, " is not yet supported")
+        non_proj_dict = {}
+        if (nP@nP == 0):
+            group_str = 'OhP'
+        if (nP@nP == 1):
+            group_str = 'Dic4'
+        if (nP@nP == 2):
+            group_str = 'Dic2'
+
+        first_spin = qcis.fcs.ni_list[cindex].spins[0]
+        second_spin = qcis.fcs.ni_list[cindex].spins[1]
+        third_spin = qcis.fcs.ni_list[cindex].spins[2]
+        for i in range(len(irrep_set)):
+            irrep = irrep_set[i]
+            for irow in range(len(self.bTdict[group_str+'_'+irrep])):
+                proj = self.get_large_proj_nonint_spin(nP, irrep, irow,
+                                                       identical_arr,
+                                                       nonidentical_arr,
+                                                       first_spin,
+                                                       second_spin,
+                                                       third_spin,
+                                                       definite_iso)
+                eigvals, eigvecs = np.linalg.eig(proj)
+                eigvalsround = (np.round(np.abs(eigvals), 10))
+                example_eigval = 0.0
+                for i in range(len(eigvalsround)):
+                    eigval = eigvalsround[i]
+                    if np.abs(eigval) > 1.0e-10:
+                        if example_eigval == 0.0:
+                            example_eigval = eigval
+                        else:
+                            assert np.abs(
+                                example_eigval-eigval
+                                ) < 1.0e-10
+                if np.abs(example_eigval) > 1.0e-10:
+                    proj = proj/example_eigval
+                if definite_iso:
+                    isoproj = self.get_iso_projection(qcis, cindex, isovalue,
+                                                      shell_index)
+                    isorotproj = isoproj@proj@np.transpose(isoproj)
+                else:
+                    isorotproj = proj
+                finalproj = self._get_final_proj(isorotproj)
+                if len(finalproj) != 0:
+                    non_proj_dict[(irrep, irow)] = finalproj
+                for keytmp in non_proj_dict:
+                    proj_tmp = non_proj_dict[keytmp]
+                    if (proj_tmp.imag == np.zeros(proj_tmp.shape)).all():
+                        non_proj_dict[keytmp] = proj_tmp.real
+        return non_proj_dict
+
     def get_noninttwo_proj_dict_shell(self, qcis=None, cindex=0,
                                       definite_iso=False, isovalue=None,
                                       shell_index=None):
@@ -1120,6 +1279,114 @@ class Groups:
                                                     isovalue,
                                                     shell_index)
                 master_dict[(shell_index, isovalue)] = non_proj_dict
+                iso_shell_total = 0
+                if definite_iso:
+                    if len(non_proj_dict) == 0:
+                        summary_str\
+                            += f"    I3 = {isovalue} does not contain this "\
+                            + "shell\n"
+                    else:
+                        summary_str\
+                            += f"    I3 = {isovalue} contains...\n"
+                else:
+                    if len(non_proj_dict) == 0:
+                        summary_str\
+                            += "    Channel does not contain this shell\n"
+                    else:
+                        summary_str += "    Channel contains...\n"
+                for dict_ent in non_proj_dict:
+                    irrep, row = dict_ent
+                    dim = 1
+                    if irrep[0] == 'E':
+                        dim = 2
+                    if irrep[0] == 'T':
+                        dim = 3
+                    n_embedded = int(len(non_proj_dict[dict_ent].T)/dim)
+                    if row == 0:
+                        row_zero_value = n_embedded
+                    else:
+                        if row_zero_value != n_embedded:
+                            print(f'Warning: row_zero_value = '
+                                  f'{row_zero_value}, n_embedded = '
+                                  f'{n_embedded}')
+                    shell_total = shell_total+n_embedded
+                    iso_shell_total = iso_shell_total+n_embedded
+                    if row == 0:
+                        if n_embedded == 1:
+                            s = ''
+                        else:
+                            s = 's'
+                        shell_covered = shell_total+n_embedded*(dim-1)
+                        iso_shell_covered = iso_shell_total+n_embedded*(dim-1)
+                        if definite_iso:
+                            summary_str +=\
+                                (f"       {irrep} "
+                                 f"(appears {n_embedded} time{s}), "
+                                 f"covered {shell_covered}/{nstates} "
+                                 f"({iso_shell_covered} for this isospin)\n")
+                        else:
+                            summary_str +=\
+                                (f"       {irrep} "
+                                 f"(appears {n_embedded} time{s}), "
+                                 f"covered {shell_covered}/{nstates}\n")
+            assert shell_total == nstates
+        summary_str = summary_str[:-1]
+        master_dict['summary'] = summary_str
+        return master_dict
+
+    def get_nonint_proj_dict_half(self, qcis=None, nic_index=0):
+        raise ValueError("get_nonint_proj_dict currently only supports "
+                         "integer spins")
+
+    def get_nonint_proj_dict_vector(self, qcis=None, nic_index=0):
+        """Get the dictionary of small projectors for a given qcis."""
+        master_dict = {}
+        if qcis is None:
+            raise ValueError("qcis cannot be None")
+        definite_iso = qcis.fcs.fc_list[nic_index].isospin_channel
+        if not (qcis.fcs.fc_list[nic_index].flavors[0]
+                == qcis.fcs.fc_list[nic_index].flavors[1]
+                == qcis.fcs.fc_list[nic_index].flavors[2]):
+            raise ValueError("get_nonint_proj_dict currently only supports "
+                             + "identical flavors")
+        row_zero_value = 0
+        summary_str = ""
+        nshells = len(qcis.nvecset_ident_reps[nic_index])
+        first_spin = qcis.fcs.ni_list[nic_index].spins[0]
+        second_spin = qcis.fcs.ni_list[nic_index].spins[1]
+        third_spin = qcis.fcs.ni_list[nic_index].spins[2]
+        total_spin_dimension = int((2.0*first_spin+1.0)*(2.0*second_spin+1.0)
+                                   * (2.0*third_spin+1.0))
+        # flavors = qcis.fcs.ni_list[nic_index].flavors
+        for shell_index in range(nshells):
+            shell_total = 0
+            if definite_iso:
+                nident =\
+                    len(qcis.nvecset_ident_batched[nic_index][shell_index])\
+                    * total_spin_dimension
+                nrest =\
+                    len(qcis.nvecset_batched[nic_index][shell_index])\
+                    * total_spin_dimension
+                nstates = nident+nrest
+            else:
+                nstates =\
+                    len(qcis.nvecset_ident_batched[nic_index][shell_index])\
+                    * total_spin_dimension
+            summary_str +=\
+                f"shell_index = {shell_index} ({nstates} states):\n"
+            rep_mom = str(qcis.nvecset_ident_reps[nic_index][shell_index])
+            rep_mom = rep_mom.replace(' [', (' '*30)+'[')
+            summary_str += "    representative momenta = "+rep_mom+"\n"
+            if definite_iso:
+                isoset = range(4)
+            else:
+                isoset = range(1)
+            for isovalue in isoset:
+                non_proj_dict =\
+                    self.get_nonint_proj_dict_shell_vector(qcis, nic_index,
+                                                           definite_iso,
+                                                           isovalue,
+                                                           shell_index)
                 iso_shell_total = 0
                 if definite_iso:
                     if len(non_proj_dict) == 0:
