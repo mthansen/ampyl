@@ -353,6 +353,7 @@ class QC:
                       Emin_for_roots=2.001):
         brackets = []
         brackets.append([Emin_for_roots, nonint_energies[0]])
+        i = -1
         for i in range(len(nonint_energies)-1):
             brackets.append([nonint_energies[i], nonint_energies[i+1]])
         brackets.append([nonint_energies[i+1], Emax_for_roots])
