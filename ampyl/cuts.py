@@ -913,21 +913,25 @@ class Interpolable:
         m1, m2, m3 = self._extract_masses()
         smart_poles = self.smart_poles_lists[irrep][
             cob_list_len-self.qcis.get_tbks_sub_indices(E, L)[0]-1]
-        smart_textures = self.smart_textures_lists[irrep][
-            cob_list_len-self.qcis.get_tbks_sub_indices(E, L)[0]-1]
-        complement_textures = self.complement_textures_lists[irrep][
-            cob_list_len-self.qcis.get_tbks_sub_indices(E, L)[0]-1]
-        omegas =\
-            np.sqrt(smart_poles*FOURPI2/L**2+np.array([m1**2, m2**2, m3**2]))
-        pole_values = 1./(E-omegas.sum(1))
-        pole_matrices =\
-            np.multiply(smart_textures, pole_values[:, None, None])\
-            + complement_textures
-        pole_parts_smooth_basis = pole_matrices.prod(0)
-        cob_matrix =\
-            self.cob_matrix_lists[irrep][cob_list_len
-                                         - self.qcis.
-                                         get_tbks_sub_indices(E, L)[0]-1]
+        if len(smart_poles) == 0:
+            pole_parts_smooth_basis = 1.
+        else:
+            smart_textures = self.smart_textures_lists[irrep][
+                cob_list_len-self.qcis.get_tbks_sub_indices(E, L)[0]-1]
+            complement_textures = self.complement_textures_lists[irrep][
+                cob_list_len-self.qcis.get_tbks_sub_indices(E, L)[0]-1]
+            omegas =\
+                np.sqrt(smart_poles*FOURPI2/L**2+np.array([m1**2, m2**2, m3**2]))
+            pole_values = 1./(E-omegas.sum(1))
+            pole_matrices =\
+                np.multiply(smart_textures, pole_values[:, None, None])\
+                + complement_textures
+            pole_parts_smooth_basis = pole_matrices.prod(0)
+        if self.cob_list_lens != {}:
+            cob_matrix =\
+                self.cob_matrix_lists[irrep][cob_list_len
+                                             - self.qcis.
+                                             get_tbks_sub_indices(E, L)[0]-1]
         smooth_value = self.smart_interps[irrep]((E, L))
         warnings.warn(f"\n{bcolors.WARNING}"
                       "Resizing smooth_value to match the dimension of the "
