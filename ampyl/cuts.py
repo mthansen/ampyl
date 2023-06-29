@@ -105,8 +105,14 @@ class Interpolable:
         assert project
         nP = self.qcis.nP
         if nP@nP != 0:
-            assert self.qcis.fvs.qc_impl['use_cob_matrices'] is False
-            assert self.qcis.fvs.qc_impl['reduce_size'] is False
+            use_cob_matrices = QC_IMPL_DEFAULTS['use_cob_matrices']
+            if 'use_cob_matrices' in self.qcis.fvs.qc_impl:
+                use_cob_matrices = self.qcis.fvs.qc_impl['use_cob_matrices']
+            assert use_cob_matrices is False
+            reduce_size = QC_IMPL_DEFAULTS['reduce_size']
+            if 'reduce_size' in self.qcis.fvs.qc_impl:
+                reduce_size = self.qcis.fvs.qc_impl['reduce_size']
+            assert reduce_size is False
         # Generate grids and interp structure
         L_grid, E_grid, max_interp_dim, interp_data_list = self\
             ._grids_and_interp(Emin, Emax, Estep, Lmin, Lmax, Lstep,
@@ -506,6 +512,10 @@ class Interpolable:
                 print('nP != [0 0 0] indexing')
             mspec = m1
             ibest = self.qcis._get_ibest(E, L)
+            ibest = 0
+            warnings.warn(f"\n{bcolors.WARNING}"
+                          "ibest is set to 0. This is a temporary fix."
+                          f"{bcolors.ENDC}")
             if len(self.qcis.tbks_list) > 1:
                 raise ValueError("get_value within G assumes tbks_list is "
                                  + "length one.")
@@ -591,6 +601,10 @@ class Interpolable:
             try:
                 if nP@nP != 0:
                     ibest = self.qcis._get_ibest(E, L)
+                    ibest = 0
+                    warnings.warn(f"\n{bcolors.WARNING}"
+                                  "ibest is set to 0. This is a temporary fix."
+                                  f"{bcolors.ENDC}")
                     proj_tmp_right = np.array(self.qcis
                                               .sc_proj_dicts_by_shell[
                                                   sc_index_col][ibest]
@@ -909,40 +923,50 @@ class Interpolable:
         return final_value
 
     def _get_value_smart_interpolated(self, E, L, irrep):
-        cob_list_len = self.cob_list_lens[irrep]
+        if self.cob_list_lens != {}:
+            cob_list_len = self.cob_list_lens[irrep]
+        else:
+            cob_list_len = 0
         m1, m2, m3 = self._extract_masses()
-        smart_poles = self.smart_poles_lists[irrep][
-            cob_list_len-self.qcis.get_tbks_sub_indices(E, L)[0]-1]
-        if len(smart_poles) == 0:
+        if len(self.smart_poles_lists[irrep]) == 0:
             pole_parts_smooth_basis = 1.
         else:
-            smart_textures = self.smart_textures_lists[irrep][
+            smart_poles = self.smart_poles_lists[irrep][
                 cob_list_len-self.qcis.get_tbks_sub_indices(E, L)[0]-1]
-            complement_textures = self.complement_textures_lists[irrep][
-                cob_list_len-self.qcis.get_tbks_sub_indices(E, L)[0]-1]
-            omegas =\
-                np.sqrt(smart_poles*FOURPI2/L**2+np.array([m1**2, m2**2, m3**2]))
-            pole_values = 1./(E-omegas.sum(1))
-            pole_matrices =\
-                np.multiply(smart_textures, pole_values[:, None, None])\
-                + complement_textures
-            pole_parts_smooth_basis = pole_matrices.prod(0)
-        if self.cob_list_lens != {}:
+            if len(smart_poles) == 0:
+                pole_parts_smooth_basis = 1.
+            else:
+                smart_textures = self.smart_textures_lists[irrep][
+                    cob_list_len-self.qcis.get_tbks_sub_indices(E, L)[0]-1]
+                complement_textures = self.complement_textures_lists[irrep][
+                    cob_list_len-self.qcis.get_tbks_sub_indices(E, L)[0]-1]
+                omegas =\
+                    np.sqrt(smart_poles*FOURPI2/L**2
+                            + np.array([m1**2, m2**2, m3**2]))
+                pole_values = 1./(E-omegas.sum(1))
+                pole_matrices =\
+                    np.multiply(smart_textures, pole_values[:, None, None])\
+                    + complement_textures
+                pole_parts_smooth_basis = pole_matrices.prod(0)
+        if self.cob_list_lens != {} and len(self.cob_matrix_lists[irrep]) != 0:
             cob_matrix =\
                 self.cob_matrix_lists[irrep][cob_list_len
                                              - self.qcis.
                                              get_tbks_sub_indices(E, L)[0]-1]
         smooth_value = self.smart_interps[irrep]((E, L))
-        warnings.warn(f"\n{bcolors.WARNING}"
-                      "Resizing smooth_value to match the dimension of the "
-                      "cob_matrix matrix. This is a temporary fix."
-                      f"{bcolors.ENDC}")
-        smooth_value = smooth_value[:len(cob_matrix)]
-        smooth_value_T = (smooth_value.T)[:len(cob_matrix)]
-        smooth_value = smooth_value_T.T
-        final_value_smooth_basis = smooth_value*pole_parts_smooth_basis
-        final_value =\
-            (cob_matrix)@final_value_smooth_basis@(cob_matrix.T)
+        if self.cob_list_lens != {} and len(self.cob_matrix_lists[irrep]) != 0:
+            warnings.warn(f"\n{bcolors.WARNING}"
+                          "Resizing smooth_value to match the dimension of "
+                          "the cob_matrix matrix. This is a temporary fix."
+                          f"{bcolors.ENDC}")
+            smooth_value = smooth_value[:len(cob_matrix)]
+            smooth_value_T = (smooth_value.T)[:len(cob_matrix)]
+            smooth_value = smooth_value_T.T
+            final_value_smooth_basis = smooth_value*pole_parts_smooth_basis
+            final_value =\
+                (cob_matrix)@final_value_smooth_basis@(cob_matrix.T)
+        else:
+            final_value = smooth_value*pole_parts_smooth_basis
         return final_value
 
     def _get_value_interpolated(self, E, L, irrep):
@@ -1087,6 +1111,10 @@ class G(Interpolable):
                 print('nP != [0 0 0] indexing')
             mspec = m1
             ibest = self.qcis._get_ibest(E, L)
+            ibest = 0
+            warnings.warn(f"\n{bcolors.WARNING}"
+                          "ibest is set to 0. This is a temporary fix."
+                          f"{bcolors.ENDC}")
             if len(self.qcis.tbks_list) > 1:
                 raise ValueError("get_value within G assumes tbks_list is "
                                  + "length one.")
@@ -1228,6 +1256,10 @@ class G(Interpolable):
                                row_shell_index, col_shell_index, irrep,
                                mask_row_shells, mask_col_shells):
         ibest = self.qcis._get_ibest(E, L)
+        ibest = 0
+        warnings.warn(f"\n{bcolors.WARNING}"
+                      "ibest is set to 0. This is a temporary fix."
+                      f"{bcolors.ENDC}")
         proj_tmp_right = np.array(self.qcis.sc_proj_dicts_by_shell[
             sc_index_col][ibest])[mask_col_shells][
                 col_shell_index][irrep]
@@ -1355,6 +1387,10 @@ class F:
             try:
                 if nP@nP != 0:
                     ibest = self.qcis._get_ibest(E, L)
+                    ibest = 0
+                    warnings.warn(f"\n{bcolors.WARNING}"
+                                  "ibest is set to 0. This is a temporary fix."
+                                  f"{bcolors.ENDC}")
                     proj_tmp_right = np.array(self.qcis.sc_proj_dicts_by_shell[
                         sc_ind][ibest])[mask_slices][slice_index][irrep]
                     proj_tmp_left = np.conjugate(((proj_tmp_right)).T)
@@ -1401,6 +1437,10 @@ class F:
             mask = None
         else:
             ibest = self.qcis._get_ibest(E, L)
+            ibest = 0
+            warnings.warn(f"\n{bcolors.WARNING}"
+                          "ibest is set to 0. This is a temporary fix."
+                          f"{bcolors.ENDC}")
             reduce_size = QC_IMPL_DEFAULTS['reduce_size']
             if 'reduce_size' in self.qcis.fvs.qc_impl:
                 reduce_size = self.qcis.fvs.qc_impl['reduce_size']
