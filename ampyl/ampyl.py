@@ -41,6 +41,7 @@ from .constants import TWOPI
 from .constants import FOURPI2
 from .constants import EPSILON4
 from .constants import EPSILON10
+from .constants import bcolors
 from .functions import QCFunctions
 from .functions import BKFunctions
 from .flavor import Particle
@@ -131,6 +132,10 @@ class K:
             try:
                 if nP@nP != 0:
                     ibest = self.qcis._get_ibest(E, L)
+                    ibest = 0
+                    warnings.warn(f"\n{bcolors.WARNING}"
+                                  "ibest is set to 0. This is a temporary fix."
+                                  f"{bcolors.ENDC}")
                     proj_tmp_right = np.array(self.qcis.sc_proj_dicts_by_shell[
                         sc_ind][ibest])[mask_slices][slice_index][irrep]
                     proj_tmp_left = np.conjugate(((proj_tmp_right)).T)
@@ -180,6 +185,10 @@ class K:
         else:
             mspec = m1
             ibest = self.qcis._get_ibest(E, L)
+            ibest = 0
+            warnings.warn(f"\n{bcolors.WARNING}"
+                          "ibest is set to 0. This is a temporary fix."
+                          f"{bcolors.ENDC}")
             if len(self.qcis.tbks_list) > 1:
                 raise ValueError("get_value within K assumes tbks_list is "
                                  + "length one.")
