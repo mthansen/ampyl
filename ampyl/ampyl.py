@@ -291,6 +291,13 @@ class QC:
                 FplusG = self.fplusg.get_value(E, L, project, irrep)/rescale
                 K = self.k.get_value(E, L, pcotdelta_parameter_lists,
                                      project, irrep)*rescale
+                if len(FplusG) != len(K):
+                    FplusG = np.zeros(K.shape)
+                    warnings.warn(f"\n{bcolors.WARNING}"
+                                  "FplusG and K have different shapes. "
+                                  "Setting FplusG to zero. "
+                                  "This is a temporary fix."
+                                  f"{bcolors.ENDC}")
                 ident_tmp = np.identity(len(FplusG))
                 return np.linalg.det(ident_tmp+(FplusG)@K)-shift
 

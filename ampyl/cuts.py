@@ -148,8 +148,21 @@ class Interpolable:
                 for i in range(len(matrix_tmp)):
                     for j in range(len(matrix_tmp)):
                         interpolable_value = matrix_tmp[i][j]
-                        if (not np.isnan(interpolable_value)
-                           and (interpolable_value != 0.)):
+                        populate_interp_zeros =\
+                            QC_IMPL_DEFAULTS['populate_interp_zeros']
+                        if 'populate_interp_zeros' in self.qcis.fvs.qc_impl:
+                            populate_interp_zeros = self.qcis.fvs.qc_impl[
+                                'populate_interp_zeros']
+                        if not populate_interp_zeros:
+                            if (not np.isnan(interpolable_value)
+                               and (interpolable_value != 0.)):
+                                interp_data_list[i][j][interp_data_index]\
+                                    = interp_data_list[i][j][
+                                        interp_data_index]\
+                                    + [[E, L, interpolable_value]]
+                        else:
+                            if np.isnan(interpolable_value):
+                                interpolable_value = 0.
                             interp_data_list[i][j][interp_data_index]\
                                 = interp_data_list[i][j][interp_data_index]\
                                 + [[E, L, interpolable_value]]
@@ -272,7 +285,22 @@ class Interpolable:
             interp_array.append(interp_row)
             interp_tuple_array.append(interp_tuple_row)
         interp_array = np.array(interp_array)
-        interp_tuple_array = np.array(interp_tuple_array, dtype=object)
+        try:
+            interp_tuple_array = np.array(interp_tuple_array, dtype=object)
+        except ValueError:
+            warnings.warn(f"\n{bcolors.WARNING}"
+                          "casting interp_tuple_array to be a numpy array of "
+                          "objects failed. Problem is that numpy is trying to "
+                          "broadcast input array from shape (n,n) into shape "
+                          "(n,). To resolve, loop over the first two ranks."
+                          f"{bcolors.ENDC}")
+            shape_tmp = (len(interp_tuple_array), len(interp_tuple_array))
+            interp_tuple_array_tmp = np.zeros(shape_tmp,
+                                              dtype=object)
+            for i in range(shape_tmp[0]):
+                for j in range(shape_tmp[1]):
+                    interp_tuple_array_tmp[i][j] = interp_tuple_array[i][j]
+            interp_tuple_array = interp_tuple_array_tmp
 
         # Get unique E and L sets
         E_grid_unique = []
@@ -336,9 +364,13 @@ class Interpolable:
                                                    smart_interp_tensor,
                                                    method='linear')
 
-        matrix_dim_list = []
-        for cob_matrix in cob_matrix_list:
-            matrix_dim_list.append(len(cob_matrix))
+        if len(cob_matrix_list) == 0:
+            matrix_dim_index = 2
+            matrix_dim_list = [smart_interp_tensor.shape[matrix_dim_index]]
+        else:
+            matrix_dim_list = []
+            for cob_matrix in cob_matrix_list:
+                matrix_dim_list.append(len(cob_matrix))
 
         smart_poles_list, smart_textures_list, complement_textures_list =\
             self._get_smart_poles(matrix_dim_list, polefree_interp_data_list)
@@ -729,10 +761,11 @@ class Interpolable:
         [m1, m2, m3] = masses
         return m1, m2, m3
 
-    def _get_all_relevant_nvecSQs_list(self, Emax, project, irrep,
-                                       max_interp_dim, interp_data_list,
-                                       cob_matrix_list, all_nvecSQs,
-                                       m1, m2, m3):
+    def _get_all_relevant_nvecSQs_list_bad_loop(self, Emax, project, irrep,
+                                                max_interp_dim,
+                                                interp_data_list,
+                                                cob_matrix_list, all_nvecSQs,
+                                                m1, m2, m3):
         interp_data_index = 1
         all_relevant_nvecSQs = []
         for i in range(max_interp_dim):
@@ -805,6 +838,101 @@ class Interpolable:
                                 except IndexError:
                                     pass
         return all_relevant_nvecSQs
+
+    def _get_all_relevant_nvecSQs_list_good_loop(self, Emax, project, irrep,
+                                                 max_interp_dim,
+                                                 interp_data_list,
+                                                 cob_matrix_list, all_nvecSQs,
+                                                 m1, m2, m3):
+        interp_data_index = 1
+        all_relevant_nvecSQs = []
+        for i in [0]:
+            for j in [0]:
+                interp_data_matrix_entry = interp_data_list[i][j][
+                    interp_data_index][1:]
+                if len(interp_data_matrix_entry) != 0:
+                    Lmin_tmp = BAD_MIN_GUESS
+                    Lmax_tmp = BAD_MAX_GUESS
+                    Emin_tmp = BAD_MIN_GUESS
+                    Emax_tmp = BAD_MAX_GUESS
+                    for single_interp_entry in interp_data_matrix_entry:
+                        energy_volume_set = single_interp_entry[:-1]
+                        [E_candidate, L_candidate] = energy_volume_set
+                        if E_candidate < Emin_tmp:
+                            Emin_tmp = E_candidate
+                        if E_candidate > Emax_tmp:
+                            Emax_tmp = E_candidate
+                        if L_candidate < Lmin_tmp:
+                            Lmin_tmp = L_candidate
+                        if L_candidate > Lmax_tmp:
+                            Lmax_tmp = L_candidate
+                    nvecSQs_all_keeps = [[]]
+                    for nvecSQ_entry in all_nvecSQs:
+                        n1vecSQ = nvecSQ_entry[0]
+                        n2vecSQ = nvecSQ_entry[1]
+                        n3vecSQ = nvecSQ_entry[2]
+                        removal_at_Lmin = self\
+                            .get_pole_candidate(Lmin_tmp,
+                                                n1vecSQ, n2vecSQ, n3vecSQ,
+                                                m1, m2, m3)
+                        removal_at_Lmax = self\
+                            .get_pole_candidate(Lmax_tmp,
+                                                n1vecSQ, n2vecSQ, n3vecSQ,
+                                                m1, m2, m3)
+                        if ((Emin_tmp < removal_at_Lmin < Emax_tmp)
+                           or (Emin_tmp < removal_at_Lmax < Emax_tmp)):
+                            nvecSQs_all_keeps = nvecSQs_all_keeps\
+                                + [[n1vecSQ, n2vecSQ, n3vecSQ]]
+                    nvecSQs_all_keeps = nvecSQs_all_keeps[1:]
+
+        for nvecSQs_keep in nvecSQs_all_keeps:
+            [n1vecSQ, n2vecSQ, n3vecSQ] = nvecSQs_keep
+            print(nvecSQs_keep)
+            Lvals_tmp = [Lmin_tmp+EPSILON4, Lmax_tmp-EPSILON4]
+            for Ltmp in Lvals_tmp:
+                Etmp = self._get_pole_candidate_eps(Ltmp,
+                                                    n1vecSQ, n2vecSQ,
+                                                    n3vecSQ, m1, m2, m3)
+                if Etmp < Emax:
+                    try:
+                        matrix_tmp = self.get_value(E=Etmp, L=Ltmp,
+                                                    project=project,
+                                                    irrep=irrep)
+                        for cob_matrix in cob_matrix_list:
+                            try:
+                                matrix_tmp =\
+                                    (cob_matrix.T)@matrix_tmp\
+                                    @ cob_matrix
+                            except ValueError:
+                                pass
+                        for i in range(max_interp_dim):
+                            for j in range(max_interp_dim):
+                                interpolable_value = matrix_tmp[i][j]
+                                near_pole_mag = np.abs(interpolable_value)
+                                pole_found = (near_pole_mag > POLE_CUT)
+                                if (pole_found and
+                                    ([i, j, nvecSQs_keep] not in
+                                        all_relevant_nvecSQs)):
+                                    all_relevant_nvecSQs.\
+                                        append([i, j, nvecSQs_keep])
+                    except IndexError:
+                        pass
+        return all_relevant_nvecSQs
+
+    def _get_all_relevant_nvecSQs_list(self, Emax, project, irrep,
+                                       max_interp_dim, interp_data_list,
+                                       cob_matrix_list, all_nvecSQs,
+                                       m1, m2, m3):
+        args = [Emax, project, irrep, max_interp_dim, interp_data_list,
+                cob_matrix_list, all_nvecSQs, m1, m2, m3]
+        populate_interp_zeros = QC_IMPL_DEFAULTS['populate_interp_zeros']
+        if 'populate_interp_zeros' in self.qcis.fvs.qc_impl:
+            populate_interp_zeros =\
+                self.qcis.fvs.qc_impl['populate_interp_zeros']
+        if populate_interp_zeros:
+            return self._get_all_relevant_nvecSQs_list_good_loop(*args)
+        else:
+            return self._get_all_relevant_nvecSQs_list_bad_loop(*args)
 
     def _get_pole_candidate_eps(self, L, n1vecSQ, n2vecSQ, n3vecSQ,
                                 m1, m2, m3):
