@@ -8,7 +8,7 @@ Created July 2022.
 
 ###############################################################################
 #
-# test_interpolate.py
+# test_interpolate_moving.py
 #
 # MIT License
 # Copyright (c) 2022 Maxwell T. Hansen
@@ -48,7 +48,7 @@ class TestInterpolate(unittest.TestCase):
         pion = ampyl.Particle(mass=1., spin=0., isospin=1.)
         fc = ampyl.FlavorChannel(3, particles=[pion, pion, pion], isospin=2.)
         fcs = ampyl.FlavorChannelSpace(fc_list=[fc])
-        fvs = ampyl.FiniteVolumeSetup()
+        fvs = ampyl.FiniteVolumeSetup(nP=np.array([0, 0, 1]))
         tbis = ampyl.ThreeBodyInteractionScheme()
         qcis = ampyl.QCIndexSpace(fcs=fcs, fvs=fvs, tbis=tbis, Emax=5.2,
                                   Lmax=5.2)
@@ -56,42 +56,54 @@ class TestInterpolate(unittest.TestCase):
         g = ampyl.G(qcis=qcis)
         fplusg = ampyl.FplusG(qcis=qcis)
 
+        fplusg.qcis.fvs.qc_impl['smarter_q_rescale'] = True
+        fplusg.qcis.fvs.qc_impl['use_cob_matrices'] = False
+        fplusg.qcis.fvs.qc_impl['reduce_size'] = False
+        fplusg.qcis.fvs.qc_impl['g_smart_interpolate'] = False
+        fplusg.qcis.fvs.qc_impl['populate_interp_zeros'] = True
+
+        g.qcis.fvs.qc_impl['smarter_q_rescale'] = True
+        g.qcis.fvs.qc_impl['use_cob_matrices'] = False
+        g.qcis.fvs.qc_impl['reduce_size'] = False
+        g.qcis.fvs.qc_impl['g_smart_interpolate'] = False
+        g.qcis.fvs.qc_impl['populate_interp_zeros'] = True
+
         Emin = 2.500000001
-        Emax = 5.0
+        Emax = 5.01
         Estep = 0.5
         Lmin = 2.
-        Lmax = 5.0
+        Lmax = 5.01
         Lstep = 1.0
         g.build_interpolator(Emin, Emax, Estep,
                              Lmin, Lmax, Lstep,
-                             project=True, irrep=('T1MINUS', 1))
+                             project=True, irrep=('A1', 0))
         fplusg.build_interpolator(Emin, Emax, Estep,
                                   Lmin, Lmax, Lstep,
-                                  project=True, irrep=('T1MINUS', 1))
+                                  project=True, irrep=('A1', 0))
         self.qcis = qcis
         self.g = g
         self.fplusg = fplusg
 
     def test_g_interpolate(self):
-        E = 4.0
-        L = 4.0
-        self.g.qcis.fvs.qc_impl['g_interpolate'] = True
-        gval1 = self.g.get_value(E=E, L=L, project=True, irrep=('T1MINUS', 1))
-        self.g.qcis.fvs.qc_impl['g_interpolate'] = False
-        gval2 = self.g.get_value(E=E, L=L, project=True, irrep=('T1MINUS', 1))
+        E = 5.0
+        L = 5.0
+        self.g.qcis.fvs.qc_impl['g_smart_interpolate'] = True
+        gval1 = self.g.get_value(E=E, L=L, project=True, irrep=('A1', 0))
+        self.g.qcis.fvs.qc_impl['g_smart_interpolate'] = False
+        gval2 = self.g.get_value(E=E, L=L, project=True, irrep=('A1', 0))
         diff = np.sum(np.abs(gval1-gval2))
         avg = np.sum(np.abs(gval1)+np.abs(gval2))/0.5
         self.assertLess(diff/avg, 1e-8)
 
     def test_fplusg_interpolate(self):
-        E = 4.0
-        L = 4.0
-        self.fplusg.qcis.fvs.qc_impl['g_interpolate'] = True
+        E = 5.0
+        L = 5.0
+        self.fplusg.qcis.fvs.qc_impl['g_smart_interpolate'] = True
         fplusgval1 = self.fplusg.get_value(E=E, L=L, project=True,
-                                           irrep=('T1MINUS', 1))
-        self.fplusg.qcis.fvs.qc_impl['g_interpolate'] = False
+                                           irrep=('A1', 0))
+        self.fplusg.qcis.fvs.qc_impl['g_smart_interpolate'] = False
         fplusgval2 = self.fplusg.get_value(E=E, L=L, project=True,
-                                           irrep=('T1MINUS', 1))
+                                           irrep=('A1', 0))
         diff = np.sum(np.abs(fplusgval1-fplusgval2))
         avg = np.sum(np.abs(fplusgval1)+np.abs(fplusgval2))/0.5
         self.assertLess(diff/avg, 1e-9)
