@@ -46,6 +46,7 @@ from .constants import PION_ORDERS
 from .constants import EPSILON8
 from .constants import EPSILON10
 from .constants import EPSILON15
+from .constants import bcolors
 import warnings
 warnings.simplefilter("once")
 
@@ -1475,7 +1476,13 @@ class Groups:
             rep_mom = rep_mom.replace(' [', (' '*30)+'[')
             summary_str += "    representative momenta = "+rep_mom+"\n"
             if isospin_channel:
-                isoset = [2]
+                isoset = [int(qcis.fcs.ni_list[nic_index].isospin)]
+                warnings.warn(f"\n{bcolors.WARNING}"
+                              f"isoset is being used in ni_proj_dict, but "
+                              "a set is not needed because only one value is "
+                              "selected . Also casting to an int will create "
+                              "problems for spin-half particles."
+                              f"{bcolors.ENDC}", stacklevel=2)
             else:
                 isoset = range(1)
             for isovalue in isoset:
