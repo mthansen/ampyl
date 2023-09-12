@@ -1694,7 +1694,11 @@ class QCIndexSpace:
         beta = np.sqrt(nPSQ)*TWOPI/Lmax/Emax
         gamma = 1./np.sqrt(1.-beta**2)
         p_cutoff = beta*gamma*omp+gamma*np.sqrt(pSQ)
-        nvec_cutoff = int(p_cutoff*Lmax/TWOPI)
+        nvec_cutoff = int(p_cutoff*Lmax/TWOPI)+1
+        warnings.warn(f"\n{bcolors.WARNING}"
+                      "nvec_cutoff was increased by one. "
+                      "This needs to be checked."
+                      f"{bcolors.ENDC}", stacklevel=2)
         rng = range(-nvec_cutoff, nvec_cutoff+1)
         mesh = np.meshgrid(*([rng]*3))
         nvecs = np.vstack([y.flat for y in mesh]).T
@@ -2053,7 +2057,10 @@ class QCIndexSpace:
                 irrep = key_best_irreps[0]
                 irrep_dim = group.chardict[group_str+irrep].shape[0]
                 nonint_proj_dict_entry = self.nonint_proj_dict[cindex]
-                n_shells = len(self.nvecset_ident_SQreps[cindex])
+                if cindex == 0:
+                    n_shells = len(self.nvecset_ident_SQreps[cindex])
+                else:
+                    n_shells = len(self.nvecset_SQreps[cindex])
                 channel_multis_summary_list = []
                 for shell_index in range(n_shells):
                     for key in nonint_proj_dict_entry[(shell_index,
