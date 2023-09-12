@@ -55,6 +55,8 @@ from .spaces import QCIndexSpace
 from .cuts import G
 from .cuts import F
 from .cuts import FplusG
+from .helpers import pswap
+from .helpers import make_plot
 import warnings
 warnings.simplefilter("once")
 
@@ -291,10 +293,21 @@ class QC:
                 FplusG = self.fplusg.get_value(E, L, project, irrep)/rescale
                 K = self.k.get_value(E, L, pcotdelta_parameter_lists,
                                      project, irrep)*rescale
-                if len(FplusG) != len(K):
+                if len(FplusG) > len(K):
+                    warnings.warn(f"\n{bcolors.WARNING}"
+                                  "FplusG and K have different shapes, and "
+                                  "FplusG is larger. "
+                                  "Padding K with extra entries. "
+                                  "This is a temporary fix."
+                                  f"{bcolors.ENDC}")
+                    K_tmp = np.zeros_like(FplusG)
+                    K_tmp[:len(K), :len(K)] = K
+                    K = K_tmp
+                elif len(FplusG) < len(K):
                     FplusG = np.zeros(K.shape)
                     warnings.warn(f"\n{bcolors.WARNING}"
-                                  "FplusG and K have different shapes. "
+                                  "FplusG and K have different shapes, and "
+                                  "FplusG is smaller. "
                                   "Setting FplusG to zero. "
                                   "This is a temporary fix."
                                   f"{bcolors.ENDC}")
@@ -316,6 +329,12 @@ class QC:
             if version == 'kdf_zero_f+g_inv':
                 return np.linalg.det(np.linalg.inv(F+G)+K)
 
+            if version == 'kdf_zero_1+_FinverseF3':
+                ident_tmp = np.identity(len(G))
+                block_inv = np.linalg.inv(np.linalg.inv(K)+F+G)
+                matrix_in_det = ident_tmp-3.*block_inv@F
+                inverse_det = 1./np.linalg.det(matrix_in_det)
+                return inverse_det
     def get_roots_at_Lmax(self, Emax_for_roots=None, L_for_roots=None,
                           n_steps=10, k_params=None, project=True, irrep=None,
                           version='kdf_zero_1+_fgcombo', rescale=1.0,

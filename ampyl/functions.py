@@ -1133,6 +1133,8 @@ class QCFunctions:
         H2_mat = np.repeat((np.repeat(H1.reshape(H1.shape+(1,)),
                                       (full_mat_big.shape)[1], axis=1)),
                            2*ell1+1, axis=0)
+        if np.sum(H1_mat**2) < 1.e-20 or np.sum(H2_mat**2) < 1.e-20:
+            return np.zeros_like(full_mat_big)
         return YY*full_mat_big*H1_mat*H2_mat*g_rescale
 
     @staticmethod
@@ -1603,6 +1605,11 @@ class QCFunctions:
                 / np.abs(pSQ**(ell))
         else:
             pcotdelta = pcotdelta/np.abs(pSQ**(ell))
+            if ell == 1 and pSQ < 0.:
+                pcotdelta = - pcotdelta
+                warnings.warn(f"\n{bcolors.WARNING}"
+                              "flipping sign of pcotdelta for ell=1 and pSQ<0."
+                              f"{bcolors.ENDC}")
             return pre*16.0*PI*ECM/(pcotdelta+q_one_minus_H_tmp)
 
     def getK_array(E, nP, L, m1, m2, m3,

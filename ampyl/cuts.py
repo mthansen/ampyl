@@ -1059,15 +1059,23 @@ class Interpolable:
         if len(self.smart_poles_lists[irrep]) == 0:
             pole_parts_smooth_basis = 1.
         else:
-            smart_poles = self.smart_poles_lists[irrep][
-                cob_list_len-self.qcis.get_tbks_sub_indices(E, L)[0]-1]
+            if cob_list_len == 0:
+                smart_poles = self.smart_poles_lists[irrep][0]
+            else:
+                smart_poles = self.smart_poles_lists[irrep][
+                    cob_list_len-self.qcis.get_tbks_sub_indices(E, L)[0]-1]
             if len(smart_poles) == 0:
                 pole_parts_smooth_basis = 1.
             else:
-                smart_textures = self.smart_textures_lists[irrep][
-                    cob_list_len-self.qcis.get_tbks_sub_indices(E, L)[0]-1]
-                complement_textures = self.complement_textures_lists[irrep][
-                    cob_list_len-self.qcis.get_tbks_sub_indices(E, L)[0]-1]
+                if cob_list_len == 0:
+                    smart_textures = self.smart_textures_lists[irrep][0]
+                    complement_textures = self.complement_textures_lists[
+                        irrep][0]
+                else:
+                    smart_textures = self.smart_textures_lists[irrep][
+                        cob_list_len-self.qcis.get_tbks_sub_indices(E, L)[0]-1]
+                    complement_textures = self.complement_textures_lists[irrep][
+                        cob_list_len-self.qcis.get_tbks_sub_indices(E, L)[0]-1]
                 omegas =\
                     np.sqrt(smart_poles*FOURPI2/L**2
                             + np.array([m1**2, m2**2, m3**2]))
@@ -1083,13 +1091,15 @@ class Interpolable:
                                              get_tbks_sub_indices(E, L)[0]-1]
         smooth_value = self.smart_interps[irrep]((E, L))
         if self.cob_list_lens != {} and len(self.cob_matrix_lists[irrep]) != 0:
-            warnings.warn(f"\n{bcolors.WARNING}"
-                          "Resizing smooth_value to match the dimension of "
-                          "the cob_matrix matrix. This is a temporary fix."
-                          f"{bcolors.ENDC}")
-            smooth_value = smooth_value[:len(cob_matrix)]
-            smooth_value_T = (smooth_value.T)[:len(cob_matrix)]
-            smooth_value = smooth_value_T.T
+            if ((len(cob_matrix) != len(smooth_value))
+               or (len(cob_matrix) != len(smooth_value.T))):
+                smooth_to_discard = smooth_value[len(cob_matrix):]
+                smooth_to_discard_T = (smooth_value.T)[len(cob_matrix):]
+                epsilon = np.sum(smooth_to_discard**2)\
+                    + np.sum(smooth_to_discard_T**2)
+                smooth_value = smooth_value[:len(cob_matrix)]
+                smooth_value_T = (smooth_value.T)[:len(cob_matrix)]
+                smooth_value = smooth_value_T.T
             final_value_smooth_basis = smooth_value*pole_parts_smooth_basis
             final_value =\
                 (cob_matrix)@final_value_smooth_basis@(cob_matrix.T)

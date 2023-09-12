@@ -36,6 +36,7 @@ Created July 2022.
 
 import numpy as np
 from inspect import signature
+from copy import deepcopy
 from .functions import QCFunctions
 from .constants import EPSILON4
 from .constants import G_TEMPLATE_DICT
@@ -359,6 +360,11 @@ class FlavorChannel:
                     raise ValueError("all particles must be in an isospin "
                                      "multiplet if the channel is an "
                                      "isospin channel")
+        for particle in particles:
+            if particle.isospin_multiplet and not self._isospin_channel:
+                raise ValueError("none of the particles can be an isospin "
+                                 "multiplet if the channel is not an "
+                                 "isospin channel")
         self._particles = particles
 
     @property
@@ -803,6 +809,13 @@ class FlavorChannelSpace:
                                   f"flavors = {flavors}"
                                   f"{bcolors.ENDC}", stacklevel=2)
                 elif (sub_isospin == 2.0) and (flavors[1] == flavors[2]):
+                    ell_set = [0]
+                    warnings.warn(f"\n{bcolors.WARNING}"
+                                  "Assuming ell_set = [0] for spectator with "
+                                  f"sub_isospin = {sub_isospin} and "
+                                  f"flavors = {flavors}"
+                                  f"{bcolors.ENDC}", stacklevel=2)
+                else:
                     ell_set = [0]
                     warnings.warn(f"\n{bcolors.WARNING}"
                                   "Assuming ell_set = [0] for spectator with "
