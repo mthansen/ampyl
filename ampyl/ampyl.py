@@ -55,8 +55,6 @@ from .spaces import QCIndexSpace
 from .cuts import G
 from .cuts import F
 from .cuts import FplusG
-from .helpers import pswap
-from .helpers import make_plot
 import warnings
 warnings.simplefilter("once")
 
