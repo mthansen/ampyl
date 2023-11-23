@@ -144,15 +144,54 @@ class BKFunctions:
         raise ValueError("z must be a float or np.ndarray")
 
     @staticmethod
-    def H(E2CMSQ=9.0, threshold=2.0, alpha=-1.0, beta=0.0, J_slow=False):
+    def J_step(z, step_type=None):
+        r"""
+        A hard cutoff function stepping from \\[J(z) = 0.0\\] for \\[z < 0.0\\]
+        to \\[J(z) = 1.0\\] for \\[z > 1.0\\] or \\[z > 1.0\\], dependin on the type of step function.
+
+        Parameters
+        ----------
+        z (float or np.ndarray)
+
+        Returns
+        -------
+        (float or np.ndarray)
+
+        """
+        if step_type is None:
+            return BKFunctions.J(z)
+        elif step_type == 'one':
+            step_increase = 1.
+        elif step_type == 'zero':
+            step_increase = 0.
+        else:
+            raise ValueError('step_type only support str value (zero and one) or None')
+
+        if isinstance(z, np.ndarray):
+            J_arr = np.zeros(len(z))
+            non_zero_mask = np.where(z >= step_increase)[0]
+            J_arr[non_zero_mask] = 1.0
+            return J_arr
+
+        if isinstance(z, float):
+            if z >= step_increase:
+                return 1.0
+            if z < step_increase:
+                return 0. 
+        raise ValueError('z must be a float or a numpy.array')
+
+    @staticmethod
+    def H(E2CMSQ=9.0, threshold=2.0, alpha=-1.0, beta=0.0, qc_impl={}, J_slow=False):
         r"""
         Kinematic-based cutoff function.
 
-        Smooth cutoff function built from \\[J(z)\\], ranging from
+        A cutoff function built from \\[J(z)\\], ranging from
         \\[H = 0.0\\] for squared two-particle CMF energies below a chosen
-        value to \\[H = 1.0\\] above threshold.
+        value to \\[H = 1.0\\] above threshold. 
+        The default is a smooth cuttoff function, unless the hard_cutoff is turned om.
+        The hard cutoff could increase at 'zero' or 'one'.
 
-        Parameters
+        Parameters 
         ----------
         E2CMSQ (float): squared two-particle center-of-mass energy
         threshold (float): value of two-particle threshold
@@ -163,11 +202,52 @@ class BKFunctions:
         -------
         (float or np.ndarray)
         """
+        step_type = None
+        use_hard_cutoff_zero = QC_IMPL_DEFAULTS['use_hard_cutoff_zero']
+        use_hard_cutoff_one = QC_IMPL_DEFAULTS['use_hard_cutoff_one']
+        if 'use_hard_cutoff_zero' in qc_impl:
+            use_hard_cutoff_zero = qc_impl['use_hard_cutoff_zero']
+
+        if 'use_hard_cutoff_one' in qc_impl:
+            use_hard_cutoff_one = qc_impl['use_hard_cutoff_one']
+
+        assert (use_hard_cutoff_zero and use_hard_cutoff_one) is False
+
+        if use_hard_cutoff_zero:
+            step_type = 'zero'
+        if use_hard_cutoff_one:
+             step_type = 'one'
+        
         z = (E2CMSQ-(1.0+alpha)*threshold**2/4.0)\
             / ((3.0-alpha)*threshold**2/4.0)+beta
         if J_slow:
             return BKFunctions.J_slow(z)
-        return BKFunctions.J(z)
+        return BKFunctions.J_step(z, step_type)
+    
+    # def H(E2CMSQ=9.0, threshold=2.0, alpha=-1.0, beta=0.0, J_slow=False):
+    #     r"""
+    #     Kinematic-based cutoff function.
+
+    #     Smooth cutoff function built from \\[J(z)\\], ranging from
+    #     \\[H = 0.0\\] for squared two-particle CMF energies below a chosen
+    #     value to \\[H = 1.0\\] above threshold.
+
+    #     Parameters
+    #     ----------
+    #     E2CMSQ (float): squared two-particle center-of-mass energy
+    #     threshold (float): value of two-particle threshold
+    #     alpha (float): width parameter (alpha = -1.0 is standard)
+    #     beta (float): shift parameter (beta = 0.0 is standard)
+
+    #     Returns
+    #     -------
+    #     (float or np.ndarray)
+    #     """
+    #     z = (E2CMSQ-(1.0+alpha)*threshold**2/4.0)\
+    #         / ((3.0-alpha)*threshold**2/4.0)+beta
+    #     if J_slow:
+    #         return BKFunctions.J_slow(z)
+    #     return BKFunctions.J(z)
 
     @staticmethod
     def phase_space(E2CMSQ=9.0, omk=1.0):
@@ -205,7 +285,7 @@ class BKFunctions:
         return 1.0/(32.0*PI*m)/(2.0*omk)
 
     @staticmethod
-    def q_one_minus_H(E2CMSQ=9.0, m1=1.0, m2=1.0, alpha=-1.0, beta=0.0,
+    def q_one_minus_H(E2CMSQ=9.0, m1=1.0, m2=1.0, alpha=-1.0, beta=0.0, qc_impl={},
                       J_slow=False):
         r"""
         Extra term for relating K2 to M2: \\[|q|*(1-H(\\cdots))\\].
@@ -230,7 +310,7 @@ class BKFunctions:
                      + m1**4-2.0*E2CMSQ*m2**2-2.0*m1**2*m2**2+m2**4)\
                 / (4.0*E2CMSQ)
         qCM = np.sqrt(np.abs(qCMSQ))
-        return qCM*(1.0-BKFunctions.H(E2CMSQ, threshold, alpha, beta, J_slow))
+        return qCM*(1.0-BKFunctions.H(E2CMSQ, threshold, alpha, beta, qc_impl, J_slow))
 
     @staticmethod
     def cart_sph_harm(ell=0, mazi=0,
@@ -704,8 +784,8 @@ class QCFunctions:
                                  q_for2, qc_impl)[0]
         calY2conj = np.conjugate(calY2)
 
-        HH = BKFunctions.H(E2CMSQ_for1, m1+m2, alpha, beta, J_slow)\
-            * BKFunctions.H(E2CMSQ_for2, m2+m3, alpha, beta, J_slow)
+        HH = BKFunctions.H(E2CMSQ_for1, m1+m2, alpha, beta, qc_impl, J_slow)\
+            * BKFunctions.H(E2CMSQ_for2, m2+m3, alpha, beta, qc_impl, J_slow)
 
         Pvec = TWOPI*nP/L
         p1vec = TWOPI*np2spec/L
@@ -1100,9 +1180,9 @@ class QCFunctions:
         YY = calY1mat*calY2conjmat
 
         H1 = BKFunctions.H(E2CMSQ_for1.reshape(E2CMSQ_for1.size), m1+m2,
-                           alpha, beta, J_slow)
+                           alpha, beta, qc_impl, J_slow)
         H2 = BKFunctions.H(E2CMSQ_for2.reshape(E2CMSQ_for2.size), m2+m3,
-                           alpha, beta, J_slow)
+                           alpha, beta, qc_impl, J_slow)
 
         omega1_mat = omegap2spec_mat_shell
         omega2_mat = np.sqrt(m2**2+FOURPI2*n3vecSQ_mat_shell/L**2)
@@ -1220,9 +1300,9 @@ class QCFunctions:
         YY = calY1mat*calY2conjmat
 
         H1 = BKFunctions.H(E2CMSQ_for1.reshape(E2CMSQ_for1.size), m1+m2,
-                           alpha, beta, J_slow)
+                           alpha, beta, qc_impl, J_slow)
         H2 = BKFunctions.H(E2CMSQ_for2.reshape(E2CMSQ_for2.size), m2+m3,
-                           alpha, beta, J_slow)
+                           alpha, beta, qc_impl, J_slow)
 
         omega1_mat = omegap2spec_mat_shell
         omega2_mat = np.sqrt(m2**2+FOURPI2*n3vecSQ_mat_shell/L**2)
@@ -1452,7 +1532,7 @@ class QCFunctions:
         E2CM = np.sqrt(E2CMSQ)
         gamma = np.sqrt(gamSQ)
         alpha_mass = 0.5*(1.+(m1**2-m2**2)/E2CMSQ)
-        Htmp = BKFunctions.H(E2CMSQ, m1+m2, alpha, beta)
+        Htmp = BKFunctions.H(E2CMSQ, m1+m2, alpha, beta, qc_impl, J_slow=False)
         pre = -Htmp*2.0/(L*np.sqrt(PI)*16.0*PI*E2CM*gamma)
         hermitian = QC_IMPL_DEFAULTS['hermitian']
         if 'hermitian' in qc_impl:
@@ -1587,7 +1667,7 @@ class QCFunctions:
         q_one_minus_H_tmp = BKFunctions.q_one_minus_H(E2CMSQ=E2CMSQ,
                                                       m1=m1, m2=m2,
                                                       alpha=alpha,
-                                                      beta=beta)
+                                                      beta=beta, qc_impl=qc_impl)
         pre = 1.0
         hermitian = QC_IMPL_DEFAULTS['hermitian']
         if 'hermitian' in qc_impl:
