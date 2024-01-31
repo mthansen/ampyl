@@ -271,11 +271,6 @@ class ThreeBodyKinematicSpace:
     :type build_shell_acc: bool
     :param verbosity: verbosity level
     :type verbosity: int
-
-    :ivar stacked: dictionary of stacked data. Possible keys are:
-        ``'n1vec'``, ``'n2vec'``, ``'n3vec'``, ``'n1vecSQ'``, ``'n2vecSQ'``,
-        ``'n3vecSQ'``, ``'multiplicities'``.
-    :vartype stacked: dict
     :ivar nPSQ: total momentum squared in the finite-volume frame
     :vartype nPSQ: int
     :ivar nPmag: magnitude of the total momentum in the finite-volume frame
@@ -334,7 +329,6 @@ class ThreeBodyKinematicSpace:
     def __init__(self, nP=np.array([0, 0, 0]), nvec_arr=np.array([]),
                  build_shell_acc=True, verbosity=0):
         self.build_shell_acc = build_shell_acc
-        self.stacked = {}
         self.nP = nP
         self.nvec_arr = nvec_arr
         self.verbosity = verbosity
@@ -377,7 +371,6 @@ class ThreeBodyKinematicSpace:
                     = self._get_shell_sort(nvec_arr_first_sort)
                 self._populate_nvec_simple_derivatives()
                 self._populate_nvec_matrices()
-                self._populate_nvec_stacks()
                 self._populate_nvec_shells()
         else:
             self._nvec_arr = nvec_arr
@@ -471,139 +464,6 @@ class ThreeBodyKinematicSpace:
         self.nP_minus_n1vec_mat = self.nP - self.n1vec_mat
         self.nP_minus_n2vec_mat = self.nP - self.n2vec_mat
 
-    def _populate_nvec_stacks(self):
-        n1vec_stacked_dict, n2vec_stacked_dict, n3vec_stacked_dict,\
-            counts_stacked_dict = self._initialize_dicts()
-
-        n1vec_stacked_dict, n2vec_stacked_dict, n3vec_stacked_dict,\
-            = self._populate_dicts(n1vec_stacked_dict, n2vec_stacked_dict,
-                                   n3vec_stacked_dict)
-
-        n1vec_stacked, n2vec_stacked, n3vec_stacked, multiplicities_stacked\
-            = self._convert_dicts_to_lists(n1vec_stacked_dict,
-                                           n2vec_stacked_dict,
-                                           n3vec_stacked_dict,
-                                           counts_stacked_dict)
-        self.stacked['n1vec'] = n1vec_stacked
-        self.stacked['n2vec'] = n2vec_stacked
-        self.stacked['n3vec'] = n3vec_stacked
-        self.stacked['multiplicities'] = multiplicities_stacked
-        self._populate_nvecSQ_stacks()
-
-    def _initialize_dicts(self):
-        n1vec_stacked_dict = {}
-        n2vec_stacked_dict = {}
-        n3vec_stacked_dict = {}
-        counts_stacked_dict = {}
-        for i1 in self.shells:
-            for j1 in self.shells:
-                stri = str(i1[0])+'_'+str(i1[1])
-                strj = str(j1[0])+'_'+str(j1[1])
-                strij = stri+'_'+strj
-                n1vec_stacked_dict[strij] = 0.0
-                n2vec_stacked_dict[strij] = 0.0
-                n3vec_stacked_dict[strij] = 0.0
-                counts_stacked_dict[strij] = (i1[1]-i1[0])*(j1[1]-j1[0])
-        return n1vec_stacked_dict, n2vec_stacked_dict, n3vec_stacked_dict,\
-            counts_stacked_dict
-
-    def _populate_dicts(self, n1vec_stacked_dict, n2vec_stacked_dict,
-                        n3vec_stacked_dict):
-        for i1 in range(len(self.nvecSQ_arr)):
-            for j1 in range(len(self.nvecSQ_arr)):
-                shell_index_i = 0
-                shell_index_j = 0
-                for i2 in range(len(self.shells)):
-                    shell_tmp = self.shells[i2]
-                    if shell_tmp[0] <= i1 < shell_tmp[1]:
-                        shell_index_i = i2
-                for j2 in range(len(self.shells)):
-                    shell_tmp = self.shells[j2]
-                    if shell_tmp[0] <= j1 < shell_tmp[1]:
-                        shell_index_j = j2
-                stri = str(self.shells[shell_index_i][0])+'_'\
-                    + str(self.shells[shell_index_i][1])
-                strj = str(self.shells[shell_index_j][0])+'_'\
-                    + str(self.shells[shell_index_j][1])
-                sizei = self.shells[shell_index_i][1]\
-                    - self.shells[shell_index_i][0]
-                sizej = self.shells[shell_index_j][1]\
-                    - self.shells[shell_index_j][0]
-                if (sizei >= sizej and i1 == self.shells[shell_index_i][0])\
-                   or (sizej > sizei and j1 == self.shells[shell_index_j][0]):
-                    strij = stri+'_'+strj
-                    if n1vec_stacked_dict[strij] == 0.0:
-                        n1vec_stacked_dict[strij]\
-                            = [self.n1vec_mat[i1][j1]]
-                    else:
-                        n1vec_stacked_dict[strij].append(
-                            self.n1vec_mat[i1][j1])
-                    if n2vec_stacked_dict[strij] == 0.0:
-                        n2vec_stacked_dict[strij]\
-                            = [self.n2vec_mat[i1][j1]]
-                    else:
-                        n2vec_stacked_dict[strij].append(
-                            self.n2vec_mat[i1][j1])
-                    if n3vec_stacked_dict[strij] == 0.0:
-                        n3vec_stacked_dict[strij]\
-                            = [self.n3vec_mat[i1][j1]]
-                    else:
-                        n3vec_stacked_dict[strij].append(
-                            self.n3vec_mat[i1][j1])
-        return n1vec_stacked_dict, n2vec_stacked_dict, n3vec_stacked_dict
-
-    def _convert_dicts_to_lists(self, n1vec_stacked_dict, n2vec_stacked_dict,
-                                n3vec_stacked_dict, counts_stacked_dict):
-        n1vec_stacked = []
-        n2vec_stacked = []
-        n3vec_stacked = []
-        multiplicities_stacked = []
-        for i1 in self.shells:
-            n1vec_stacked_row = []
-            n2vec_stacked_row = []
-            n3vec_stacked_row = []
-            mult_stacked_row = []
-            for j1 in self.shells:
-                stri = str(i1[0])+'_'+str(i1[1])
-                strj = str(j1[0])+'_'+str(j1[1])
-                strij = stri+'_'+strj
-                n1vec_stacked_row.append(np.array(n1vec_stacked_dict[strij]))
-                n2vec_stacked_row.append(np.array(n2vec_stacked_dict[strij]))
-                n3vec_stacked_row.append(np.array(n3vec_stacked_dict[strij]))
-                n1stacked_len = len(np.array(n1vec_stacked_dict[strij]))
-                mult_stacked_row.append(counts_stacked_dict[strij]
-                                        / n1stacked_len)
-            n1vec_stacked.append(n1vec_stacked_row)
-            n2vec_stacked.append(n2vec_stacked_row)
-            n3vec_stacked.append(n3vec_stacked_row)
-            multiplicities_stacked.append(mult_stacked_row)
-        multiplicities_stacked = np.array(multiplicities_stacked)
-        return n1vec_stacked, n2vec_stacked, n3vec_stacked,\
-            multiplicities_stacked
-
-    def _populate_nvecSQ_stacks(self):
-        n1vecSQ_stacked = []
-        for n1vec_row in self.stacked['n1vec']:
-            n1vecSQ_row = []
-            for n1vec in n1vec_row:
-                n1vecSQ_row.append((n1vec*n1vec).sum(1))
-            n1vecSQ_stacked.append(n1vecSQ_row)
-        self.stacked['n1vecSQ'] = n1vecSQ_stacked
-        n2vecSQ_stacked = []
-        for n2vec_row in self.stacked['n2vec']:
-            n2vecSQ_row = []
-            for n2vec in n2vec_row:
-                n2vecSQ_row.append((n2vec*n2vec).sum(1))
-            n2vecSQ_stacked.append(n2vecSQ_row)
-        self.stacked['n2vecSQ'] = n2vecSQ_stacked
-        n3vecSQ_stacked = []
-        for n3vec_row in self.stacked['n3vec']:
-            n3vecSQ_row = []
-            for n3vec in n3vec_row:
-                n3vecSQ_row.append((n3vec*n3vec).sum(1))
-            n3vecSQ_stacked.append(n3vecSQ_row)
-        self.stacked['n3vecSQ'] = n3vecSQ_stacked
-
     def _populate_nvec_shells(self):
         n1vec_arr_all_shells = []
         n1vecSQ_arr_all_shells = []
@@ -617,15 +477,15 @@ class ThreeBodyKinematicSpace:
         n3vecSQ_mat_all_shells = []
 
         for row_shell in self.shells:
-            n1vec_arr_row_shells,\
-                n1vecSQ_arr_row_shells,\
-                n2vec_arr_row_shells,\
-                n2vecSQ_arr_row_shells,\
-                n1vec_mat_row_shells,\
-                n2vec_mat_row_shells,\
-                n3vec_mat_row_shells,\
-                n1vecSQ_mat_row_shells,\
-                n2vecSQ_mat_row_shells,\
+            n1vec_arr_row_shells, \
+                n1vecSQ_arr_row_shells, \
+                n2vec_arr_row_shells, \
+                n2vecSQ_arr_row_shells, \
+                n1vec_mat_row_shells, \
+                n2vec_mat_row_shells, \
+                n3vec_mat_row_shells, \
+                n1vecSQ_mat_row_shells, \
+                n2vecSQ_mat_row_shells, \
                 n3vecSQ_mat_row_shells\
                 = self._build_row_shells(row_shell)
             n1vec_arr_all_shells.append(n1vec_arr_row_shells)
@@ -661,15 +521,15 @@ class ThreeBodyKinematicSpace:
         n2vecSQ_mat_row_shells = []
         n3vecSQ_mat_row_shells = []
         for col_shell in self.shells:
-            n1vec_arr_shell,\
-                n1vecSQ_arr_shell,\
-                n2vec_arr_shell,\
-                n2vecSQ_arr_shell,\
-                n1vec_mat_shell,\
-                n2vec_mat_shell,\
-                n3vec_mat_shell,\
-                n1vecSQ_mat_shell,\
-                n2vecSQ_mat_shell,\
+            n1vec_arr_shell, \
+                n1vecSQ_arr_shell, \
+                n2vec_arr_shell, \
+                n2vecSQ_arr_shell, \
+                n1vec_mat_shell, \
+                n2vec_mat_shell, \
+                n3vec_mat_shell, \
+                n1vecSQ_mat_shell, \
+                n2vecSQ_mat_shell, \
                 n3vecSQ_mat_shell\
                 = self._slice_and_swap(row_shell, col_shell)
             n1vec_arr_row_shells.append(n1vec_arr_shell)
@@ -682,10 +542,10 @@ class ThreeBodyKinematicSpace:
             n1vecSQ_mat_row_shells.append(n1vecSQ_mat_shell)
             n2vecSQ_mat_row_shells.append(n2vecSQ_mat_shell)
             n3vecSQ_mat_row_shells.append(n3vecSQ_mat_shell)
-        return n1vec_arr_row_shells, n1vecSQ_arr_row_shells,\
-            n2vec_arr_row_shells, n2vecSQ_arr_row_shells,\
-            n1vec_mat_row_shells, n2vec_mat_row_shells, n3vec_mat_row_shells,\
-            n1vecSQ_mat_row_shells, n2vecSQ_mat_row_shells,\
+        return n1vec_arr_row_shells, n1vecSQ_arr_row_shells, \
+            n2vec_arr_row_shells, n2vecSQ_arr_row_shells, \
+            n1vec_mat_row_shells, n2vec_mat_row_shells, n3vec_mat_row_shells, \
+            n1vecSQ_mat_row_shells, n2vecSQ_mat_row_shells, \
             n3vecSQ_mat_row_shells
 
     def _slice_and_swap(self, row_shell, col_shell):
@@ -752,9 +612,9 @@ class ThreeBodyKinematicSpace:
                             0, 1
                             )
 
-        return n1vec_arr_shell, n1vecSQ_arr_shell, n2vec_arr_shell,\
-            n2vecSQ_arr_shell, n1vec_mat_shell, n2vec_mat_shell,\
-            n3vec_mat_shell, n1vecSQ_mat_shell, n2vecSQ_mat_shell,\
+        return n1vec_arr_shell, n1vecSQ_arr_shell, n2vec_arr_shell, \
+            n2vecSQ_arr_shell, n1vec_mat_shell, n2vec_mat_shell, \
+            n3vec_mat_shell, n1vecSQ_mat_shell, n2vecSQ_mat_shell, \
             n3vecSQ_mat_shell
 
     def __str__(self):
