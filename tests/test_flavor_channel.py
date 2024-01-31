@@ -107,8 +107,8 @@ class TestFlavorChannel(unittest.TestCase):
 
     def test_flavor_channel_str(self):
         """Test the __str__ method."""
-        particles = [Particle(mass=1.0, spin=0.5, flavor="1", isospin=0.5),
-                     Particle(mass=2.0, spin=0.5, flavor="2", isospin=0.5)]
+        particles = [Particle(mass=1.0, spin=0.5, flavor="1"),
+                     Particle(mass=2.0, spin=0.5, flavor="2")]
         flavor_channel = FlavorChannel(2, particles=particles)
         self.assertEqual(str(flavor_channel),
                          "FlavorChannel with the following details:\n"
@@ -117,9 +117,9 @@ class TestFlavorChannel(unittest.TestCase):
                          "    spins: [0.5, 0.5],\n"
                          "    flavors: ['1', '2'],\n"
                          "    isospin_channel: False.")
-        particles = [Particle(mass=1.0, spin=0.5, flavor="1", isospin=0.5),
-                     Particle(mass=2.0, spin=0.5, flavor="2", isospin=0.5),
-                     Particle(mass=3.0, spin=0.5, flavor="3", isospin=0.5)]
+        particles = [Particle(mass=1.0, spin=0.5, flavor="1"),
+                     Particle(mass=2.0, spin=0.5, flavor="2"),
+                     Particle(mass=3.0, spin=0.5, flavor="3")]
         flavor_channel = FlavorChannel(3, particles=particles)
         self.assertEqual(str(flavor_channel),
                          "FlavorChannel with the following details:\n"
@@ -128,10 +128,10 @@ class TestFlavorChannel(unittest.TestCase):
                          "    spins: [0.5, 0.5, 0.5],\n"
                          "    flavors: ['1', '2', '3'],\n"
                          "    isospin_channel: False.")
-        particles = [Particle(mass=1.0, spin=0.5, flavor="1", isospin=0.5),
-                     Particle(mass=2.0, spin=0.5, flavor="2", isospin=0.5),
-                     Particle(mass=3.0, spin=0.5, flavor="3", isospin=0.5),
-                     Particle(mass=4.0, spin=0.5, flavor="4", isospin=0.5)]
+        particles = [Particle(mass=1.0, spin=0.5, flavor="1"),
+                     Particle(mass=2.0, spin=0.5, flavor="2"),
+                     Particle(mass=3.0, spin=0.5, flavor="3"),
+                     Particle(mass=4.0, spin=0.5, flavor="4")]
         flavor_channel = FlavorChannel(4, particles=particles)
         self.assertEqual(str(flavor_channel),
                          "FlavorChannel with the following details:\n"
