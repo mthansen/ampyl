@@ -664,10 +664,10 @@ class SpectatorChannel:
                     self._p_cot_deltas.pop()
             elif (len(self._p_cot_deltas) < len(ell_set)
                   and len(self._p_cot_deltas) != 0):
-                for _ in range(len(self._ell_set)-len(self.p_cot_deltas)):
+                for _ in range(len(ell_set)-len(self.p_cot_deltas)):
                     self._p_cot_deltas.append(self._p_cot_deltas[-1])
             elif len(self._p_cot_deltas) < len(ell_set):
-                for _ in range(len(self._ell_set)-len(self.p_cot_deltas)):
+                for _ in range(len(ell_set)-len(self.p_cot_deltas)):
                     self._p_cot_deltas.append(
                         QCFunctions.pcotdelta_scattering_length)
             self._ell_set = ell_set
