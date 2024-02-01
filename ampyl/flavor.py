@@ -65,7 +65,7 @@ class Particle:
         ``None``.
     """
     def __init__(self, mass=1., spin=0., flavor='pi',
-                 isospin_multiplet=False, isospin=None):
+                 isospin_multiplet=False, isospin=None, verbosity=0):
         if not isospin_multiplet and isospin is not None:
             isospin_multiplet = True
         if isospin_multiplet and isospin is None:
@@ -77,12 +77,28 @@ class Particle:
         self._flavor = flavor
         self._isospin_multiplet = isospin_multiplet
         self._isospin = isospin
+        self._verbosity = verbosity
 
         self.mass = self._mass
         self.spin = self._spin
         self.flavor = self._flavor
         self.isospin_multiplet = self._isospin_multiplet
         self.isospin = self._isospin
+        self.verbosity = self._verbosity
+
+        if self._verbosity >= 2:
+            self.print_summary()
+
+    def print_summary(self):
+        print(f"{bcolors.OKGREEN}Particle initialized with the following "
+              "properties:\n"
+              f"    mass: {self.mass}\n"
+              f"    spin: {self.spin}\n"
+              f"    flavor: {self.flavor}\n"
+              f"    isospin_multiplet: {self.isospin_multiplet}")
+        if self.isospin_multiplet:
+            print(f"    isospin: {self.isospin}")
+        print(f"{bcolors.ENDC}")
 
     def _check_type(self, variable, variable_string, variable_type,
                     variable_type_str):
@@ -146,6 +162,17 @@ class Particle:
         """Set the isospin of the particle."""
         self._check_type(isospin, 'isospin', float, 'float')
         self._isospin = isospin
+
+    @property
+    def verbosity(self):
+        """Verbosity of the particle."""
+        return self._verbosity
+
+    @verbosity.setter
+    def verbosity(self, verbosity):
+        """Set the verbosity of the particle."""
+        self._check_type(verbosity, 'verbosity', int, 'int')
+        self._verbosity = verbosity
 
     def __eq__(self, other):
         """Check if two Particle objects are equivalent."""
@@ -230,7 +257,7 @@ class FlavorChannel:
     """
 
     def __init__(self, n_particles, particles=[], isospin_channel=False,
-                 isospin=None):
+                 isospin=None, verbosity=0):
         if not isinstance(n_particles, int):
             raise ValueError("n_particles must be an int")
         if n_particles < 2:
@@ -251,6 +278,7 @@ class FlavorChannel:
         self._particles = particles
         self._isospin_channel = isospin_channel
         self._isospin = isospin
+        self._verbosity = verbosity
 
         self.particles = self._particles
         self.masses = self._get_masses()
@@ -261,7 +289,26 @@ class FlavorChannel:
         self.allowed_total_isospins = self._get_allowed_total_isospins()
         self.isospin_channel = self._isospin_channel
         self.isospin = self._isospin
+        self.verbosity = self._verbosity
         self.n_particles = self._n_particles
+
+        if self.verbosity >= 2:
+            self.print_summary()
+
+    def print_summary(self):
+        print(f"{bcolors.OKGREEN}FlavorChannel initialized with the "
+              "following properties:\n"
+              f"    n_particles: {self.n_particles}\n"
+              f"    masses: {self.masses}\n"
+              f"    spins: {self.spins}\n"
+              f"    flavors: {self.flavors}\n"
+              f"    isospin_channel: {self.isospin_channel}\n")
+        if self.isospin_channel:
+            print(f"    isospins: {self.isospins}\n"
+                  f"    allowed_total_isospins:\n"
+                  f"{self.allowed_total_isospins}\n"
+                  f"    isospin: {self.isospin}\n")
+        print(f"{bcolors.ENDC}")
 
     def _get_masses(self):
         return [particle.mass for particle in self.particles]
@@ -405,6 +452,18 @@ class FlavorChannel:
             raise ValueError("n_particles must be an int")
         if n_particles < 2:
             raise ValueError("n_particles must be >= 2")
+
+    @property
+    def verbosity(self):
+        """Verbosity of the channel."""
+        return self._verbosity
+
+    @verbosity.setter
+    def verbosity(self, verbosity):
+        """Set the verbosity of the channel."""
+        if not isinstance(verbosity, int):
+            raise ValueError("verbosity must be an int")
+        self._verbosity = verbosity
 
     def __str__(self):
         """Return a string representation of the FlavorChannel object."""
@@ -755,7 +814,7 @@ class FlavorChannelSpace:
     :type g_templates_ell_specific: dict
     """
 
-    def __init__(self, fc_list=[], ni_list=None):
+    def __init__(self, fc_list=[], ni_list=None, verbosity=0):
         self.fc_list = fc_list
         if ni_list is None:
             self.ni_list = fc_list
@@ -764,9 +823,58 @@ class FlavorChannelSpace:
         self.sc_list = []
         for fc in fc_list:
             self._add_flavor_channel(fc)
+        self._verbosity = verbosity
+        self.verbosity = self._verbosity
         self._build_sorted_sc_list()
         self._build_g_templates()
         self._build_g_templates_ell_specific()
+
+        if self.verbosity >= 2:
+            self.print_summary()
+
+    def print_summary(self):
+        print(f"{bcolors.OKGREEN}FlavorChannelSpace initialized with the "
+              "following properties:\n"
+              f"    fc_list: {self.fc_list}\n"
+              f"    ni_list: {self.ni_list}\n"
+              f"    sc_list: {self.sc_list}\n"
+              f"    sc_list_sorted: {self.sc_list_sorted}\n"
+              f"    n_particles_max: {self.n_particles_max}\n"
+              f"    possible_numbers_of_particles: "
+              f"{self.possible_numbers_of_particles}\n"
+              f"    n_particle_numbers: {self.n_particle_numbers}\n"
+              f"    n_channels_by_particle_number: "
+              f"{self.n_channels_by_particle_number}\n"
+              f"    slices_by_particle_number: "
+              f"{self.slices_by_particle_number}\n"
+              f"    slices_by_three_masses: "
+              f"{self.slices_by_three_masses}\n"
+              f"    n_three_slices: {self.n_three_slices}\n"
+              f"    g_templates:\n{self.g_templates}\n"
+              f"    g_templates_ell_specific:\n"
+              "        Key is built from four entries:\n"
+              "        [slice_index_i,  slice_index_j, ell_i, ell_j]"
+              "        Entry is built from five entries:\n"
+              "         [np.array([[g_template_ij[sc_index_i][sc_index_j]]],\n"
+              "sc_index_i, sc_index_j,"
+              "collective_index_i,"
+              "collective_index_j]")
+        for g_temp_key in self.g_templates_ell_specific:
+            print(f"        ell = {g_temp_key}:\n"
+                  f"        {self.g_templates_ell_specific[g_temp_key]}")
+        print(f"{bcolors.ENDC}")
+
+    @property
+    def verbosity(self):
+        """Verbosity of the channel space."""
+        return self._verbosity
+
+    @verbosity.setter
+    def verbosity(self, verbosity):
+        """Set the verbosity of the channel space."""
+        if not isinstance(verbosity, int):
+            raise ValueError("verbosity must be an int")
+        self._verbosity = verbosity
 
     def _add_spectator_channel(self, sc):
         self.sc_list.append(sc)
