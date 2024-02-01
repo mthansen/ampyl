@@ -302,10 +302,10 @@ class FlavorChannel:
               f"    masses: {self.masses}\n"
               f"    spins: {self.spins}\n"
               f"    flavors: {self.flavors}\n"
-              f"    isospin_channel: {self.isospin_channel}\n")
+              f"    isospin_channel: {self.isospin_channel}")
         if self.isospin_channel:
             print(f"    isospins: {self.isospins}\n"
-                  f"    allowed_total_isospins:\n"
+                  f"    allowed_total_isospins: "
                   f"{self.allowed_total_isospins}\n"
                   f"    isospin: {self.isospin}\n")
         print(f"{bcolors.ENDC}")
@@ -850,17 +850,17 @@ class FlavorChannelSpace:
               f"    slices_by_three_masses: "
               f"{self.slices_by_three_masses}\n"
               f"    n_three_slices: {self.n_three_slices}\n"
-              f"    g_templates:\n{self.g_templates}\n"
+              f"    g_templates:\n"
+              f"        {self.g_templates}\n"
               f"    g_templates_ell_specific:\n"
               "        Key is built from four entries:\n"
-              "        [slice_index_i,  slice_index_j, ell_i, ell_j]"
+              "        [slice_index_i,  slice_index_j, ell_i, ell_j]\n"
               "        Entry is built from five entries:\n"
-              "         [np.array([[g_template_ij[sc_index_i][sc_index_j]]],\n"
-              "sc_index_i, sc_index_j,"
-              "collective_index_i,"
+              "        [np.array([[g_template_ij[sc_index_i][sc_index_j]]], "
+              "sc_index_i, sc_index_j, collective_index_i, "
               "collective_index_j]")
         for g_temp_key in self.g_templates_ell_specific:
-            print(f"        ell = {g_temp_key}:\n"
+            print(f"        key = {g_temp_key}:\n"
                   f"        {self.g_templates_ell_specific[g_temp_key]}")
         print(f"{bcolors.ENDC}")
 
