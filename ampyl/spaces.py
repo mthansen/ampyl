@@ -83,11 +83,31 @@ class FiniteVolumeSetup:
         the correct type.
     """
 
-    def __init__(self, formalism='RFT', nP=np.array([0, 0, 0]), qc_impl={}):
+    def __init__(self, formalism='RFT', nP=np.array([0, 0, 0]), qc_impl={},
+                 verbosity=0):
         self.formalism = formalism
         self.qc_impl = qc_impl
         self.nP = nP
         self.set_irreps()
+        self._verbosity = verbosity
+        self.verbosity = verbosity
+
+        if self.verbosity >= 2:
+            print(f"{bcolors.OKGREEN}")
+            print(self)
+            print(f"{bcolors.ENDC}")
+
+    @property
+    def verbosity(self):
+        """Verbosity of the FiniteVolumeSetup."""
+        return self._verbosity
+
+    @verbosity.setter
+    def verbosity(self, verbosity):
+        """Set the verbosity of the FiniteVolumeSetup."""
+        if not isinstance(verbosity, int):
+            raise ValueError("verbosity must be an int")
+        self._verbosity = verbosity
 
     @property
     def nP(self):
@@ -216,6 +236,24 @@ class ThreeBodyInteractionScheme:
                 self.kdf_functions = self.kdf_functions+[self.kdf_iso_constant]
         else:
             self.kdf_functions = kdf_functions
+        self._verbosity = verbosity
+        self.verbosity = verbosity
+        if self.verbosity >= 2:
+            print(f"{bcolors.OKGREEN}")
+            print(self)
+            print(f"{bcolors.ENDC}")
+
+    @property
+    def verbosity(self):
+        """Verbosity of the ThreeBodyInteractionScheme."""
+        return self._verbosity
+
+    @verbosity.setter
+    def verbosity(self, verbosity):
+        """Set the verbosity of the ThreeBodyInteractionScheme."""
+        if not isinstance(verbosity, int):
+            raise ValueError("verbosity must be an int")
+        self._verbosity = verbosity
 
     def with_str(str_func):
         """Change print behavior of a function."""
@@ -722,6 +760,7 @@ class QCIndexSpace:
                  Emax=5.0, Lmax=5.0,
                  deltaE=DELTA_E_FOR_GRID, deltaL=DELTA_L_FOR_GRID,
                  verbosity=0):
+        self._verbosity = verbosity
         self.verbosity = verbosity
         self.Emax = Emax
         self.Lmax = Lmax
@@ -729,38 +768,64 @@ class QCIndexSpace:
         self.deltaL = deltaL
 
         if fcs is None:
-            if verbosity == 2:
-                print('setting the flavor-channel space, None was passed')
+            if verbosity >= 2:
+                print(f"{bcolors.OKGREEN}"
+                      "Setting the flavor-channel space, None was passed"
+                      f"{bcolors.ENDC}")
             self._fcs = FlavorChannelSpace(fc_list=[FlavorChannel(3)])
         else:
-            if verbosity == 2:
-                print('setting the flavor-channel space')
+            if verbosity >= 2:
+                print(f"{bcolors.OKGREEN}"
+                      "Setting the flavor-channel space"
+                      f"{bcolors.ENDC}")
             self._fcs = fcs
 
         if fvs is None:
-            if verbosity == 2:
-                print('setting the finite-volume setup, None was passed')
+            if verbosity >= 2:
+                print(f"{bcolors.OKGREEN}"
+                      "Setting the finite-volume setup, None was passed"
+                      f"{bcolors.ENDC}")
             self.fvs = FiniteVolumeSetup()
         else:
-            if verbosity == 2:
-                print('setting the finite-volume setup')
+            if verbosity >= 2:
+                print(f"{bcolors.OKGREEN}"
+                      "Setting the finite-volume setup"
+                      f"{bcolors.ENDC}")
             self.fvs = fvs
 
         if tbis is None:
-            if verbosity == 2:
-                print('setting the three-body interaction scheme, '
-                      + 'None was passed')
+            if verbosity >= 2:
+                print(f"{bcolors.OKGREEN}"
+                      "Setting the three-body interaction scheme, None was "
+                      "passed"
+                      f"{bcolors.ENDC}")
             self.tbis = ThreeBodyInteractionScheme()
         else:
-            if verbosity == 2:
-                print('setting the three-body interaction scheme')
+            if verbosity >= 2:
+                print(f"{bcolors.OKGREEN}"
+                      "Setting the three-body interaction scheme"
+                      f"{bcolors.ENDC}")
             self.tbis = tbis
 
         self._nP = self.fvs.nP
-        if verbosity == 2:
-            print('setting nP to '+str(self.fvs.nP))
         self.nP = self.fvs.nP
+        if verbosity >= 2:
+            print(f"{bcolors.OKGREEN}"
+                  f"Setting the total momentum to nP = {self._nP}"
+                  f"{bcolors.ENDC}")
         self.fcs = self._fcs
+
+    @property
+    def verbosity(self):
+        """Verbosity of the QCIndexSpace."""
+        return self._verbosity
+
+    @verbosity.setter
+    def verbosity(self, verbosity):
+        """Set the verbosity of the QCIndexSpace."""
+        if not isinstance(verbosity, int):
+            raise ValueError("verbosity must be an int")
+        self._verbosity = verbosity
 
     def populate(self):
         """Populate the index space."""
@@ -790,15 +855,19 @@ class QCIndexSpace:
         self.half_spin = half_spin
 
         if self.nPSQ != 0:
-            if self.verbosity == 2:
-                print('nPSQ is nonzero, will use grid')
+            if self.verbosity >= 2:
+                print(f"{bcolors.OKGREEN}"
+                      "nPSQ is nonzero, grid will be used"
+                      f"{bcolors.ENDC}")
             [self.Evals, self.Lvals] = self._get_grid_nonzero_nP(self.Emax,
                                                                  self.Lmax,
                                                                  self.deltaE,
                                                                  self.deltaL)
-            if self.verbosity == 2:
-                print('Lvals =', self.Lvals)
-                print('Evals =', self.Evals)
+            if self.verbosity >= 2:
+                print(f"{bcolors.OKGREEN}"
+                      f"Grid for non-zero nP:\n"
+                      f"Evals = {self.Evals}\n"
+                      f"Lvals = {self.Lvals}")
         else:
             self.Lvals = None
             self.Evals = None
@@ -967,8 +1036,10 @@ class QCIndexSpace:
             if self.nPSQ == 0:
                 nPspecmax = self._get_nPspecmax(three_slice_index)
                 if self.verbosity >= 2:
-                    print(f"populating nvec array, three_slice_index = "
-                          f"{three_slice_index}")
+                    print(f"{bcolors.OKGREEN}"
+                          "Populating nvec array, three_slice_index = "
+                          f"{three_slice_index}"
+                          f"{bcolors.ENDC}")
                 self._populate_slot_zero_momentum(slot_index, nPspecmax)
                 if self.half_spin:
                     self._populate_spin_zero_momentum(slot_index, nPspecmax)
@@ -992,12 +1063,16 @@ class QCIndexSpace:
         if isinstance(self.tbks_list[slot_index], list):
             tbks_tmp = self.tbks_list[slot_index][0]
             if self.verbosity >= 2:
-                print("self.tbks_list[slot_index] is a list, "
-                      "taking first entry")
+                print(f"{bcolors.OKGREEN}"
+                      "self.tbks_list[slot_index] is a list, "
+                      "taking first entry"
+                      f"{bcolors.ENDC}")
         else:
             tbks_tmp = self.tbks_list[slot_index]
             if self.verbosity >= 2:
-                print("self.tbks_list[slot_index] is not a list")
+                print(f"{bcolors.OKGREEN}"
+                      "self.tbks_list[slot_index] is not a list"
+                      f"{bcolors.ENDC}")
         rng = range(-int(nPspecmax), int(nPspecmax)+1)
         mesh = np.meshgrid(*([rng]*3))
         nvec_arr = np.vstack([y.flat for y in mesh]).T
@@ -1033,11 +1108,16 @@ class QCIndexSpace:
         nvec_arr_tmp = ((E2nvec_arr.T)[1:]).T
         nvec_arr_tmp = nvec_arr_tmp.astype(np.int64)
         if self.verbosity >= 2:
-            print(f"L = {np.round(Ltmp, 10)}, "
-                  f"E = {np.round(Etmp, 10)}")
+            print(f"{bcolors.OKGREEN}"
+                  "Populating nvec array, L = "
+                  f"{np.round(Ltmp, 10)}, E = {np.round(Etmp, 10)}"
+                  f"{bcolors.ENDC}")
         self.tbks_list[slot_index][-1].nvec_arr = nvec_arr_tmp
         if self.verbosity >= 2:
-            print(self.tbks_list[slot_index][-1])
+            print(f"{bcolors.OKGREEN}"
+                  f"Values of ThreeBodyKinematicSpace at slot {slot_index}:\n"
+                  f"{self.tbks_list[slot_index][-1]}"
+                  f"{bcolors.ENDC}")
         tbks_copy = deepcopy(tbks_tmp)
         tbks_copy.verbosity = self.verbosity
         self.tbks_list[slot_index] = self.tbks_list[slot_index]\
@@ -1047,18 +1127,25 @@ class QCIndexSpace:
         if isinstance(self.tbks_list[slot_index], list):
             tbks_tmp = self.tbks_list[slot_index][0]
             if self.verbosity >= 2:
-                print("self.tbks_list[slot_index] is a list, "
-                      "taking first entry")
+                print(f"{bcolors.OKGREEN}"
+                      "self.tbks_list[slot_index] is a list, "
+                      "taking first entry"
+                      f"{bcolors.ENDC}")
         else:
             tbks_tmp = self.tbks_list[slot_index]
             if self.verbosity >= 2:
-                print("self.tbks_list[slot_index] is not a list")
+                print(f"{bcolors.OKGREEN}"
+                      "self.tbks_list[slot_index] is not a list"
+                      f"{bcolors.ENDC}")
         tbks_copy = deepcopy(tbks_tmp)
         tbks_copy.verbosity = self.verbosity
         self.tbks_list[slot_index] = [tbks_copy]
         nPspec = nPspecmax
         if self.verbosity >= 2:
-            print("populating up to nPspecmax = "+str(nPspecmax))
+            print(f"{bcolors.OKGREEN}"
+                  "Populating nvec array, slot_index = "
+                  f"{slot_index}, nPspecmax = {nPspecmax}"
+                  f"{bcolors.ENDC}")
         while nPspec > 0:
             nPspec = self._populate_nP_iteration(slot_index, tbks_tmp, nPspec)
         self.tbks_list[slot_index] = self.tbks_list[slot_index][:-1]
@@ -1071,7 +1158,10 @@ class QCIndexSpace:
 
     def _populate_nP_iteration(self, slot_index, tbks_tmp, nPspec):
         if self.verbosity >= 2:
-            print("nPspec**2 = ", int(nPspec**2))
+            print(f"{bcolors.OKGREEN}"
+                  "Populating nvec array, nPspec**2 = "
+                  f"{int(nPspec**2)}"
+                  f"{bcolors.ENDC}")
         rng = range(-int(nPspec), int(nPspec)+1)
         mesh = np.meshgrid(*([rng]*3))
         nvec_arr = np.vstack([y.flat for y in mesh]).T
@@ -1079,7 +1169,10 @@ class QCIndexSpace:
         nvec_arr = np.delete(nvec_arr, np.where(carr), axis=0)
         self.tbks_list[slot_index][-1].nvec_arr = nvec_arr
         if self.verbosity >= 2:
-            print(self.tbks_list[slot_index][-1])
+            print(f"{bcolors.OKGREEN}"
+                  f"Values of ThreeBodyKinematicSpace at slot {slot_index}:\n"
+                  f"{self.tbks_list[slot_index][-1]}"
+                  f"{bcolors.ENDC}")
         tbks_copy = deepcopy(tbks_tmp)
         tbks_copy.verbosity = self.verbosity
         self.tbks_list[slot_index] =\
@@ -1147,8 +1240,10 @@ class QCIndexSpace:
     def populate_all_kellm_spaces(self):
         """Populate all kellm spaces."""
         if self.verbosity >= 2:
-            print("populating kellm spaces")
-            print(self.n_channels, "channels to populate")
+            print(f"{bcolors.OKGREEN}"
+                  f"Populating kellm spaces\n"
+                  f"{self.n_channels} channels to populate"
+                  f"{bcolors.ENDC}")
         kellm_shells = [[]]
         kellm_spaces = [[]]
         for cindex in range(self.n_channels):
@@ -1184,13 +1279,17 @@ class QCIndexSpace:
         self.kellm_spaces = kellm_spaces[1:]
         self.kellm_shells = kellm_shells[1:]
         if self.verbosity >= 2:
-            print("result for kellm spaces")
-            print("location: channel index, nvec-space index")
+            print(f"{bcolors.OKGREEN}"
+                  "Result for kellm spaces:\n"
+                  "location: channel index, nvec-space index"
+                  f"{bcolors.ENDC}")
             np.set_printoptions(threshold=20)
             for i in range(len(self.kellm_spaces)):
                 for j in range(len(self.kellm_spaces[i])):
+                    print(f"{bcolors.OKGREEN}")
                     print('location:', i, j)
                     print(self.kellm_spaces[i][j])
+                    print(f"{bcolors.ENDC}")
             np.set_printoptions(threshold=PRINT_THRESHOLD_DEFAULT)
 
     def populate_all_proj_dicts(self):
@@ -1199,8 +1298,10 @@ class QCIndexSpace:
         sc_proj_dicts = []
         sc_proj_dicts_by_shell = [[]]
         if self.verbosity >= 2:
-            print("getting the dict for following qcis:")
+            print(f"{bcolors.OKGREEN}\n"
+                  f"Getting the dict for following qcis:")
             print(self)
+            print(f"{self}{bcolors.ENDC}")
         for sc_index in range(self.n_channels):
             proj_dict = group.get_channel_proj_dict(qcis=self,
                                                     sc_index=sc_index)
@@ -1954,7 +2055,8 @@ class QCIndexSpace:
                 if (Etmp > E) and (Ltmp > L):
                     ibest = i
                 i = i+1
-        if self.verbosity == 2:
+        if self.verbosity >= 2:
+            print(f"{bcolors.OKGREEN}")
             print('Lvals  =', Lvals)
             print('Evals  =', Evals)
             print('ibest =', ibest, '=', np.mod(ibest,
@@ -1967,6 +2069,7 @@ class QCIndexSpace:
                   'and Emaxtmp =',
                   np.round(Evals[
                       np.mod(ibest, len(Evals))], 10))
+            print(f"{bcolors.ENDC}")
         return ibest
 
     def default_k_params(self):

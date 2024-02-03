@@ -307,7 +307,7 @@ class FlavorChannel:
             print(f"    isospins: {self.isospins}\n"
                   f"    allowed_total_isospins: "
                   f"{self.allowed_total_isospins}\n"
-                  f"    isospin: {self.isospin}\n")
+                  f"    isospin: {self.isospin}")
         print(f"{bcolors.ENDC}")
 
     def _get_masses(self):
