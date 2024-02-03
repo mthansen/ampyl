@@ -493,8 +493,8 @@ class QC:
         while L_val > L_finish:
             iteration += 1
             if iteration > max_iterations:
-                return np.array(Lvals_final), np.array(Evals_final),\
-                    np.array(lower_Evals_final), np.array(upper_Evals_final),\
+                return np.array(Lvals_final), np.array(Evals_final), \
+                    np.array(lower_Evals_final), np.array(upper_Evals_final), \
                     np.array(upper_shifts), np.array(lower_shifts)
             try:
                 rs, rs_upper, rs_lower = self.\
@@ -530,8 +530,8 @@ class QC:
                     continue
                 else:
                     return np.array(Lvals_final), np.array(Evals_final)
-        return np.array(Lvals_final), np.array(Evals_final),\
-            np.array(lower_Evals_final), np.array(upper_Evals_final),\
+        return np.array(Lvals_final), np.array(Evals_final), \
+            np.array(lower_Evals_final), np.array(upper_Evals_final), \
             np.array(upper_shifts), np.array(lower_shifts)
 
     def _get_root_set(self, k_params, project, irrep, version,
