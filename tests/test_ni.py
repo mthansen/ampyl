@@ -49,7 +49,8 @@ class TestNonInteracting(unittest.TestCase):
         fcs = FlavorChannelSpace(fc_list=[fc2, fc3])
         qcis = QCIndexSpace(fcs=fcs)
         ni_data_two = qcis._load_ni_data_two(fc2)
-        expected_set = [1., 1., 5., np.array([0, 0, 0]), 5., 1]
+        # expected_set = [1., 1., 5., np.array([0, 0, 0]), 5., 1]
+        expected_set = [1., 1., 5., np.array([0, 0, 0]), 5., 2]
         for j in range(len(expected_set)):
             expectation = expected_set[j]
             reality = ni_data_two[j]
@@ -57,7 +58,8 @@ class TestNonInteracting(unittest.TestCase):
                 self.assertTrue((expectation == reality).all())
             else:
                 self.assertEqual(expectation, reality)
-        self.assertEqual(ni_data_two[6].shape, (27, 3))
+        # self.assertEqual(ni_data_two[6].shape, (27, 3))
+        self.assertEqual(ni_data_two[6].shape, (125, 3))
 
         ni_data_three = qcis._load_ni_data_three(fc3)
         expected_set = [1., 1., 1., 5., np.array([0, 0, 0]), 5., 2]

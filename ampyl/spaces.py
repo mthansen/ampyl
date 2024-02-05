@@ -83,11 +83,31 @@ class FiniteVolumeSetup:
         the correct type.
     """
 
-    def __init__(self, formalism='RFT', nP=np.array([0, 0, 0]), qc_impl={}):
+    def __init__(self, formalism='RFT', nP=np.array([0, 0, 0]), qc_impl={},
+                 verbosity=0):
         self.formalism = formalism
         self.qc_impl = qc_impl
         self.nP = nP
         self.set_irreps()
+        self._verbosity = verbosity
+        self.verbosity = verbosity
+
+        if self.verbosity >= 2:
+            print(f"{bcolors.OKGREEN}")
+            print(self)
+            print(f"{bcolors.ENDC}")
+
+    @property
+    def verbosity(self):
+        """Verbosity of the FiniteVolumeSetup."""
+        return self._verbosity
+
+    @verbosity.setter
+    def verbosity(self, verbosity):
+        """Set the verbosity of the FiniteVolumeSetup."""
+        if not isinstance(verbosity, int):
+            raise ValueError("verbosity must be an int")
+        self._verbosity = verbosity
 
     @property
     def nP(self):
@@ -216,6 +236,24 @@ class ThreeBodyInteractionScheme:
                 self.kdf_functions = self.kdf_functions+[self.kdf_iso_constant]
         else:
             self.kdf_functions = kdf_functions
+        self._verbosity = verbosity
+        self.verbosity = verbosity
+        if self.verbosity >= 2:
+            print(f"{bcolors.OKGREEN}")
+            print(self)
+            print(f"{bcolors.ENDC}")
+
+    @property
+    def verbosity(self):
+        """Verbosity of the ThreeBodyInteractionScheme."""
+        return self._verbosity
+
+    @verbosity.setter
+    def verbosity(self, verbosity):
+        """Set the verbosity of the ThreeBodyInteractionScheme."""
+        if not isinstance(verbosity, int):
+            raise ValueError("verbosity must be an int")
+        self._verbosity = verbosity
 
     def with_str(str_func):
         """Change print behavior of a function."""
@@ -271,11 +309,6 @@ class ThreeBodyKinematicSpace:
     :type build_shell_acc: bool
     :param verbosity: verbosity level
     :type verbosity: int
-
-    :ivar stacked: dictionary of stacked data. Possible keys are:
-        ``'n1vec'``, ``'n2vec'``, ``'n3vec'``, ``'n1vecSQ'``, ``'n2vecSQ'``,
-        ``'n3vecSQ'``, ``'multiplicities'``.
-    :vartype stacked: dict
     :ivar nPSQ: total momentum squared in the finite-volume frame
     :vartype nPSQ: int
     :ivar nPmag: magnitude of the total momentum in the finite-volume frame
@@ -334,7 +367,6 @@ class ThreeBodyKinematicSpace:
     def __init__(self, nP=np.array([0, 0, 0]), nvec_arr=np.array([]),
                  build_shell_acc=True, verbosity=0):
         self.build_shell_acc = build_shell_acc
-        self.stacked = {}
         self.nP = nP
         self.nvec_arr = nvec_arr
         self.verbosity = verbosity
@@ -377,7 +409,6 @@ class ThreeBodyKinematicSpace:
                     = self._get_shell_sort(nvec_arr_first_sort)
                 self._populate_nvec_simple_derivatives()
                 self._populate_nvec_matrices()
-                self._populate_nvec_stacks()
                 self._populate_nvec_shells()
         else:
             self._nvec_arr = nvec_arr
@@ -471,139 +502,6 @@ class ThreeBodyKinematicSpace:
         self.nP_minus_n1vec_mat = self.nP - self.n1vec_mat
         self.nP_minus_n2vec_mat = self.nP - self.n2vec_mat
 
-    def _populate_nvec_stacks(self):
-        n1vec_stacked_dict, n2vec_stacked_dict, n3vec_stacked_dict,\
-            counts_stacked_dict = self._initialize_dicts()
-
-        n1vec_stacked_dict, n2vec_stacked_dict, n3vec_stacked_dict,\
-            = self._populate_dicts(n1vec_stacked_dict, n2vec_stacked_dict,
-                                   n3vec_stacked_dict)
-
-        n1vec_stacked, n2vec_stacked, n3vec_stacked, multiplicities_stacked\
-            = self._convert_dicts_to_lists(n1vec_stacked_dict,
-                                           n2vec_stacked_dict,
-                                           n3vec_stacked_dict,
-                                           counts_stacked_dict)
-        self.stacked['n1vec'] = n1vec_stacked
-        self.stacked['n2vec'] = n2vec_stacked
-        self.stacked['n3vec'] = n3vec_stacked
-        self.stacked['multiplicities'] = multiplicities_stacked
-        self._populate_nvecSQ_stacks()
-
-    def _initialize_dicts(self):
-        n1vec_stacked_dict = {}
-        n2vec_stacked_dict = {}
-        n3vec_stacked_dict = {}
-        counts_stacked_dict = {}
-        for i1 in self.shells:
-            for j1 in self.shells:
-                stri = str(i1[0])+'_'+str(i1[1])
-                strj = str(j1[0])+'_'+str(j1[1])
-                strij = stri+'_'+strj
-                n1vec_stacked_dict[strij] = 0.0
-                n2vec_stacked_dict[strij] = 0.0
-                n3vec_stacked_dict[strij] = 0.0
-                counts_stacked_dict[strij] = (i1[1]-i1[0])*(j1[1]-j1[0])
-        return n1vec_stacked_dict, n2vec_stacked_dict, n3vec_stacked_dict,\
-            counts_stacked_dict
-
-    def _populate_dicts(self, n1vec_stacked_dict, n2vec_stacked_dict,
-                        n3vec_stacked_dict):
-        for i1 in range(len(self.nvecSQ_arr)):
-            for j1 in range(len(self.nvecSQ_arr)):
-                shell_index_i = 0
-                shell_index_j = 0
-                for i2 in range(len(self.shells)):
-                    shell_tmp = self.shells[i2]
-                    if shell_tmp[0] <= i1 < shell_tmp[1]:
-                        shell_index_i = i2
-                for j2 in range(len(self.shells)):
-                    shell_tmp = self.shells[j2]
-                    if shell_tmp[0] <= j1 < shell_tmp[1]:
-                        shell_index_j = j2
-                stri = str(self.shells[shell_index_i][0])+'_'\
-                    + str(self.shells[shell_index_i][1])
-                strj = str(self.shells[shell_index_j][0])+'_'\
-                    + str(self.shells[shell_index_j][1])
-                sizei = self.shells[shell_index_i][1]\
-                    - self.shells[shell_index_i][0]
-                sizej = self.shells[shell_index_j][1]\
-                    - self.shells[shell_index_j][0]
-                if (sizei >= sizej and i1 == self.shells[shell_index_i][0])\
-                   or (sizej > sizei and j1 == self.shells[shell_index_j][0]):
-                    strij = stri+'_'+strj
-                    if n1vec_stacked_dict[strij] == 0.0:
-                        n1vec_stacked_dict[strij]\
-                            = [self.n1vec_mat[i1][j1]]
-                    else:
-                        n1vec_stacked_dict[strij].append(
-                            self.n1vec_mat[i1][j1])
-                    if n2vec_stacked_dict[strij] == 0.0:
-                        n2vec_stacked_dict[strij]\
-                            = [self.n2vec_mat[i1][j1]]
-                    else:
-                        n2vec_stacked_dict[strij].append(
-                            self.n2vec_mat[i1][j1])
-                    if n3vec_stacked_dict[strij] == 0.0:
-                        n3vec_stacked_dict[strij]\
-                            = [self.n3vec_mat[i1][j1]]
-                    else:
-                        n3vec_stacked_dict[strij].append(
-                            self.n3vec_mat[i1][j1])
-        return n1vec_stacked_dict, n2vec_stacked_dict, n3vec_stacked_dict
-
-    def _convert_dicts_to_lists(self, n1vec_stacked_dict, n2vec_stacked_dict,
-                                n3vec_stacked_dict, counts_stacked_dict):
-        n1vec_stacked = []
-        n2vec_stacked = []
-        n3vec_stacked = []
-        multiplicities_stacked = []
-        for i1 in self.shells:
-            n1vec_stacked_row = []
-            n2vec_stacked_row = []
-            n3vec_stacked_row = []
-            mult_stacked_row = []
-            for j1 in self.shells:
-                stri = str(i1[0])+'_'+str(i1[1])
-                strj = str(j1[0])+'_'+str(j1[1])
-                strij = stri+'_'+strj
-                n1vec_stacked_row.append(np.array(n1vec_stacked_dict[strij]))
-                n2vec_stacked_row.append(np.array(n2vec_stacked_dict[strij]))
-                n3vec_stacked_row.append(np.array(n3vec_stacked_dict[strij]))
-                n1stacked_len = len(np.array(n1vec_stacked_dict[strij]))
-                mult_stacked_row.append(counts_stacked_dict[strij]
-                                        / n1stacked_len)
-            n1vec_stacked.append(n1vec_stacked_row)
-            n2vec_stacked.append(n2vec_stacked_row)
-            n3vec_stacked.append(n3vec_stacked_row)
-            multiplicities_stacked.append(mult_stacked_row)
-        multiplicities_stacked = np.array(multiplicities_stacked)
-        return n1vec_stacked, n2vec_stacked, n3vec_stacked,\
-            multiplicities_stacked
-
-    def _populate_nvecSQ_stacks(self):
-        n1vecSQ_stacked = []
-        for n1vec_row in self.stacked['n1vec']:
-            n1vecSQ_row = []
-            for n1vec in n1vec_row:
-                n1vecSQ_row.append((n1vec*n1vec).sum(1))
-            n1vecSQ_stacked.append(n1vecSQ_row)
-        self.stacked['n1vecSQ'] = n1vecSQ_stacked
-        n2vecSQ_stacked = []
-        for n2vec_row in self.stacked['n2vec']:
-            n2vecSQ_row = []
-            for n2vec in n2vec_row:
-                n2vecSQ_row.append((n2vec*n2vec).sum(1))
-            n2vecSQ_stacked.append(n2vecSQ_row)
-        self.stacked['n2vecSQ'] = n2vecSQ_stacked
-        n3vecSQ_stacked = []
-        for n3vec_row in self.stacked['n3vec']:
-            n3vecSQ_row = []
-            for n3vec in n3vec_row:
-                n3vecSQ_row.append((n3vec*n3vec).sum(1))
-            n3vecSQ_stacked.append(n3vecSQ_row)
-        self.stacked['n3vecSQ'] = n3vecSQ_stacked
-
     def _populate_nvec_shells(self):
         n1vec_arr_all_shells = []
         n1vecSQ_arr_all_shells = []
@@ -617,15 +515,15 @@ class ThreeBodyKinematicSpace:
         n3vecSQ_mat_all_shells = []
 
         for row_shell in self.shells:
-            n1vec_arr_row_shells,\
-                n1vecSQ_arr_row_shells,\
-                n2vec_arr_row_shells,\
-                n2vecSQ_arr_row_shells,\
-                n1vec_mat_row_shells,\
-                n2vec_mat_row_shells,\
-                n3vec_mat_row_shells,\
-                n1vecSQ_mat_row_shells,\
-                n2vecSQ_mat_row_shells,\
+            n1vec_arr_row_shells, \
+                n1vecSQ_arr_row_shells, \
+                n2vec_arr_row_shells, \
+                n2vecSQ_arr_row_shells, \
+                n1vec_mat_row_shells, \
+                n2vec_mat_row_shells, \
+                n3vec_mat_row_shells, \
+                n1vecSQ_mat_row_shells, \
+                n2vecSQ_mat_row_shells, \
                 n3vecSQ_mat_row_shells\
                 = self._build_row_shells(row_shell)
             n1vec_arr_all_shells.append(n1vec_arr_row_shells)
@@ -661,15 +559,15 @@ class ThreeBodyKinematicSpace:
         n2vecSQ_mat_row_shells = []
         n3vecSQ_mat_row_shells = []
         for col_shell in self.shells:
-            n1vec_arr_shell,\
-                n1vecSQ_arr_shell,\
-                n2vec_arr_shell,\
-                n2vecSQ_arr_shell,\
-                n1vec_mat_shell,\
-                n2vec_mat_shell,\
-                n3vec_mat_shell,\
-                n1vecSQ_mat_shell,\
-                n2vecSQ_mat_shell,\
+            n1vec_arr_shell, \
+                n1vecSQ_arr_shell, \
+                n2vec_arr_shell, \
+                n2vecSQ_arr_shell, \
+                n1vec_mat_shell, \
+                n2vec_mat_shell, \
+                n3vec_mat_shell, \
+                n1vecSQ_mat_shell, \
+                n2vecSQ_mat_shell, \
                 n3vecSQ_mat_shell\
                 = self._slice_and_swap(row_shell, col_shell)
             n1vec_arr_row_shells.append(n1vec_arr_shell)
@@ -682,10 +580,10 @@ class ThreeBodyKinematicSpace:
             n1vecSQ_mat_row_shells.append(n1vecSQ_mat_shell)
             n2vecSQ_mat_row_shells.append(n2vecSQ_mat_shell)
             n3vecSQ_mat_row_shells.append(n3vecSQ_mat_shell)
-        return n1vec_arr_row_shells, n1vecSQ_arr_row_shells,\
-            n2vec_arr_row_shells, n2vecSQ_arr_row_shells,\
-            n1vec_mat_row_shells, n2vec_mat_row_shells, n3vec_mat_row_shells,\
-            n1vecSQ_mat_row_shells, n2vecSQ_mat_row_shells,\
+        return n1vec_arr_row_shells, n1vecSQ_arr_row_shells, \
+            n2vec_arr_row_shells, n2vecSQ_arr_row_shells, \
+            n1vec_mat_row_shells, n2vec_mat_row_shells, n3vec_mat_row_shells, \
+            n1vecSQ_mat_row_shells, n2vecSQ_mat_row_shells, \
             n3vecSQ_mat_row_shells
 
     def _slice_and_swap(self, row_shell, col_shell):
@@ -752,9 +650,9 @@ class ThreeBodyKinematicSpace:
                             0, 1
                             )
 
-        return n1vec_arr_shell, n1vecSQ_arr_shell, n2vec_arr_shell,\
-            n2vecSQ_arr_shell, n1vec_mat_shell, n2vec_mat_shell,\
-            n3vec_mat_shell, n1vecSQ_mat_shell, n2vecSQ_mat_shell,\
+        return n1vec_arr_shell, n1vecSQ_arr_shell, n2vec_arr_shell, \
+            n2vecSQ_arr_shell, n1vec_mat_shell, n2vec_mat_shell, \
+            n3vec_mat_shell, n1vecSQ_mat_shell, n2vecSQ_mat_shell, \
             n3vecSQ_mat_shell
 
     def __str__(self):
@@ -862,6 +760,7 @@ class QCIndexSpace:
                  Emax=5.0, Lmax=5.0,
                  deltaE=DELTA_E_FOR_GRID, deltaL=DELTA_L_FOR_GRID,
                  verbosity=0):
+        self._verbosity = verbosity
         self.verbosity = verbosity
         self.Emax = Emax
         self.Lmax = Lmax
@@ -869,38 +768,64 @@ class QCIndexSpace:
         self.deltaL = deltaL
 
         if fcs is None:
-            if verbosity == 2:
-                print('setting the flavor-channel space, None was passed')
+            if verbosity >= 2:
+                print(f"{bcolors.OKGREEN}"
+                      "Setting the flavor-channel space, None was passed"
+                      f"{bcolors.ENDC}")
             self._fcs = FlavorChannelSpace(fc_list=[FlavorChannel(3)])
         else:
-            if verbosity == 2:
-                print('setting the flavor-channel space')
+            if verbosity >= 2:
+                print(f"{bcolors.OKGREEN}"
+                      "Setting the flavor-channel space"
+                      f"{bcolors.ENDC}")
             self._fcs = fcs
 
         if fvs is None:
-            if verbosity == 2:
-                print('setting the finite-volume setup, None was passed')
+            if verbosity >= 2:
+                print(f"{bcolors.OKGREEN}"
+                      "Setting the finite-volume setup, None was passed"
+                      f"{bcolors.ENDC}")
             self.fvs = FiniteVolumeSetup()
         else:
-            if verbosity == 2:
-                print('setting the finite-volume setup')
+            if verbosity >= 2:
+                print(f"{bcolors.OKGREEN}"
+                      "Setting the finite-volume setup"
+                      f"{bcolors.ENDC}")
             self.fvs = fvs
 
         if tbis is None:
-            if verbosity == 2:
-                print('setting the three-body interaction scheme, '
-                      + 'None was passed')
+            if verbosity >= 2:
+                print(f"{bcolors.OKGREEN}"
+                      "Setting the three-body interaction scheme, None was "
+                      "passed"
+                      f"{bcolors.ENDC}")
             self.tbis = ThreeBodyInteractionScheme()
         else:
-            if verbosity == 2:
-                print('setting the three-body interaction scheme')
+            if verbosity >= 2:
+                print(f"{bcolors.OKGREEN}"
+                      "Setting the three-body interaction scheme"
+                      f"{bcolors.ENDC}")
             self.tbis = tbis
 
         self._nP = self.fvs.nP
-        if verbosity == 2:
-            print('setting nP to '+str(self.fvs.nP))
         self.nP = self.fvs.nP
+        if verbosity >= 2:
+            print(f"{bcolors.OKGREEN}"
+                  f"Setting the total momentum to nP = {self._nP}"
+                  f"{bcolors.ENDC}")
         self.fcs = self._fcs
+
+    @property
+    def verbosity(self):
+        """Verbosity of the QCIndexSpace."""
+        return self._verbosity
+
+    @verbosity.setter
+    def verbosity(self, verbosity):
+        """Set the verbosity of the QCIndexSpace."""
+        if not isinstance(verbosity, int):
+            raise ValueError("verbosity must be an int")
+        self._verbosity = verbosity
 
     def populate(self):
         """Populate the index space."""
@@ -930,15 +855,19 @@ class QCIndexSpace:
         self.half_spin = half_spin
 
         if self.nPSQ != 0:
-            if self.verbosity == 2:
-                print('nPSQ is nonzero, will use grid')
+            if self.verbosity >= 2:
+                print(f"{bcolors.OKGREEN}"
+                      "nPSQ is nonzero, grid will be used"
+                      f"{bcolors.ENDC}")
             [self.Evals, self.Lvals] = self._get_grid_nonzero_nP(self.Emax,
                                                                  self.Lmax,
                                                                  self.deltaE,
                                                                  self.deltaL)
-            if self.verbosity == 2:
-                print('Lvals =', self.Lvals)
-                print('Evals =', self.Evals)
+            if self.verbosity >= 2:
+                print(f"{bcolors.OKGREEN}"
+                      f"Grid for non-zero nP:\n"
+                      f"Evals = {self.Evals}\n"
+                      f"Lvals = {self.Lvals}")
         else:
             self.Lvals = None
             self.Evals = None
@@ -1107,8 +1036,10 @@ class QCIndexSpace:
             if self.nPSQ == 0:
                 nPspecmax = self._get_nPspecmax(three_slice_index)
                 if self.verbosity >= 2:
-                    print(f"populating nvec array, three_slice_index = "
-                          f"{three_slice_index}")
+                    print(f"{bcolors.OKGREEN}"
+                          "Populating nvec array, three_slice_index = "
+                          f"{three_slice_index}"
+                          f"{bcolors.ENDC}")
                 self._populate_slot_zero_momentum(slot_index, nPspecmax)
                 if self.half_spin:
                     self._populate_spin_zero_momentum(slot_index, nPspecmax)
@@ -1132,12 +1063,16 @@ class QCIndexSpace:
         if isinstance(self.tbks_list[slot_index], list):
             tbks_tmp = self.tbks_list[slot_index][0]
             if self.verbosity >= 2:
-                print("self.tbks_list[slot_index] is a list, "
-                      "taking first entry")
+                print(f"{bcolors.OKGREEN}"
+                      "self.tbks_list[slot_index] is a list, "
+                      "taking first entry"
+                      f"{bcolors.ENDC}")
         else:
             tbks_tmp = self.tbks_list[slot_index]
             if self.verbosity >= 2:
-                print("self.tbks_list[slot_index] is not a list")
+                print(f"{bcolors.OKGREEN}"
+                      "self.tbks_list[slot_index] is not a list"
+                      f"{bcolors.ENDC}")
         rng = range(-int(nPspecmax), int(nPspecmax)+1)
         mesh = np.meshgrid(*([rng]*3))
         nvec_arr = np.vstack([y.flat for y in mesh]).T
@@ -1173,11 +1108,16 @@ class QCIndexSpace:
         nvec_arr_tmp = ((E2nvec_arr.T)[1:]).T
         nvec_arr_tmp = nvec_arr_tmp.astype(np.int64)
         if self.verbosity >= 2:
-            print(f"L = {np.round(Ltmp, 10)}, "
-                  f"E = {np.round(Etmp, 10)}")
+            print(f"{bcolors.OKGREEN}"
+                  "Populating nvec array, L = "
+                  f"{np.round(Ltmp, 10)}, E = {np.round(Etmp, 10)}"
+                  f"{bcolors.ENDC}")
         self.tbks_list[slot_index][-1].nvec_arr = nvec_arr_tmp
         if self.verbosity >= 2:
-            print(self.tbks_list[slot_index][-1])
+            print(f"{bcolors.OKGREEN}"
+                  f"Values of ThreeBodyKinematicSpace at slot {slot_index}:\n"
+                  f"{self.tbks_list[slot_index][-1]}"
+                  f"{bcolors.ENDC}")
         tbks_copy = deepcopy(tbks_tmp)
         tbks_copy.verbosity = self.verbosity
         self.tbks_list[slot_index] = self.tbks_list[slot_index]\
@@ -1187,18 +1127,25 @@ class QCIndexSpace:
         if isinstance(self.tbks_list[slot_index], list):
             tbks_tmp = self.tbks_list[slot_index][0]
             if self.verbosity >= 2:
-                print("self.tbks_list[slot_index] is a list, "
-                      "taking first entry")
+                print(f"{bcolors.OKGREEN}"
+                      "self.tbks_list[slot_index] is a list, "
+                      "taking first entry"
+                      f"{bcolors.ENDC}")
         else:
             tbks_tmp = self.tbks_list[slot_index]
             if self.verbosity >= 2:
-                print("self.tbks_list[slot_index] is not a list")
+                print(f"{bcolors.OKGREEN}"
+                      "self.tbks_list[slot_index] is not a list"
+                      f"{bcolors.ENDC}")
         tbks_copy = deepcopy(tbks_tmp)
         tbks_copy.verbosity = self.verbosity
         self.tbks_list[slot_index] = [tbks_copy]
         nPspec = nPspecmax
         if self.verbosity >= 2:
-            print("populating up to nPspecmax = "+str(nPspecmax))
+            print(f"{bcolors.OKGREEN}"
+                  "Populating nvec array, slot_index = "
+                  f"{slot_index}, nPspecmax = {nPspecmax}"
+                  f"{bcolors.ENDC}")
         while nPspec > 0:
             nPspec = self._populate_nP_iteration(slot_index, tbks_tmp, nPspec)
         self.tbks_list[slot_index] = self.tbks_list[slot_index][:-1]
@@ -1211,7 +1158,10 @@ class QCIndexSpace:
 
     def _populate_nP_iteration(self, slot_index, tbks_tmp, nPspec):
         if self.verbosity >= 2:
-            print("nPspec**2 = ", int(nPspec**2))
+            print(f"{bcolors.OKGREEN}"
+                  "Populating nvec array, nPspec**2 = "
+                  f"{int(nPspec**2)}"
+                  f"{bcolors.ENDC}")
         rng = range(-int(nPspec), int(nPspec)+1)
         mesh = np.meshgrid(*([rng]*3))
         nvec_arr = np.vstack([y.flat for y in mesh]).T
@@ -1219,7 +1169,10 @@ class QCIndexSpace:
         nvec_arr = np.delete(nvec_arr, np.where(carr), axis=0)
         self.tbks_list[slot_index][-1].nvec_arr = nvec_arr
         if self.verbosity >= 2:
-            print(self.tbks_list[slot_index][-1])
+            print(f"{bcolors.OKGREEN}"
+                  f"Values of ThreeBodyKinematicSpace at slot {slot_index}:\n"
+                  f"{self.tbks_list[slot_index][-1]}"
+                  f"{bcolors.ENDC}")
         tbks_copy = deepcopy(tbks_tmp)
         tbks_copy.verbosity = self.verbosity
         self.tbks_list[slot_index] =\
@@ -1287,8 +1240,10 @@ class QCIndexSpace:
     def populate_all_kellm_spaces(self):
         """Populate all kellm spaces."""
         if self.verbosity >= 2:
-            print("populating kellm spaces")
-            print(self.n_channels, "channels to populate")
+            print(f"{bcolors.OKGREEN}"
+                  f"Populating kellm spaces\n"
+                  f"{self.n_channels} channels to populate"
+                  f"{bcolors.ENDC}")
         kellm_shells = [[]]
         kellm_spaces = [[]]
         for cindex in range(self.n_channels):
@@ -1324,13 +1279,17 @@ class QCIndexSpace:
         self.kellm_spaces = kellm_spaces[1:]
         self.kellm_shells = kellm_shells[1:]
         if self.verbosity >= 2:
-            print("result for kellm spaces")
-            print("location: channel index, nvec-space index")
+            print(f"{bcolors.OKGREEN}"
+                  "Result for kellm spaces:\n"
+                  "location: channel index, nvec-space index"
+                  f"{bcolors.ENDC}")
             np.set_printoptions(threshold=20)
             for i in range(len(self.kellm_spaces)):
                 for j in range(len(self.kellm_spaces[i])):
+                    print(f"{bcolors.OKGREEN}")
                     print('location:', i, j)
                     print(self.kellm_spaces[i][j])
+                    print(f"{bcolors.ENDC}")
             np.set_printoptions(threshold=PRINT_THRESHOLD_DEFAULT)
 
     def populate_all_proj_dicts(self):
@@ -1339,8 +1298,10 @@ class QCIndexSpace:
         sc_proj_dicts = []
         sc_proj_dicts_by_shell = [[]]
         if self.verbosity >= 2:
-            print("getting the dict for following qcis:")
+            print(f"{bcolors.OKGREEN}\n"
+                  f"Getting the dict for following qcis:")
             print(self)
+            print(f"{self}{bcolors.ENDC}")
         for sc_index in range(self.n_channels):
             proj_dict = group.get_channel_proj_dict(qcis=self,
                                                     sc_index=sc_index)
@@ -2094,7 +2055,8 @@ class QCIndexSpace:
                 if (Etmp > E) and (Ltmp > L):
                     ibest = i
                 i = i+1
-        if self.verbosity == 2:
+        if self.verbosity >= 2:
+            print(f"{bcolors.OKGREEN}")
             print('Lvals  =', Lvals)
             print('Evals  =', Evals)
             print('ibest =', ibest, '=', np.mod(ibest,
@@ -2107,6 +2069,7 @@ class QCIndexSpace:
                   'and Emaxtmp =',
                   np.round(Evals[
                       np.mod(ibest, len(Evals))], 10))
+            print(f"{bcolors.ENDC}")
         return ibest
 
     def default_k_params(self):
