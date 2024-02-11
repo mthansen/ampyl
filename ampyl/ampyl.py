@@ -39,7 +39,10 @@ from scipy.linalg import block_diag
 from scipy.optimize import root_scalar
 from .constants import TWOPI
 from .constants import FOURPI2
+from .constants import EPSILON3
 from .constants import EPSILON4
+from .constants import EPSILON5
+from .constants import EPSILON8
 from .constants import EPSILON10
 from .constants import bcolors
 from .functions import QCFunctions
