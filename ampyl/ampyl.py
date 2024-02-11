@@ -252,12 +252,26 @@ class QC:
     :type C1cut: int
     """
 
-    def __init__(self, qcis=None, C1cut=5, alphaKSS=1.0):
+    def __init__(self, qcis=None, C1cut=5, alphaKSS=1.0, verbosity=0):
         self.qcis = qcis
         self.f = F(qcis=self.qcis, alphaKSS=alphaKSS, C1cut=C1cut)
         self.g = G(qcis=self.qcis)
         self.fplusg = FplusG(qcis=self.qcis, alphaKSS=alphaKSS, C1cut=C1cut)
         self.k = K(qcis=self.qcis)
+        self._verbosity = verbosity
+        self.verbosity = verbosity
+
+    @property
+    def verbosity(self):
+        """Verbosity of the QC."""
+        return self._verbosity
+
+    @verbosity.setter
+    def verbosity(self, verbosity):
+        """Set the verbosity of the QC."""
+        if not isinstance(verbosity, int):
+            raise ValueError("verbosity must be an int")
+        self._verbosity = verbosity
 
     def get_value(self, E=None, L=None, k_params=None, project=True,
                   irrep=None, version='kdf_zero_1+',
