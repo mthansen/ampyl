@@ -1575,7 +1575,7 @@ class QCFunctions:
         P2 = P-pspec
         E2CMSQ = E2**2-P2@P2
         if E2CMSQ <= 0.0 or E2 < 0.0:
-            return np.inf
+            return np.nan
         ECM = np.sqrt(E2CMSQ)
         if m1 == m2:
             pSQ = E2CMSQ/4.0-m1**2

@@ -222,7 +222,8 @@ class ThreeBodyInteractionScheme:
     """
 
     def __init__(self, fcs=None, Emin=0.0, three_scheme='relativistic pole',
-                 scheme_data=[-1.0, 0.0], kdf_functions=None):
+                 scheme_data=[-1.0, 0.0], kdf_functions=None,
+                 verbosity=0):
         self.Emin = Emin
         if fcs is None:
             self.fcs = FlavorChannelSpace(fc_list=[FlavorChannel(3)])
