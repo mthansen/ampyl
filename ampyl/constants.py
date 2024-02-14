@@ -63,7 +63,9 @@ RTWELVE = np.sqrt(12.)
 RFIFTEEN = np.sqrt(15.)
 RTWENTY = np.sqrt(20.)
 
+EPSILON3 = 1.0e-3
 EPSILON4 = 1.0e-4
+EPSILON5 = 1.0e-5
 EPSILON8 = 1.0e-8
 EPSILON10 = 1.0e-10
 EPSILON15 = 1.0e-15
