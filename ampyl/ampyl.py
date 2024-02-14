@@ -446,8 +446,22 @@ class QC:
             nonint_Evals.append(E_nonint)
         return nonint_Evals
 
+    def correct_irrep_row(qcis, irrep):
+        """
+        Corrects the row index of an irreducible representation (irrep)
+        based on the available non-interacting multiplicities.
+        """
+        irrep_name = irrep[0]
+        irrep_row = irrep[1]
+        ni_zero_keys = qcis.nonint_multiplicities[0].keys()
+        for i in range(3):
+            irrep_row = (irrep_row + i) % 3
+            if (irrep_name, i) in ni_zero_keys:
+                irrep = (irrep_name, i)
+        return irrep
+
     def _get_nonint_energies(self, Emax_for_roots, k_params, irrep, L):
-        irrep = correct_irrep_row(self.qcis, irrep)
+        irrep = self.correct_irrep_row(self.qcis, irrep)
         if self.verbosity >= 2:
             print(f'{bcolors.OKGREEN}'
                   f'irrep {irrep} found in nonint_multiplicities.\n'
