@@ -475,7 +475,7 @@ class QC:
         for fc in self.qcis.fcs.fc_list:
             if fc.isospin != isospin:
                 raise ValueError("isospin is not the same for all channels")
-        if isospin == 2:
+        if isospin == 2 or isospin == 0:
             multis_pipipi = self.qcis.nonint_multiplicities[0][irrep]
             multis_rhopi = self.qcis.nonint_multiplicities[1][irrep]
             if self.verbosity >= 2:
@@ -517,7 +517,7 @@ class QC:
                                                    nonint_Evals)
             nonint_Evals = np.sort(np.array(nonint_Evals))
         else:
-            raise ValueError("isospin is not 1 or 2")
+            raise ValueError("isospin is not 0, 1, or 2")
         return nonint_Evals
 
     def _try_to_find_roots_at_fixed_L(self, Lmax=6., n_steps=10, bracket=None,
