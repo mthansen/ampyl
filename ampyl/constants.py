@@ -46,7 +46,9 @@ QC_IMPL_DEFAULTS = {'hermitian': True,
                     'smarter_q_rescale': False,
                     'use_cob_matrices': True,
                     'reduce_size': True,
-                    'populate_interp_zeros': False}
+                    'populate_interp_zeros': False,
+                    'use_hard_cutoff_zero': False,
+                    'use_hard_cutoff_one': False}
 PI = np.pi
 TWOPI = 2.*PI
 FOURPI2 = 4.0*PI**2
