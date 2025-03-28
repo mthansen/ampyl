@@ -98,7 +98,7 @@ class K:
             scatterer_a_index = 1
             scatterer_b_index = 2
             threshold = masses[scatterer_a_index] + masses[scatterer_b_index]
-            zero_support_point = self._get_zero_support_point(self, threshold)
+            zero_support_point = self._get_zero_support_point(threshold)
             mask = (E-omk_arr)**2-PmkSQ_arr > zero_support_point
             slices = tbks_entry.shells
             mask_slices = []
