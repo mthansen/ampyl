@@ -303,88 +303,229 @@ class QC:
             raise ValueError("verbosity must be an int")
         self._verbosity = verbosity
 
-    def get_value(self, E=None, L=None, k_params=None, project=True,
-                  irrep=None, version='kdf_zero_1+',
-                  rescale=1.0, shift=0.):
+    def get_value(self, E, L, qc_dict):
         r"""
-        Get value.
+        Compute a value based on the specified parameters and version.
 
-        version is drawn from the following:
-            'kdf_zero_1+' (defaul)
-            'f3'
-            'kdf_zero_k2_inv'
-            'kdf_zero_f+g_inv'
+        This method calculates a value using various mathematical operations
+        and matrix manipulations. The behavior of the computation depends on
+        the `version` parameter, which determines the specific formula or
+        algorithm to be used. The method supports multiple versions, each
+        corresponding to a different computation strategy.
+
+        Parameters:
+            E (float): The energy value. This is a required parameter.
+            L (float): The box length. This is a required parameter.
+            qc_dict (dict): A dictionary containing the following keys:
+                - 'k_params' (list): Parameters for the K-matrices, which
+                    splits into:
+                    - pcotdelta_parameter_lists (list): Lists of parameters
+                        for the K-matrix.
+                    - k3_params (list): Parameters for the K3 matrix.
+                    This is a required parameter.
+                - 'project' (bool): Whether to project the function, defaults
+                    to False.
+                - 'irrep' (tuple): Irreducible representation information,
+                    defaults to None.
+                - 'version' (str): Version identifier, defaults to
+                    'kdf_zero_1+'. Supported versions include:
+                    - 'kdf_zero_1+'
+                    - 'f3'
+                    - 'kdf_zero_k2_inv'
+                    - 'kdf_zero_f+g_inv'
+                    - '1+Kdf_F3'
+                    - 'kdf+f3inv'
+                    - 'detF3inverse'
+                    - 'kdf_zero_1+_fgcombo'
+                    - 'kdf_zero_1+_asym_fgcombo'
+                    - 'kdf_zero_1+_FinverseF3'
+                - 'rescale' (float): Rescaling factor, defaults to 1.0.
+                - 'shift' (float): Shift value, defaults to 0.0.
+
+        Returns:
+            float: The computed value based on the specified parameters and
+            version.
+
+        Raises:
+            TypeError: If any of the required parameters (`E`, `L`, `k_params`,
+                or `irrep` when `project` is True) are missing.
+
+        Notes:
+            - The method performs matrix operations and may issue warnings
+                if matrix dimensions are mismatched. Temporary fixes are
+                applied in such cases by padding or zeroing matrices.
+            - The computation involves various components such as `F`, `G`,
+                `FplusG`, and `K`, which are derived from other methods or
+                interpolations.
         """
-        if E is None:
-            raise TypeError("missing required argument 'E' (float)")
-        if L is None:
-            raise TypeError("missing required argument 'L' (float)")
-        if k_params is None:
-            raise TypeError("missing required argument 'k_params'")
-        if irrep is None and project:
-            raise TypeError("missing required argument 'irrep'")
+        if not isinstance(E, float):
+            raise TypeError("E must be a float")
+        if not isinstance(L, float):
+            raise TypeError("L must be a float")
+
+        qc_dict = self.validate_qc_dict(qc_dict)
+        k_params = qc_dict['k_params']
+        project = qc_dict['project']
+        irrep = qc_dict['irrep']
+        version = qc_dict['version']
+        rescale = qc_dict['rescale']
+        shift = qc_dict['shift']
+
+        [pcotdelta_parameter_lists, k3_params] = k_params
+
+        K = self.k.get_value(E, L, pcotdelta_parameter_lists,
+                             project, irrep)*rescale
+
+        createF = (version == '1+Kdf_F3'
+                   or version == 'kdf+f3inv'
+                   or version == 'f3'
+                   or version == 'detF3inverse'
+                   or version == 'kdf_zero_1+'
+                   or version == 'kdf_zero_k2_inv'
+                   or version == 'kdf_zero_f+g_inv'
+                   or version == 'kdf_zero_1+_FinverseF3')
+        if createF:
+            f_smart_interpolate = QC_IMPL_DEFAULTS['f_smart_interpolate']
+            if 'f_smart_interpolate' in self.qcis.fvs.qc_impl:
+                f_smart_interpolate =\
+                    self.qcis.fvs.qc_impl['f_smart_interpolate']
+
+            if f_smart_interpolate:
+                F = self.finterp.get_value(E, L, project, irrep,
+                                           short_string='f')/rescale
+            else:
+                F = self.f.get_value(E, L, project, irrep,
+                                     short_string='f')/rescale
+
+            if len(F) > len(K):
+                warnings.warn(f"\n{bcolors.WARNING}"
+                              "F and K have different shapes, and F is "
+                              "larger. Padding K with extra entries. "
+                              "This is a temporary fix."
+                              f"{bcolors.ENDC}")
+                padded_K = np.zeros_like(F)
+                padded_K[:len(K), :len(K)] = K
+                K = padded_K
+            elif len(F) < len(K):
+                warnings.warn(f"\n{bcolors.WARNING}"
+                              "F and K have different shapes, and F is "
+                              "smaller. Setting F to zero. "
+                              "This is a temporary fix."
+                              f"{bcolors.ENDC}")
+                F = np.zeros(K.shape)
+
+        createFplusG = (version == '1+Kdf_F3'
+                        or version == 'kdf+f3inv'
+                        or version == 'f3'
+                        or version == 'detF3inverse'
+                        or version == 'kdf_zero_1+_fgcombo'
+                        or version == 'kdf_zero_1+_asym_fgcombo')
+        if createFplusG:
+            FplusG = self.fplusg.get_value(E, L, project, irrep,
+                                           short_string='fplusg')/rescale
+
+            if len(FplusG) > len(K):
+                warnings.warn(f"\n{bcolors.WARNING}"
+                              "FplusG and K have different shapes, and "
+                              "FplusG is larger. "
+                              "Padding K with extra entries. "
+                              "This is a temporary fix."
+                              f"{bcolors.ENDC}")
+                padded_K = np.zeros_like(FplusG)
+                padded_K[:len(K), :len(K)] = K
+                K = padded_K
+            elif len(FplusG) < len(K):
+                warnings.warn(f"\n{bcolors.WARNING}"
+                              "FplusG and K have different shapes, and "
+                              "FplusG is smaller. "
+                              "Setting FplusG to zero. "
+                              "This is a temporary fix."
+                              f"{bcolors.ENDC}")
+                FplusG = np.zeros(K.shape)
+
+        createG = (version == 'kdf_zero_1+'
+                   or version == 'kdf_zero_k2_inv'
+                   or version == 'kdf_zero_f+g_inv'
+                   or version == 'kdf_zero_1+_FinverseF3')
+        if createG:
+            G = self.g.get_value(E, L, project, irrep,
+                                 short_string='g')/rescale
+
+            if len(G) > len(K):
+                warnings.warn(f"\n{bcolors.WARNING}"
+                              "G and K have different shapes, and G is "
+                              "larger. Padding K with extra entries. "
+                              "This is a temporary fix."
+                              f"{bcolors.ENDC}")
+                padded_K = np.zeros_like(G)
+                padded_K[:len(K), :len(K)] = K
+                K = padded_K
+            elif len(G) < len(K):
+                warnings.warn(f"\n{bcolors.WARNING}"
+                              "G and K have different shapes, and G is "
+                              "smaller. Setting G to zero. "
+                              "This is a temporary fix."
+                              f"{bcolors.ENDC}")
+                G = np.zeros(K.shape)
+
+        if version == '1+Kdf_F3':
+            Kdf = self.kdf.get_value(E, L, k3_params,
+                                     project, irrep,
+                                     short_string='kdf')*rescale
+
+            id_mat = np.identity(len(Kdf))
+
+            F3 = (F/3 - F@K@np.linalg.inv(id_mat+(FplusG)@K)@F)/L**3
+            return np.linalg.det(id_mat + Kdf@F3)
+
+        if version == 'kdf+f3inv':
+            Kdf = self.kdf.get_value(E, L, k3_params,
+                                     project, irrep,
+                                     short_string='kdf')*rescale
+
+            F3 = (F/3 - F@np.linalg.inv(np.linalg.inv(FplusG)+K)@F)/L**3
+
+            F3inv = np.linalg.inv(F3)
+            return Kdf + F3inv
 
         if version == 'f3':
-            [pcotdelta_parameter_lists, k3_params] = k_params
-            F = self.f.get_value(E, L, project, irrep,
-                                 short_string='f')/rescale
-            G = self.g.get_value(E, L, project, irrep,
-                                 short_string='g')/rescale
-            K = self.k.get_value(E, L, pcotdelta_parameter_lists,
-                                 project, irrep)*rescale
-            return (F/3 - F @ np.linalg.inv(np.linalg.inv(K)+F+G) @ F)/L**3
+            return (F/3 - F @ np.linalg.inv(np.linalg.inv(K)+FplusG) @ F)/L**3
 
-        if (len(version) >= 8) and (version[:8] == 'kdf_zero'):
-            [pcotdelta_parameter_lists, k3_params] = k_params
-            if version == 'kdf_zero_1+_fgcombo':
-                FplusG = self.fplusg.get_value(E, L, project, irrep,
-                                               short_string='fplusg')/rescale
-                K = self.k.get_value(E, L, pcotdelta_parameter_lists,
-                                     project, irrep)*rescale
-                if len(FplusG) > len(K):
-                    warnings.warn(f"\n{bcolors.WARNING}"
-                                  "FplusG and K have different shapes, and "
-                                  "FplusG is larger. "
-                                  "Padding K with extra entries. "
-                                  "This is a temporary fix."
-                                  f"{bcolors.ENDC}")
-                    padded_K = np.zeros_like(FplusG)
-                    padded_K[:len(K), :len(K)] = K
-                    K = padded_K
-                elif len(FplusG) < len(K):
-                    warnings.warn(f"\n{bcolors.WARNING}"
-                                  "FplusG and K have different shapes, and "
-                                  "FplusG is smaller. "
-                                  "Setting FplusG to zero. "
-                                  "This is a temporary fix."
-                                  f"{bcolors.ENDC}")
-                    FplusG = np.zeros(K.shape)
-                id_mat = np.identity(len(FplusG))
-                return np.linalg.det(id_mat+(FplusG)@K)-shift
+        if version == 'detF3inverse':
+            F3 = (F/3 - F @ np.linalg.inv(np.linalg.inv(K)+FplusG) @ F)/L**3
+            return 1./np.linalg.det(F3)
 
-            F = self.f.get_value(E, L, project, irrep,
-                                 short_string='f')/rescale
-            G = self.g.get_value(E, L, project, irrep,
-                                 short_string='g')/rescale
-            K = self.k.get_value(E, L, pcotdelta_parameter_lists,
-                                 project, irrep)*rescale
+        if version == 'kdf_zero_1+_fgcombo':
+            id_mat = np.identity(len(FplusG))
+            return np.linalg.det(id_mat+(FplusG)@K)-shift
 
-            if version == 'kdf_zero_1+':
-                id_mat = np.identity(len(G))
-                return np.linalg.det(id_mat+(F+G)@K)
+        if version == 'kdf_zero_1+_asym_fgcombo':
+            id_mat = np.identity(len(FplusG))
+            H = id_mat+FplusG@K
+            detH = np.linalg.det(H)
+            if np.abs(detH) < EPSILON10:
+                Hinverse = id_mat/(EPSILON10)
+            else:
+                Hinverse = np.linalg.inv(H)
+            F3 = FplusG - FplusG@K@Hinverse@FplusG
+            return 1./np.linalg.det(F3)
 
-            if version == 'kdf_zero_k2_inv':
-                return np.linalg.det(np.linalg.inv(K)+(F+G))
+        if version == 'kdf_zero_1+':
+            id_mat = np.identity(len(G))
+            return np.linalg.det(id_mat+(F+G)@K)
 
-            if version == 'kdf_zero_f+g_inv':
-                return np.linalg.det(np.linalg.inv(F+G)+K)
+        if version == 'kdf_zero_k2_inv':
+            return np.linalg.det(np.linalg.inv(K)+(F+G))
 
-            if version == 'kdf_zero_1+_FinverseF3':
-                id_mat = np.identity(len(G))
-                block_inv = np.linalg.inv(np.linalg.inv(K)+F+G)
-                matrix_in_det = id_mat-3.*block_inv@F
-                inverse_det = 1./np.linalg.det(matrix_in_det)
-                return inverse_det
+        if version == 'kdf_zero_f+g_inv':
+            return np.linalg.det(np.linalg.inv(F+G)+K)
+
+        if version == 'kdf_zero_1+_FinverseF3':
+            id_mat = np.identity(len(G))
+            block_inv = np.linalg.inv(np.linalg.inv(K)+F+G)
+            matrix_in_det = id_mat-3.*block_inv@F
+            inverse_det = 1./np.linalg.det(matrix_in_det)
+            return inverse_det
 
     def generate_summary(self, Elower=None, Eupper=None, L=None,
                          k_params=None, project=True, irrep=None,
