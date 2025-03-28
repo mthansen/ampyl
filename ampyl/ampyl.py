@@ -241,19 +241,45 @@ class K:
 
 
 class QC:
-    """
-    Class for the quantization condition.
+    r"""
+    QC: A class for handling the quantization condition (QC) in finite-volume
+    lattice calculations. This class provides methods for computing QC values
+    and finding roots.
 
     Warning: It is up to the user to select values of alphaKSS and C1cut that
     lead to a sufficient estimate of the F matrix.
 
-    :param qcis: quantization-condition index space, specifying all data for
-        the class
-    :type qcis: QCIndexSpace
-    :param alphaKSS: damping factor entering the zeta functions
-    :type alphaKSS: float
-    :param C1cut: hard cutoff used in the zeta functions
-    :type C1cut: int
+    Attributes:
+        qcis (QCIndexSpace): The quantization-condition index space, specifying
+            data for the class.
+        f (F): The F matrix, derived from the quantization condition.
+        finterp (Finterp): Interpolated version of the F matrix.
+        g (G): The G matrix, derived from the quantization condition.
+        kdf (Kdf): The Kdf matrix, representing the three-particle interaction.
+        fplusg (FplusG): The sum of F and G matrices.
+        k (K): The K matrix, representing the two-particle interaction.
+        verbosity (int): The verbosity level for logging and debugging.
+
+    Methods:
+        get_value(E, L, qc_dict):
+            Computes a QC value based on the specified parameters and version.
+
+        get_roots_from_range(E_range, L, qc_dict, ni_functions,
+                             cuts=DEFAULT_CUTS):
+            Finds roots of the QC within a specified energy range.
+
+        get_all_energies(qc_dict, dL=0.1):
+            Computes all energy levels for a given box length and step size.
+
+        simple_try_at_fixed_L(E_bracket, L, qc_dict):
+            Simplified method for finding a single root of the QC at a fixed
+            box length.
+
+        get_roots_for_Erange_and_LdL(E_range, L, qc_dict, ni_functions,
+                                     qc_dict, cuts=DEFAULT_CUTS):
+            Computes the roots of the QC for a given energy range and box size,
+            considering non-interacting energy levels and specified
+            breakpoints.
     """
 
     def __init__(self, qcis=None, C1cut=5, alphaKSS=1.0, verbosity=0):
