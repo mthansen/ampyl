@@ -661,3 +661,160 @@ class QC:
         warnings.warn("Root not found, not sure why. Returning NaN.")
         return np.nan
 
+    def extract_EL_set(self, version, dL):
+        if (version in ['kdf_zero_1+_fgcombo', 'kdf_zero_1+_asym_fgcombo']
+           and self.qcis.fvs.qc_impl['fplusg_smart_interpolate']):
+            Emin = self.fplusg.Emin_interp + MINMAXOFFSET
+            Emax = self.fplusg.Emax_interp - MINMAXOFFSET
+            Lmin = self.fplusg.Lmin_interp + MINMAXOFFSET
+            Lmax = self.fplusg.Lmax_interp - MINMAXOFFSET
+        else:
+            Emin = DEFAULT_EMIN
+            Emax = self.qcis.Emax
+            Lmin = DEFAULT_LMIN
+            Lmax = self.qcis.Lmax
+        if dL > 0.:
+            L = Lmin+dL+EPSILON4
+        else:
+            L = Lmax+dL-EPSILON4
+        E_range = [Emin, Emax]
+        L_vals = [L-dL, L]
+        return E_range, L, L_vals, Lmin, Lmax, Emax, Emin
+
+    def get_all_energies(self, qc_dict, dL=0.1):
+        version = qc_dict['version']
+        E_range, L, L_vals, Lmin, Lmax, Emax, Emin =\
+            self.extract_EL_set(version, dL)
+        project = qc_dict['project']
+        if not project:
+            raise ValueError("project must be True")
+        irrep = qc_dict['irrep']
+        ni_functions = []
+        for ni_function_channel in self.qcis.nonint_functions:
+            ni_functions.extend(ni_function_channel[irrep])
+        all_E_vals = self.get_roots_for_Erange_and_LdL(
+            E_range, L, dL, ni_functions, qc_dict)
+
+        for k in range(len(all_E_vals)):
+            E_vals = all_E_vals[k]
+            unique_E_vals = []
+            for E_val in E_vals:
+                if not any(np.isclose(E_val, unique_E_val)
+                           for unique_E_val in unique_E_vals):
+                    unique_E_vals.append(E_val)
+            all_E_vals[k] = sorted(unique_E_vals)
+        assert len(all_E_vals) == 2
+        min_len = min(len(all_E_vals[0]), len(all_E_vals[1]))
+        all_E_vals[0] = all_E_vals[0][:min_len]
+        all_E_vals[1] = all_E_vals[1][:min_len]
+        all_E_vals = np.array(all_E_vals).T.tolist()
+        all_L_vals = [deepcopy(L_vals) for i in range(len(all_E_vals))]
+
+        for arr in (np.array(all_E_vals).T):
+            assert np.all(np.diff(arr) >= 0)
+
+        for i in range(len(all_L_vals)):
+            assert len(all_L_vals[i]) == len(all_L_vals[0])
+            for j in range(len(L_vals)):
+                assert all_L_vals[i][j] == all_L_vals[0][j]
+        L_vals = list(np.linspace(all_L_vals[0][0], all_L_vals[0][1], 4))
+        all_L_vals = [deepcopy(L_vals) for i in range(len(all_L_vals))]
+        for i in range(len(all_E_vals)):
+            E_vals = np.array(all_E_vals[i])
+            L_vals_tmp = np.array([all_L_vals[i][0], all_L_vals[i][-1]])
+            sorted_indices = np.argsort(L_vals_tmp)
+            E_vals = np.interp(all_L_vals[i],
+                               L_vals_tmp[sorted_indices],
+                               E_vals[sorted_indices])
+            all_E_vals[i] = list(E_vals)
+
+        for i in range(len(all_E_vals)):
+            for j in range(len(all_E_vals[i])):
+                Ltmp = all_L_vals[i][j]
+                Etmp = all_E_vals[i][j]
+                E_vals_tmp = np.array(all_E_vals[i])
+                L_vals_tmp = np.array(all_L_vals[i])
+                if j != 0 and j != len(E_vals_tmp)-1:
+                    E_vals_tmp = np.delete(E_vals_tmp, j)
+                    L_vals_tmp = np.delete(L_vals_tmp, j)
+                sorted_indices = np.argsort(L_vals_tmp)
+                Etmp = np.interp(Ltmp, L_vals_tmp[sorted_indices],
+                                 E_vals_tmp[sorted_indices])
+                all_E_vals[i][j] = Etmp
+                Eupdate = np.nan
+                bracket_shift = 1.e-10
+                while np.isnan(Eupdate) and bracket_shift < 1.e-1:
+                    E_range = [Etmp-bracket_shift, Etmp+bracket_shift]
+                    cuts_a = np.logspace(-8, -2, 4)
+                    cuts_b = np.linspace(0.011, 0.989, 10)
+                    cuts_c = 1.-np.logspace(-8, -2, 4)
+                    cuts = np.concatenate((cuts_a, cuts_b, cuts_c))
+                    cuts = np.sort(cuts)
+                    E_set = self.get_roots_from_range(
+                        E_range, Ltmp, qc_dict, ni_functions, cuts=cuts)
+                    if len(E_set) == 1:
+                        Eupdate = E_set[0]
+                    elif len(E_set) > 1:
+                        index = np.abs(E_set - Etmp).argmin()
+                        Eupdate = E_set[index]
+                        warnings.warn(f'Multiple solutions found for L = {L}.'
+                                      f'Differences are {np.abs(E_set - Etmp)}')
+                    bracket_shift = bracket_shift*10.
+                if np.isnan(Eupdate):
+                    bracket_shift = 1.e-10
+                    while np.isnan(Eupdate) and bracket_shift < 3.e-1:
+                        E_bracket = [Etmp-bracket_shift, Etmp+bracket_shift]
+                        Eupdate = self.simple_try_at_fixed_L(
+                            E_bracket, Ltmp, qc_dict)
+                        bracket_shift = bracket_shift*5.
+                        if np.isnan(Eupdate):
+                            warnings.warn(f'Failed to find solution for L = {L}')
+                        else:
+                            all_E_vals[i][j] = Eupdate
+                        self.qcis.fvs.qc_impl['fplusg_smart_interpolate'] = True
+                else:
+                    all_E_vals[i][j] = Eupdate
+                self.qcis.fvs.qc_impl['fplusg_smart_interpolate'] = True
+
+        while Lmin+np.abs(dL) <= L <= Lmax-np.abs(dL):
+            L = L+dL
+            for i in range(len(all_E_vals)):
+                degree = min(len(all_L_vals[i])-1, 3)
+                if len(all_L_vals[i]) > 9:
+                    fit = np.polyfit(all_L_vals[i][-9:], all_E_vals[i][-9:],
+                                     degree)
+                else:
+                    fit = np.polyfit(all_L_vals[i], all_E_vals[i], degree)
+                line = np.poly1d(fit)
+                E_guess = line(L)
+                dE = 1.e-6
+                E_val = []
+                while len(E_val) == 0 and dE < 1.e-1:
+                    print(f'E_guess = {E_guess}, dE = {dE}')
+                    E_range = [E_guess-dE, E_guess+dE]
+                    if (E_guess+dE > Emax or E_guess-dE > Emax or
+                       E_guess-dE < Emin or E_guess+dE < Emin):
+                        warnings.warn('E_guess+dE > Emax')
+                        continue
+
+                    cuts = np.linspace(0.1, 0.9, 3)
+                    E_val = self.get_roots_from_range(
+                        E_range, L, qc_dict, ni_functions, cuts=cuts)
+                    print(f'E_val = {E_val}')
+                    dE = dE*10.
+                if len(E_val) == 1:
+                    print(f'Unique solution found with dE = {dE}')
+                    print(f'L = {L}, E = {E_val[0]}')
+                    all_E_vals[i].append(E_val[0])
+                    all_L_vals[i].append(L)
+                elif len(E_val) > 1:
+                    index = np.abs(E_val - E_guess).argmin()
+                    Eupdate = E_val[index]
+                    all_E_vals[i].append(Eupdate)
+                    all_L_vals[i].append(L)
+                    warnings.warn(f'Multiple solutions found for L = {L}.\n'
+                                  f'Differences are {np.abs(E_set - Etmp)}')
+
+                    self.qcis.fvs.qc_impl['fplusg_smart_interpolate'] = True
+        return all_L_vals, all_E_vals
+
