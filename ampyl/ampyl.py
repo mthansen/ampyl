@@ -52,7 +52,6 @@ from .functions import QCFunctions
 from .cuts import G
 from .cuts import F
 from .cuts import FplusG
-from .cuts import Kdf
 import warnings
 from copy import deepcopy
 warnings.simplefilter("once")
@@ -253,7 +252,6 @@ class QC:
             data for the class.
         f (F): The F matrix, derived from the quantization condition.
         g (G): The G matrix, derived from the quantization condition.
-        kdf (Kdf): The Kdf matrix, representing the three-particle interaction.
         fplusg (FplusG): The sum of F and G matrices.
         k (K): The K matrix, representing the two-particle interaction.
         verbosity (int): The verbosity level for logging and debugging.
@@ -471,24 +469,11 @@ class QC:
                 G = np.zeros(K.shape)
 
         if version == '1+Kdf_F3':
-            Kdf = self.kdf.get_value(E, L, k3_params,
-                                     project, irrep,
-                                     short_string='kdf')*rescale
-
-            id_mat = np.identity(len(Kdf))
-
-            F3 = (F/3 - F@K@np.linalg.inv(id_mat+(FplusG)@K)@F)/L**3
-            return np.linalg.det(id_mat + Kdf@F3)
+            raise NotImplementedError(
+                "version '1+Kdf_F3' is not implemented yet.")
 
         if version == 'kdf+f3inv':
-            Kdf = self.kdf.get_value(E, L, k3_params,
-                                     project, irrep,
-                                     short_string='kdf')*rescale
-
-            F3 = (F/3 - F@np.linalg.inv(np.linalg.inv(FplusG)+K)@F)/L**3
-
-            F3inv = np.linalg.inv(F3)
-            return Kdf + F3inv
+            raise NotImplementedError("kdf+f3inv is not implemented yet")
 
         if version == 'f3':
             return (F/3 - F @ np.linalg.inv(np.linalg.inv(K)+FplusG) @ F)/L**3
