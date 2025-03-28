@@ -30,6 +30,8 @@ jobs:
 
     - name: Install dependencies
       run: |
+        sudo apt-get update
+        sudo apt-get install libfftw3-dev
         python -m pip install --upgrade pip
         pip install numpy scipy coverage
         pip install .
