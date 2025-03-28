@@ -643,3 +643,21 @@ class QC:
                 all_roots.append(root)
         return all_roots
 
+    def simple_try_at_fixed_L(self, E_bracket, L, qc_dict):
+        try:
+            root = root_scalar(self.get_value,
+                               args=(L, qc_dict),
+                               bracket=E_bracket).root
+            qc_tmp = self.get_value(root, L, qc_dict)
+            if np.abs(qc_tmp) < 1.e-5:
+                return root
+            warnings.warn("Root was found but QC at the root is not "
+                          "sufficiently close to zero, returning NaN.")
+            return np.nan
+        except ValueError:
+            warnings.warn("Root not found and ValueError was raised either by "
+                          "root_scalar or by get_value. Returning NaN.")
+            return np.nan
+        warnings.warn("Root not found, not sure why. Returning NaN.")
+        return np.nan
+
