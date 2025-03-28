@@ -565,3 +565,81 @@ class QC:
             raise TypeError("qc_dict['irrep'][1] must be an int")
         return qc_dict
 
+    def get_roots_from_range(self, E_range, L, qc_dict, ni_functions,
+                             cuts=DEFAULT_CUTS):
+        """
+        Compute the roots of the QC within a specified energy range.
+
+        This method calculates the roots of the QC for a given energy range
+        and box size `L`, considering non-interacting energy levels and
+        specified breakpoints. It uses a dictionary of parameters to define the
+        QC.
+
+        Args:
+            E_range (list): A list of two floats specifying the energy range
+                [E_min, E_max] within which to search for roots.
+            L (float): The box size parameter.
+            qc_dict (dict): See `get_value` method for details.
+            ni_functions (list): A list of functions that compute
+                non-interacting energy levels for a given `L`.
+            cuts (list, optional): A list of floats specifying the fractional
+                positions within each range to add additional breakpoints.
+                Defaults to `DEFAULT_CUTS`.
+
+        Returns:
+            list: A list of roots found within the specified energy range.
+
+        Raises:
+            TypeError: If `E_range` is not a list of two floats.
+            TypeError: If `L` is not a float.
+            TypeError: If `qc_dict` is not a dictionary or is missing
+                        required keys.
+            TypeError: If the types of values in `qc_dict` do not match the
+                        expected types.
+
+        Notes:
+            - The method identifies non-interacting energy levels within the
+                specified range and uses them to define subranges for root
+                finding.
+            - The `simple_try_at_fixed_L` method is used to find roots within
+                each subrange.
+            - Roots that are `np.nan` are excluded from the results.
+        """
+        if not isinstance(E_range, list) or len(E_range) != 2 or \
+                not all(isinstance(E, float) for E in E_range):
+            raise TypeError("E_range must be a list of two floats")
+        if not isinstance(L, float):
+            raise TypeError("L must be a float")
+        self.validate_qc_dict(qc_dict)
+        nonint_energies = []
+        for ni_function in ni_functions:
+            nonint_energies.append(ni_function(L))
+        nonint_energies = np.array(nonint_energies)
+        nonint_in_range = nonint_energies[E_range[0] < nonint_energies]
+        nonint_in_range = nonint_in_range[nonint_in_range < E_range[1]]
+        breakpoints = np.concatenate(([E_range[0]], nonint_in_range,
+                                      [E_range[1]]))
+        differences = np.diff(breakpoints)
+        cuts = np.sort(cuts)
+        all_breakpoints = []
+        for i in range(len(differences)):
+            for cut in cuts:
+                all_breakpoints.append(breakpoints[i]+cut*differences[i])
+        all_breakpoints.append(breakpoints[-1])
+        all_breakpoints = np.array(all_breakpoints)
+        all_ranges = []
+        for i in range(len(all_breakpoints)-1):
+            candidate_range = [all_breakpoints[i], all_breakpoints[i+1]]
+            no_nonint_in_candidate = True
+            for nonint_energy in nonint_in_range:
+                if candidate_range[0] < nonint_energy < candidate_range[1]:
+                    no_nonint_in_candidate = False
+            if no_nonint_in_candidate:
+                all_ranges.append([all_breakpoints[i], all_breakpoints[i+1]])
+        all_roots = []
+        for E_bracket in all_ranges:
+            root = self.simple_try_at_fixed_L(E_bracket, L, qc_dict)
+            if root is not np.nan:
+                all_roots.append(root)
+        return all_roots
+
