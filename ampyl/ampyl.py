@@ -818,3 +818,12 @@ class QC:
                     self.qcis.fvs.qc_impl['fplusg_smart_interpolate'] = True
         return all_L_vals, all_E_vals
 
+    def get_roots_for_Erange_and_LdL(self, E_range, L, dL, ni_functions,
+                                     qc_dict, cuts=DEFAULT_CUTS):
+        L_values = [L-dL, L]
+        E_sets = []
+        for Ltmp in L_values:
+            E_set = self.get_roots_from_range(E_range, Ltmp, qc_dict,
+                                              ni_functions, cuts=cuts)
+            E_sets.append(E_set)
+        return E_sets
