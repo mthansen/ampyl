@@ -52,7 +52,6 @@ from .functions import QCFunctions
 from .cuts import G
 from .cuts import F
 from .cuts import FplusG
-from .cuts import Finterp
 from .cuts import Kdf
 import warnings
 from copy import deepcopy
@@ -253,7 +252,6 @@ class QC:
         qcis (QCIndexSpace): The quantization-condition index space, specifying
             data for the class.
         f (F): The F matrix, derived from the quantization condition.
-        finterp (Finterp): Interpolated version of the F matrix.
         g (G): The G matrix, derived from the quantization condition.
         kdf (Kdf): The Kdf matrix, representing the three-particle interaction.
         fplusg (FplusG): The sum of F and G matrices.
@@ -391,8 +389,12 @@ class QC:
                     self.qcis.fvs.qc_impl['f_smart_interpolate']
 
             if f_smart_interpolate:
-                F = self.finterp.get_value(E, L, project, irrep,
-                                           short_string='f')/rescale
+                warnings.warn(f"\n{bcolors.WARNING}"
+                              "f_smart_interpolate is not yet supported. "
+                              "Using f instead."
+                              f"{bcolors.ENDC}")
+                F = self.f.get_value(E, L, project, irrep,
+                                     short_string='f')/rescale
             else:
                 F = self.f.get_value(E, L, project, irrep,
                                      short_string='f')/rescale
