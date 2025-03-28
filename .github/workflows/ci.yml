@@ -15,7 +15,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.8", "3.9", "3.10"]
+        python-version: ["3.9", "3.10"]
 
     steps:
 
@@ -50,7 +50,7 @@ jobs:
         coverage xml  # Export coverage report as XML file, for codecov.i
 
     - name: Upload coverage to Codecov
-      if: ${{ (matrix.python-version == 3.8) && (github.event_name == 'push') }}
+      if: ${{ (matrix.python-version == 3.9) && (github.event_name == 'push') }}
       env:
         PYTHON_VERSION: python${{ matrix.python-version }}
         CODECOV_TOKEN: "fff52416-cbeb-4926-b062-04e528abb51c"
