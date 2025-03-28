@@ -39,27 +39,23 @@ from scipy.linalg import block_diag
 from scipy.optimize import root_scalar
 from .constants import TWOPI
 from .constants import FOURPI2
-from .constants import EPSILON3
 from .constants import EPSILON4
-from .constants import EPSILON5
-from .constants import EPSILON8
 from .constants import EPSILON10
 from .constants import QC_IMPL_DEFAULTS
+from .constants import DEFAULT_CUTS
+from .constants import QC_DICT_DEFAULTS
+from .constants import MINMAXOFFSET
+from .constants import DEFAULT_EMIN
+from .constants import DEFAULT_LMIN
 from .constants import bcolors
 from .functions import QCFunctions
-from .functions import BKFunctions
-from .flavor import Particle
-from .flavor import FlavorChannel
-from .flavor import SpectatorChannel
-from .flavor import FlavorChannelSpace
-from .spaces import FiniteVolumeSetup
-from .spaces import ThreeBodyInteractionScheme
-from .spaces import ThreeBodyKinematicSpace
-from .spaces import QCIndexSpace
 from .cuts import G
 from .cuts import F
 from .cuts import FplusG
+from .cuts import Finterp
+from .cuts import Kdf
 import warnings
+from copy import deepcopy
 warnings.simplefilter("once")
 
 
