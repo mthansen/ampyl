@@ -35,7 +35,7 @@ Created July 2022.
 
 import unittest
 import numpy as np
-from ampyl import BKFunctions
+from ampyl.functions import BKFunctions
 
 
 class TestBKFunctions(unittest.TestCase):
