@@ -36,7 +36,7 @@ Created Feb 2023.
 import unittest
 from scipy.optimize import root_scalar
 import numpy as np
-from ampyl import QCIndexSpace
+from ampyl.spaces import QCIndexSpace
 from ampyl import QC
 
 
@@ -48,15 +48,16 @@ class TestEnergyPrediction(unittest.TestCase):
         qcis = QCIndexSpace()
         qcis.populate()
         qcis.fvs.qc_impl['g_uses_prep_mat'] = True
+        qcis.fvs.qc_impl['smarter_q_rescale'] = True
         qc = QC(qcis=qcis)
         L = 5.0
         a0 = 0.0001
         delta1 = 1.e-6
         delta2 = 1.e-1
-        root_tmp = root_scalar(qc.get_value, args=(L,
-                                                   [[[a0]], [0.0]],
-                                                   True,
-                                                   ('A1PLUS', 0)),
+        qc_dict = {'k_params': [[[a0]], [0.0]],
+                   'project': True,
+                   'irrep': ('A1PLUS', 0)}
+        root_tmp = root_scalar(qc.get_value, args=(L, qc_dict),
                                bracket=[3.+delta1, 3.+delta2]).root
         result = (root_tmp-3.0)*L**3/12./a0
         expected = np.pi
