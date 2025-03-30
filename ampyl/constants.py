@@ -44,7 +44,7 @@ DEFAULT_CUTS = np.concatenate((CUTS_A, CUTS_B, CUTS_C))
 QC_DICT_DEFAULTS = {
     'project': False,
     'irrep': None,
-    'version': 'kdf_zero_1',
+    'version': 'kdf_zero_1+',
     'rescale': 1.,
     'shift': 0.
 }
