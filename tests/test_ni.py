@@ -35,9 +35,9 @@ Created July 2022.
 
 import unittest
 import numpy as np
-from ampyl import FlavorChannel
-from ampyl import FlavorChannelSpace
-from ampyl import QCIndexSpace
+from ampyl.flavor import FlavorChannel
+from ampyl.flavor import FlavorChannelSpace
+from ampyl.spaces import QCIndexSpace
 
 
 class TestNonInteracting(unittest.TestCase):
