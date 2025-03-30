@@ -483,7 +483,12 @@ class BKFunctions:
         if smarter_q_rescale:
             calY = Y
         else:
-            calY = Y/np.abs(q**ell)
+            calY = Y
+            raise ValueError("Calculation without smarter_q_rescale "
+                             "is currently not supported. Please "
+                             "enable smarter_q_rescale in the qc_impl "
+                             "dictionary.")
+            # calY = Y/np.abs(q**ell)
         return calY
 
     @staticmethod
@@ -1287,13 +1292,33 @@ class QCFunctions:
                 smarter_q_rescale = QC_IMPL_DEFAULTS['smarter_q_rescale']
                 if 'smarter_q_rescale' in qc_impl:
                     smarter_q_rescale = qc_impl['smarter_q_rescale']
-
+                #     sph_harm_value = sph_harm_value\
+                #         - (rSQ_arr**ell1-q**(2*ell1))
+                # else:
+                #     sph_harm_value = sph_harm_value\
+                #         - (rSQ_arr**ell1/q**(2*ell1)-1.0)
+                # add a warning that this has changed
                 if smarter_q_rescale:
+                    warnings.warn(f"\n{bcolors.WARNING}"
+                                  "This has recently changed. There was a bug "
+                                  "in the rescaling factor."
+                                  f"{bcolors.ENDC}")
                     sph_harm_value = sph_harm_value\
-                        - (rSQ_arr**ell1-q**(2*ell1))
+                        - (rSQ_arr**ell1-qSQ**(ell1))
                 else:
+                    raise ValueError("Calculation without smarter_q_rescale "
+                                     "is currently not supported. Please "
+                                     "enable smarter_q_rescale in the qc_impl "
+                                     "dictionary.")
+                    warnings.warn(f"\n{bcolors.WARNING}"
+                                  "This has recently changed. There was a bug "
+                                  "in the rescaling factor."
+                                  f"{bcolors.ENDC}")
                     sph_harm_value = sph_harm_value\
-                        - (rSQ_arr**ell1/q**(2*ell1)-1.0)
+                        - (rSQ_arr**ell1-qSQ**(ell1))
+                    sph_harm_value = sph_harm_value/(qSQ**(ell1))
+                    # sph_harm_value = sph_harm_value\
+                    #     - (rSQ_arr**ell1/qSQ**(ell1)-1.0)
         else:
             if (ell1 == 0 and ell2 == 0):
                 npar_component_arr = ((nvec_arr*nP2).sum(1))/nP2mag
@@ -1330,11 +1355,30 @@ class QCFunctions:
                         smarter_q_rescale = qc_impl['smarter_q_rescale']
 
                     if smarter_q_rescale:
+                        warnings.warn(f"\n{bcolors.WARNING}"
+                                      "This has recently changed. There was a "
+                                      "bug in the rescaling factor."
+                                      f"{bcolors.ENDC}")
                         sph_harm_value = sph_harm_value\
-                            - (rSQ_arr**ell1-q**(2*ell1))
+                            - (rSQ_arr**ell1-qSQ**(ell1))
                     else:
+                        raise ValueError("Calculation without "
+                                         "smarter_q_rescale is currently not "
+                                         "supported. Please enable "
+                                         "smarter_q_rescale in the qc_impl "
+                                         "dictionary.")
+                        warnings.warn(f"\n{bcolors.WARNING}"
+                                      "This has recently changed. There was a "
+                                      "bug in the rescaling factor."
+                                      f"{bcolors.ENDC}")
                         sph_harm_value = sph_harm_value\
-                            - (rSQ_arr**ell1/q**(2*ell1)-1.0)
+                            - (rSQ_arr**ell1-qSQ**(ell1))
+                        sph_harm_value = sph_harm_value/(qSQ**(ell1))
+                        # sph_harm_value = sph_harm_value\
+                        #     - (rSQ_arr**ell1-q**(2*ell1))
+                    # else:
+                        # sph_harm_value = sph_harm_value\
+                        #     - (rSQ_arr**ell1/q**(2*ell1)-1.0)
         Ds = rSQ_arr-qSQ
         return sph_harm_value*np.exp(-alphaKSS*Ds)/Ds
 
@@ -1369,7 +1413,13 @@ class QCFunctions:
             if 'smarter_q_rescale' in qc_impl:
                 smarter_q_rescale = qc_impl['smarter_q_rescale']
             if smarter_q_rescale:
-                ttmp = ttmp*np.abs((qSQ)**ell1)
+                ttmp = ttmp*(qSQ)**ell1
+                # warn that this used to be an absolute value but now its not
+                warnings.warn(f"\n{bcolors.WARNING}"
+                              "This rescale used to be an absolute value."
+                              f"{bcolors.ENDC}")
+                # ttmp = ttmp*np.abs((qSQ)**ell1)
+
             return gamma*ttmp/np.sqrt(2.0*TWOPI)
         else:
             return 0.0
@@ -1505,6 +1555,7 @@ class QCFunctions:
         alpha_mass = 0.5*(1.+(m1**2-m2**2)/E2CMSQ)
         Htmp = BKFunctions.H(E2CMSQ, m1+m2, alpha, beta)
         pre = -Htmp*2.0/(L*np.sqrt(PI)*16.0*PI*E2CM*gamma)
+        pv_shift_value = 0.0
         if ell1 == ell2 and mazi1 == mazi2:
             ell = ell1
             pSQ = qSQ
@@ -1520,10 +1571,15 @@ class QCFunctions:
             if 'smarter_q_rescale' in qc_impl:
                 smarter_q_rescale = qc_impl['smarter_q_rescale']
             if smarter_q_rescale:
-                IPV_shift = 0.5*np.sqrt(PI)*L*gamma*partial_shift\
-                    * np.abs(pSQ**(ell))
+                warnings.warn(f"\n{bcolors.WARNING}"
+                              "This rescale used to be an absolute value."
+                              f"{bcolors.ENDC}")
+                pv_shift_value = 0.5*np.sqrt(PI)*L*gamma*partial_shift\
+                    * qSQ_dimless**(ell)
+                # IPV_shift = 0.5*np.sqrt(PI)*L*gamma*partial_shift\
+                #     * np.abs(pSQ**(ell))
             else:
-                IPV_shift = 0.5*np.sqrt(PI)*L*gamma*partial_shift
+                pv_shift_value = 0.5*np.sqrt(PI)*L*gamma*partial_shift
         hermitian = QC_IMPL_DEFAULTS['hermitian']
         if 'hermitian' in qc_impl:
             hermitian = qc_impl['hermitian']
@@ -1538,13 +1594,13 @@ class QCFunctions:
                                                   alpha_mass, C1cut, alphaKSS,
                                                   ell1, mazi1,
                                                   ell2, mazi2, qc_impl)
-                    - IPV_shift)
+                    - pv_shift_value)
 
     @staticmethod
     def getF_array(E, nP, L, m1, m2, m3, tbks_entry, slice_entry,
                    ell1, ell2, alpha, beta, C1cut, alphaKSS, qc_impl,
-                   three_scheme, use_shift=False, IPV_function=None,
-                   IPV_parameters=[1.0]):
+                   three_scheme, use_pv_shift_prescription=False,
+                   IPV_function=None, pv_shift_parameters=[0.0]):
         """
         Get F.
 
@@ -1560,9 +1616,10 @@ class QCFunctions:
                 f_row = []
                 for mazi2 in range(-ell2, ell2+1):
                     # Awkward notation for masses here
-                    if use_shift:
+                    if use_pv_shift_prescription:
                         f_entry = QCFunctions.getF_single_entry_IPV(
-                            IPV_function=IPV_function, IPV_parameters=[1.0],
+                            IPV_function=IPV_function,
+                            IPV_parameters=pv_shift_parameters,
                             E=E, nP=nP, L=L, npspec=nvec, m1=m2, m2=m3,
                             mspec=m1, C1cut=C1cut, alphaKSS=alphaKSS,
                             alpha=alpha, beta=beta, ell1=ell1, mazi1=mazi1,
@@ -1633,6 +1690,10 @@ class QCFunctions:
         Warning: This is multiplied by a factor of pSQ to cancel the threshold
         scaling, which is included elsewhere.
         """
+        # print Ecm with label
+        # print("Ecm: ", Ecm)
+        # print pcotdelta with label
+        # print("pcotdelta in original function: ", 1/tandop)
         Ecm = 2.0*np.sqrt(1.0+pSQ)
         GammaEcmop = g_value**2/(6.0*np.pi)*((pSQ))/Ecm**2
         tandop = GammaEcmop*Ecm/(mrho_value**2-Ecm**2)
@@ -1678,6 +1739,8 @@ class QCFunctions:
                    + m1**4-2.0*E2CMSQ*m2**2-2.0*m1**2*m2**2+m2**4)\
                 / (4.0*E2CMSQ)
         pcotdelta = pcotdelta_function(pSQ, *pcotdelta_parameter_list)
+        # print pcotdelta with label
+        # print("pcotdelta: ", pcotdelta)
         q_one_minus_H_tmp = BKFunctions.q_one_minus_H(E2CMSQ=E2CMSQ,
                                                       m1=m1, m2=m2,
                                                       alpha=alpha,
@@ -1694,23 +1757,37 @@ class QCFunctions:
             smarter_q_rescale = qc_impl['smarter_q_rescale']
 
         if smarter_q_rescale:
-            pcotdelta = pcotdelta/np.abs(pSQ**(ell))
+            pcotdelta = pcotdelta/pSQ**(ell)
+            # pcotdelta = pcotdelta/np.abs(pSQ**(ell))
+            # return pre*16.0*PI*ECM/(pcotdelta+q_one_minus_H_tmp)\
+            # / np.abs(pSQ**(ell))
+            warnings.warn(f"\n{bcolors.WARNING}"
+                          "This rescale used to be an absolute value."
+                          f"{bcolors.ENDC}")
             return pre*16.0*PI*ECM/(pcotdelta+q_one_minus_H_tmp)\
-                / np.abs(pSQ**(ell))
+                / pSQ**(ell)
         else:
-            pcotdelta = pcotdelta/np.abs(pSQ**(ell))
-            if ell == 1 and pSQ < 0.:
-                pcotdelta = - pcotdelta
-                warnings.warn(f"\n{bcolors.WARNING}"
-                              "flipping sign of pcotdelta for ell=1 and pSQ<0."
-                              f"{bcolors.ENDC}")
+            raise ValueError("smarter_q_rescale is required. Please enable "
+                             "smarter_q_rescale in the qc_impl dictionary.")
+            # pcotdelta = pcotdelta/np.abs(pSQ**(ell))
+            # print pcotdelta with label
+            # print("this is pcotdelta before assembly: ", pcotdelta)
+            # if ell == 1 and pSQ < 0.:
+            #     pcotdelta = - pcotdelta
+            #     warnings.warn(f"\n{bcolors.WARNING}"
+            #                   "flipping sign of pcotdelta for ell=1 and pSQ<0."
+            #                   f"{bcolors.ENDC}")
+            warnings.warn(f"\n{bcolors.WARNING}"
+                          "This rescale used to be an absolute value."
+                          f"{bcolors.ENDC}")
+            pcotdelta = pcotdelta/pSQ**(ell)
             return pre*16.0*PI*ECM/(pcotdelta+q_one_minus_H_tmp)
 
     @staticmethod
     def getK_single_entry_IPV(pcotdelta_function=None,
                               IPV_function=None,
                               pcotdelta_parameter_list=[1.0],
-                              IPV_parameters=[1.0],
+                              pv_shift_parameters=[1.0],
                               E=4.0, nP=np.array([0, 0, 0]), L=5.0,
                               npspec=np.array([0, 0, 0]),
                               m1=1.0, m2=1.0, mspec=1.0,
@@ -1741,7 +1818,7 @@ class QCFunctions:
                                                   m1=m1, m2=m2,
                                                   alpha=alpha,
                                                   beta=beta)
-        IPV = IPV_function(pSQ, *IPV_parameters)
+        IPV = IPV_function(pSQ, *pv_shift_parameters)
         include_H_in_IPV = QC_IMPL_DEFAULTS['include_H_in_IPV']
         if 'include_H_in_IPV' in qc_impl:
             include_H_in_IPV = qc_impl['include_H_in_IPV']
@@ -1764,23 +1841,36 @@ class QCFunctions:
             smarter_q_rescale = qc_impl['smarter_q_rescale']
 
         if smarter_q_rescale:
-            pcotdelta = pcotdelta/np.abs(pSQ**(ell))
+            # pcotdelta = pcotdelta/np.abs(pSQ**(ell))
+            # return pre*16.0*PI*ECM/(pcotdelta+qH_IPV)\
+            #     / np.abs(pSQ**(ell))
+            warnings.warn(f"\n{bcolors.WARNING}"
+                          "This rescale used to be an absolute value."
+                          f"{bcolors.ENDC}")
+            pcotdelta = pcotdelta/pSQ**(ell)
             return pre*16.0*PI*ECM/(pcotdelta+qH_IPV)\
-                / np.abs(pSQ**(ell))
+                / pSQ**(ell)
         else:
-            pcotdelta = pcotdelta/np.abs(pSQ**(ell))
-            if ell == 1 and pSQ < 0.:
-                pcotdelta = - pcotdelta
-                warnings.warn(f"\n{bcolors.WARNING}"
-                              "flipping sign of pcotdelta for ell=1 and pSQ<0."
-                              f"{bcolors.ENDC}")
+            raise ValueError("smarter_q_rescale is required. Please enable "
+                             "smarter_q_rescale in the qc_impl dictionary.")
+            # pcotdelta = pcotdelta/np.abs(pSQ**(ell))
+            # if ell == 1 and pSQ < 0.:
+            #     pcotdelta = - pcotdelta
+            #     warnings.warn(f"\n{bcolors.WARNING}"
+            #                   "flipping sign of pcotdelta for ell=1 and pSQ<0."
+            #                   f"{bcolors.ENDC}")
+            warnings.warn(f"\n{bcolors.WARNING}"
+                          "This rescale used to be an absolute value."
+                          f"{bcolors.ENDC}")
+            pcotdelta = pcotdelta/pSQ**(ell)
             return pre*16.0*PI*ECM/(pcotdelta+qH_IPV)
 
     @staticmethod
     def getK_array(E, nP, L, m1, m2, m3, tbks_entry, slice_entry, ell,
                    pcotdelta_function, pcotdelta_parameter_list, alpha, beta,
-                   qc_impl, three_scheme, use_shift=False, IPV_function=None,
-                   IPV_parameters=0.):
+                   qc_impl, three_scheme, use_pv_shift_prescription=False,
+                   IPV_function=None,
+                   pv_shift_parameters=[0.]):
         """
         Get K array.
 
@@ -1794,12 +1884,12 @@ class QCFunctions:
         nvec_arr_slice = tbks_entry.nvec_arr[slice_entry[0]:slice_entry[1]]
         k_list = []
         for nvec in nvec_arr_slice:
-            if use_shift:
+            if use_pv_shift_prescription:
                 k_entry = QCFunctions.getK_single_entry_IPV(
                     pcotdelta_function=pcotdelta_function,
                     IPV_function=IPV_function,
                     pcotdelta_parameter_list=pcotdelta_parameter_list,
-                    IPV_parameters=IPV_parameters,
+                    pv_shift_parameters=pv_shift_parameters,
                     E=E, nP=nP, L=L, npspec=nvec, m1=m2, m2=m3, mspec=m1,
                     alpha=alpha, beta=beta, ell=ell, qc_impl=qc_impl)
             else:
@@ -1815,3 +1905,110 @@ class QCFunctions:
             k_list = k_list+[k_entry]*(2*ell+1)
         return block_diag(*k_list)
 
+    # @staticmethod
+    # def getK_array_IPV(E, nP, L, m1, m2, m3, tbks_entry, slice_entry, ell,
+    #                    pcotdelta_function, IPV_function,
+    #                    pcotdelta_parameter_list, IPV_parameters,
+    #                    alpha, beta, qc_impl, ts):
+    #     nvec_arr_slice = tbks_entry.nvec_arr[slice_entry[0]:slice_entry[1]]
+    #     k_list = []
+    #     for nvec in nvec_arr_slice:
+    #         k_tmp = QCFunctions.getK_single_entry_IPV(
+    #             pcotdelta_function, IPV_function,
+    #             pcotdelta_parameter_list, IPV_parameters,
+    #             E=E, nP=nP, L=L, npspec=nvec, m1=m2, m2=m3, mspec=m1,
+    #             alpha=alpha, beta=beta, ell=ell, qc_impl=qc_impl)
+    #         if np.abs(k_tmp.imag) < EPSILON15:
+    #             k_tmp = k_tmp.real
+    #         if np.abs(k_tmp) < EPSILON15:
+    #             k_tmp = 0.0
+    #         k_list = k_list+[k_tmp]*(2*ell+1)
+    #     return block_diag(*k_list)
+    # @staticmethod
+    # def getF_array_IPV(IPV_function, IPV_parameters, E, nP, L, m1, m2, m3,
+    #                    tbks_entry, slice_entry, ell1, ell2, alpha, beta,
+    #                    C1cut, alphaKSS, qc_impl, ts):
+    #     nvec_arr_slice = tbks_entry.nvec_arr[slice_entry[0]:slice_entry[1]]
+    #     f_list = []
+    #     for nvec in nvec_arr_slice:
+    #         f_mat_entry = [[]]
+    #         for mazi1 in range(-ell1, ell1+1):
+    #             f_row = []
+    #             for mazi2 in range(-ell2, ell2+1):
+    #                 f_tmp = QCFunctions.getF_single_entry_IPV(
+    #                     IPV_function=None, IPV_parameters=[1.0],
+    #                     E=E, nP=nP, L=L, npspec=nvec, m1=m2, m2=m3, mspec=m1,
+    #                     C1cut=C1cut, alphaKSS=alphaKSS, alpha=alpha, beta=beta,
+    #                     ell1=ell1, mazi1=mazi1, ell2=ell2, mazi2=mazi2,
+    #                     three_scheme=ts, qc_impl=qc_impl)
+    #                 if np.abs(f_tmp.imag) < EPSILON15:
+    #                     f_tmp = f_tmp.real
+    #                 if np.abs(f_tmp) < EPSILON15:
+    #                     f_tmp = 0.0
+    #                 f_row = f_row+[f_tmp]
+    #             f_mat_entry = f_mat_entry+[f_row]
+    #         f_mat_entry = np.array(f_mat_entry[1:])
+    #         f_list = f_list+[f_mat_entry]
+    #     return block_diag(*f_list)
+
+    def getKdf_array(E, nP, L, m1, m2, m3,
+                     tbks_entry,
+                     row_shell, col_shell,
+                     ell1, ell2,
+                     k3_params,
+                     alpha, beta,
+                     qc_impl, three_scheme,
+                     g_rescale):
+        nvec_arr_slice = tbks_entry.nvec_arr
+        nvec_arr_row_slice = nvec_arr_slice[row_shell[0]:row_shell[1]]
+        nvec_arr_col_slice = nvec_arr_slice[col_shell[0]:col_shell[1]]
+        space_size_row = len(nvec_arr_row_slice)
+        space_size_col = len(nvec_arr_col_slice)
+
+        # print("ell1: ", ell1)
+        # print("ell2: ", ell2)
+        # print("row_shell[0]: ", row_shell[0])
+        # print("col_shell[0]: ", col_shell[0])
+        # print("space_size_row:\n", space_size_row)
+        # print("space_size_col:\n", space_size_col)
+        if ell1 == 0:
+            kdf_value = np.zeros(((2*ell1+1)*space_size_row,
+                                  (2*ell2+1)*space_size_col))
+
+        elif ell2 == 0:
+            kdf_value = np.zeros(((2*ell1+1)*space_size_row,
+                                  (2*ell2+1)*space_size_col))
+        else:
+            single_entry = k3_params*np.identity(2*ell1+1)
+            # tile the single_entry
+            kdf_value = np.tile(single_entry, (space_size_row, space_size_col))
+            # if row_shell[0] != col_shell[0]:
+            #     kdf_value = np.zeros(((2*ell1+1)*space_size_row,
+            #                           (2*ell2+1)*space_size_col))
+            # else:
+            #     kdf_value = k3_params*np.identity((2*ell1+1)*space_size_row)
+        # print("shape of kdf_value: ", kdf_value.shape)
+        # print("kdf_value:\n", kdf_value)
+        return kdf_value
+
+
+        # print("E: ", E)
+        # print("nP: ", nP)
+        # print("L: ", L)
+        # print("m1: ", m1)
+        # print("m2: ", m2)
+        # print("m3: ", m3)
+        # print("nvec_arr_slice: ", nvec_arr_slice)
+        # print("row_shell: ", row_shell)
+        # print("col_shell: ", col_shell)
+        # print("ell1: ", ell1)
+        # print("ell2: ", ell2)
+        # print("alpha: ", alpha)
+        # print("beta: ", beta)
+        # Print each of the things defined above
+        # print("nvec_arr_slice: ", nvec_arr_slice)
+        # print("nvec_arr_row_slice: ", nvec_arr_row_slice)
+        # print("nvec_arr_col_slice: ", nvec_arr_col_slice)
+        # kdf_value = k3_params*np.identity((2*ell1+1)*space_size_row)
+        # print shape of kdf_value
+        # return 0.
