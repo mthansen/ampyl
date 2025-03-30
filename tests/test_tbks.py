@@ -35,7 +35,7 @@ Created July 2022.
 
 import unittest
 import numpy as np
-from ampyl import ThreeBodyKinematicSpace
+from ampyl.spaces import ThreeBodyKinematicSpace
 
 
 class TestThreeBodyKinematicSpace(unittest.TestCase):
