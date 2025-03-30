@@ -997,6 +997,7 @@ class QCIndexSpace:
         self.populate_all_nonint_data()
         self.populate_nonint_proj_dict()
         self.populate_nonint_multiplicities()
+        self.populate_nonint_functions()
 
     def get_ell_and_spin(self):
         ell_max = 4
@@ -1463,11 +1464,15 @@ class QCIndexSpace:
 
     def populate_nonint_multiplicities(self):
         """Populate the non-interacting multiplicities."""
-        if len(self.fcs.fc_list) == 0 or self.fcs.fc_list[0].isospin is None:
+        if len(self.fcs.fc_list) == 0:
             self.nonint_multiplicities = None
             return
+        if (len(self.fcs.fc_list) == 1
+           and not self.fcs.fc_list[0].isospin_channel):
+            isospin_int = 0
+        elif self.fcs.fc_list[0].isospin_channel:
+            isospin_int = int(self.fcs.fc_list[0].isospin)
         nPSQ = self.nPSQ
-        isospin_int = int(self.fcs.fc_list[0].isospin)
         group = self.group
         if nPSQ == 0:
             group_str = 'OhP_'
@@ -1486,8 +1491,16 @@ class QCIndexSpace:
                 nonint_proj_dict_entry = self.nonint_proj_dict[cindex]
                 if cindex == 0:
                     n_shells = len(self.nvecset_ident_SQreps[cindex])
+                    warnings.warn(f"\n{bcolors.WARNING}"
+                                  "Assuming that particles are "
+                                  "indistinguishable."
+                                  f"{bcolors.ENDC}", stacklevel=2)
                 else:
                     n_shells = len(self.nvecset_SQreps[cindex])
+                    warnings.warn(f"\n{bcolors.WARNING}"
+                                  "Assuming that particles are "
+                                  "distinguishable."
+                                  f"{bcolors.ENDC}", stacklevel=2)
                 channel_multis_summary_list = []
                 for shell_index in range(n_shells):
                     for key in nonint_proj_dict_entry[(shell_index,
@@ -1517,6 +1530,49 @@ class QCIndexSpace:
                     = channel_multis_summary_list
             nonint_multiplicities.append(nonint_multis_channel_dict)
         self.nonint_multiplicities = nonint_multiplicities
+
+    def populate_nonint_functions(self):
+        nonint_functions = []
+        for nonint_channel_mult_dict in self.nonint_multiplicities:
+            nonint_channel_functions_dict = {}
+            for key in nonint_channel_mult_dict:
+                nonint_channel_functions_dict[key] = []
+                for nonint_channel_mult in nonint_channel_mult_dict[key]:
+                    if len(nonint_channel_mult) == 5:
+                        nonint_function = self._get_nonint_function_three(
+                            nonint_channel_mult)
+                    elif len(nonint_channel_mult) == 4:
+                        nonint_function = self._get_nonint_function_two(
+                            nonint_channel_mult)
+                    else:
+                        raise ValueError("nonint_function not supported")
+                    nonint_channel_functions_dict[key].append(nonint_function)
+            nonint_functions.append(nonint_channel_functions_dict)
+        self.nonint_functions = nonint_functions
+
+    def _get_nonint_function_three(self, nonint_channel_mult):
+        nSQ1, nSQ2, nSQ3, _, _ = nonint_channel_mult
+        mSQ1 = 1.
+        mSQ2 = 1.
+        mSQ3 = 1.
+
+        def nonint_function(L):
+            omega1 = np.sqrt(mSQ1+FOURPI2*nSQ1/L**2)
+            omega2 = np.sqrt(mSQ2+FOURPI2*nSQ2/L**2)
+            omega3 = np.sqrt(mSQ3+FOURPI2*nSQ3/L**2)
+            return omega1+omega2+omega3
+        return nonint_function
+
+    def _get_nonint_function_two(self, nonint_channel_mult):
+        nSQ1, nSQ2, _, _ = nonint_channel_mult
+        mSQ1 = 2.2**2
+        mSQ2 = 1.
+
+        def nonint_function(L):
+            omega1 = np.sqrt(mSQ1+FOURPI2*nSQ1/L**2)
+            omega2 = np.sqrt(mSQ2+FOURPI2*nSQ2/L**2)
+            return omega1+omega2
+        return nonint_function
 
     def _get_nPspecmax(self, three_slice_index):
         sc = self.fcs.sc_list_sorted[
@@ -1609,7 +1665,15 @@ class QCIndexSpace:
                     raise ValueError("nonzero nP and Emin not supported")
             else:
                 if nPSQ == 0:
-                    nPspecnew = L*(ESQ-m_spec**2)/(2.0*TWOPI*E)
+                    if E == 0.0:
+                        nPspecnew = 0.0
+                        warnings.warn(f"\n{bcolors.WARNING}"
+                                      "E = 0.0 in get_tbks_sub_indices; "
+                                      "setting nspecnew to 0.0"
+                                      f"{bcolors.ENDC}", stacklevel=2)
+                    else:
+                        nPspecnew = L*(ESQ-m_spec**2)/(2.0*TWOPI*E)
+
                 else:
                     nPmag = np.sqrt(nPSQ)
                     nPspecnew = (FOURPI2*nPmag*(
