@@ -573,7 +573,7 @@ class Interpolable:
             Pvec = TWOPI*nP/L
             PmkSQ_arr = ((Pvec-kvec_arr)**2).sum(axis=1)
             threshold = m2+m3
-            zero_support_point = self._get_zero_support_point(self, threshold)
+            zero_support_point = self._get_zero_support_point(threshold)
             mask = (E-omk_arr)**2-PmkSQ_arr > zero_support_point
             if self.qcis.verbosity >= 2:
                 print('mask =')
@@ -728,7 +728,7 @@ class Interpolable:
             Pvec = TWOPI*nP/L
             PmkSQ_arr = ((Pvec-kvec_arr)**2).sum(axis=1)
             threshold = m2+m3
-            zero_support_point = self._get_zero_support_point(self, threshold)
+            zero_support_point = self._get_zero_support_point(threshold)
             mask_row = (E-omk_arr)**2-PmkSQ_arr > zero_support_point
             row_shells = tbks_entry.shells
             mask_row_shells = []
@@ -1569,6 +1569,7 @@ class F(Interpolable):
         """Build the F matrix in a shell-based way."""
         Lmax = self.qcis.Lmax
         Emax = self.qcis.Emax
+        three_slice_index = 0
         if E > Emax:
             raise ValueError("get_value called with E > Emax")
         if L > Lmax:
