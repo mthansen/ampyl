@@ -52,7 +52,8 @@ class TestF(unittest.TestCase):
                                                 ell_col, mazi_col,
                                                 'relativistic pole',
                                                 {'hermitian': True,
-                                                 'real_harmonics': True})
+                                                 'real_harmonics': True,
+                                                 'smarter_q_rescale': True})
         return F
 
     def get_value_direct(self, E, nP, L, kellm_space, C1cut, alphaKSS):
@@ -110,12 +111,13 @@ class TestF(unittest.TestCase):
 
     def setUp(self):
         """Exectue set-up."""
-        fc = ampyl.FlavorChannel(3)
-        fcs = ampyl.FlavorChannelSpace(fc_list=[fc])
-        fvs = ampyl.FiniteVolumeSetup()
-        tbis = ampyl.ThreeBodyInteractionScheme()
-        qcis = ampyl.QCIndexSpace(fcs=fcs, fvs=fvs, tbis=tbis,
-                                  Emax=5., Lmax=7.)
+        fc = ampyl.flavor.FlavorChannel(3)
+        fcs = ampyl.flavor.FlavorChannelSpace(fc_list=[fc])
+        fvs = ampyl.spaces.FiniteVolumeSetup()
+        tbis = ampyl.spaces.ThreeBodyInteractionScheme()
+        qcis = ampyl.spaces.QCIndexSpace(fcs=fcs, fvs=fvs, tbis=tbis,
+                                         Emax=5., Lmax=7.)
+        qcis.fvs.qc_impl['smarter_q_rescale'] = True
         qcis.populate()
 
         self.epsilon = 1.0e-15
@@ -124,10 +126,10 @@ class TestF(unittest.TestCase):
         self.fcs = fcs
         self.f = ampyl.F(qcis=qcis)
 
-        fvs = ampyl.FiniteVolumeSetup(nP=np.array([0, 0, 1]))
-        tbis = ampyl.ThreeBodyInteractionScheme()
-        qcis_001 = ampyl.QCIndexSpace(fcs=fcs, fvs=fvs, tbis=tbis,
-                                      Emax=5., Lmax=7.)
+        fvs = ampyl.spaces.FiniteVolumeSetup(nP=np.array([0, 0, 1]))
+        tbis = ampyl.spaces.ThreeBodyInteractionScheme()
+        qcis_001 = ampyl.spaces.QCIndexSpace(fcs=fcs, fvs=fvs, tbis=tbis,
+                                             Emax=5., Lmax=7.)
         qcis_001.populate()
         self.qcis_001 = qcis_001
         self.f_001 = ampyl.F(qcis=qcis_001)

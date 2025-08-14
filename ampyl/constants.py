@@ -36,6 +36,23 @@ Created July 2022.
 
 import numpy as np
 
+CUTS_A = np.logspace(-8, -2, 7)
+CUTS_B = np.linspace(0.011, 0.989, 40)
+CUTS_C = 1. - np.logspace(-8, -2, 7)
+DEFAULT_CUTS = np.concatenate((CUTS_A, CUTS_B, CUTS_C))
+
+QC_DICT_DEFAULTS = {
+    'project': False,
+    'irrep': None,
+    'version': 'kdf_zero_1+',
+    'rescale': 1.,
+    'shift': 0.
+}
+
+MINMAXOFFSET = 0.1
+DEFAULT_EMIN = 1.801
+DEFAULT_LMIN = 5.8
+
 QC_IMPL_DEFAULTS = {'hermitian': True,
                     'real_harmonics': True,
                     'zeta_interp': False,

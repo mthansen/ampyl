@@ -26,6 +26,8 @@ jobs:
           python -m pip install --upgrade pip
           pip install .
           pip install scipy
+          sudo apt-get update
+          sudo apt-get install libfftw3-dev
           sudo apt-get install pandoc
 
       - name: Deploy

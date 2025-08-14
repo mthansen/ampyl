@@ -39,27 +39,21 @@ from scipy.linalg import block_diag
 from scipy.optimize import root_scalar
 from .constants import TWOPI
 from .constants import FOURPI2
-from .constants import EPSILON3
 from .constants import EPSILON4
-from .constants import EPSILON5
-from .constants import EPSILON8
 from .constants import EPSILON10
 from .constants import QC_IMPL_DEFAULTS
+from .constants import DEFAULT_CUTS
+from .constants import QC_DICT_DEFAULTS
+from .constants import MINMAXOFFSET
+from .constants import DEFAULT_EMIN
+from .constants import DEFAULT_LMIN
 from .constants import bcolors
 from .functions import QCFunctions
-from .functions import BKFunctions
-from .flavor import Particle
-from .flavor import FlavorChannel
-from .flavor import SpectatorChannel
-from .flavor import FlavorChannelSpace
-from .spaces import FiniteVolumeSetup
-from .spaces import ThreeBodyInteractionScheme
-from .spaces import ThreeBodyKinematicSpace
-from .spaces import QCIndexSpace
 from .cuts import G
 from .cuts import F
 from .cuts import FplusG
 import warnings
+from copy import deepcopy
 warnings.simplefilter("once")
 
 
@@ -102,7 +96,7 @@ class K:
             scatterer_a_index = 1
             scatterer_b_index = 2
             threshold = masses[scatterer_a_index] + masses[scatterer_b_index]
-            zero_support_point = self._get_zero_support_point(self, threshold)
+            zero_support_point = self._get_zero_support_point(threshold)
             mask = (E-omk_arr)**2-PmkSQ_arr > zero_support_point
             slices = tbks_entry.shells
             mask_slices = []
@@ -206,7 +200,7 @@ class K:
             Pvec = TWOPI*nP/L
             PmkSQ_arr = ((Pvec-kvec_arr)**2).sum(axis=1)
             threshold = m2+m3
-            zero_support_point = self._get_zero_support_point(self, threshold)
+            zero_support_point = self._get_zero_support_point(threshold)
             mask = (E-omk_arr)**2-PmkSQ_arr > zero_support_point
             if self.qcis.verbosity >= 2:
                 print('mask =')
@@ -245,19 +239,43 @@ class K:
 
 
 class QC:
-    """
-    Class for the quantization condition.
+    r"""
+    QC: A class for handling the quantization condition (QC) in finite-volume
+    lattice calculations. This class provides methods for computing QC values
+    and finding roots.
 
     Warning: It is up to the user to select values of alphaKSS and C1cut that
     lead to a sufficient estimate of the F matrix.
 
-    :param qcis: quantization-condition index space, specifying all data for
-        the class
-    :type qcis: QCIndexSpace
-    :param alphaKSS: damping factor entering the zeta functions
-    :type alphaKSS: float
-    :param C1cut: hard cutoff used in the zeta functions
-    :type C1cut: int
+    Attributes:
+        qcis (QCIndexSpace): The quantization-condition index space, specifying
+            data for the class.
+        f (F): The F matrix, derived from the quantization condition.
+        g (G): The G matrix, derived from the quantization condition.
+        fplusg (FplusG): The sum of F and G matrices.
+        k (K): The K matrix, representing the two-particle interaction.
+        verbosity (int): The verbosity level for logging and debugging.
+
+    Methods:
+        get_value(E, L, qc_dict):
+            Computes a QC value based on the specified parameters and version.
+
+        get_roots_from_range(E_range, L, qc_dict, ni_functions,
+                             cuts=DEFAULT_CUTS):
+            Finds roots of the QC within a specified energy range.
+
+        get_all_energies(qc_dict, dL=0.1):
+            Computes all energy levels for a given box length and step size.
+
+        simple_try_at_fixed_L(E_bracket, L, qc_dict):
+            Simplified method for finding a single root of the QC at a fixed
+            box length.
+
+        get_roots_for_Erange_and_LdL(E_range, L, qc_dict, ni_functions,
+                                     qc_dict, cuts=DEFAULT_CUTS):
+            Computes the roots of the QC for a given energy range and box size,
+            considering non-interacting energy levels and specified
+            breakpoints.
     """
 
     def __init__(self, qcis=None, C1cut=5, alphaKSS=1.0, verbosity=0):
@@ -281,536 +299,518 @@ class QC:
             raise ValueError("verbosity must be an int")
         self._verbosity = verbosity
 
-    def get_value(self, E=None, L=None, k_params=None, project=True,
-                  irrep=None, version='kdf_zero_1+',
-                  rescale=1.0, shift=0.):
+    def get_value(self, E, L, qc_dict):
         r"""
-        Get value.
+        Compute a value based on the specified parameters and version.
 
-        version is drawn from the following:
-            'kdf_zero_1+' (defaul)
-            'f3'
-            'kdf_zero_k2_inv'
-            'kdf_zero_f+g_inv'
+        This method calculates a value using various mathematical operations
+        and matrix manipulations. The behavior of the computation depends on
+        the `version` parameter, which determines the specific formula or
+        algorithm to be used. The method supports multiple versions, each
+        corresponding to a different computation strategy.
+
+        Parameters:
+            E (float): The energy value. This is a required parameter.
+            L (float): The box length. This is a required parameter.
+            qc_dict (dict): A dictionary containing the following keys:
+                - 'k_params' (list): Parameters for the K-matrices, which
+                    splits into:
+                    - pcotdelta_parameter_lists (list): Lists of parameters
+                        for the K-matrix.
+                    - k3_params (list): Parameters for the K3 matrix.
+                    This is a required parameter.
+                - 'project' (bool): Whether to project the function, defaults
+                    to False.
+                - 'irrep' (tuple): Irreducible representation information,
+                    defaults to None.
+                - 'version' (str): Version identifier, defaults to
+                    'kdf_zero_1+'. Supported versions include:
+                    - 'kdf_zero_1+'
+                    - 'f3'
+                    - 'kdf_zero_k2_inv'
+                    - 'kdf_zero_f+g_inv'
+                    - '1+Kdf_F3'
+                    - 'kdf+f3inv'
+                    - 'detF3inverse'
+                    - 'kdf_zero_1+_fgcombo'
+                    - 'kdf_zero_1+_asym_fgcombo'
+                    - 'kdf_zero_1+_FinverseF3'
+                - 'rescale' (float): Rescaling factor, defaults to 1.0.
+                - 'shift' (float): Shift value, defaults to 0.0.
+
+        Returns:
+            float: The computed value based on the specified parameters and
+            version.
+
+        Raises:
+            TypeError: If any of the required parameters (`E`, `L`, `k_params`,
+                or `irrep` when `project` is True) are missing.
+
+        Notes:
+            - The method performs matrix operations and may issue warnings
+                if matrix dimensions are mismatched. Temporary fixes are
+                applied in such cases by padding or zeroing matrices.
+            - The computation involves various components such as `F`, `G`,
+                `FplusG`, and `K`, which are derived from other methods or
+                interpolations.
         """
-        if E is None:
-            raise TypeError("missing required argument 'E' (float)")
-        if L is None:
-            raise TypeError("missing required argument 'L' (float)")
-        if k_params is None:
-            raise TypeError("missing required argument 'k_params'")
-        if irrep is None and project:
-            raise TypeError("missing required argument 'irrep'")
+        if not isinstance(E, float):
+            raise TypeError("E must be a float")
+        if not isinstance(L, float):
+            raise TypeError("L must be a float")
+
+        qc_dict = self.validate_qc_dict(qc_dict)
+        k_params = qc_dict['k_params']
+        project = qc_dict['project']
+        irrep = qc_dict['irrep']
+        version = qc_dict['version']
+        rescale = qc_dict['rescale']
+        shift = qc_dict['shift']
+
+        [pcotdelta_parameter_lists, k3_params] = k_params
+
+        K = self.k.get_value(E, L, pcotdelta_parameter_lists,
+                             project, irrep)*rescale
+
+        createF = (version == '1+Kdf_F3'
+                   or version == 'kdf+f3inv'
+                   or version == 'f3'
+                   or version == 'detF3inverse'
+                   or version == 'kdf_zero_1+'
+                   or version == 'kdf_zero_k2_inv'
+                   or version == 'kdf_zero_f+g_inv'
+                   or version == 'kdf_zero_1+_FinverseF3')
+        if createF:
+            f_smart_interpolate = QC_IMPL_DEFAULTS['f_smart_interpolate']
+            if 'f_smart_interpolate' in self.qcis.fvs.qc_impl:
+                f_smart_interpolate =\
+                    self.qcis.fvs.qc_impl['f_smart_interpolate']
+
+            if f_smart_interpolate:
+                warnings.warn(f"\n{bcolors.WARNING}"
+                              "f_smart_interpolate is not yet supported. "
+                              "Using f instead."
+                              f"{bcolors.ENDC}")
+                F = self.f.get_value(E, L, project, irrep,
+                                     short_string='f')/rescale
+            else:
+                F = self.f.get_value(E, L, project, irrep,
+                                     short_string='f')/rescale
+
+            if len(F) > len(K):
+                warnings.warn(f"\n{bcolors.WARNING}"
+                              "F and K have different shapes, and F is "
+                              "larger. Padding K with extra entries. "
+                              "This is a temporary fix."
+                              f"{bcolors.ENDC}")
+                padded_K = np.zeros_like(F)
+                padded_K[:len(K), :len(K)] = K
+                K = padded_K
+            elif len(F) < len(K):
+                warnings.warn(f"\n{bcolors.WARNING}"
+                              "F and K have different shapes, and F is "
+                              "smaller. Setting F to zero. "
+                              "This is a temporary fix."
+                              f"{bcolors.ENDC}")
+                F = np.zeros(K.shape)
+
+        createFplusG = (version == '1+Kdf_F3'
+                        or version == 'kdf+f3inv'
+                        or version == 'f3'
+                        or version == 'detF3inverse'
+                        or version == 'kdf_zero_1+_fgcombo'
+                        or version == 'kdf_zero_1+_asym_fgcombo')
+        if createFplusG:
+            FplusG = self.fplusg.get_value(E, L, project, irrep,
+                                           short_string='fplusg')/rescale
+
+            if len(FplusG) > len(K):
+                warnings.warn(f"\n{bcolors.WARNING}"
+                              "FplusG and K have different shapes, and "
+                              "FplusG is larger. "
+                              "Padding K with extra entries. "
+                              "This is a temporary fix."
+                              f"{bcolors.ENDC}")
+                padded_K = np.zeros_like(FplusG)
+                padded_K[:len(K), :len(K)] = K
+                K = padded_K
+            elif len(FplusG) < len(K):
+                warnings.warn(f"\n{bcolors.WARNING}"
+                              "FplusG and K have different shapes, and "
+                              "FplusG is smaller. "
+                              "Setting FplusG to zero. "
+                              "This is a temporary fix."
+                              f"{bcolors.ENDC}")
+                FplusG = np.zeros(K.shape)
+
+        createG = (version == 'kdf_zero_1+'
+                   or version == 'kdf_zero_k2_inv'
+                   or version == 'kdf_zero_f+g_inv'
+                   or version == 'kdf_zero_1+_FinverseF3')
+        if createG:
+            G = self.g.get_value(E, L, project, irrep,
+                                 short_string='g')/rescale
+
+            if len(G) > len(K):
+                warnings.warn(f"\n{bcolors.WARNING}"
+                              "G and K have different shapes, and G is "
+                              "larger. Padding K with extra entries. "
+                              "This is a temporary fix."
+                              f"{bcolors.ENDC}")
+                padded_K = np.zeros_like(G)
+                padded_K[:len(K), :len(K)] = K
+                K = padded_K
+            elif len(G) < len(K):
+                warnings.warn(f"\n{bcolors.WARNING}"
+                              "G and K have different shapes, and G is "
+                              "smaller. Setting G to zero. "
+                              "This is a temporary fix."
+                              f"{bcolors.ENDC}")
+                G = np.zeros(K.shape)
+
+        if version == '1+Kdf_F3':
+            raise NotImplementedError(
+                "version '1+Kdf_F3' is not implemented yet.")
+
+        if version == 'kdf+f3inv':
+            raise NotImplementedError("kdf+f3inv is not implemented yet")
 
         if version == 'f3':
-            [pcotdelta_parameter_lists, k3_params] = k_params
-            F = self.f.get_value(E, L, project, irrep,
-                                 short_string='f')/rescale
-            G = self.g.get_value(E, L, project, irrep,
-                                 short_string='g')/rescale
-            K = self.k.get_value(E, L, pcotdelta_parameter_lists,
-                                 project, irrep)*rescale
-            return (F/3 - F @ np.linalg.inv(np.linalg.inv(K)+F+G) @ F)/L**3
+            return (F/3 - F @ np.linalg.inv(np.linalg.inv(K)+FplusG) @ F)/L**3
 
-        if (len(version) >= 8) and (version[:8] == 'kdf_zero'):
-            [pcotdelta_parameter_lists, k3_params] = k_params
-            if version == 'kdf_zero_1+_fgcombo':
-                FplusG = self.fplusg.get_value(E, L, project, irrep,
-                                               short_string='fplusg')/rescale
-                K = self.k.get_value(E, L, pcotdelta_parameter_lists,
-                                     project, irrep)*rescale
-                if len(FplusG) > len(K):
-                    warnings.warn(f"\n{bcolors.WARNING}"
-                                  "FplusG and K have different shapes, and "
-                                  "FplusG is larger. "
-                                  "Padding K with extra entries. "
-                                  "This is a temporary fix."
-                                  f"{bcolors.ENDC}")
-                    padded_K = np.zeros_like(FplusG)
-                    padded_K[:len(K), :len(K)] = K
-                    K = padded_K
-                elif len(FplusG) < len(K):
-                    warnings.warn(f"\n{bcolors.WARNING}"
-                                  "FplusG and K have different shapes, and "
-                                  "FplusG is smaller. "
-                                  "Setting FplusG to zero. "
-                                  "This is a temporary fix."
-                                  f"{bcolors.ENDC}")
-                    FplusG = np.zeros(K.shape)
-                id_mat = np.identity(len(FplusG))
-                return np.linalg.det(id_mat+(FplusG)@K)-shift
+        if version == 'detF3inverse':
+            F3 = (F/3 - F @ np.linalg.inv(np.linalg.inv(K)+FplusG) @ F)/L**3
+            return 1./np.linalg.det(F3)
 
-            F = self.f.get_value(E, L, project, irrep,
-                                 short_string='f')/rescale
-            G = self.g.get_value(E, L, project, irrep,
-                                 short_string='g')/rescale
-            K = self.k.get_value(E, L, pcotdelta_parameter_lists,
-                                 project, irrep)*rescale
+        if version == 'kdf_zero_1+_fgcombo':
+            id_mat = np.identity(len(FplusG))
+            return np.linalg.det(id_mat+(FplusG)@K)-shift
 
-            if version == 'kdf_zero_1+':
-                id_mat = np.identity(len(G))
-                return np.linalg.det(id_mat+(F+G)@K)
-
-            if version == 'kdf_zero_k2_inv':
-                return np.linalg.det(np.linalg.inv(K)+(F+G))
-
-            if version == 'kdf_zero_f+g_inv':
-                return np.linalg.det(np.linalg.inv(F+G)+K)
-
-            if version == 'kdf_zero_1+_FinverseF3':
-                id_mat = np.identity(len(G))
-                block_inv = np.linalg.inv(np.linalg.inv(K)+F+G)
-                matrix_in_det = id_mat-3.*block_inv@F
-                inverse_det = 1./np.linalg.det(matrix_in_det)
-                return inverse_det
-
-    def generate_summary(self, Elower=None, Eupper=None, L=None,
-                         k_params=None, project=True, irrep=None,
-                         version='kdf_zero_1+_fgcombo', rescale=1.0):
-        wf = open(f'summary_L{L:.1f}_irrep{irrep[0]}_'
-                  f'Elower{Elower:.1f}_Eupper{Eupper:.1f}.txt', 'w')
-        root = root_scalar(self.get_value,
-                           args=(L, k_params, project, irrep, version,
-                                 rescale),
-                           bracket=[Elower, Eupper]).root
-        wf.write('Summary of a quantization condition solution:\n\n'
-                 'Following inputs were given:\n')
-        wf.write(f'Elower = {Elower}\n'
-                 f'Eupper = {Eupper}\n'
-                 f'L = {L}\n'
-                 f'k_params = {k_params}\n'
-                 f'project = {project}\n'
-                 f'irrep = {irrep}\n'
-                 f'version = {version}\n'
-                 f'rescale = {rescale}\n'
-                 f'g_smart_interpolate = '
-                 f'{self.qcis.fvs.qc_impl["g_smart_interpolate"]}\n'
-                 f'f_smart_interpolate = '
-                 f'{self.qcis.fvs.qc_impl["f_smart_interpolate"]}\n'
-                 f'fplusg_smart_interpolate = '
-                 f'{self.qcis.fvs.qc_impl["fplusg_smart_interpolate"]}\n\n')
-
-        wf.write('A solution was found at\n'
-                 f'E = {root}\n\n')
-
-        qc_value = self.get_value(E=root, L=L, k_params=k_params,
-                                  project=project, irrep=irrep,
-                                  version=version, rescale=rescale)
-
-        wf.write('Value of the QC near the solution:\n')
-        for i in range(5):
-            scaler = 0.98+0.01*i
-            E = root*scaler
-            qc_value = self.get_value(E=E, L=L, k_params=k_params,
-                                      project=project, irrep=irrep,
-                                      version=version, rescale=rescale)
-            wf.write(f'qc(E = {scaler:.2f}sol) = {qc_value}\n')
-
-        G = self.g.get_value(E=root, L=L, project=project, irrep=irrep,
-                             short_string='g')
-        wf.write(f'\nShape of projected G-matrix at the solution: {G.shape}\n')
-        eigenvalues = np.sort(np.linalg.eigvals(G))
-        wf.write(f'Eigenvalues of projected G-matrix at the solution:\n'
-                 f'{eigenvalues}\n\n')
-        wf.write(f'Value of projected G-matrix at the solution:\n{G}\n\n')
-
-        F = self.f.get_value(E=root, L=L, project=project, irrep=irrep,
-                             short_string='f')
-        wf.write(f'Shape of projected F-matrix at the solution: {F.shape}\n')
-        eigenvalues = np.sort(np.linalg.eigvals(F))
-        wf.write(f'Eigenvalues of projected F-matrix at the solution:\n'
-                 f'{eigenvalues}\n\n')
-        wf.write(f'Value of projected F-matrix at the solution:\n{F}\n\n')
-
-        K = self.k.get_value(E=root, L=L,
-                             pcotdelta_parameter_lists=k_params[0],
-                             project=project, irrep=irrep)
-        wf.write(f'Shape of projected K-matrix at the solution: {K.shape}\n')
-        eigenvalues = np.sort(np.linalg.eigvals(K))
-        wf.write(f'Eigenvalues of projected K-matrix at the solution:\n'
-                 f'{eigenvalues}\n\n')
-        wf.write(f'Value of projected K-matrix at the solution:\n{K}\n\n')
-
-        ident_tmp = np.identity(len(F))
-        qc_matrix = (ident_tmp+(F+G)@K)
-        wf.write(f'Shape of the projected I+(F+G)K at the solution: '
-                 f'{qc_matrix.shape}\n')
-        eigenvalues = np.sort(np.linalg.eigvals(qc_matrix))
-        wf.write('Eigenvalues of the projected I+(F+G)K at the solution:\n'
-                 f'{eigenvalues}\n\n')
-        wf.write('Value of the projected I+(F+G)K at the solution:\n'
-                 f'{qc_matrix}\n\n')
-
-        G = self.g.get_value(E=root, L=L, short_string='g')
-        wf.write(f'Shape of unprojected G-matrix at the solution: {G.shape}\n')
-        eigenvalues = np.sort(np.linalg.eigvals(G))
-        wf.write(f'Eigenvalues of unprojected G-matrix at the solution:\n'
-                 f'{eigenvalues}\n\n')
-        wf.write(f'Value of unprojected G-matrix at the solution:\n{G}\n\n')
-
-        F = self.f.get_value(E=root, L=L, short_string='f')
-        wf.write(f'Shape of unprojected F-matrix at the solution: {F.shape}\n')
-        eigenvalues = np.sort(np.linalg.eigvals(F))
-        wf.write(f'Eigenvalues of unprojected F-matrix at the solution:\n'
-                 f'{eigenvalues}\n\n')
-        wf.write(f'Value of unprojected F-matrix at the solution:\n{F}\n\n')
-
-        K = self.k.get_value(E=root, L=L,
-                             pcotdelta_parameter_lists=k_params[0])
-        wf.write(f'Shape of unprojected K-matrix at the solution: {K.shape}\n')
-        eigenvalues = np.sort(np.linalg.eigvals(K))
-        wf.write(f'Eigenvalues of unprojected K-matrix at the solution:\n'
-                 f'{eigenvalues}\n\n')
-        wf.write(f'Value of unprojected K-matrix at the solution:\n{K}\n\n')
-
-        ident_tmp = np.identity(len(F))
-        qc_matrix = (ident_tmp+(F+G)@K)
-        wf.write(f'Shape of the unprojected I+(F+G)K at the solution: '
-                 f'{qc_matrix.shape}\n')
-        eigenvalues = np.sort(np.linalg.eigvals(qc_matrix))
-        wf.write('Eigenvalues of the unprojected I+(F+G)K at the solution:\n'
-                 f'{eigenvalues}\n\n')
-        wf.write('Value of the unprojected I+(F+G)K at the solution:\n'
-                 f'{qc_matrix}\n')
-
-        wf.close()
-
-
-    def get_roots_at_fixed_L(self, Emax_for_roots=None, L_for_roots=None,
-                             n_steps=10, k_params=None, project=True,
-                             irrep=None, version='kdf_zero_1+_fgcombo',
-                             rescale=1.0, also_search_brackets=False):
-        L = L_for_roots
-        nonint_energies = self\
-            ._get_nonint_energies(Emax_for_roots, k_params, irrep, L)
-        brackets = self._get_brackets(Emax_for_roots, nonint_energies)
-        roots = []
-        for bracket in brackets:
-            roots += self._try_to_find_roots_at_fixed_L(L, n_steps, bracket,
-                                                        k_params, project,
-                                                        irrep, version,
-                                                        rescale)
-        roots = np.array(roots)
-        roots_unique = np.array([])
-        cutoff_for_unique = EPSILON3
-        for root in roots:
-            if len(roots_unique) == 0:
-                qc_value = self.get_value(E=root, L=L, k_params=k_params,
-                                          project=project, irrep=irrep,
-                                          version=version, rescale=rescale)
-                if np.abs(qc_value) < EPSILON10:
-                    roots_unique = np.append(roots_unique, root)
+        if version == 'kdf_zero_1+_asym_fgcombo':
+            id_mat = np.identity(len(FplusG))
+            H = id_mat+FplusG@K
+            detH = np.linalg.det(H)
+            if np.abs(detH) < EPSILON10:
+                Hinverse = id_mat/(EPSILON10)
             else:
-                distances = np.abs(roots_unique-root)
-                if np.min(distances) > cutoff_for_unique:
-                    qc_value = self.get_value(E=root, L=L, k_params=k_params,
-                                              project=project, irrep=irrep,
-                                              version=version, rescale=rescale)
-                    if np.abs(qc_value) < EPSILON10:
-                        roots_unique = np.append(roots_unique, root)
-        if not also_search_brackets:
-            return roots_unique
-        roots_down_shift = []
-        for bracket in brackets:
-            neg_shift = -0.1
-            roots_down_shift += self.\
-                _try_to_find_roots_at_fixed_L(L, n_steps, bracket,
-                                              k_params, project, irrep,
-                                              version, rescale,
-                                              shift=neg_shift)
-        roots_down_shift = np.array(roots_down_shift)
-        roots_down_shift = np.unique(np.round(roots_down_shift, 15))
-        roots_up_shift = []
-        for bracket in brackets:
-            pos_shift = 0.1
-            roots_up_shift += self.\
-                _try_to_find_roots_at_fixed_L(L, n_steps, bracket,
-                                              k_params, project, irrep,
-                                              version, rescale,
-                                              shift=pos_shift)
-        roots_up_shift = np.array(roots_up_shift)
-        roots_up_shift = np.unique(np.round(roots_up_shift, 15))
-        return roots, roots_down_shift, roots_up_shift
+                Hinverse = np.linalg.inv(H)
+            F3 = FplusG - FplusG@K@Hinverse@FplusG
+            return 1./np.linalg.det(F3)
 
-    def _get_brackets(self, Emax_for_roots, nonint_energies,
-                      Emin_for_roots=2.001):
-        brackets = []
-        brackets.append([Emin_for_roots, nonint_energies[0]])
-        i = -1
-        for i in range(len(nonint_energies)-1):
-            brackets.append([nonint_energies[i], nonint_energies[i+1]])
-        brackets.append([nonint_energies[i+1], Emax_for_roots])
-        return brackets
+        if version == 'kdf_zero_1+':
+            id_mat = np.identity(len(G))
+            return np.linalg.det(id_mat+(F+G)@K)
 
-    def pipipi_nonint(self, multi, L, Emax_for_roots, nonint_Evals):
-        pSQs = FOURPI2*np.array(multi[:3])/L**2
-        m_array = np.array(self.fplusg._extract_masses())
-        omegas = np.sqrt(m_array**2+pSQs)
-        E_nonint = omegas.sum()
-        if E_nonint < Emax_for_roots:
-            nonint_Evals.append(E_nonint)
-        return nonint_Evals
+        if version == 'kdf_zero_k2_inv':
+            return np.linalg.det(np.linalg.inv(K)+(F+G))
 
-    def rhopi_nonint(self, multi, L, mrho, Emax_for_roots, nonint_Evals):
-        pSQs = FOURPI2*np.array(multi[:2])/L**2
-        mpi = self.fplusg._extract_masses()[0]
-        m_array = np.array([mpi, mrho])
-        omegas = np.sqrt(m_array**2+pSQs)
-        E_nonint = omegas.sum()
-        if E_nonint < Emax_for_roots:
-            nonint_Evals.append(E_nonint)
-        return nonint_Evals
+        if version == 'kdf_zero_f+g_inv':
+            return np.linalg.det(np.linalg.inv(F+G)+K)
 
-    def sigmapi_nonint(self, multi, L, msigma, Emax_for_roots, nonint_Evals):
-        pSQs = FOURPI2*np.array(multi[:2])/L**2
-        mpi = self.fplusg._extract_masses()[0]
-        m_array = np.array([mpi, msigma])
-        omegas = np.sqrt(m_array**2+pSQs)
-        E_nonint = omegas.sum()
-        if E_nonint < Emax_for_roots:
-            nonint_Evals.append(E_nonint)
-        return nonint_Evals
+        if version == 'kdf_zero_1+_FinverseF3':
+            id_mat = np.identity(len(G))
+            block_inv = np.linalg.inv(np.linalg.inv(K)+F+G)
+            matrix_in_det = id_mat-3.*block_inv@F
+            inverse_det = 1./np.linalg.det(matrix_in_det)
+            return inverse_det
 
-    def correct_irrep_row(self, irrep):
+    def validate_qc_dict(self, qc_dict):
+        if not isinstance(qc_dict, dict):
+            raise TypeError("qc_dict must be a dictionary")
+        key_is_required = {
+            'k_params': True,
+            'project': False,
+            'irrep': False,
+            'version': False,
+            'rescale': False,
+            'shift': False
+        }
+        for key in key_is_required:
+            if key not in qc_dict and key_is_required[key]:
+                raise ValueError(f"qc_dict must contain the key '{key}'")
+            if key not in qc_dict:
+                qc_dict[key] = QC_DICT_DEFAULTS[key]
+        expected_types = {
+            'k_params': list,
+            'project': bool,
+            'irrep': (tuple, type(None)),
+            'version': str,
+            'rescale': float,
+            'shift': float
+        }
+        for key, expected_type in expected_types.items():
+            if not isinstance(qc_dict[key], expected_type):
+                raise TypeError(f"qc_dict['{key}'] must be of type "
+                                f"{expected_type}")
+        if qc_dict['project'] and not isinstance(qc_dict['irrep'], tuple):
+            raise TypeError("qc_dict['irrep'] must be a tuple")
+        if qc_dict['project'] and len(qc_dict['irrep']) != 2:
+            raise ValueError("qc_dict['irrep'] must be a tuple of length 2")
+        if qc_dict['project'] and not isinstance(qc_dict['irrep'][0], str):
+            raise TypeError("qc_dict['irrep'][0] must be a string")
+        if qc_dict['project'] and not isinstance(qc_dict['irrep'][1], int):
+            raise TypeError("qc_dict['irrep'][1] must be an int")
+        return qc_dict
+
+    def get_roots_from_range(self, E_range, L, qc_dict, ni_functions,
+                             cuts=DEFAULT_CUTS):
         """
-        Corrects the row index of an irreducible representation (irrep)
-        based on the available non-interacting multiplicities.
-        """
-        qcis = self.qcis
-        irrep_name = irrep[0]
-        irrep_row = irrep[1]
-        ni_zero_keys = qcis.nonint_multiplicities[0].keys()
-        for i in range(3):
-            irrep_row = (irrep_row + i) % 3
-            if (irrep_name, i) in ni_zero_keys:
-                irrep = (irrep_name, i)
-        return irrep
+        Compute the roots of the QC within a specified energy range.
 
-    def _get_nonint_energies(self, Emax_for_roots, k_params, irrep, L):
-        irrep = self.correct_irrep_row(irrep)
-        if self.verbosity >= 2:
-            print(f'{bcolors.OKGREEN}'
-                  f'irrep {irrep} found in nonint_multiplicities.\n'
-                  'Proceeding with this irrep.'
-                  f'{bcolors.ENDC}')
-        fc_list = self.qcis.fcs.fc_list
-        if len(fc_list) == 0:
-            raise ValueError("No flavor channels in the QCIndexSpace in QC")
-        isospin = self.qcis.fcs.fc_list[0].isospin
-        for fc in self.qcis.fcs.fc_list:
-            if fc.isospin != isospin:
-                raise ValueError("isospin is not the same for all channels")
-        if isospin == 2 or isospin == 0:
-            multis_pipipi = self.qcis.nonint_multiplicities[0][irrep]
-            multis_rhopi = self.qcis.nonint_multiplicities[1][irrep]
-            if self.verbosity >= 2:
-                print(f'{bcolors.OKGREEN}'
-                      f'multis_pipipi: {multis_pipipi},\n'
-                      f'multis_rhopi: {multis_rhopi}'
-                      f'{bcolors.ENDC}')
-            nonint_Evals = []
-            for multi in multis_pipipi:
-                nonint_Evals = self.pipipi_nonint(multi, L, Emax_for_roots,
-                                                  nonint_Evals)
-            for multi in multis_rhopi:
-                mrho = k_params[0][0][1]
-                nonint_Evals = self.rhopi_nonint(multi, L, mrho,
-                                                 Emax_for_roots, nonint_Evals)
-            nonint_Evals = np.sort(np.array(nonint_Evals))
-        elif isospin == 1:
-            multis_pipipi = self.qcis.nonint_multiplicities[0][irrep]
-            multis_rhopi = self.qcis.nonint_multiplicities[1][irrep]
-            multis_sigmapi = self.qcis.nonint_multiplicities[2][irrep]
-            if self.verbosity >= 2:
-                print(f'{bcolors.OKGREEN}'
-                      f'multis_pipipi: {multis_pipipi},\n'
-                      f'multis_rhopi: {multis_rhopi},\n'
-                      f'multis_sigmapi: {multis_sigmapi}'
-                      f'{bcolors.ENDC}')
-            nonint_Evals = []
-            for multi in multis_pipipi:
-                nonint_Evals = self.pipipi_nonint(multi, L, Emax_for_roots,
-                                                  nonint_Evals)
-            for multi in multis_rhopi:
-                mrho = k_params[0][1][1]
-                nonint_Evals = self.rhopi_nonint(multi, L, mrho,
-                                                 Emax_for_roots, nonint_Evals)
-            for multi in multis_sigmapi:
-                msigma = k_params[0][0][1]
-                nonint_Evals = self.sigmapi_nonint(multi, L, msigma,
-                                                   Emax_for_roots,
-                                                   nonint_Evals)
-            nonint_Evals = np.sort(np.array(nonint_Evals))
+        This method calculates the roots of the QC for a given energy range
+        and box size `L`, considering non-interacting energy levels and
+        specified breakpoints. It uses a dictionary of parameters to define the
+        QC.
+
+        Args:
+            E_range (list): A list of two floats specifying the energy range
+                [E_min, E_max] within which to search for roots.
+            L (float): The box size parameter.
+            qc_dict (dict): See `get_value` method for details.
+            ni_functions (list): A list of functions that compute
+                non-interacting energy levels for a given `L`.
+            cuts (list, optional): A list of floats specifying the fractional
+                positions within each range to add additional breakpoints.
+                Defaults to `DEFAULT_CUTS`.
+
+        Returns:
+            list: A list of roots found within the specified energy range.
+
+        Raises:
+            TypeError: If `E_range` is not a list of two floats.
+            TypeError: If `L` is not a float.
+            TypeError: If `qc_dict` is not a dictionary or is missing
+                        required keys.
+            TypeError: If the types of values in `qc_dict` do not match the
+                        expected types.
+
+        Notes:
+            - The method identifies non-interacting energy levels within the
+                specified range and uses them to define subranges for root
+                finding.
+            - The `simple_try_at_fixed_L` method is used to find roots within
+                each subrange.
+            - Roots that are `np.nan` are excluded from the results.
+        """
+        if not isinstance(E_range, list) or len(E_range) != 2 or \
+                not all(isinstance(E, float) for E in E_range):
+            raise TypeError("E_range must be a list of two floats")
+        if not isinstance(L, float):
+            raise TypeError("L must be a float")
+        self.validate_qc_dict(qc_dict)
+        nonint_energies = []
+        for ni_function in ni_functions:
+            nonint_energies.append(ni_function(L))
+        nonint_energies = np.array(nonint_energies)
+        nonint_in_range = nonint_energies[E_range[0] < nonint_energies]
+        nonint_in_range = nonint_in_range[nonint_in_range < E_range[1]]
+        breakpoints = np.concatenate(([E_range[0]], nonint_in_range,
+                                      [E_range[1]]))
+        differences = np.diff(breakpoints)
+        cuts = np.sort(cuts)
+        all_breakpoints = []
+        for i in range(len(differences)):
+            for cut in cuts:
+                all_breakpoints.append(breakpoints[i]+cut*differences[i])
+        all_breakpoints.append(breakpoints[-1])
+        all_breakpoints = np.array(all_breakpoints)
+        all_ranges = []
+        for i in range(len(all_breakpoints)-1):
+            candidate_range = [all_breakpoints[i], all_breakpoints[i+1]]
+            no_nonint_in_candidate = True
+            for nonint_energy in nonint_in_range:
+                if candidate_range[0] < nonint_energy < candidate_range[1]:
+                    no_nonint_in_candidate = False
+            if no_nonint_in_candidate:
+                all_ranges.append([all_breakpoints[i], all_breakpoints[i+1]])
+        all_roots = []
+        for E_bracket in all_ranges:
+            root = self.simple_try_at_fixed_L(E_bracket, L, qc_dict)
+            if root is not np.nan:
+                all_roots.append(root)
+        return all_roots
+
+    def simple_try_at_fixed_L(self, E_bracket, L, qc_dict):
+        try:
+            root = root_scalar(self.get_value,
+                               args=(L, qc_dict),
+                               bracket=E_bracket).root
+            qc_tmp = self.get_value(root, L, qc_dict)
+            if np.abs(qc_tmp) < 1.e-5:
+                return root
+            warnings.warn("Root was found but QC at the root is not "
+                          "sufficiently close to zero, returning NaN.")
+            return np.nan
+        except ValueError:
+            warnings.warn("Root not found and ValueError was raised either by "
+                          "root_scalar or by get_value. Returning NaN.")
+            return np.nan
+        warnings.warn("Root not found, not sure why. Returning NaN.")
+        return np.nan
+
+    def extract_EL_set(self, version, dL):
+        if (version in ['kdf_zero_1+_fgcombo', 'kdf_zero_1+_asym_fgcombo']
+           and self.qcis.fvs.qc_impl['fplusg_smart_interpolate']):
+            Emin = self.fplusg.Emin_interp + MINMAXOFFSET
+            Emax = self.fplusg.Emax_interp - MINMAXOFFSET
+            Lmin = self.fplusg.Lmin_interp + MINMAXOFFSET
+            Lmax = self.fplusg.Lmax_interp - MINMAXOFFSET
         else:
-            raise ValueError("isospin is not 0, 1, or 2")
-        return nonint_Evals
+            Emin = DEFAULT_EMIN
+            Emax = self.qcis.Emax
+            Lmin = DEFAULT_LMIN
+            Lmax = self.qcis.Lmax
+        if dL > 0.:
+            L = Lmin+dL+EPSILON4
+        else:
+            L = Lmax+dL-EPSILON4
+        E_range = [Emin, Emax]
+        L_vals = [L-dL, L]
+        return E_range, L, L_vals, Lmin, Lmax, Emax, Emin
 
-    def _try_to_find_roots_at_fixed_L(self, Lmax=6., n_steps=10, bracket=None,
-                                      k_params=None, project=True, irrep=None,
-                                      version='kdf_zero_1+_fgcombo',
-                                      rescale=1.0, shift=0.):
-        bracket_min = bracket[0]
-        bracket_max = bracket[1]
-        Emin = bracket_min+EPSILON3
-        Emax = bracket_max-EPSILON3
-        Eslices_low = np.array([bracket_min+EPSILON10,
-                                bracket_min+EPSILON8,
-                                bracket_min+EPSILON5])
-        Eslices_mid = np.linspace(Emin, Emax, n_steps)
-        Eslices_high = np.array([bracket_max-EPSILON5,
-                                 bracket_max-EPSILON8,
-                                 bracket_max-EPSILON10])
-        Eslices = np.concatenate((Eslices_low, Eslices_mid, Eslices_high))
-        roots = []
-        for i in range(len(Eslices)-1):
-            E1 = Eslices[i]
-            E2 = Eslices[i+1]
-            try:
-                root = root_scalar(self.get_value,
-                                   args=(Lmax, k_params, project, irrep,
-                                         version, rescale, shift),
-                                   bracket=[E1, E2]).root
-                roots = roots+[root]
-            except ValueError:
-                continue
-        return roots
+    def get_all_energies(self, qc_dict, dL=0.1):
+        version = qc_dict['version']
+        E_range, L, L_vals, Lmin, Lmax, Emax, Emin =\
+            self.extract_EL_set(version, dL)
+        project = qc_dict['project']
+        if not project:
+            raise ValueError("project must be True")
+        irrep = qc_dict['irrep']
+        ni_functions = []
+        for ni_function_channel in self.qcis.nonint_functions:
+            ni_functions.extend(ni_function_channel[irrep])
+        all_E_vals = self.get_roots_for_Erange_and_LdL(
+            E_range, L, dL, ni_functions, qc_dict)
 
-    def get_qc_curve(self, Emin=None, Emax=None, Estep=None, L=None,
-                     k_params=None, project=True, irrep=None,
-                     version='kdf_zero_1+_fgcombo', rescale=1.0):
-        E_values = np.arange(Emin, Emax, Estep)
-        qc_values = []
-        for E in E_values:
-            qc_value = self.get_value(E=E, L=L, k_params=k_params,
-                                      project=project, irrep=irrep,
-                                      version=version, rescale=1.0)
-            qc_values = qc_values+[qc_value]
-        qc_values = np.array(qc_values)
-        return E_values, qc_values
+        for k in range(len(all_E_vals)):
+            E_vals = all_E_vals[k]
+            unique_E_vals = []
+            for E_val in E_vals:
+                if not any(np.isclose(E_val, unique_E_val)
+                           for unique_E_val in unique_E_vals):
+                    unique_E_vals.append(E_val)
+            all_E_vals[k] = sorted(unique_E_vals)
+        assert len(all_E_vals) == 2
+        min_len = min(len(all_E_vals[0]), len(all_E_vals[1]))
+        all_E_vals[0] = all_E_vals[0][:min_len]
+        all_E_vals[1] = all_E_vals[1][:min_len]
+        all_E_vals = np.array(all_E_vals).T.tolist()
+        all_L_vals = [deepcopy(L_vals) for i in range(len(all_E_vals))]
 
-    def get_root(self, Elower=None, Eupper=None, L=None,
-                 k_params=None, project=True, irrep=None,
-                 version='kdf_zero_1+_fgcombo', rescale=1.0):
-        root = root_scalar(self.get_value,
-                           args=(L, k_params, project, irrep, version,
-                                 rescale),
-                           bracket=[Elower, Eupper]).root
-        return root
+        for arr in (np.array(all_E_vals).T):
+            assert np.all(np.diff(arr) >= 0)
 
-    def search_range(self, Emin=None, Emax=None, Estep=None, cutoff=None,
-                     L=None, k_params=None, project=True, irrep=None,
-                     version='kdf_zero_1+_fgcombo', rescale=1.0):
-        E_values = []
-        qc_values = []
-        for E in np.arange(Emin, Emax, Estep):
-            qc = self.get_value(E, L, k_params, project, irrep, version,
-                                rescale)
-            if np.abs(qc) < cutoff:
-                E_values = E_values+[E]
-                qc_values = qc_values+[qc]
-        E_values = np.array(E_values)
-        qc_values = np.array(qc_values)
-        return E_values, qc_values
+        for i in range(len(all_L_vals)):
+            assert len(all_L_vals[i]) == len(all_L_vals[0])
+            for j in range(len(L_vals)):
+                assert all_L_vals[i][j] == all_L_vals[0][j]
+        L_vals = list(np.linspace(all_L_vals[0][0], all_L_vals[0][1], 4))
+        all_L_vals = [deepcopy(L_vals) for i in range(len(all_L_vals))]
+        for i in range(len(all_E_vals)):
+            E_vals = np.array(all_E_vals[i])
+            L_vals_tmp = np.array([all_L_vals[i][0], all_L_vals[i][-1]])
+            sorted_indices = np.argsort(L_vals_tmp)
+            E_vals = np.interp(all_L_vals[i],
+                               L_vals_tmp[sorted_indices],
+                               E_vals[sorted_indices])
+            all_E_vals[i] = list(E_vals)
 
-    def extrapolate_E_range(self, Lvals_final, Evals_final, lower_Evals_final,
-                            upper_Evals_final, L_next):
-        if len(Evals_final) == 2:
-            degree = 1
-        elif len(Evals_final) == 3:
-            degree = 2
-        elif len(Evals_final) >= 4:
-            degree = 3
-        fit_lower = np.polyfit(Lvals_final, lower_Evals_final, degree)
-        curve_lower = np.poly1d(fit_lower)
-        E_lower = curve_lower(L_next)
-        fit_upper = np.polyfit(Lvals_final, upper_Evals_final, degree)
-        curve_upper = np.poly1d(fit_upper)
-        E_upper = curve_upper(L_next)
-        return E_lower, E_upper
-
-    def get_energy_curve(self, L_start=None, L_finish=None, deltaL_target=None,
-                         Estart=None, dE=None, initial_dEdL=-1.,
-                         k_params=None, project=True, irrep=None,
-                         version='kdf_zero_1+_fgcombo', rescale=1.0,
-                         shift_upper=0.01, shift_lower=-0.01,
-                         max_iterations=500, percent_extension=0.05):
-        Evals_final = []
-        deltaL_original_target = deltaL_target
-        lower_Evals_final = []
-        upper_Evals_final = []
-        upper_shifts = []
-        lower_shifts = []
-        Lvals_final = []
-        E_lower = Estart-dE
-        E_upper = Estart+dE
-        L_val = L_start
-        iteration = 0
-        while ((deltaL_target < 0. and L_val > L_finish) or
-               (deltaL_target > 0. and L_val < L_finish)):
-            iteration += 1
-            if iteration > max_iterations:
-                return np.array(Lvals_final), np.array(Evals_final), \
-                    np.array(lower_Evals_final), np.array(upper_Evals_final), \
-                    np.array(upper_shifts), np.array(lower_shifts)
-            try:
-                rs, rs_upper, rs_lower = self.\
-                    _get_root_set(k_params, project, irrep, version, rescale,
-                                  E_lower, E_upper, L_val,
-                                  shift_upper, shift_lower, percent_extension)
-                [E_lower, E_upper] = np.sort([rs_lower, rs_upper])
-                lower_Evals_final = lower_Evals_final+[E_lower]
-                upper_Evals_final = upper_Evals_final+[E_upper]
-                Evals_final = Evals_final+[rs]
-                Lvals_final = Lvals_final+[L_val]
-                upper_shifts = upper_shifts+[shift_upper]
-                lower_shifts = lower_shifts+[shift_lower]
-                if np.abs(deltaL_target) < np.abs(deltaL_original_target):
-                    deltaL_target = deltaL_target*4.
-                L_next = L_val+deltaL_target
-                if len(Evals_final) > 1:
-                    E_lower, E_upper =\
-                        self.extrapolate_E_range(Lvals_final,
-                                                 Evals_final,
-                                                 lower_Evals_final,
-                                                 upper_Evals_final,
-                                                 L_next)
+        for i in range(len(all_E_vals)):
+            for j in range(len(all_E_vals[i])):
+                Ltmp = all_L_vals[i][j]
+                Etmp = all_E_vals[i][j]
+                E_vals_tmp = np.array(all_E_vals[i])
+                L_vals_tmp = np.array(all_L_vals[i])
+                if j != 0 and j != len(E_vals_tmp)-1:
+                    E_vals_tmp = np.delete(E_vals_tmp, j)
+                    L_vals_tmp = np.delete(L_vals_tmp, j)
+                sorted_indices = np.argsort(L_vals_tmp)
+                Etmp = np.interp(Ltmp, L_vals_tmp[sorted_indices],
+                                 E_vals_tmp[sorted_indices])
+                all_E_vals[i][j] = Etmp
+                Eupdate = np.nan
+                bracket_shift = 1.e-10
+                while np.isnan(Eupdate) and bracket_shift < 1.e-1:
+                    E_range = [Etmp-bracket_shift, Etmp+bracket_shift]
+                    cuts_a = np.logspace(-8, -2, 4)
+                    cuts_b = np.linspace(0.011, 0.989, 10)
+                    cuts_c = 1.-np.logspace(-8, -2, 4)
+                    cuts = np.concatenate((cuts_a, cuts_b, cuts_c))
+                    cuts = np.sort(cuts)
+                    E_set = self.get_roots_from_range(
+                        E_range, Ltmp, qc_dict, ni_functions, cuts=cuts)
+                    if len(E_set) == 1:
+                        Eupdate = E_set[0]
+                    elif len(E_set) > 1:
+                        index = np.abs(E_set - Etmp).argmin()
+                        Eupdate = E_set[index]
+                        warnings.warn(f'Multiple solutions found for L = {L}.'
+                                      f'Differences are {np.abs(E_set - Etmp)}')
+                    bracket_shift = bracket_shift*10.
+                if np.isnan(Eupdate):
+                    bracket_shift = 1.e-10
+                    while np.isnan(Eupdate) and bracket_shift < 3.e-1:
+                        E_bracket = [Etmp-bracket_shift, Etmp+bracket_shift]
+                        Eupdate = self.simple_try_at_fixed_L(
+                            E_bracket, Ltmp, qc_dict)
+                        bracket_shift = bracket_shift*5.
+                        if np.isnan(Eupdate):
+                            warnings.warn(f'Failed to find solution for L = {L}')
+                        else:
+                            all_E_vals[i][j] = Eupdate
+                        self.qcis.fvs.qc_impl['fplusg_smart_interpolate'] = True
                 else:
-                    dE_for_next_L = deltaL_target*initial_dEdL
-                    E_lower = E_lower+dE_for_next_L
-                    E_upper = E_upper+dE_for_next_L
-                L_val = L_next
-            except ValueError:
-                if np.abs(deltaL_target) > 1.e-8:
-                    L_val = L_val-deltaL_target
-                    deltaL_target = deltaL_target/2.
-                    L_val = L_val+deltaL_target
-                    if len(Evals_final) > 1:
-                        E_lower, E_upper =\
-                            self.extrapolate_E_range(Lvals_final, Evals_final,
-                                                     lower_Evals_final,
-                                                     upper_Evals_final,
-                                                     L_val)
-                    continue
-                else:
-                    return np.array(Lvals_final), np.array(Evals_final)
-        return np.array(Lvals_final), np.array(Evals_final), \
-            np.array(lower_Evals_final), np.array(upper_Evals_final), \
-            np.array(upper_shifts), np.array(lower_shifts)
+                    all_E_vals[i][j] = Eupdate
+                self.qcis.fvs.qc_impl['fplusg_smart_interpolate'] = True
 
-    def _get_root_set(self, k_params, project, irrep, version,
-                      rescale, E_lower, E_upper, L_val,
-                      shift_upper, shift_lower, percent_extension):
-        rs = root_scalar(self.get_value,
-                         args=(L_val, k_params, project, irrep, version,
-                               rescale),
-                         bracket=[E_lower, E_upper]).root
-        E_ext = percent_extension*np.abs(E_upper-E_lower)
-        rs_upper = root_scalar(self.get_value,
-                               args=(L_val, k_params, project, irrep, version,
-                                     rescale, shift_upper),
-                               bracket=[E_lower-E_ext, E_upper+E_ext]).root
-        rs_lower = root_scalar(self.get_value,
-                               args=(L_val, k_params, project, irrep, version,
-                                     rescale, shift_lower),
-                               bracket=[E_lower-E_ext, E_upper+E_ext]).root
-        return rs, rs_upper, rs_lower
+        while Lmin+np.abs(dL) <= L <= Lmax-np.abs(dL):
+            L = L+dL
+            for i in range(len(all_E_vals)):
+                degree = min(len(all_L_vals[i])-1, 3)
+                if len(all_L_vals[i]) > 9:
+                    fit = np.polyfit(all_L_vals[i][-9:], all_E_vals[i][-9:],
+                                     degree)
+                else:
+                    fit = np.polyfit(all_L_vals[i], all_E_vals[i], degree)
+                line = np.poly1d(fit)
+                E_guess = line(L)
+                dE = 1.e-6
+                E_val = []
+                while len(E_val) == 0 and dE < 1.e-1:
+                    print(f'E_guess = {E_guess}, dE = {dE}')
+                    E_range = [E_guess-dE, E_guess+dE]
+                    if (E_guess+dE > Emax or E_guess-dE > Emax or
+                       E_guess-dE < Emin or E_guess+dE < Emin):
+                        warnings.warn('E_guess+dE > Emax')
+                        continue
+
+                    cuts = np.linspace(0.1, 0.9, 3)
+                    E_val = self.get_roots_from_range(
+                        E_range, L, qc_dict, ni_functions, cuts=cuts)
+                    print(f'E_val = {E_val}')
+                    dE = dE*10.
+                if len(E_val) == 1:
+                    print(f'Unique solution found with dE = {dE}')
+                    print(f'L = {L}, E = {E_val[0]}')
+                    all_E_vals[i].append(E_val[0])
+                    all_L_vals[i].append(L)
+                elif len(E_val) > 1:
+                    index = np.abs(E_val - E_guess).argmin()
+                    Eupdate = E_val[index]
+                    all_E_vals[i].append(Eupdate)
+                    all_L_vals[i].append(L)
+                    warnings.warn(f'Multiple solutions found for L = {L}.\n'
+                                  f'Differences are {np.abs(E_set - Etmp)}')
+
+                    self.qcis.fvs.qc_impl['fplusg_smart_interpolate'] = True
+        return all_L_vals, all_E_vals
+
+    def get_roots_for_Erange_and_LdL(self, E_range, L, dL, ni_functions,
+                                     qc_dict, cuts=DEFAULT_CUTS):
+        L_values = [L-dL, L]
+        E_sets = []
+        for Ltmp in L_values:
+            E_set = self.get_roots_from_range(E_range, Ltmp, qc_dict,
+                                              ni_functions, cuts=cuts)
+            E_sets.append(E_set)
+        return E_sets
