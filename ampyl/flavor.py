@@ -212,23 +212,6 @@ class FlavorChannel:
     :param isospin: isospin of the flavor channel (Default is ``None``)
     :type isospin: float, optional
 
-    :ivar masses: masses of the particles in the channel
-    :vartype masses: list of floats, set automatically
-    :ivar spins: spins of the particles in the channel
-    :vartype spins: list of floats, set automatically
-    :ivar flavors: flavors of the particles in the channel
-    :vartype flavors: list of strings, set automatically
-    :ivar isospins: isospins of the particles in the channel
-    :vartype isospins: list of floats, set automatically
-    :ivar allowed_total_isospins: allowed total isospins for the flavor channel
-    :vartype allowed_total_isospins: list of floats, set automatically
-    :ivar allowed_sub_isospins: allowed sub-isospins for the flavor channel
-    :vartype allowed_sub_isospins: list, set automatically
-    :ivar summary: summary of the flavor channel
-    :vartype summary: list, set automatically
-    :ivar summary_reduced: reduced summary of the flavor channel
-    :vartype summary_reduced: list, set automatically
-
     :raises ValueError: If `n_particles` is not an int or if `n_particles` is
         less than 2.
 
