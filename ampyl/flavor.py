@@ -202,12 +202,12 @@ class FlavorChannel:
 
     :param n_particles: number of particles in the flavor channel
     :type n_particles: int
-    :param particles: particles in the flavor channel. If not specified,
-        the channel will be initialized with `n_particles` default Particle
+    :param particles: particles in the flavor channel. If not specified,\
+        the channel will be initialized with `n_particles` default Particle\
         objects.
     :type particles: list of :class:`Particle` objects, optional
-    :param isospin_channel: specifies whether this is an isospin channel
-    (Default is ``False``)
+    :param isospin_channel: specifies whether this is an isospin channel\
+        (Default is ``False``)
     :type isospin_channel: bool, optional
     :param isospin: isospin of the flavor channel (Default is ``None``)
     :type isospin: float, optional
