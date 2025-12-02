@@ -219,6 +219,10 @@ class FlavorChannel:
         ``None``.
 
     .. note::
+        Contains particle properties (masses, spins, flavors, isospins) and the
+        derived lists of allowed total/sub-isospins plus channel summaries. All
+        fields are set automatically.
+
         If `particles` is not specified, the channel will be initialized with
         `n_particles` default :class:`Particle` objects.
 
