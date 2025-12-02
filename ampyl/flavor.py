@@ -481,8 +481,12 @@ class FlavorChannel:
         flavor_channel_str += f"    isospin_channel: {self.isospin_channel},\n"
         if self.isospin_channel:
             flavor_channel_str += f"    isospins: {self.isospins},\n"
-            flavor_channel_str += f"    allowed_total_isospins: "\
-                f"{self.allowed_total_isospins},\n"
+            flavor_channel_str += "    allowed_total_isospins: "
+            for i, isospin in enumerate(self.allowed_total_isospins):
+                if i < len(self.allowed_total_isospins) - 1:
+                    flavor_channel_str += f"{isospin}, "
+                else:
+                    flavor_channel_str += f"{isospin},\n"
             flavor_channel_str += f"    isospin: {self.isospin},\n"
         return flavor_channel_str[:-2]+"."
 
