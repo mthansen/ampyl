@@ -55,8 +55,8 @@ class Particle:
     :type spin: float
     :param flavor: flavor of the particle (default is ``'pi'``)
     :type flavor: str
-    :param isospin_multiplet: specifies whether this is an isospin multiplet
-    (default is ``False``)
+    :param isospin_multiplet: specifies whether this is an isospin multiplet\
+        (default is ``False``)
     :type isospin_multiplet: bool
     :param isospin: isospin of the particle (default is ``None``)
     :type isospin: float
