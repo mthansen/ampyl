@@ -226,21 +226,21 @@ class FlavorChannel:
         If `particles` is not specified, the channel will be initialized with
         `n_particles` default :class:`Particle` objects.
 
-    :Example:
+    Example:
 
     >>> import ampyl
-    >>> pion = ampyl.Particle(mass=1., spin=0., flavor='pion', isospin=1.)
-    >>> fc = ampyl.FlavorChannel(3, particles=[pion, pion, pion],
-    ...                          isospin_channel=True, isospin=3.)
+    >>> pion = ampyl.flavor.Particle(isospin=1.)
+    >>> fc = ampyl.flavor.FlavorChannel(3, particles=[pion, pion, pion],
+    ...                                 isospin_channel=True, isospin=3.)
     >>> print(fc)
     FlavorChannel with the following details:
         3 particles,
         masses: [1.0, 1.0, 1.0],
         spins: [0.0, 0.0, 0.0],
-        flavors: ['pion', 'pion', 'pion'],
+        flavors: ['pi', 'pi', 'pi'],
         isospin_channel: True,
         isospins: [1.0, 1.0, 1.0],
-        allowed_total_isospins: [0.0, 1.0, 2.0, 3.0],
+        allowed_total_isospins: 0.0, 1.0, 2.0, 3.0,
         isospin: 3.0.
 
     """
