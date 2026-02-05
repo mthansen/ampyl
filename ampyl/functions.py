@@ -1830,52 +1830,6 @@ class QCFunctions:
             k_list = k_list+[k_entry]*(2*ell+1)
         return block_diag(*k_list)
 
-    # @staticmethod
-    # def getK_array_IPV(E, nP, L, m1, m2, m3, tbks_entry, slice_entry, ell,
-    #                    pcotdelta_function, IPV_function,
-    #                    pcotdelta_parameter_list, IPV_parameters,
-    #                    alpha, beta, qc_impl, ts):
-    #     nvec_arr_slice = tbks_entry.nvec_arr[slice_entry[0]:slice_entry[1]]
-    #     k_list = []
-    #     for nvec in nvec_arr_slice:
-    #         k_tmp = QCFunctions.getK_single_entry_IPV(
-    #             pcotdelta_function, IPV_function,
-    #             pcotdelta_parameter_list, IPV_parameters,
-    #             E=E, nP=nP, L=L, npspec=nvec, m1=m2, m2=m3, mspec=m1,
-    #             alpha=alpha, beta=beta, ell=ell, qc_impl=qc_impl)
-    #         if np.abs(k_tmp.imag) < EPSILON15:
-    #             k_tmp = k_tmp.real
-    #         if np.abs(k_tmp) < EPSILON15:
-    #             k_tmp = 0.0
-    #         k_list = k_list+[k_tmp]*(2*ell+1)
-    #     return block_diag(*k_list)
-    # @staticmethod
-    # def getF_array_IPV(IPV_function, IPV_parameters, E, nP, L, m1, m2, m3,
-    #                    tbks_entry, slice_entry, ell1, ell2, alpha, beta,
-    #                    C1cut, alphaKSS, qc_impl, ts):
-    #     nvec_arr_slice = tbks_entry.nvec_arr[slice_entry[0]:slice_entry[1]]
-    #     f_list = []
-    #     for nvec in nvec_arr_slice:
-    #         f_mat_entry = [[]]
-    #         for mazi1 in range(-ell1, ell1+1):
-    #             f_row = []
-    #             for mazi2 in range(-ell2, ell2+1):
-    #                 f_tmp = QCFunctions.getF_single_entry_IPV(
-    #                     IPV_function=None, IPV_parameters=[1.0],
-    #                     E=E, nP=nP, L=L, npspec=nvec, m1=m2, m2=m3, mspec=m1,
-    #                     C1cut=C1cut, alphaKSS=alphaKSS, alpha=alpha, beta=beta,
-    #                     ell1=ell1, mazi1=mazi1, ell2=ell2, mazi2=mazi2,
-    #                     three_scheme=ts, qc_impl=qc_impl)
-    #                 if np.abs(f_tmp.imag) < EPSILON15:
-    #                     f_tmp = f_tmp.real
-    #                 if np.abs(f_tmp) < EPSILON15:
-    #                     f_tmp = 0.0
-    #                 f_row = f_row+[f_tmp]
-    #             f_mat_entry = f_mat_entry+[f_row]
-    #         f_mat_entry = np.array(f_mat_entry[1:])
-    #         f_list = f_list+[f_mat_entry]
-    #     return block_diag(*f_list)
-
     def getKdf_array(E, nP, L, m1, m2, m3,
                      tbks_entry,
                      row_shell, col_shell,
@@ -1890,12 +1844,6 @@ class QCFunctions:
         space_size_row = len(nvec_arr_row_slice)
         space_size_col = len(nvec_arr_col_slice)
 
-        # print("ell1: ", ell1)
-        # print("ell2: ", ell2)
-        # print("row_shell[0]: ", row_shell[0])
-        # print("col_shell[0]: ", col_shell[0])
-        # print("space_size_row:\n", space_size_row)
-        # print("space_size_col:\n", space_size_col)
         if ell1 == 0:
             kdf_value = np.zeros(((2*ell1+1)*space_size_row,
                                   (2*ell2+1)*space_size_col))
@@ -1905,35 +1853,5 @@ class QCFunctions:
                                   (2*ell2+1)*space_size_col))
         else:
             single_entry = k3_params*np.identity(2*ell1+1)
-            # tile the single_entry
             kdf_value = np.tile(single_entry, (space_size_row, space_size_col))
-            # if row_shell[0] != col_shell[0]:
-            #     kdf_value = np.zeros(((2*ell1+1)*space_size_row,
-            #                           (2*ell2+1)*space_size_col))
-            # else:
-            #     kdf_value = k3_params*np.identity((2*ell1+1)*space_size_row)
-        # print("shape of kdf_value: ", kdf_value.shape)
-        # print("kdf_value:\n", kdf_value)
         return kdf_value
-
-
-        # print("E: ", E)
-        # print("nP: ", nP)
-        # print("L: ", L)
-        # print("m1: ", m1)
-        # print("m2: ", m2)
-        # print("m3: ", m3)
-        # print("nvec_arr_slice: ", nvec_arr_slice)
-        # print("row_shell: ", row_shell)
-        # print("col_shell: ", col_shell)
-        # print("ell1: ", ell1)
-        # print("ell2: ", ell2)
-        # print("alpha: ", alpha)
-        # print("beta: ", beta)
-        # Print each of the things defined above
-        # print("nvec_arr_slice: ", nvec_arr_slice)
-        # print("nvec_arr_row_slice: ", nvec_arr_row_slice)
-        # print("nvec_arr_col_slice: ", nvec_arr_col_slice)
-        # kdf_value = k3_params*np.identity((2*ell1+1)*space_size_row)
-        # print shape of kdf_value
-        # return 0.
