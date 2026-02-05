@@ -536,7 +536,7 @@ class ThreeBodyKinematicSpace:
             nvec_arr_shifted = nvec_arr_copy-mins
             dims = np.maximum(nvec_rotations_shifted.max(0),
                               nvec_arr_shifted.max(0))+1
-            nvec_arr_shifted_purged = nvec_arr_shifted[~np.in1d(
+            nvec_arr_shifted_purged = nvec_arr_shifted[~np.isin(
                 np.ravel_multi_index(
                     nvec_arr_shifted.T, dims
                     ),
