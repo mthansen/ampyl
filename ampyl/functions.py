@@ -1292,17 +1292,7 @@ class QCFunctions:
                 smarter_q_rescale = QC_IMPL_DEFAULTS['smarter_q_rescale']
                 if 'smarter_q_rescale' in qc_impl:
                     smarter_q_rescale = qc_impl['smarter_q_rescale']
-                #     sph_harm_value = sph_harm_value\
-                #         - (rSQ_arr**ell1-q**(2*ell1))
-                # else:
-                #     sph_harm_value = sph_harm_value\
-                #         - (rSQ_arr**ell1/q**(2*ell1)-1.0)
-                # add a warning that this has changed
                 if smarter_q_rescale:
-                    warnings.warn(f"\n{bcolors.WARNING}"
-                                  "This has recently changed. There was a bug "
-                                  "in the rescaling factor."
-                                  f"{bcolors.ENDC}")
                     sph_harm_value = sph_harm_value\
                         - (rSQ_arr**ell1-qSQ**(ell1))
                 else:
@@ -1310,15 +1300,6 @@ class QCFunctions:
                                      "is currently not supported. Please "
                                      "enable smarter_q_rescale in the qc_impl "
                                      "dictionary.")
-                    warnings.warn(f"\n{bcolors.WARNING}"
-                                  "This has recently changed. There was a bug "
-                                  "in the rescaling factor."
-                                  f"{bcolors.ENDC}")
-                    sph_harm_value = sph_harm_value\
-                        - (rSQ_arr**ell1-qSQ**(ell1))
-                    sph_harm_value = sph_harm_value/(qSQ**(ell1))
-                    # sph_harm_value = sph_harm_value\
-                    #     - (rSQ_arr**ell1/qSQ**(ell1)-1.0)
         else:
             if (ell1 == 0 and ell2 == 0):
                 npar_component_arr = ((nvec_arr*nP2).sum(1))/nP2mag
@@ -1355,10 +1336,6 @@ class QCFunctions:
                         smarter_q_rescale = qc_impl['smarter_q_rescale']
 
                     if smarter_q_rescale:
-                        warnings.warn(f"\n{bcolors.WARNING}"
-                                      "This has recently changed. There was a "
-                                      "bug in the rescaling factor."
-                                      f"{bcolors.ENDC}")
                         sph_harm_value = sph_harm_value\
                             - (rSQ_arr**ell1-qSQ**(ell1))
                     else:
@@ -1367,18 +1344,9 @@ class QCFunctions:
                                          "supported. Please enable "
                                          "smarter_q_rescale in the qc_impl "
                                          "dictionary.")
-                        warnings.warn(f"\n{bcolors.WARNING}"
-                                      "This has recently changed. There was a "
-                                      "bug in the rescaling factor."
-                                      f"{bcolors.ENDC}")
                         sph_harm_value = sph_harm_value\
                             - (rSQ_arr**ell1-qSQ**(ell1))
                         sph_harm_value = sph_harm_value/(qSQ**(ell1))
-                        # sph_harm_value = sph_harm_value\
-                        #     - (rSQ_arr**ell1-q**(2*ell1))
-                    # else:
-                        # sph_harm_value = sph_harm_value\
-                        #     - (rSQ_arr**ell1/q**(2*ell1)-1.0)
         Ds = rSQ_arr-qSQ
         return sph_harm_value*np.exp(-alphaKSS*Ds)/Ds
 
@@ -1414,12 +1382,6 @@ class QCFunctions:
                 smarter_q_rescale = qc_impl['smarter_q_rescale']
             if smarter_q_rescale:
                 ttmp = ttmp*(qSQ)**ell1
-                # warn that this used to be an absolute value but now its not
-                warnings.warn(f"\n{bcolors.WARNING}"
-                              "This rescale used to be an absolute value."
-                              f"{bcolors.ENDC}")
-                # ttmp = ttmp*np.abs((qSQ)**ell1)
-
             return gamma*ttmp/np.sqrt(2.0*TWOPI)
         else:
             return 0.0
@@ -1571,13 +1533,8 @@ class QCFunctions:
             if 'smarter_q_rescale' in qc_impl:
                 smarter_q_rescale = qc_impl['smarter_q_rescale']
             if smarter_q_rescale:
-                warnings.warn(f"\n{bcolors.WARNING}"
-                              "This rescale used to be an absolute value."
-                              f"{bcolors.ENDC}")
                 pv_shift_value = 0.5*np.sqrt(PI)*L*gamma*partial_shift\
                     * qSQ_dimless**(ell)
-                # IPV_shift = 0.5*np.sqrt(PI)*L*gamma*partial_shift\
-                #     * np.abs(pSQ**(ell))
             else:
                 pv_shift_value = 0.5*np.sqrt(PI)*L*gamma*partial_shift
         hermitian = QC_IMPL_DEFAULTS['hermitian']
@@ -1758,28 +1715,11 @@ class QCFunctions:
 
         if smarter_q_rescale:
             pcotdelta = pcotdelta/pSQ**(ell)
-            # pcotdelta = pcotdelta/np.abs(pSQ**(ell))
-            # return pre*16.0*PI*ECM/(pcotdelta+q_one_minus_H_tmp)\
-            # / np.abs(pSQ**(ell))
-            warnings.warn(f"\n{bcolors.WARNING}"
-                          "This rescale used to be an absolute value."
-                          f"{bcolors.ENDC}")
             return pre*16.0*PI*ECM/(pcotdelta+q_one_minus_H_tmp)\
                 / pSQ**(ell)
         else:
             raise ValueError("smarter_q_rescale is required. Please enable "
                              "smarter_q_rescale in the qc_impl dictionary.")
-            # pcotdelta = pcotdelta/np.abs(pSQ**(ell))
-            # print pcotdelta with label
-            # print("this is pcotdelta before assembly: ", pcotdelta)
-            # if ell == 1 and pSQ < 0.:
-            #     pcotdelta = - pcotdelta
-            #     warnings.warn(f"\n{bcolors.WARNING}"
-            #                   "flipping sign of pcotdelta for ell=1 and pSQ<0."
-            #                   f"{bcolors.ENDC}")
-            warnings.warn(f"\n{bcolors.WARNING}"
-                          "This rescale used to be an absolute value."
-                          f"{bcolors.ENDC}")
             pcotdelta = pcotdelta/pSQ**(ell)
             return pre*16.0*PI*ECM/(pcotdelta+q_one_minus_H_tmp)
 
@@ -1841,27 +1781,12 @@ class QCFunctions:
             smarter_q_rescale = qc_impl['smarter_q_rescale']
 
         if smarter_q_rescale:
-            # pcotdelta = pcotdelta/np.abs(pSQ**(ell))
-            # return pre*16.0*PI*ECM/(pcotdelta+qH_IPV)\
-            #     / np.abs(pSQ**(ell))
-            warnings.warn(f"\n{bcolors.WARNING}"
-                          "This rescale used to be an absolute value."
-                          f"{bcolors.ENDC}")
             pcotdelta = pcotdelta/pSQ**(ell)
             return pre*16.0*PI*ECM/(pcotdelta+qH_IPV)\
                 / pSQ**(ell)
         else:
             raise ValueError("smarter_q_rescale is required. Please enable "
                              "smarter_q_rescale in the qc_impl dictionary.")
-            # pcotdelta = pcotdelta/np.abs(pSQ**(ell))
-            # if ell == 1 and pSQ < 0.:
-            #     pcotdelta = - pcotdelta
-            #     warnings.warn(f"\n{bcolors.WARNING}"
-            #                   "flipping sign of pcotdelta for ell=1 and pSQ<0."
-            #                   f"{bcolors.ENDC}")
-            warnings.warn(f"\n{bcolors.WARNING}"
-                          "This rescale used to be an absolute value."
-                          f"{bcolors.ENDC}")
             pcotdelta = pcotdelta/pSQ**(ell)
             return pre*16.0*PI*ECM/(pcotdelta+qH_IPV)
 
