@@ -35,8 +35,8 @@ Created July 2022.
 
 import unittest
 import numpy as np
-from ampyl.flavor import FlavorChannel
-from ampyl.flavor import FlavorChannelSpace
+from ampyl.channel import FlavorChannel
+from ampyl.channel_space import FlavorChannelSpace
 from ampyl.spaces import QCIndexSpace
 
 
