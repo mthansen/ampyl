@@ -51,8 +51,8 @@ from .constants import ISO_PROJECTORS
 from .constants import CAL_C_ISO
 from .constants import QC_IMPL_DEFAULTS
 from .constants import bcolors
-from .flavor import FlavorChannel
-from .flavor import FlavorChannelSpace
+from .channel import FlavorChannel
+from .channel_space import FlavorChannelSpace
 import warnings
 warnings.simplefilter("once")
 
