@@ -34,10 +34,10 @@ Created July 2022.
 ###############################################################################
 
 import unittest
-from ampyl.flavor import Particle
+from ampyl.channel import Particle
 from ampyl.functions import QCFunctions
-from ampyl.flavor import FlavorChannel
-from ampyl.flavor import SpectatorChannel
+from ampyl.channel import FlavorChannel
+from ampyl.channel import SpectatorChannel
 
 
 class TestSpectatorChannel(unittest.TestCase):
