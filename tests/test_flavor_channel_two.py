@@ -35,8 +35,8 @@ Created July 2022.
 
 import unittest
 import numpy as np
-from ampyl.flavor import Particle
-from ampyl.flavor import FlavorChannel
+from ampyl.channel import Particle
+from ampyl.channel import FlavorChannel
 
 
 class TestFlavorChannel(unittest.TestCase):
