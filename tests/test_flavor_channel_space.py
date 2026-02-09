@@ -35,10 +35,10 @@ Created July 2022.
 
 import unittest
 import numpy as np
-from ampyl.flavor import Particle
-from ampyl.flavor import FlavorChannel
-from ampyl.flavor import SpectatorChannel
-from ampyl.flavor import FlavorChannelSpace
+from ampyl.channel import Particle
+from ampyl.channel import FlavorChannel
+from ampyl.channel import SpectatorChannel
+from ampyl.channel_space import FlavorChannelSpace
 
 
 class TestFlavorChannelSpace(unittest.TestCase):
