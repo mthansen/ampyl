@@ -126,3 +126,21 @@ def get_allowed_total_isospins(channel, isospins=None):
     raise NotImplementedError("more than three particles not implemented yet")
 
 
+def get_allowed_sub_isospins(channel):
+    if not channel.isospin_channel:
+        return None
+    if channel.n_particles == 2:
+        return None
+    if channel.n_particles == 3:
+        if channel.isospin == 0.:
+            return [1.]
+        if channel.isospin == 1.:
+            return [0., 1., 2.]
+        if channel.isospin == 2.:
+            return [1., 2.]
+        if channel.isospin == 3.:
+            return [2.]
+    raise NotImplementedError(f"total isospin {channel.isospin} not "
+                              f"implemented yet for {channel._n_particles} "
+                              f"particles")
+
