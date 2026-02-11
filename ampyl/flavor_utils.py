@@ -47,3 +47,15 @@ def check_type(variable, variable_string, variable_type,
                             f"{variable_type_str}")
 
 
+def particle_to_string(particle):
+    """Convert a particle to a string."""
+    particle_str = "Particle with the following properties:\n"
+    particle_str += f"    mass: {particle.mass},\n"
+    particle_str += f"    spin: {particle.spin},\n"
+    particle_str += f"    flavor: {particle.flavor},\n"
+    particle_str += f"    isospin_multiplet: {particle.isospin_multiplet},\n"
+    if particle.isospin_multiplet:
+        particle_str += f"    isospin: {particle.isospin},\n"
+    return particle_str[:-2]+"."
+
+
