@@ -1580,16 +1580,16 @@ class QCIndexSpace:
         EmaxSQ = Emax**2
         nPSQ = self.nPSQ
         Lmax = self.Lmax
-        EminSQ = self.tbis.Emin**2
-        if (EminSQ != 0.0):
+        ESQmin = self.tbis.ESQmin
+        if (ESQmin != 0.0):
             if nPSQ == 0:
                 nPspecmax = (Lmax*np.sqrt(
-                    Emax**4+(EminSQ-m_spec**2)**2-2.*Emax**2*(EminSQ+m_spec**2)
+                    Emax**4+(ESQmin-m_spec**2)**2-2.*Emax**2*(ESQmin+m_spec**2)
                     ))/(2.*Emax*TWOPI)
                 return nPspecmax
             else:
-                raise ValueError("simultaneous nonzero nP and Emin not"
-                                 + " supported")
+                raise ValueError("simultaneous nonzero nP and ESQmin not"
+                                 " supported")
         else:
             if nPSQ == 0:
                 nPspecmax = Lmax*(EmaxSQ-m_spec**2)/(2.0*TWOPI*Emax)
