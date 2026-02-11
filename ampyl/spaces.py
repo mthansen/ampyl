@@ -298,7 +298,7 @@ class ThreeBodyInteractionScheme:
         self._set_flavor_ellm_dim()
         wrong_length = False
         if use_pv_shift_prescription:
-            wrong_length = len(pv_shift_parameters) != self.flavor_ellm_dim
+            wrong_length = len(pv_shift_parameters) != self.flavor_ell_dim
         if use_pv_shift_prescription and wrong_length:
             raise ValueError("pv_shift_parameters must have length equal "
                              "to flavor_ellm_dim")
