@@ -83,6 +83,46 @@ def get_allowed_total_isospins(channel, isospins=None):
         min_isospin = abs(isospins[0]-isospins[1])
         max_isospin = abs(isospins[0]+isospins[1])
         return list(np.arange(min_isospin, max_isospin+0.5+EPSILON4))
+    if n_isospins == 3 and none_was_passed:
+        unique_flavors = np.unique(channel.flavors)
+        redundant_list = []
+        counting_list = []
+        for j in range(len(unique_flavors)):
+            spectator_flavor = unique_flavors[j]
+            i = np.where(np.array(channel.flavors) == spectator_flavor)[0][0]
+            spectator_isospin = isospins[i]
+            pair_isospins = isospins[:i] + isospins[i+1:]
+            pair_flavors = channel.flavors[:i] + channel.flavors[i+1:]
+            combined_pair_isospins =\
+                get_allowed_total_isospins(channel, isospins=pair_isospins)
+            for combined_pair_isospin in combined_pair_isospins:
+                combined_three_isospins =\
+                    get_allowed_total_isospins(
+                        channel, isospins=[spectator_isospin,
+                                           combined_pair_isospin]
+                        )
+                for combined_three_isospin in combined_three_isospins:
+                    redundant_list.append(combined_three_isospin)
+                    candidate = (combined_three_isospin,
+                                 combined_pair_isospin,
+                                 spectator_flavor,
+                                 spectator_isospin,
+                                 *pair_flavors, *pair_isospins)
+                    if candidate not in counting_list:
+                        counting_list.append(candidate)
+        allowed_total_isospins\
+            = list(np.sort(np.unique(redundant_list)))
+        channel.summary = np.array([entry for entry in counting_list],
+                                   dtype=object)
+        if channel._isospin is not None:
+            if channel._isospin not in allowed_total_isospins:
+                raise ValueError(f"total isospin {channel._isospin} not "
+                                 f"allowed with these particles")
+            channel.summary_reduced\
+                = np.array([entry for entry in channel.summary
+                            if entry[0] == channel.isospin],
+                           dtype=object)
+        return allowed_total_isospins
     raise NotImplementedError("more than three particles not implemented yet")
 
 
