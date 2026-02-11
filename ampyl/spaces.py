@@ -318,12 +318,10 @@ class ThreeBodyInteractionScheme:
             print(f"{bcolors.ENDC}")
 
     def _set_flavor_ellm_dim(self):
-        flavor_ellm_dim = 0
-        for sc in self.fcs.sc_list:
-            for ell in sc.ell_set:
-                dim = 2*ell+1
-                flavor_ellm_dim += dim
-        self.flavor_ellm_dim = flavor_ellm_dim
+        self.flavor_ell_dim = sum(len(sc.ell_set) for sc in self.fcs.sc_list)
+        self.flavor_ellm_dim = sum(
+            sum(2 * ell + 1 for ell in sc.ell_set) for sc in self.fcs.sc_list
+        )
 
     @property
     def verbosity(self):
