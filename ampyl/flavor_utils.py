@@ -165,3 +165,23 @@ def flavor_channel_to_str(channel):
     return channel_str[:-2]+"."
 
 
+def spectator_channel_to_string(channel):
+    """Convert a spectator channel to a string."""
+    channel_str = channel.fc.__str__().replace("Flavor", "Spectator")
+    channel_str = channel_str[:-1]+",\n"
+    channel_str += f"    indexing: {channel.indexing},\n"
+    if channel.fc.isospin_channel:
+        if channel.sub_isospin is not None:
+            channel_str += f"    sub_isospin: "\
+                f"{channel.sub_isospin},\n"
+        if channel.allowed_sub_isospins is not None:
+            channel_str += f"    allowed sub_isospins: "\
+                f"{channel.allowed_sub_isospins},\n"
+    channel_str += f"    ell_set: {channel.ell_set},\n"
+    for i, ell in enumerate(channel.ell_set):
+        channel_str += f"    p_cot_delta_{ell}: "\
+            f"{channel.p_cot_deltas[i]},\n"
+    channel_str += f"    n_params_set: {channel.n_params_set},\n"
+    return channel_str[:-2]+"."
+
+
