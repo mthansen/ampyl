@@ -275,12 +275,12 @@ class ThreeBodyInteractionScheme:
     :type kdf_functions: list of callables
     """
 
-    def __init__(self, fcs=None, Emin=0.0, three_scheme='relativistic pole',
+    def __init__(self, fcs=None, ESQmin=0.0, three_scheme='relativistic pole',
                  scheme_data=[-1.0, 0.0], kdf_functions=None,
                  use_pv_shift_prescription=False,
                  pv_shift_parameters=None,
                  verbosity=0):
-        self.Emin = Emin
+        self.ESQmin = ESQmin
         if fcs is None:
             self.fcs = FlavorChannelSpace(fc_list=[FlavorChannel(3)])
         else:
