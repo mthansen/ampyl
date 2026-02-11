@@ -68,3 +68,7 @@ def particles_equal(particle1, particle2):
             particle1.isospin == particle2.isospin)
 
 
+def get_allowed_total_isospins(channel, isospins=None):
+    raise NotImplementedError("more than three particles not implemented yet")
+
+
