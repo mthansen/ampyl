@@ -144,3 +144,24 @@ def get_allowed_sub_isospins(channel):
                               f"implemented yet for {channel._n_particles} "
                               f"particles")
 
+
+def flavor_channel_to_str(channel):
+    """Convert a FlavorChannel to a string."""
+    channel_str = "FlavorChannel with the following details:\n"
+    channel_str += f"    {channel.n_particles} particles,\n"
+    channel_str += f"    masses: {channel.masses},\n"
+    channel_str += f"    spins: {channel.spins},\n"
+    channel_str += f"    flavors: {channel.flavors},\n"
+    channel_str += f"    isospin_channel: {channel.isospin_channel},\n"
+    if channel.isospin_channel:
+        channel_str += f"    isospins: {channel.isospins},\n"
+        channel_str += "    allowed_total_isospins: "
+        for i, isospin in enumerate(channel.allowed_total_isospins):
+            if i < len(channel.allowed_total_isospins) - 1:
+                channel_str += f"{isospin}, "
+            else:
+                channel_str += f"{isospin},\n"
+        channel_str += f"    isospin: {channel.isospin},\n"
+    return channel_str[:-2]+"."
+
+
