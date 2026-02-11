@@ -36,3 +36,14 @@ Created July 2022.
 
 import numpy as np
 from .constants import EPSILON4
+
+
+def check_type(variable, variable_string, variable_type,
+               variable_type_str):
+    """Check that a variable is of the correct type."""
+    if variable is not None:
+        if not isinstance(variable, variable_type):
+            raise TypeError(f"{variable_string} must be of type "
+                            f"{variable_type_str}")
+
+
