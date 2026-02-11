@@ -76,6 +76,13 @@ def get_allowed_total_isospins(channel, isospins=None):
         isospins = channel.isospins
     else:
         none_was_passed = False
+    n_isospins = len(isospins)
+    if n_isospins == 1:
+        return isospins
+    if n_isospins == 2:
+        min_isospin = abs(isospins[0]-isospins[1])
+        max_isospin = abs(isospins[0]+isospins[1])
+        return list(np.arange(min_isospin, max_isospin+0.5+EPSILON4))
     raise NotImplementedError("more than three particles not implemented yet")
 
 
