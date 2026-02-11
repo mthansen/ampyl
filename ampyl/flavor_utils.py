@@ -69,6 +69,13 @@ def particles_equal(particle1, particle2):
 
 
 def get_allowed_total_isospins(channel, isospins=None):
+    if not channel._isospin_channel:
+        return None
+    if isospins is None:
+        none_was_passed = True
+        isospins = channel.isospins
+    else:
+        none_was_passed = False
     raise NotImplementedError("more than three particles not implemented yet")
 
 
