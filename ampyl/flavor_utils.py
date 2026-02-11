@@ -185,3 +185,18 @@ def spectator_channel_to_string(channel):
     return channel_str[:-2]+"."
 
 
+def spectator_channel_equality(channel1, channel2):
+    """Check if two spectator channels are equivalent."""
+    if not (channel1.fc == channel2.fc):
+        return False
+    if not (channel1.indexing == channel2.indexing):
+        return False
+    if not (channel1.sub_isospin == channel2.sub_isospin):
+        return False
+    if not (channel1.ell_set == channel2.ell_set):
+        return False
+    if not (channel1.p_cot_deltas == channel2.p_cot_deltas):
+        return False
+    if not (channel1.n_params_set == channel2.n_params_set):
+        return False
+    return True
