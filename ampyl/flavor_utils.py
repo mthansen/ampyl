@@ -59,3 +59,12 @@ def particle_to_string(particle):
     return particle_str[:-2]+"."
 
 
+def particles_equal(particle1, particle2):
+    """Check if two particles are equivalent."""
+    return (particle1.mass == particle2.mass and
+            particle1.spin == particle2.spin and
+            particle1.flavor == particle2.flavor and
+            particle1.isospin_multiplet == particle2.isospin_multiplet and
+            particle1.isospin == particle2.isospin)
+
+
