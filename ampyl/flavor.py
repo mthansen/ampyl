@@ -176,3 +176,51 @@ class Particle:
         return flavor_utils.particle_to_string(self)
 
 
+class FlavorChannel:
+    """
+    Class used to represent a flavor channel.
+
+    :param n_particles: number of particles in the flavor channel
+    :type n_particles: int
+    :param particles: particles in the flavor channel. If not specified,\
+        the channel will be initialized with `n_particles` default Particle\
+        objects.
+    :type particles: list of :class:`Particle` objects, optional
+    :param isospin_channel: specifies whether this is an isospin channel\
+        (Default is ``False``)
+    :type isospin_channel: bool, optional
+    :param isospin: isospin of the flavor channel (Default is ``None``)
+    :type isospin: float, optional
+
+    :raises ValueError: If `n_particles` is not an int or if `n_particles` is
+        less than 2.
+
+    :raises ValueError: If `isospin_channel` is ``True`` but `isospin` is
+        ``None``.
+
+    .. note::
+        Contains particle properties (masses, spins, flavors, isospins) and the
+        derived lists of allowed total/sub-isospins plus channel summaries. All
+        fields are set automatically.
+
+        If `particles` is not specified, the channel will be initialized with
+        `n_particles` default :class:`Particle` objects.
+
+    Example:
+
+    >>> import ampyl
+    >>> pion = ampyl.flavor.Particle(isospin=1.)
+    >>> fc = ampyl.flavor.FlavorChannel(3, particles=[pion, pion, pion],
+    ...                                  isospin_channel=True, isospin=3.)
+    >>> print(fc)
+    FlavorChannel with the following details:
+        3 particles,
+        masses: [1.0, 1.0, 1.0],
+        spins: [0.0, 0.0, 0.0],
+        flavors: ['pi', 'pi', 'pi'],
+        isospin_channel: True,
+        isospins: [1.0, 1.0, 1.0],
+        allowed_total_isospins: 0.0, 1.0, 2.0, 3.0,
+        isospin: 3.0.
+
+    """
