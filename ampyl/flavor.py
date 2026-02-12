@@ -328,3 +328,16 @@ class FlavorChannel:
             raise ValueError("isospin must be in allowed_total_isospins")
         self._isospin = isospin
 
+    @property
+    def n_particles(self):
+        """Number of particles in the channel."""
+        return self._n_particles
+
+    @n_particles.setter
+    def n_particles(self, n_particles):
+        """Set the number of particles in the channel."""
+        flavor_utils.check_type(n_particles, "n_particles", int, "int")
+        if n_particles < 2:
+            raise ValueError("n_particles must be >= 2")
+        self._n_particles = n_particles
+
