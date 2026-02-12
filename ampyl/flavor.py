@@ -1124,3 +1124,15 @@ class FlavorChannelSpace:
                                + [collective_set_i_prev]
                                + [collective_set_j_prev], dtype=object)
         return g_templates_clustered
+
+    def _sort_db(self, g_templates_ell_specific_db):
+        len_dbT = len(g_templates_ell_specific_db.T)
+        for slice_index_i in range(len_dbT):
+            try:
+                g_templates_ell_specific_db = g_templates_ell_specific_db[
+                        g_templates_ell_specific_db[:, len_dbT-slice_index_i-1]
+                        .argsort(kind='mergesort')]
+            except TypeError:
+                pass
+        return g_templates_ell_specific_db
+
