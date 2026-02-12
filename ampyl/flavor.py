@@ -315,3 +315,16 @@ class FlavorChannel:
                              "is True")
         self._isospin_channel = isospin_channel
 
+    @property
+    def isospin(self):
+        """Isospin value of the channel."""
+        return self._isospin
+
+    @isospin.setter
+    def isospin(self, isospin):
+        """Set the isospin value of the channel."""
+        flavor_utils.check_type(isospin, "isospin", float, "float")
+        if isospin is not None and isospin not in self.allowed_total_isospins:
+            raise ValueError("isospin must be in allowed_total_isospins")
+        self._isospin = isospin
+
