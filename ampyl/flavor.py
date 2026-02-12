@@ -622,3 +622,50 @@ class SpectatorChannel:
 
     def __str__(self):
         return flavor_utils.spectator_channel_to_string(self)
+
+
+class FlavorChannelSpace:
+    """
+    Class used to represent a flavor-channel space.
+
+    :param fc_list: list of FlavorChannel objects
+    :type fc_list: list
+    :param ni_list: list of FlavorChannel objects (corresponding to
+    non-interacting channels)
+    :type ni_list: list
+    :param sc_list: list of SpectatorChannel objects built autmatically from
+    fc_list
+    :type sc_list: list
+    :param sc_list_sorted: list of SpectatorChannel objects sorted first by
+    particle number, then mass, then other properties
+    :type sc_list_sorted: list
+    :param n_particles_max: maximum number of particles in the space
+    :type n_particles_max: int
+    :param possible_numbers_of_particles: possible numbers of particles in the
+    space, typically either ``[2]``, ``[3]`` or ``[2, 3]``
+    :type possible_numbers_of_particles: list
+    :param n_particle_numbers: number of distinct counts in the space (e.g.
+    for ``possible_numbers_of_particles == [2, 3]`` one has
+    ``n_particle_numbers == 2``)
+    :type n_particle_numbers: int
+    :param n_channels_by_particle_number: number of spectator channels for a
+    fixed number of particles. For example, for ``possible_numbers_of_particles
+    == [2, 3]`` and ``n_channels_by_particle_number == [2, 3]`` one has two
+    two-particle and three three-particle channels. The ordering matches
+    ``possible_numbers_of_particles``.
+    :type n_channels_by_particle_number: list
+    :param slices_by_particle_number: slices of the channel space by particle
+    number (e.g. for three two- and one three-particle channel one has
+    ``slices_by_particle_number = [[0, 3], [3, 4]]``)
+    :type slices_by_particle_number: list
+    :param slices_by_three_masses: mass-dependent slicing of the three-particle
+    channel space (e.g. for one two- and two three-particle channels with
+    distinct masses one has ``slices_by_three_masses = [[1, 2], [2, 3]]``)
+    :type slices_by_three_masses: list
+    :param n_three_slices: length of ``slices_by_three_masses``
+    :type n_three_slices: int
+    :param g_templates: templates for the g matrices
+    :type g_templates: list
+    :param g_templates_ell_specific: templates for the g matrices, ell-specific
+    :type g_templates_ell_specific: dict
+    """
