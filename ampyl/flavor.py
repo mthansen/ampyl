@@ -825,3 +825,99 @@ class FlavorChannelSpace:
                 self._add_spectator_channel(sc2)
                 self._add_spectator_channel(sc3)
 
+    def _build_sorted_sc_list(self):
+        n_particles_max = 0
+        possible_numbers_of_particles = []
+        for fc in self.fc_list:
+            if fc.n_particles > n_particles_max:
+                n_particles_max = fc.n_particles
+            if fc.n_particles not in possible_numbers_of_particles:
+                possible_numbers_of_particles.append(fc.n_particles)
+        possible_numbers_of_particles.sort()
+        n_particle_numbers = len(possible_numbers_of_particles)
+        n_channels_by_particle_number = [0 for _ in range(n_particle_numbers)]
+        for sc in self.sc_list:
+            n_channels_by_particle_number[possible_numbers_of_particles.index(
+                sc.fc.n_particles)] += 1
+        slices_by_particle_number = []
+        n_channels_prev = 0
+        for n_channels in n_channels_by_particle_number:
+            slices_by_particle_number.append([n_channels_prev,
+                                              n_channels
+                                              + n_channels_prev])
+            n_channels_prev = n_channels
+        self.n_particles_max = n_particles_max
+        self.possible_numbers_of_particles = possible_numbers_of_particles
+        self.n_particle_numbers = n_particle_numbers
+        self.n_channels_by_particle_number = n_channels_by_particle_number
+        self.slices_by_particle_number = slices_by_particle_number
+
+        sc_compact = [[] for _ in range(n_particle_numbers)]
+        sc_index = -1
+        for sc in self.sc_list:
+            sc_index += 1
+            sc_compact_single = [sc.fc.n_particles]
+            if sc.fc.n_particles == 2:
+                sc_compact_single = self.\
+                    _add_two_particle_compact(sc, sc_index, sc_compact_single)
+            elif sc.fc.n_particles == 3:
+                sc_compact_single = self.\
+                    _add_three_particle_compact(sc, sc_index,
+                                                sc_compact_single)
+            else:
+                return ValueError("n_particles > 3 not implemented yet")
+            sc_compact[possible_numbers_of_particles.index(sc.fc.n_particles)]\
+                .append(sc_compact_single)
+
+        for j in range(len(sc_compact)):
+            sc_compact[j] = np.array(sc_compact[j], dtype=object)
+            len_tmp = len(sc_compact[j].T)
+            for i in range(len_tmp):
+                try:
+                    sc_compact[j] = sc_compact[j][
+                        sc_compact[j][:, len_tmp-i-1].argsort(
+                            kind='mergesort')]
+                except TypeError:
+                    pass
+
+        three_particle_channel_included\
+            = (3 in self.possible_numbers_of_particles)
+        if three_particle_channel_included:
+            slices_by_three_masses = []
+
+            if 2 in self.possible_numbers_of_particles:
+                three_offset = self.n_channels_by_particle_number[
+                    possible_numbers_of_particles.index(2)]
+            else:
+                three_offset = 0
+
+            sc_compact_three_subspace = sc_compact[
+                possible_numbers_of_particles.index(3)]
+            first_mass_index = 1
+            last_mass_index = 4
+            sc_three_previous_masses = sc_compact_three_subspace[0][
+                first_mass_index:last_mass_index]
+            slice_min = three_offset
+            slice_max = three_offset
+            for sc_compact_entry in sc_compact_three_subspace:
+                sc_three_masses_current = sc_compact_entry[first_mass_index:
+                                                           last_mass_index]
+                if (sc_three_previous_masses == sc_three_masses_current).all():
+                    slice_max = slice_max+1
+                else:
+                    slices_by_three_masses.append([slice_min, slice_max])
+                    slice_min = slice_max
+                    slice_max = slice_max+1
+                    sc_three_previous_masses = sc_three_masses_current
+            slices_by_three_masses.append([slice_min, slice_max])
+            self.slices_by_three_masses = slices_by_three_masses
+            self.n_three_slices = len(slices_by_three_masses)
+        else:
+            self.slices_by_three_masses = []
+            self.n_three_slices = 0
+
+        sc_list_sorted = []
+        for sc_group in sc_compact:
+            for sc_entry in sc_group:
+                sc_list_sorted.append(self.sc_list[sc_entry[-1]])
+        self.sc_list_sorted = sc_list_sorted
