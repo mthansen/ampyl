@@ -64,3 +64,20 @@ class Particle:
     :raises ValueError: If `isospin_multiplet` is ``True`` but `isospin` is
         ``None``.
     """
+    def __init__(self, mass=1., spin=0., flavor='pi',
+                 isospin_multiplet=False, isospin=None, verbosity=0):
+
+        self.mass = mass
+        self.spin = spin
+        self.flavor = flavor
+
+        self._isospin_multiplet = isospin_multiplet
+        self._isospin = isospin
+        self.isospin_multiplet = self._isospin_multiplet
+        self.isospin = self._isospin
+
+        self.verbosity = verbosity
+        if self._verbosity >= 2:
+            self.print_summary()
+
+    @property
