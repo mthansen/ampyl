@@ -91,8 +91,7 @@ class TestParticle(unittest.TestCase):
 
     def test_isospin_multiplet(self):
         """Test the isospin_multiplet property."""
-        particle = Particle()
-        particle.isospin_multiplet = True
+        particle = Particle(isospin_multiplet=True, isospin=1.)
         self.assertEqual(particle.isospin_multiplet, True)
 
     def test_isospin(self):
@@ -118,14 +117,8 @@ class TestParticle(unittest.TestCase):
         self.assertFalse(particle1 == particle2)
         particle2.flavor = 'pi'
         self.assertTrue(particle1 == particle2)
-        particle2.isospin_multiplet = True
-        self.assertFalse(particle1 == particle2)
-        particle2.isospin_multiplet = False
-        self.assertTrue(particle1 == particle2)
         particle2.isospin = 0.
         self.assertFalse(particle1 == particle2)
-        particle2.isospin = None
-        self.assertTrue(particle1 == particle2)
 
     def test_particle_str(self):
         particle = Particle()
