@@ -464,3 +464,32 @@ class SpectatorChannel:
         self.ell_set = self._ell_set
         self.p_cot_deltas = self._p_cot_deltas
 
+    @property
+    def indexing(self):
+        """Indexing of the spectator channel."""
+        return self._indexing
+
+    @indexing.setter
+    def indexing(self, indexing):
+        """Set the indexing of the spectator channel."""
+        if (self.fc.n_particles == 2) and (indexing is not None):
+            warnings.warn(f"\n{bcolors.WARNING}"
+                          f"n_particles == 2 and indexing is not None; "
+                          f"setting it to None"
+                          f"{bcolors.ENDC}", stacklevel=2)
+            self._indexing = None
+        elif (self.fc.n_particles == 2) and (indexing is None):
+            self._indexing = None
+        elif self.fc.n_particles >= 3:
+            if not isinstance(indexing, list):
+                raise ValueError("for n_particles > 2, indexing must be a "
+                                 "list")
+            if len(indexing) != self.fc.n_particles:
+                raise ValueError("indexing must have length n_particles")
+            if (np.sort(indexing) != np.arange(self.fc.n_particles)).any():
+                raise ValueError("indexing must be a permuatation of "
+                                 "ascending integers")
+            self._indexing = indexing
+        else:
+            raise ValueError("unknown problem with indexing")
+
