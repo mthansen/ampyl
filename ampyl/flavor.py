@@ -81,3 +81,35 @@ class Particle:
             self.print_summary()
 
     @property
+    def mass(self):
+        """Mass of the particle."""
+        return self._mass
+
+    @mass.setter
+    def mass(self, mass):
+        """Set the mass of the particle."""
+        flavor_utils.check_type(mass, 'mass', float, 'float')
+        self._mass = mass
+
+    @property
+    def spin(self):
+        """Spin of the particle."""
+        return self._spin
+
+    @spin.setter
+    def spin(self, spin):
+        """Set the spin of the particle."""
+        flavor_utils.check_type(spin, 'spin', float, 'float')
+        self._spin = spin
+
+    @property
+    def flavor(self):
+        """Flavor of the particle."""
+        return self._flavor
+
+    @flavor.setter
+    def flavor(self, flavor):
+        """Set the flavor of the particle."""
+        flavor_utils.check_type(flavor, 'flavor', str, 'str')
+        self._flavor = flavor
+
