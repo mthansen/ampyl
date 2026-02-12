@@ -249,3 +249,15 @@ class FlavorChannel:
         if self.verbosity >= 2:
             self.print_summary()
 
+    def _get_masses(self):
+        return [particle.mass for particle in self.particles]
+
+    def _get_spins(self):
+        return [particle.spin for particle in self.particles]
+
+    def _get_flavors(self):
+        return [particle.flavor for particle in self.particles]
+
+    def _get_isospins(self):
+        return [particle.isospin for particle in self.particles]
+
