@@ -113,3 +113,40 @@ class Particle:
         flavor_utils.check_type(flavor, 'flavor', str, 'str')
         self._flavor = flavor
 
+    @property
+    def isospin_multiplet(self):
+        """Whether the particle is an isospin multiplet."""
+        return self._isospin_multiplet
+
+    @isospin_multiplet.setter
+    def isospin_multiplet(self, isospin_multiplet):
+        """Set whether the particle is an isospin multiplet."""
+        flavor_utils.check_type(isospin_multiplet, 'isospin_multiplet',
+                                bool, 'bool')
+
+        if not isospin_multiplet and self._isospin is not None:
+            isospin_multiplet = True
+        if isospin_multiplet and self._isospin is None:
+            raise ValueError("isospin cannot be None when isospin_multiplet "
+                             "is True")
+
+        self._isospin_multiplet = isospin_multiplet
+
+    @property
+    def isospin(self):
+        """Isospin of the particle."""
+        return self._isospin
+
+    @isospin.setter
+    def isospin(self, isospin):
+        """Set the isospin of the particle."""
+        flavor_utils.check_type(isospin, 'isospin', float, 'float')
+
+        if not self._isospin_multiplet and isospin is not None:
+            self._isospin_multiplet = True
+        if isospin is None and self._isospin_multiplet:
+            raise ValueError("isospin cannot be None when isospin_multiplet "
+                             "is True")
+
+        self._isospin = isospin
+
