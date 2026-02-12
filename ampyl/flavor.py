@@ -493,3 +493,32 @@ class SpectatorChannel:
         else:
             raise ValueError("unknown problem with indexing")
 
+    @property
+    def sub_isospin(self):
+        """Sub-channel isospin of the spectator channel."""
+        return self._sub_isospin
+
+    @sub_isospin.setter
+    def sub_isospin(self, sub_isospin):
+        """Set the sub-channel isospin of the spectator channel."""
+        if ((sub_isospin is not None)
+           and (self.fc.n_particles == 2)):
+            raise ValueError("sub_isospin must be None "
+                             "for n_particles == 2")
+        if ((sub_isospin is not None)
+           and (not isinstance(sub_isospin, float))):
+            raise ValueError("for n_particles > 2, sub_isospin must be a "
+                             "float")
+        if ((sub_isospin is not None)
+           and (self.allowed_sub_isospins is not None)
+           and (sub_isospin not in self.allowed_sub_isospins)):
+            raise ValueError("sub-isospin is not in allowed set")
+        if (not self.fc.isospin_channel) and (sub_isospin is not None):
+            raise ValueError("sub_isospin cannot be set because "
+                             "isospin_channel is False")
+        if (self.fc.isospin_channel and (sub_isospin is None)
+           and (self.fc.n_particles != 2)):
+            raise ValueError("sub_isospin cannot be set to None because "
+                             "isospin_channel is True")
+        self._sub_isospin = sub_isospin
+
