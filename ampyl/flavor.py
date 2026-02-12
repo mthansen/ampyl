@@ -957,3 +957,52 @@ class FlavorChannelSpace:
             sc_compact_single = sc_compact_single+[None, None, None]
         sc_compact_single = sc_compact_single+[sc_index]
         return sc_compact_single
+
+    def _build_g_templates(self):
+        g_templates = []
+        for slice_i in self.slices_by_three_masses:
+            slice_i_len = slice_i[1]-slice_i[0]
+            g_templates_row = []
+            for slice_j in self.slices_by_three_masses:
+                slice_j_len = slice_j[1]-slice_j[0]
+                g_template = np.zeros((slice_i_len, slice_j_len))
+                for i in range(slice_i_len):
+                    for j in range(slice_j_len):
+                        flavors_i = self.sc_list_sorted[slice_i[0]+i].\
+                            flavors_indexed
+                        flavors_j = self.sc_list_sorted[slice_j[0]+j].\
+                            flavors_indexed
+                        g_is_nonzero = (
+                                ((flavors_i[0] == flavors_j[2])
+                                 and (np.sort(flavors_i[1:])
+                                      == np.sort(flavors_j[:-1])).all())
+                                or
+                                ((flavors_i[0] == flavors_j[1])
+                                 and (np.sort(flavors_i[1:])
+                                      == np.sort([flavors_j[0]]
+                                                 + [flavors_j[2]])).all())
+                                )
+                        if g_is_nonzero:
+                            isospin_channel_i = self.sc_list_sorted[
+                                slice_i[0]+i].fc.isospin_channel
+                            isospin_channel_j = self.sc_list_sorted[
+                                slice_j[0]+j].fc.isospin_channel
+                            neither_are_isospin_channels\
+                                = ((not isospin_channel_i)
+                                   and (not isospin_channel_j))
+                            both_are_isospin_channels\
+                                = isospin_channel_i and isospin_channel_j
+                            if neither_are_isospin_channels:
+                                g_template[i][j] = 1.0
+                            elif both_are_isospin_channels:
+                                g_isospin_ij\
+                                    = self._get_g_isospin_ij(slice_i, slice_j,
+                                                             i, j)
+                                g_template[i][j] = g_isospin_ij
+                            else:
+                                raise NotImplementedError(
+                                    "Mixing of isospin and non-isospin "
+                                    "channels is not implemented.")
+                g_templates_row.append(g_template)
+            g_templates.append(g_templates_row)
+        self.g_templates = g_templates
