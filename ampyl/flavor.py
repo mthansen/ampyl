@@ -669,3 +669,21 @@ class FlavorChannelSpace:
     :param g_templates_ell_specific: templates for the g matrices, ell-specific
     :type g_templates_ell_specific: dict
     """
+
+    def __init__(self, fc_list=[], ni_list=None, verbosity=0):
+        self.fc_list = fc_list
+        if ni_list is None:
+            self.ni_list = fc_list
+        else:
+            self.ni_list = ni_list
+        self.sc_list = []
+        for fc in fc_list:
+            self._add_flavor_channel(fc)
+        self._verbosity = verbosity
+        self.verbosity = self._verbosity
+        self._build_sorted_sc_list()
+        self._build_g_templates()
+        self._build_g_templates_ell_specific()
+
+        if self.verbosity >= 2:
+            self.print_summary()
