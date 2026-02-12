@@ -727,3 +727,15 @@ class FlavorChannelSpace:
         if self.verbosity >= 2:
             self.print_summary()
 
+    @property
+    def verbosity(self):
+        """Verbosity of the channel space."""
+        return self._verbosity
+
+    @verbosity.setter
+    def verbosity(self, verbosity):
+        """Set the verbosity of the channel space."""
+        if not isinstance(verbosity, int):
+            raise ValueError("verbosity must be an int")
+        self._verbosity = verbosity
+
