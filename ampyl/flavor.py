@@ -162,3 +162,17 @@ class Particle:
         self._verbosity = verbosity
 
     def __eq__(self, other):
+        if not isinstance(other, Particle):
+            return False
+        return flavor_utils.particles_equal(self, other)
+
+    def print_summary(self):
+        print(f"{bcolors.OKGREEN}Particle initialized with the following "
+              "properties:\n"
+              f"{self.__str__()}"
+              f"{bcolors.ENDC}")
+
+    def __str__(self):
+        return flavor_utils.particle_to_string(self)
+
+
