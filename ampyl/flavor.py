@@ -601,3 +601,12 @@ class SpectatorChannel:
                     else:
                         self._ell_set.append(self._ell_set[-1]+1)
             self._p_cot_deltas = p_cot_deltas
+
+    def set_allowed_sub_isospins(self):
+        if self._fc.isospin_channel and self._fc.n_particles > 2:
+            allowed_sub_isospins = []
+            for entry in self._fc.summary_reduced:
+                if self._fc.flavors[self.indexing[0]] == entry[2]:
+                    allowed_sub_isospins.append(entry[1])
+            self.allowed_sub_isospins = allowed_sub_isospins
+
