@@ -261,3 +261,40 @@ class FlavorChannel:
     def _get_isospins(self):
         return [particle.isospin for particle in self.particles]
 
+    @property
+    def particles(self):
+        """Particles in the channel."""
+        return self._particles
+
+    @particles.setter
+    def particles(self, particles):
+        """Set the particles in the channel."""
+        if not isinstance(particles, list):
+            raise ValueError("particles must be a list")
+        if len(particles) == 0:
+            particles = [Particle() for _ in range(self.n_particles)]
+        if len(particles) != self.n_particles:
+            raise ValueError("len(particles) must be equal to n_particles")
+        for particle in particles:
+            if not isinstance(particle, Particle):
+                raise ValueError("particles must be a list of Particle "
+                                 "objects")
+        for particle_a in particles:
+            for particle_b in particles:
+                if (particle_a.flavor == particle_b.flavor)\
+                   and (particle_a != particle_b):
+                    raise ValueError("particles with the same flavors must be "
+                                     + "identical")
+        if self._isospin_channel:
+            for particle in particles:
+                if not particle.isospin_multiplet:
+                    raise ValueError("all particles must be in an isospin "
+                                     "multiplet if the channel is an "
+                                     "isospin channel")
+        for particle in particles:
+            if particle.isospin_multiplet and not self._isospin_channel:
+                raise ValueError("none of the particles can be an isospin "
+                                 "multiplet if the channel is not an "
+                                 "isospin channel")
+        self._particles = particles
+
