@@ -739,3 +739,89 @@ class FlavorChannelSpace:
             raise ValueError("verbosity must be an int")
         self._verbosity = verbosity
 
+    def _add_spectator_channel(self, sc):
+        self.sc_list.append(sc)
+
+    def _add_flavor_channel(self, fc):
+        """
+        Add a flavor channel to the flavor channel space.
+
+        This method hard codes some choices for the ell_set and p_cot_deltas.
+        This should be changed in the future.
+        """
+        if fc.n_particles == 2:
+            sc1 = SpectatorChannel(fc, indexing=None)
+            self._add_spectator_channel(sc1)
+        elif fc.isospin_channel:
+            for entry in fc.summary_reduced:
+                flavors = entry[[2, 4, 5]]
+                sub_isospin = entry[1]
+                indexing = []
+                for flavor in flavors:
+                    tmp_locations = np.where(np.array(fc.flavors)
+                                             == flavor)[0]
+                    added = False
+                    for tmp_location in tmp_locations:
+                        if (tmp_location not in indexing) and not added:
+                            indexing.append(tmp_location)
+                            added = True
+                if (sub_isospin == 0.0) and (flavors[1] == flavors[2]):
+                    ell_set = [0]
+                    warnings.warn(f"\n{bcolors.WARNING}"
+                                  "Assuming ell_set = [0] for spectator with "
+                                  f"sub_isospin = {sub_isospin} and "
+                                  f"flavors = {flavors}"
+                                  f"{bcolors.ENDC}", stacklevel=2)
+                elif (sub_isospin == 1.0) and (flavors[1] == flavors[2]):
+                    ell_set = [1]
+                    warnings.warn(f"\n{bcolors.WARNING}"
+                                  "Assuming ell_set = [1] for spectator with "
+                                  f"sub_isospin = {sub_isospin} and "
+                                  f"flavors = {flavors}"
+                                  f"{bcolors.ENDC}", stacklevel=2)
+                elif (sub_isospin == 2.0) and (flavors[1] == flavors[2]):
+                    ell_set = [0]
+                    warnings.warn(f"\n{bcolors.WARNING}"
+                                  "Assuming ell_set = [0] for spectator with "
+                                  f"sub_isospin = {sub_isospin} and "
+                                  f"flavors = {flavors}"
+                                  f"{bcolors.ENDC}", stacklevel=2)
+                else:
+                    ell_set = [0]
+                    warnings.warn(f"\n{bcolors.WARNING}"
+                                  "Assuming ell_set = [0] for spectator with "
+                                  f"sub_isospin = {sub_isospin} and "
+                                  f"flavors = {flavors}"
+                                  f"{bcolors.ENDC}", stacklevel=2)
+                sc_tmp = SpectatorChannel(fc, indexing=indexing,
+                                          sub_isospin=sub_isospin,
+                                          ell_set=ell_set)
+                self._add_spectator_channel(sc_tmp)
+        else:
+            if fc.flavors[0] == fc.flavors[1]\
+               == fc.flavors[2]:
+                sc1 = SpectatorChannel(fc)
+                self._add_spectator_channel(sc1)
+            elif fc.flavors[0] == fc.flavors[1]:
+                sc1 = SpectatorChannel(fc)
+                sc2 = SpectatorChannel(fc, indexing=[2, 0, 1])
+                self._add_spectator_channel(sc1)
+                self._add_spectator_channel(sc2)
+            elif fc.flavors[0] == fc.flavors[2]:
+                sc1 = SpectatorChannel(fc)
+                sc2 = SpectatorChannel(fc, indexing=[1, 2, 0])
+                self._add_spectator_channel(sc1)
+                self._add_spectator_channel(sc2)
+            elif fc.flavors[1] == fc.flavors[2]:
+                sc1 = SpectatorChannel(fc)
+                sc2 = SpectatorChannel(fc, indexing=[1, 2, 0])
+                self._add_spectator_channel(sc1)
+                self._add_spectator_channel(sc2)
+            else:
+                sc1 = SpectatorChannel(fc=fc)
+                sc2 = SpectatorChannel(fc=fc, indexing=[1, 2, 0])
+                sc3 = SpectatorChannel(fc=fc, indexing=[2, 0, 1])
+                self._add_spectator_channel(sc1)
+                self._add_spectator_channel(sc2)
+                self._add_spectator_channel(sc3)
+
