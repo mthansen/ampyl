@@ -224,3 +224,28 @@ class FlavorChannel:
         isospin: 3.0.
 
     """
+
+    def __init__(self, n_particles, particles=[], isospin_channel=False,
+                 isospin=None, verbosity=0):
+        self.verbosity = verbosity
+
+        self.n_particles = n_particles
+        self._isospin = isospin
+        # have not yet checked if isospin value is valid
+        self.isospin_channel = isospin_channel
+        self.particles = particles
+
+        self.masses = self._get_masses()
+        self.spins = self._get_spins()
+        self.flavors = self._get_flavors()
+        self.isospins = self._get_isospins()
+
+        self.allowed_total_isospins\
+            = flavor_utils.get_allowed_total_isospins(self)
+        self.isospin = self._isospin  # check if value is valid
+        self.allowed_sub_isospins\
+            = flavor_utils.get_allowed_sub_isospins(self)
+
+        if self.verbosity >= 2:
+            self.print_summary()
+
