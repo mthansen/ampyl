@@ -1760,7 +1760,7 @@ class QCIndexSpace:
         nvecs = np.vstack([y.flat for y in mesh]).T
         carr = (nvecs*nvecs).sum(1) > nvec_cutoff**2
         nvecs = np.delete(nvecs, np.where(carr), axis=0)
-        return [m1, m2, m3, Emax, nP, Lmax, nvec_cutoff, nvecs]
+        return [m1, m2, m3, Emax, nP, Lmax, nvec_int_cutoff, nvecs]
 
     def _get_nvecset_arr_three(self, nvecset_arr, nmin, nmax,
                                m1, m2, m3, Emax, nP, Lmax, n1, n2):
