@@ -522,3 +522,35 @@ class SpectatorChannel:
                              "isospin_channel is True")
         self._sub_isospin = sub_isospin
 
+    @property
+    def ell_set(self):
+        """Angular-momentum set of the spectator channel."""
+        return self._ell_set
+
+    @ell_set.setter
+    def ell_set(self, ell_set):
+        """Set the angular-momentum set of the spectator channel."""
+        if ell_set is None:
+            self._ell_set = None
+            self._p_cot_deltas = None
+            self._n_params_set = None
+        else:
+            if self._p_cot_deltas is None:
+                self._p_cot_deltas = []
+            if len(self._p_cot_deltas) > len(ell_set):
+                for _ in range(len(self._p_cot_deltas)-len(self._ell_set)):
+                    self._p_cot_deltas.pop()
+            elif (len(self._p_cot_deltas) < len(ell_set)
+                  and len(self._p_cot_deltas) != 0):
+                for _ in range(len(ell_set)-len(self.p_cot_deltas)):
+                    self._p_cot_deltas.append(self._p_cot_deltas[-1])
+            elif len(self._p_cot_deltas) < len(ell_set):
+                for _ in range(len(ell_set)-len(self.p_cot_deltas)):
+                    self._p_cot_deltas.append(
+                        QCFunctions.pcotdelta_scattering_length)
+            self._ell_set = ell_set
+            self._n_params_set = []
+            for p_cot_delta in self._p_cot_deltas:
+                self._n_params_set.append(
+                    len(signature(p_cot_delta).parameters)-1)
+
