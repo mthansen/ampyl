@@ -44,3 +44,23 @@ from .constants import G_TEMPLATE_DICT
 import warnings
 warnings.simplefilter("once")
 
+
+class Particle:
+    """
+    Class used to represent a particle.
+
+    :param mass: mass of the particle (default is ``1.``)
+    :type mass: float
+    :param spin: spin of the particle (default is ``0.``)
+    :type spin: float
+    :param flavor: flavor of the particle (default is ``'pi'``)
+    :type flavor: str
+    :param isospin_multiplet: specifies whether this is an isospin multiplet\
+        (default is ``False``)
+    :type isospin_multiplet: bool
+    :param isospin: isospin of the particle (default is ``None``)
+    :type isospin: float
+
+    :raises ValueError: If `isospin_multiplet` is ``True`` but `isospin` is
+        ``None``.
+    """
