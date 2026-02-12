@@ -35,7 +35,7 @@ Created July 2022.
 
 import unittest
 import numpy as np
-from . import flavor_utils
+from ampyl import flavor_utils
 from ampyl.flavor import Particle
 from ampyl.flavor import FlavorChannel
 
@@ -53,7 +53,7 @@ class TestFlavorChannel(unittest.TestCase):
             channel = FlavorChannel(1)
 
         # Test with n_particles not being an int
-        with self.assertRaises(ValueError):
+        with self.assertRaises(TypeError):
             channel = FlavorChannel("2")
 
     def test_flavors(self):
