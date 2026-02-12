@@ -940,3 +940,20 @@ class FlavorChannelSpace:
                         + [None, None, None, None, None]
         sc_compact_single = sc_compact_single+[sc_index]
         return sc_compact_single
+
+    def _add_two_particle_compact(self, sc, sc_index, sc_compact_single):
+        sc_compact_single = sc_compact_single\
+            + list(np.array(sc.fc.masses))
+        sc_compact_single = sc_compact_single\
+            + list(np.array(sc.fc.spins))
+        sc_compact_single = sc_compact_single\
+            + list(np.array(sc.fc.flavors))
+        sc_compact_single = sc_compact_single+[sc.fc.isospin_channel]
+        if sc.fc.isospin_channel:
+            sc_compact_single = sc_compact_single\
+                        + list(np.array(sc.fc.isospins))
+            sc_compact_single = sc_compact_single+[sc.fc.isospin]
+        else:
+            sc_compact_single = sc_compact_single+[None, None, None]
+        sc_compact_single = sc_compact_single+[sc_index]
+        return sc_compact_single
