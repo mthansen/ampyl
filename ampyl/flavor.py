@@ -1071,3 +1071,56 @@ class FlavorChannelSpace:
         else:
             self.g_templates_ell_specific = {}
 
+    def _populate_g_clustered(self, g_templates_ell_specific_db):
+        g_templates_clustered = {}
+        for g_template_entry in g_templates_ell_specific_db:
+            g_key = str(g_template_entry[:4])
+            if g_key not in g_templates_clustered:
+                g_templates_clustered[g_key]\
+                        = np.array(list(g_template_entry[:4])
+                                   + [g_template_entry[4]]
+                                   + [[g_template_entry[5]]]
+                                   + [[g_template_entry[6]]]
+                                   + [[g_template_entry[7]]]
+                                   + [[g_template_entry[8]]],
+                                   dtype=object)
+            else:
+                g_template_entry_prev = g_templates_clustered[g_key]
+                g_template_matrix_prev = g_template_entry_prev[4]
+                sc_indexset_i_prev = g_template_entry_prev[5]
+                sc_indexset_j_prev = g_template_entry_prev[6]
+                collective_set_i_prev = g_template_entry_prev[7]
+                collective_set_j_prev = g_template_entry_prev[8]
+                sc_index_i = g_template_entry[5]
+                sc_index_j = g_template_entry[6]
+                collective_index_i = g_template_entry[7]
+                collective_index_j = g_template_entry[8]
+                if sc_index_i not in sc_indexset_i_prev:
+                    sc_indexset_i_prev.append(sc_index_i)
+                    collective_set_i_prev.append(collective_index_i)
+                if sc_index_j not in sc_indexset_j_prev:
+                    sc_indexset_j_prev.append(sc_index_j)
+                    collective_set_j_prev.append(collective_index_j)
+                if (len(sc_indexset_i_prev) != len(g_template_matrix_prev)) or\
+                    (len(sc_indexset_j_prev) !=
+                     len(g_template_matrix_prev.T)):
+                    g_template_matrix_new = np.zeros((len(sc_indexset_i_prev),
+                                                      len(sc_indexset_j_prev)))
+                    g_template_matrix_new[:len(sc_indexset_i_prev),
+                                          :len(sc_indexset_j_prev)]\
+                        = g_template_matrix_prev
+                else:
+                    g_template_matrix_new = g_template_matrix_prev
+                i_ind = np.where(np.array(sc_indexset_i_prev) ==
+                                 sc_index_i)[0][0]
+                j_ind = np.where(np.array(sc_indexset_j_prev) ==
+                                 sc_index_j)[0][0]
+                g_template_matrix_new[i_ind, j_ind] = g_template_entry[4][0][0]
+                g_templates_clustered[g_key]\
+                    = np.array(list(g_template_entry[:4])
+                               + [g_template_matrix_new]
+                               + [sc_indexset_i_prev]
+                               + [sc_indexset_j_prev]
+                               + [collective_set_i_prev]
+                               + [collective_set_j_prev], dtype=object)
+        return g_templates_clustered
