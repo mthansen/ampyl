@@ -361,3 +361,49 @@ class FlavorChannel:
     def __str__(self):
         return flavor_utils.flavor_channel_to_str(self)
 
+
+class SpectatorChannel:
+    """
+    Class used to represent a spectator channel.
+
+    :param fc: FlavorChannel object used to define the spectator channel
+    :type fc: :class:`FlavorChannel` object
+    :param indexing: indices of the particles in the FlavorChannel. The first
+        entry corresponds to the spectator particle.
+    :type indexing: list of ints
+    :param sub_isospin: isospin value of the two-particle sub-channel
+    :type sub_isospin: float, optional
+    :param ell_set: angular momentum values of the channel
+    :type ell_set: list of ints, optional
+    :param p_cot_deltas: p_cot_delta functions of the channel
+    :type p_cot_deltas: list of callables, optional
+
+    :ivar masses_indexed: masses of the particles in the channel with the
+        spectator first
+    :vartype masses_indexed: list of floats
+    :ivar spins_indexed: spins of the particles in the channel with the
+        spectator first
+    :vartype spins_indexed: list of floats
+    :ivar flavors_indexed: flavors of the particles in the channel with the
+        spectator first
+    :vartype flavors_indexed: list of strings
+    :ivar isospins_indexed: isospins of the particles in the channel with the
+        spectator first
+    :vartype isospins_indexed: list of floats
+    :ivar allowed_sub_isospins: allowed sub-channel isospins
+    :vartype allowed_sub_isospins: list of floats
+    :ivar n_params_set: parameter counts for the channel p_cot_delta functions
+    :vartype n_params_set: list of ints
+
+    :raises ValueError: If the `fc` parameter is not a `FlavorChannel` object.
+
+    .. note::
+        If `p_cot_deltas` is not specified, it will be set to
+        :attr:`QCFunctions.pcotdelta_scattering_length`.
+
+    :Example:
+
+    >>> fc = FlavorChannel(3)
+    >>> sc = SpectatorChannel(fc=fc, indexing=[0, 1, 2])
+
+    """
