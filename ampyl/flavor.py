@@ -1006,3 +1006,50 @@ class FlavorChannelSpace:
                 g_templates_row.append(g_template)
             g_templates.append(g_templates_row)
         self.g_templates = g_templates
+
+    def _get_g_isospin_ij(self, slice_i, slice_j, i, j):
+        isospin_i = self.sc_list_sorted[slice_i[0]+i].fc.isospin
+        isospin_j = self.sc_list_sorted[slice_j[0]+j].fc.isospin
+        flavors_indexed_i = self.sc_list_sorted[slice_i[0]+i].flavors_indexed
+        flavors_indexed_j = self.sc_list_sorted[slice_j[0]+j].flavors_indexed
+        flavors_sorted_i = deepcopy(flavors_indexed_i)
+        flavors_sorted_j = deepcopy(flavors_indexed_j)
+        flavors_sorted_i.sort()
+        flavors_sorted_j.sort()
+        isospins_indexed_i = self.sc_list_sorted[slice_i[0]+i].isospins_indexed
+
+        if not flavors_sorted_i == flavors_sorted_j:
+            return 0.
+        if isospin_i != isospin_j:
+            return 0.
+        if not ((flavors_indexed_i[0] == flavors_indexed_j[1])
+                or (flavors_indexed_i[0] == flavors_indexed_j[2])):
+            return 0.
+        if ((flavors_indexed_i[0] == flavors_indexed_i[1]
+             and flavors_indexed_i[0] == flavors_indexed_i[2])
+            and (isospins_indexed_i[0] == 1.)
+            and (isospin_i == 0. or isospin_i == 1.
+                 or isospin_i == 2. or isospin_i == 3.)):
+            g_template_isospin = G_TEMPLATE_DICT[int(isospin_i)]
+            sub_isospin_i = self.sc_list_sorted[
+                slice_i[0]+i].sub_isospin
+            sub_isospin_j = self.sc_list_sorted[
+                slice_j[0]+j].sub_isospin
+            if isospin_i == 3.0:
+                ind_i = int(sub_isospin_i-2.0)
+                ind_j = int(sub_isospin_j-2.0)
+            elif isospin_i == 2.0:
+                ind_i = int(sub_isospin_i-1.0)
+                ind_j = int(sub_isospin_j-1.0)
+            elif isospin_i == 1.0:
+                ind_i = int(sub_isospin_i)
+                ind_j = int(sub_isospin_j)
+            elif isospin_i == 0.0:
+                ind_i = int(sub_isospin_i-1.0)
+                ind_j = int(sub_isospin_j-1.0)
+            return g_template_isospin[ind_i][ind_j]
+        warnings.warn(f"\n{bcolors.WARNING}"
+                      f"Unknown value within _get_g_isospin_ij; "
+                      f"assuming 100"
+                      f"{bcolors.ENDC}", stacklevel=2)
+        return 100.
