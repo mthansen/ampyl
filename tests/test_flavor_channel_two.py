@@ -35,8 +35,9 @@ Created July 2022.
 
 import unittest
 import numpy as np
-from ampyl.channel import Particle
-from ampyl.channel import FlavorChannel
+from . import flavor_utils
+from ampyl.flavor import Particle
+from ampyl.flavor import FlavorChannel
 
 
 class TestFlavorChannel(unittest.TestCase):
@@ -151,7 +152,7 @@ class TestFlavorChannel(unittest.TestCase):
         channel = FlavorChannel(3, particles=[kaon, pion, Omega],
                                 isospin_channel=True, isospin=1.0)
         expected_result = [0.0, 1., 2., 3.]
-        result = channel._get_allowed_total_isospins()
+        result = flavor_utils.get_allowed_total_isospins(channel)
         self.assertEqual(expected_result, result)
 
     def test_get_allowed_three_particles_summary(self):

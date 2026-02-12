@@ -111,8 +111,8 @@ class TestF(unittest.TestCase):
 
     def setUp(self):
         """Exectue set-up."""
-        fc = ampyl.channel.FlavorChannel(3)
-        fcs = ampyl.channel_space.FlavorChannelSpace(fc_list=[fc])
+        fc = ampyl.flavor.FlavorChannel(3)
+        fcs = ampyl.flavor.FlavorChannelSpace(fc_list=[fc])
         fvs = ampyl.spaces.FiniteVolumeSetup()
         tbis = ampyl.spaces.ThreeBodyInteractionScheme()
         qcis = ampyl.spaces.QCIndexSpace(fcs=fcs, fvs=fvs, tbis=tbis,

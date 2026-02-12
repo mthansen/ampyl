@@ -34,7 +34,7 @@ Created July 2022.
 ###############################################################################
 
 import unittest
-from ampyl.channel import Particle
+from ampyl.flavor import Particle
 
 
 class TestParticle(unittest.TestCase):
