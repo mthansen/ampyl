@@ -610,3 +610,7 @@ class SpectatorChannel:
                     allowed_sub_isospins.append(entry[1])
             self.allowed_sub_isospins = allowed_sub_isospins
 
+    @property
+    def n_params_set(self):
+        """Parameter counts of the spectator channel p-cot-deltas."""
+        return self._n_params_set
