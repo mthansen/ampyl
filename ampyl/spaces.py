@@ -1653,11 +1653,11 @@ class QCIndexSpace:
             m_spec = sc.fc.masses[sc.indexing[0]]
             ESQ = E**2
             nPSQ = self.nPSQ
-            EminSQ = self.tbis.Emin**2
-            if (EminSQ != 0.0):
+            ESQmin = self.tbis.ESQmin
+            if (ESQmin != 0.0):
                 if nPSQ == 0:
                     nPspecnew = (L*np.sqrt(
-                        E**4+(EminSQ-m_spec**2)**2-2.*E**2*(EminSQ+m_spec**2)
+                        E**4+(ESQmin-m_spec**2)**2-2.*E**2*(ESQmin+m_spec**2)
                         ))/(2.*E*TWOPI)
                 else:
                     raise ValueError("nonzero nP and Emin not supported")
