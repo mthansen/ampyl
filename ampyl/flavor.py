@@ -921,3 +921,22 @@ class FlavorChannelSpace:
             for sc_entry in sc_group:
                 sc_list_sorted.append(self.sc_list[sc_entry[-1]])
         self.sc_list_sorted = sc_list_sorted
+
+    def _add_three_particle_compact(self, sc, sc_index, sc_compact_single):
+        sc_compact_single = sc_compact_single\
+            + list(np.array(sc.fc.masses)[sc.indexing])
+        sc_compact_single = sc_compact_single\
+            + list(np.array(sc.fc.spins)[sc.indexing])
+        sc_compact_single = sc_compact_single\
+            + list(np.array(sc.fc.flavors)[sc.indexing])
+        sc_compact_single = sc_compact_single+[sc.fc.isospin_channel]
+        if sc.fc.isospin_channel:
+            sc_compact_single = sc_compact_single\
+                        + list(np.array(sc.fc.isospins)[sc.indexing])
+            sc_compact_single = sc_compact_single+[sc.fc.isospin]
+            sc_compact_single = sc_compact_single+[sc.sub_isospin]
+        else:
+            sc_compact_single = sc_compact_single\
+                        + [None, None, None, None, None]
+        sc_compact_single = sc_compact_single+[sc_index]
+        return sc_compact_single
