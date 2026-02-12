@@ -719,3 +719,11 @@ class FlavorChannelSpace:
             print(f"        key = {g_temp_key}:\n"
                   f"        {self.g_templates_ell_specific[g_temp_key]}")
         print(f"{bcolors.ENDC}")
+
+    def update_g_templates(self):
+        """Update the g templates."""
+        self._build_g_templates()
+        self._build_g_templates_ell_specific()
+        if self.verbosity >= 2:
+            self.print_summary()
+
