@@ -554,3 +554,50 @@ class SpectatorChannel:
                 self._n_params_set.append(
                     len(signature(p_cot_delta).parameters)-1)
 
+    @property
+    def p_cot_deltas(self):
+        """p-cot-delta functions of the spectator channel."""
+        return self._p_cot_deltas
+
+    @p_cot_deltas.setter
+    def p_cot_deltas(self, p_cot_deltas):
+        """
+        Set the p-cot-delta functions of the spectator channel.
+
+        :param p_cot_deltas: p-cot-delta functions to set
+        :type p_cot_deltas: list of callables
+
+        .. note::
+            If `p_cot_deltas` is not specified, sets :attr:`ell_set`,
+            :attr:`p_cot_deltas`, and :attr:`n_params_set` to None.
+
+        .. warning::
+            The number of elements in `p_cot_deltas` must be equal to the
+            length of :attr:`ell_set`.
+
+        :raises ValueError: If the length of `p_cot_deltas` is less than the
+            length of :attr:`ell_set`.
+
+        """
+
+        if p_cot_deltas is None:
+            self._ell_set = None
+            self._p_cot_deltas = None
+            self._n_params_set = None
+        else:
+            self._n_params_set = []
+            for p_cot_delta in p_cot_deltas:
+                self._n_params_set.append(
+                    len(signature(p_cot_delta).parameters)-1)
+            if self._ell_set is None:
+                self._ell_set = []
+            elif len(p_cot_deltas) < len(self._ell_set):
+                for _ in range(len(self._ell_set)-len(self.p_cot_deltas)):
+                    self._ell_set.pop()
+            elif len(p_cot_deltas) > len(self._ell_set):
+                for _ in range(len(self.p_cot_deltas)-len(self._ell_set)):
+                    if len(self._ell_set) == 0:
+                        self._ell_set.append(0)
+                    else:
+                        self._ell_set.append(self._ell_set[-1]+1)
+            self._p_cot_deltas = p_cot_deltas
