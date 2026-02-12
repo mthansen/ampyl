@@ -448,3 +448,19 @@ class SpectatorChannel:
         else:
             self._p_cot_deltas = p_cot_deltas
             self.p_cot_deltas = p_cot_deltas
+
+    @property
+    def fc(self):
+        """FlavorChannel object of the spectator channel."""
+        return self._fc
+
+    @fc.setter
+    def fc(self, fc):
+        """Set the FlavorChannel object of the spectator channel."""
+        flavor_utils.check_type(fc, "fc", FlavorChannel, "FlavorChannel")
+        self._fc = fc
+        self.indexing = self._indexing
+        self.sub_isospin = self._sub_isospin
+        self.ell_set = self._ell_set
+        self.p_cot_deltas = self._p_cot_deltas
+
