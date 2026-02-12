@@ -150,3 +150,15 @@ class Particle:
 
         self._isospin = isospin
 
+    @property
+    def verbosity(self):
+        """Verbosity of the particle."""
+        return self._verbosity
+
+    @verbosity.setter
+    def verbosity(self, verbosity):
+        """Set the verbosity of the particle."""
+        flavor_utils.check_type(verbosity, 'verbosity', int, 'int')
+        self._verbosity = verbosity
+
+    def __eq__(self, other):
