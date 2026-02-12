@@ -341,3 +341,23 @@ class FlavorChannel:
             raise ValueError("n_particles must be >= 2")
         self._n_particles = n_particles
 
+    @property
+    def verbosity(self):
+        """Verbosity of the channel."""
+        return self._verbosity
+
+    @verbosity.setter
+    def verbosity(self, verbosity):
+        """Set the verbosity of the channel."""
+        flavor_utils.check_type(verbosity, "verbosity", int, "int")
+        self._verbosity = verbosity
+
+    def print_summary(self):
+        print(f"{bcolors.OKGREEN}FlavorChannel initialized with the following "
+              "properties:\n"
+              f"{self.__str__()}"
+              f"{bcolors.ENDC}")
+
+    def __str__(self):
+        return flavor_utils.flavor_channel_to_str(self)
+
