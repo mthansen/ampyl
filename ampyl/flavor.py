@@ -614,3 +614,11 @@ class SpectatorChannel:
     def n_params_set(self):
         """Parameter counts of the spectator channel p-cot-deltas."""
         return self._n_params_set
+
+    def __eq__(self, other):
+        if not isinstance(other, SpectatorChannel):
+            return False
+        return flavor_utils.spectator_channel_equality(self, other)
+
+    def __str__(self):
+        return flavor_utils.spectator_channel_to_string(self)
