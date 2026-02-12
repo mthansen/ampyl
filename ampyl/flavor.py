@@ -407,3 +407,44 @@ class SpectatorChannel:
     >>> sc = SpectatorChannel(fc=fc, indexing=[0, 1, 2])
 
     """
+
+    def __init__(self, fc=FlavorChannel(3), indexing=[0, 1, 2],
+                 sub_isospin=None, ell_set=[0], p_cot_deltas=None):
+
+        self.allowed_sub_isospins = None
+
+        self._fc = fc
+        self._indexing = indexing
+        self._sub_isospin = sub_isospin
+        self._ell_set = ell_set
+        self._p_cot_deltas = p_cot_deltas
+
+        self.set_allowed_sub_isospins()
+
+        self.fc = fc
+        self.indexing = indexing
+        self.sub_isospin = sub_isospin
+        self.ell_set = ell_set
+
+        if self.fc.n_particles == 2:
+            self.masses_indexed = self.fc.masses
+            self.spins_indexed = self.fc.spins
+            self.flavors_indexed = self.fc.flavors
+            self.isospins_indexed = self.fc.isospins
+        elif self.fc.n_particles == 3:
+            self.masses_indexed = list(np.array(self.fc.masses)[indexing])
+            self.spins_indexed = list(np.array(self.fc.spins)[indexing])
+            self.flavors_indexed = list(np.array(self.fc.flavors)[indexing])
+            self.isospins_indexed = list(np.array(self.fc.isospins)[indexing])
+        else:
+            raise NotImplementedError("only 2- and 3-body channels supported")
+
+        if p_cot_deltas is None:
+            p_cot_deltas = []
+            for _ in range(len(ell_set)):
+                p_cot_deltas.append(QCFunctions.pcotdelta_scattering_length)
+                self._p_cot_deltas = p_cot_deltas
+                self.p_cot_deltas = p_cot_deltas
+        else:
+            self._p_cot_deltas = p_cot_deltas
+            self.p_cot_deltas = p_cot_deltas
