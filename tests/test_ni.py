@@ -70,7 +70,7 @@ class TestNonInteracting(unittest.TestCase):
                 self.assertTrue((expectation == reality).all())
             else:
                 self.assertEqual(expectation, reality)
-        self.assertEqual(ni_data_three[7].shape, (125, 3))
+        self.assertEqual(ni_data_three[7].shape, (27, 3))
 
 
 class Template(unittest.TestCase):
