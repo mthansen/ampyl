@@ -298,3 +298,20 @@ class FlavorChannel:
                                  "isospin channel")
         self._particles = particles
 
+    @property
+    def isospin_channel(self):
+        """Whether the channel is an isospin channel."""
+        return self._isospin_channel
+
+    @isospin_channel.setter
+    def isospin_channel(self, isospin_channel):
+        """Set whether the channel is an isospin channel."""
+        flavor_utils.check_type(isospin_channel, 'isospin_channel',
+                                bool, 'bool')
+        if not isospin_channel and self._isospin is not None:
+            isospin_channel = True
+        if isospin_channel and self._isospin is None:
+            raise ValueError("isospin cannot be None when isospin_channel "
+                             "is True")
+        self._isospin_channel = isospin_channel
+
