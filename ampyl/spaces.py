@@ -1731,19 +1731,35 @@ class QCIndexSpace:
         Emax = self.Emax
         nP = self.nP
         Lmax = self.Lmax
+        PSQ = (nP@nP)*FOURPI2/Lmax**2
+        ECMSQ_max = Emax**2-PSQ
+
         pSQ = 0.
-        for m in [m1, m2, m3]:
-            pSQ_tmp = ((Emax-m)**2-(nP@nP)*(TWOPI/Lmax)**2)/4.-m**2
+        m_pairs = [[m1, m2], [m1, m3], [m2, m3]]
+        for m_pair in m_pairs:
+            ma, mb = m_pair
+            if ma == mb:
+                pSQ_tmp = ECMSQ_max/4.-ma**2
+                m_max = ma
+            else:
+                pSQ_tmp = (ECMSQ_max**2
+                           + (ma**2 - mb**2)**2
+                           - 2*ECMSQ_max*(ma**2 + mb**2))/(4.*ECMSQ_max)
+                m_max = max(ma, mb)
             if pSQ_tmp > pSQ:
                 pSQ = pSQ_tmp
-                omp = np.sqrt(pSQ+m**2)
+                omp = np.sqrt(pSQ+m_max**2)
+
         beta = np.sqrt(nP@nP)*TWOPI/Lmax/Emax
         gamma = 1./np.sqrt(1.-beta**2)
         p_cutoff = beta*gamma*omp+gamma*np.sqrt(pSQ)
-        nvec_cutoff = int(p_cutoff*Lmax/TWOPI)+1
-        rng = range(-nvec_cutoff, nvec_cutoff+1)
+        nvec_cutoff = p_cutoff*Lmax/TWOPI
+        nvec_int_cutoff = int(nvec_cutoff)+1
+        rng = range(-nvec_int_cutoff, nvec_int_cutoff+1)
         mesh = np.meshgrid(*([rng]*3))
         nvecs = np.vstack([y.flat for y in mesh]).T
+        carr = (nvecs*nvecs).sum(1) > nvec_cutoff**2
+        nvecs = np.delete(nvecs, np.where(carr), axis=0)
         return [m1, m2, m3, Emax, nP, Lmax, nvec_cutoff, nvecs]
 
     def _get_nvecset_arr_three(self, nvecset_arr, nmin, nmax,
