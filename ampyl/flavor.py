@@ -699,6 +699,14 @@ class FlavorChannelSpace:
         self.sc_list = []
         for fc in fc_list:
             self._add_flavor_channel(fc)
+
+    def update_g_templates(self):
+        """Update the g templates."""
+        self._build_g_templates()
+        self._build_g_templates_ell_specific()
+        if self.verbosity >= 2:
+            self.print_summary()
+
     def _add_spectator_channel(self, sc):
         self.sc_list.append(sc)
 
