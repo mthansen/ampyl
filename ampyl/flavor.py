@@ -1133,6 +1133,10 @@ class FlavorChannelSpace:
         g_templates_ell_specific_db = np.array(g_templates_ell_specific_db)
         return g_templates_ell_specific_db
 
+    def print_summary(self):
+        fcs_summary = flavor_utils.generate_flavor_channel_space_summary(self)
+        print(f"{bcolors.OKGREEN}{fcs_summary}{bcolors.ENDC}")
+
     def __str__(self):
         """Return a string representation of the FlavorChannelSpace object."""
         flavor_channel_space_str = "FlavorChannelSpace with the following "\
