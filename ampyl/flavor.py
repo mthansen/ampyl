@@ -690,6 +690,15 @@ class FlavorChannelSpace:
         flavor_utils.check_type(verbosity, "verbosity", int, "int")
         self._verbosity = verbosity
 
+    def _set_lists(self, fc_list, ni_list):
+        self.fc_list = fc_list
+        if ni_list is None:
+            self.ni_list = fc_list
+        else:
+            self.ni_list = ni_list
+        self.sc_list = []
+        for fc in fc_list:
+            self._add_flavor_channel(fc)
     def _add_spectator_channel(self, sc):
         self.sc_list.append(sc)
 
