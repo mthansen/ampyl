@@ -200,3 +200,36 @@ def spectator_channel_equality(channel1, channel2):
     if not (channel1.n_params_set == channel2.n_params_set):
         return False
     return True
+
+
+def generate_flavor_channel_space_summary(fcs):
+    fcs_summary = ("FlavorChannelSpace initialized with the "
+                   "following properties:\n")
+    fcs_summary += f"    fc_list: {fcs.fc_list}\n"
+    fcs_summary += f"    ni_list: {fcs.ni_list}\n"
+    fcs_summary += f"    sc_list: {fcs.sc_list}\n"
+    fcs_summary += f"    sc_list_sorted: {fcs.sc_list_sorted}\n"
+    fcs_summary += f"    n_particles_max: {fcs.n_particles_max}\n"
+    fcs_summary += f"    possible_numbers_of_particles: "\
+        f"{fcs.possible_numbers_of_particles}\n"
+    fcs_summary += f"    n_particle_numbers: {fcs.n_particle_numbers}\n"
+    fcs_summary += f"    n_channels_by_particle_number: "\
+        f"{fcs.n_channels_by_particle_number}\n"
+    fcs_summary += f"    slices_by_particle_number: "\
+        f"{fcs.slices_by_particle_number}\n"
+    fcs_summary += f"    slices_by_three_masses: "\
+        f"{fcs.slices_by_three_masses}\n"
+    fcs_summary += f"    n_three_slices: {fcs.n_three_slices}\n"
+    fcs_summary += f"    g_templates:\n        {fcs.g_templates}\n"
+    fcs_summary +=\
+        ("    g_templates_ell_specific:\n"
+         "        Key is built from four entries:\n"
+         "        [slice_index_i,  slice_index_j, ell_i, ell_j]\n"
+         "        Entry is built from five entries:\n"
+         "        [np.array([[g_template_ij[sc_index_i][sc_index_j]]]),\n"
+         "         sc_index_i, sc_index_j,\n"
+         "         collective_index_i, collective_index_j]\n")
+    for g_temp_key in fcs.g_templates:
+        fcs_summary += f"        key = {g_temp_key}:\n"
+        fcs_summary += f"        {fcs.g_templates[g_temp_key]}\n"
+    return fcs_summary
