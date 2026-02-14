@@ -671,57 +671,9 @@ class FlavorChannelSpace:
     """
 
     def __init__(self, fc_list=[], ni_list=None, verbosity=0):
-        self.fc_list = fc_list
-        if ni_list is None:
-            self.ni_list = fc_list
-        else:
-            self.ni_list = ni_list
-        self.sc_list = []
-        for fc in fc_list:
-            self._add_flavor_channel(fc)
-        self._verbosity = verbosity
-        self.verbosity = self._verbosity
+        self.verbosity = verbosity
+        self._set_lists(fc_list, ni_list)
         self._build_sorted_sc_list()
-        self._build_g_templates()
-        self._build_g_templates_ell_specific()
-
-        if self.verbosity >= 2:
-            self.print_summary()
-
-    def print_summary(self):
-        print(f"{bcolors.OKGREEN}FlavorChannelSpace initialized with the "
-              "following properties:\n"
-              f"    fc_list: {self.fc_list}\n"
-              f"    ni_list: {self.ni_list}\n"
-              f"    sc_list: {self.sc_list}\n"
-              f"    sc_list_sorted: {self.sc_list_sorted}\n"
-              f"    n_particles_max: {self.n_particles_max}\n"
-              f"    possible_numbers_of_particles: "
-              f"{self.possible_numbers_of_particles}\n"
-              f"    n_particle_numbers: {self.n_particle_numbers}\n"
-              f"    n_channels_by_particle_number: "
-              f"{self.n_channels_by_particle_number}\n"
-              f"    slices_by_particle_number: "
-              f"{self.slices_by_particle_number}\n"
-              f"    slices_by_three_masses: "
-              f"{self.slices_by_three_masses}\n"
-              f"    n_three_slices: {self.n_three_slices}\n"
-              f"    g_templates:\n"
-              f"        {self.g_templates}\n"
-              f"    g_templates_ell_specific:\n"
-              "        Key is built from four entries:\n"
-              "        [slice_index_i,  slice_index_j, ell_i, ell_j]\n"
-              "        Entry is built from five entries:\n"
-              "        [np.array([[g_template_ij[sc_index_i][sc_index_j]]], "
-              "sc_index_i, sc_index_j, collective_index_i, "
-              "collective_index_j]")
-        for g_temp_key in self.g_templates_ell_specific:
-            print(f"        key = {g_temp_key}:\n"
-                  f"        {self.g_templates_ell_specific[g_temp_key]}")
-        print(f"{bcolors.ENDC}")
-
-    def update_g_templates(self):
-        """Update the g templates."""
         self._build_g_templates()
         self._build_g_templates_ell_specific()
         if self.verbosity >= 2:
@@ -735,8 +687,7 @@ class FlavorChannelSpace:
     @verbosity.setter
     def verbosity(self, verbosity):
         """Set the verbosity of the channel space."""
-        if not isinstance(verbosity, int):
-            raise ValueError("verbosity must be an int")
+        flavor_utils.check_type(verbosity, "verbosity", int, "int")
         self._verbosity = verbosity
 
     def _add_spectator_channel(self, sc):
