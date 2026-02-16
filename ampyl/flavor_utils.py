@@ -204,11 +204,27 @@ def spectator_channel_equality(channel1, channel2):
 
 def generate_flavor_channel_space_summary(fcs):
     fcs_summary = ("FlavorChannelSpace initialized with the "
-                   "following properties:\n")
-    fcs_summary += f"    fc_list: {fcs.fc_list}\n"
-    fcs_summary += f"    ni_list: {fcs.ni_list}\n"
-    fcs_summary += f"    sc_list: {fcs.sc_list}\n"
-    fcs_summary += f"    sc_list_sorted: {fcs.sc_list_sorted}\n"
+                   "following properties:\n"
+                   "    fc_list (Flavor Channel list) with the following "
+                   "channels:\n")
+    for i, fc in enumerate(fcs.fc_list):
+        fc_str = "        "+(fc.__str__().replace("    ", "            "))
+        fcs_summary += f"    fc_list[{i}]:\n{fc_str}\n"
+    fcs_summary += ("    ni_list (Non-Interacting list) with the following "
+                    "channels:\n")
+    for i, ni in enumerate(fcs.ni_list):
+        ni_str = "        "+(ni.__str__().replace("    ", "            "))
+        fcs_summary += f"    ni_list[{i}]:\n{ni_str}\n"
+    fcs_summary += ("    sc_list (Spectator Channel list) with the following "
+                    "channels:\n")
+    for i, sc in enumerate(fcs.sc_list):
+        sc_str = "        "+(sc.__str__().replace("    ", "            "))
+        fcs_summary += f"    sc_list[{i}]:\n{sc_str}\n"
+    fcs_summary += ("    sc_list_sorted (Sorted Spectator Channel list) with "
+                    "the following channels:\n")
+    for i, sc in enumerate(fcs.sc_list_sorted):
+        sc_str = "        "+(sc.__str__().replace("    ", "            "))
+        fcs_summary += f"    sc_list_sorted[{i}]:\n{sc_str}\n"
     fcs_summary += f"    n_particles_max: {fcs.n_particles_max}\n"
     fcs_summary += f"    possible_numbers_of_particles: "\
         f"{fcs.possible_numbers_of_particles}\n"
