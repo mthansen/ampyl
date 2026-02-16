@@ -229,7 +229,7 @@ def generate_flavor_channel_space_summary(fcs):
          "        [np.array([[g_template_ij[sc_index_i][sc_index_j]]]),\n"
          "         sc_index_i, sc_index_j,\n"
          "         collective_index_i, collective_index_j]\n")
-    for g_temp_key in fcs.g_templates:
+    for g_temp_key in fcs.g_templates_ell_specific:
         fcs_summary += f"        key = {g_temp_key}:\n"
-        fcs_summary += f"        {fcs.g_templates[g_temp_key]}\n"
+        fcs_summary += f"        {fcs.g_templates_ell_specific[g_temp_key]}\n"
     return fcs_summary
