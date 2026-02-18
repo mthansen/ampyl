@@ -269,6 +269,7 @@ def flavor_channel_space_to_str(fcs):
 
 
 def build_g_templates_ell_specific(fcs):
+    """Build the ell-specific g-templates of the FlavorChannelSpace."""
     if 3 in fcs.possible_numbers_of_particles:
         g_templates_ell_specific_db = fcs._populate_g_templates_db()
         g_templates_ell_specific_db = fcs._sort_db(
@@ -287,6 +288,7 @@ def build_g_templates_ell_specific(fcs):
 
 
 def get_g_isospin_ij(fcs, slice_i, slice_j, i, j):
+    """Get the g_ij contribution from the isospin of the i,j entry."""
     isospin_i = fcs.sc_list_sorted[slice_i[0]+i].fc.isospin
     isospin_j = fcs.sc_list_sorted[slice_j[0]+j].fc.isospin
     flavors_indexed_i = fcs.sc_list_sorted[slice_i[0]+i].flavors_indexed
@@ -334,6 +336,7 @@ def get_g_isospin_ij(fcs, slice_i, slice_j, i, j):
 
 
 def add_to_g_template(fcs, slice_i, i, slice_j, j, g_template):
+    """Add the contribution from the i,j entry to the g_template."""
     flavors_i = fcs.sc_list_sorted[slice_i[0]+i].flavors_indexed
     flavors_j = fcs.sc_list_sorted[slice_j[0]+j].flavors_indexed
 
