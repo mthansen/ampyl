@@ -332,6 +332,37 @@ def get_g_isospin_ij(fcs, slice_i, slice_j, i, j):
                   f"{bcolors.ENDC}", stacklevel=2)
     return 100.
 
+
+def add_to_g_template(fcs, slice_i, i, slice_j, j, g_template):
+    flavors_i = fcs.sc_list_sorted[slice_i[0]+i].flavors_indexed
+    flavors_j = fcs.sc_list_sorted[slice_j[0]+j].flavors_indexed
+
+    i0_is_j2 = (flavors_i[0] == flavors_j[2])
+    flav_i0_is_j2 = (np.sort(flavors_i[1:]) == np.sort(flavors_j[:-1])).all()
+    i0_is_j1 = (flavors_i[0] == flavors_j[1])
+    flav_i0_is_j1 = (np.sort(flavors_i[1:]) == np.sort([flavors_j[0]]
+                                                       + [flavors_j[2]])).all()
+
+    g_is_nonzero = ((i0_is_j2 and flav_i0_is_j2)
+                    or (i0_is_j1 and flav_i0_is_j1))
+
+    if g_is_nonzero:
+        isospin_channel_i = fcs.sc_list_sorted[slice_i[0]+i].fc.isospin_channel
+        isospin_channel_j = fcs.sc_list_sorted[slice_j[0]+j].fc.isospin_channel
+        neither_are_isospin_channels = ((not isospin_channel_i)
+                                        and (not isospin_channel_j))
+        both_are_isospin_channels = isospin_channel_i and isospin_channel_j
+        if neither_are_isospin_channels:
+            g_template[i][j] = 1.0
+        elif both_are_isospin_channels:
+            g_isospin_ij = fcs._get_g_isospin_ij(slice_i, slice_j, i, j)
+            g_template[i][j] = g_isospin_ij
+        else:
+            raise NotImplementedError("Mixing of isospin and non-isospin "
+                                      "channels is not implemented.")
+    return g_template
+
+
 def build_g_templates(fcs):
     """Build the g_templates attribute of the FlavorChannelSpace."""
     g_templates = []
