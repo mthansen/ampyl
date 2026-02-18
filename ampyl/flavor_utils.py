@@ -249,3 +249,33 @@ def generate_flavor_channel_space_summary(fcs):
         fcs_summary += f"        key = {g_temp_key}:\n"
         fcs_summary += f"        {fcs.g_templates_ell_specific[g_temp_key]}\n"
     return fcs_summary
+
+
+def flavor_channel_space_to_str(fcs):
+    """Convert a FlavorChannelSpace to a string."""
+    flavor_channel_space_str = ("FlavorChannelSpace with the following "
+                                "SpectatorChannels:\n")
+    for sc in fcs.sc_list_sorted:
+        flavor_channel_space_str += "    "
+        flavor_channel_space_str += sc.__str__().replace("\n    ",
+                                                         "\n        ")[:-1]
+        flavor_channel_space_str += ",\n"
+    return flavor_channel_space_str[:-2]+"."
+
+
+def build_g_templates_ell_specific(fcs):
+    if 3 in fcs.possible_numbers_of_particles:
+        g_templates_ell_specific_db = fcs._populate_g_templates_db()
+        g_templates_ell_specific_db = fcs._sort_db(
+            g_templates_ell_specific_db)
+        g_templates_clustered = fcs._populate_g_clustered(
+            g_templates_ell_specific_db)
+        g_templates_ell_specific = {}
+        for g_key in g_templates_clustered:
+            g_key_list = list(g_templates_clustered[g_key][:4])
+            g_key_tuple = tuple(g_key_list)
+            g_templates_ell_specific[g_key_tuple] \
+                = g_templates_clustered[g_key][4:]
+        fcs.g_templates_ell_specific = g_templates_ell_specific
+    else:
+        fcs.g_templates_ell_specific = {}
