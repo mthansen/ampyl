@@ -35,7 +35,12 @@ Created July 2022.
 ###############################################################################
 
 import numpy as np
+from copy import deepcopy
 from .constants import EPSILON4
+from .constants import G_TEMPLATE_DICT
+from .constants import bcolors
+import warnings
+warnings.simplefilter("once")
 
 
 def check_type(variable, variable_string, variable_type,
