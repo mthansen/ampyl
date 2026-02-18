@@ -1022,23 +1022,6 @@ class FlavorChannelSpace:
                       f"{bcolors.ENDC}", stacklevel=2)
         return 100.
 
-    def _build_g_templates_ell_specific(self):
-        if 3 in self.possible_numbers_of_particles:
-            g_templates_ell_specific_db = self._populate_g_templates_db()
-            g_templates_ell_specific_db = self._sort_db(
-                g_templates_ell_specific_db)
-            g_templates_clustered = self._populate_g_clustered(
-                g_templates_ell_specific_db)
-            g_templates_ell_specific = {}
-            for g_key in g_templates_clustered:
-                g_key_list = list(g_templates_clustered[g_key][:4])
-                g_key_tuple = tuple(g_key_list)
-                g_templates_ell_specific[g_key_tuple] \
-                    = g_templates_clustered[g_key][4:]
-            self.g_templates_ell_specific = g_templates_ell_specific
-        else:
-            self.g_templates_ell_specific = {}
-
     def _populate_g_clustered(self, g_templates_ell_specific_db):
         g_templates_clustered = {}
         for g_template_entry in g_templates_ell_specific_db:
