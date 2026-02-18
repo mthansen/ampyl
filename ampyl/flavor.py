@@ -1129,12 +1129,4 @@ class FlavorChannelSpace:
         print(f"{bcolors.OKGREEN}{fcs_summary}{bcolors.ENDC}")
 
     def __str__(self):
-        """Return a string representation of the FlavorChannelSpace object."""
-        flavor_channel_space_str = "FlavorChannelSpace with the following "\
-            + "SpectatorChannels:\n"
-        for sc in self.sc_list_sorted:
-            flavor_channel_space_str += "    "
-            flavor_channel_space_str += sc.__str__().replace("\n    ",
-                                                             "\n        ")[:-1]
-            flavor_channel_space_str += ",\n"
-        return flavor_channel_space_str[:-2]+"."
+        return flavor_utils.flavor_channel_space_to_string(self)
