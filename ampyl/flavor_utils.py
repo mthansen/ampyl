@@ -284,3 +284,21 @@ def build_g_templates_ell_specific(fcs):
         fcs.g_templates_ell_specific = g_templates_ell_specific
     else:
         fcs.g_templates_ell_specific = {}
+
+
+def build_g_templates(fcs):
+    """Build the g_templates attribute of the FlavorChannelSpace."""
+    g_templates = []
+    for slice_i in fcs.slices_by_three_masses:
+        slice_i_len = slice_i[1]-slice_i[0]
+        g_templates_row = []
+        for slice_j in fcs.slices_by_three_masses:
+            slice_j_len = slice_j[1]-slice_j[0]
+            g_template = np.zeros((slice_i_len, slice_j_len))
+            for i in range(slice_i_len):
+                for j in range(slice_j_len):
+                    g_template = add_to_g_template(
+                        fcs, slice_i, i, slice_j, j, g_template)
+            g_templates_row.append(g_template)
+        g_templates.append(g_templates_row)
+    fcs.g_templates = g_templates
