@@ -358,7 +358,7 @@ def add_to_g_template(fcs, slice_i, i, slice_j, j, g_template):
         if neither_are_isospin_channels:
             g_template[i][j] = 1.0
         elif both_are_isospin_channels:
-            g_isospin_ij = fcs._get_g_isospin_ij(slice_i, slice_j, i, j)
+            g_isospin_ij = get_g_isospin_ij(fcs, slice_i, slice_j, i, j)
             g_template[i][j] = g_isospin_ij
         else:
             raise NotImplementedError("Mixing of isospin and non-isospin "
