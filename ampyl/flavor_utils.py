@@ -225,11 +225,12 @@ def generate_flavor_channel_space_summary(fcs):
     for i, sc in enumerate(fcs.sc_list):
         sc_str = "        "+(sc.__str__().replace("    ", "            "))
         fcs_summary += f"    sc_list[{i}]:\n{sc_str}\n"
-    fcs_summary += ("    sc_list_sorted (Sorted Spectator Channel list) with "
-                    "the following channels:\n")
-    for i, sc in enumerate(fcs.sc_list_sorted):
-        sc_str = "        "+(sc.__str__().replace("    ", "            "))
-        fcs_summary += f"    sc_list_sorted[{i}]:\n{sc_str}\n"
+    indices = [fcs.sc_list_sorted.index(sc) for sc in fcs.sc_list]
+    if indices != list(range(len(fcs.sc_list))):
+        fcs_summary += ("    sc_list_sorted rearranges sc_list according to"
+                        f" the following indexing: {indices}\n")
+    else:
+        fcs_summary += ("    sc_list_sorted is the same as sc_list.\n")
     fcs_summary += f"    n_particles_max: {fcs.n_particles_max}\n"
     fcs_summary += f"    possible_numbers_of_particles: "\
         f"{fcs.possible_numbers_of_particles}\n"
