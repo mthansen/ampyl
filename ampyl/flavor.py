@@ -357,7 +357,7 @@ class FlavorChannel:
               f"{bcolors.ENDC}")
 
     def __str__(self):
-        return flavor_utils.flavor_channel_to_str(self)
+        return flavor_utils.flavor_channel_to_string(self)
 
 
 class SpectatorChannel:

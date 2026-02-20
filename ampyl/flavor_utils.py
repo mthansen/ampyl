@@ -150,7 +150,7 @@ def get_allowed_sub_isospins(channel):
                               f"particles")
 
 
-def flavor_channel_to_str(channel):
+def flavor_channel_to_string(channel):
     """Convert a FlavorChannel to a string."""
     channel_str = "FlavorChannel with the following details:\n"
     channel_str += f"    {channel.n_particles} particles,\n"
@@ -256,7 +256,7 @@ def generate_flavor_channel_space_summary(fcs):
     return fcs_summary
 
 
-def flavor_channel_space_to_str(fcs):
+def flavor_channel_space_to_string(fcs):
     """Convert a FlavorChannelSpace to a string."""
     flavor_channel_space_str = ("FlavorChannelSpace with the following "
                                 "SpectatorChannels:\n")
