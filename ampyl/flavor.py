@@ -710,7 +710,7 @@ class FlavorChannelSpace:
 
     def _add_flavor_channel(self, fc):
         """
-        Add a flavor channel to the flavor channel space.
+        Add a FlavorChannel to the FlavorChannelSpace.
 
         This method hard codes some choices for the ell_set and p_cot_deltas.
         This should be changed in the future.
