@@ -39,6 +39,7 @@ from ampyl.flavor import Particle
 from ampyl.flavor import FlavorChannel
 from ampyl.flavor import SpectatorChannel
 from ampyl.flavor import FlavorChannelSpace
+import ampyl.flavor_utils as flavor_utils
 
 
 class TestFlavorChannelSpace(unittest.TestCase):
@@ -161,7 +162,7 @@ class TestFlavorChannelSpace(unittest.TestCase):
         scb = SpectatorChannel(fc=fcb)
         fcs._add_spectator_channel(scb)
         self.assertEqual(len(fcs.sc_list_sorted), 1)
-        fcs._build_sorted_sc_list()
+        flavor_utils.build_sorted_sc_list(fcs)
         self.assertEqual(len(fcs.sc_list_sorted), 2)
         self.assertEqual(fcs.sc_list_sorted[0], scb)
 
@@ -195,8 +196,8 @@ class TestFlavorChannelSpace(unittest.TestCase):
         fcb = FlavorChannel(3, particles=[sigma, sigma, sigma])
         fcs._add_flavor_channel(fcb)
         self.assertEqual(fcs.g_templates, expected_g_templates)
-        fcs._build_sorted_sc_list()
-        fcs._build_g_templates()
+        flavor_utils.build_sorted_sc_list(fcs)
+        flavor_utils.build_g_templates(fcs)
         expected_g_templates = [[np.array([[0.]]),
                                  np.array([[1.]]),
                                  np.array([[0.]])],
