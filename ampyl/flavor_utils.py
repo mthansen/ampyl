@@ -443,6 +443,45 @@ def sort_db(fcs, g_templates_ell_specific_db):
     return g_templates_ell_specific_db
 
 
+def populate_g_templates_db(fcs):
+    """Populate the g_templates_ell_specific_db attribute."""
+    g_templates_ell_specific_db = []
+    collective_index_i = 0
+    for slice_index_i in range(len(fcs.slices_by_three_masses)):
+        slice_i = fcs.slices_by_three_masses[slice_index_i]
+        three_mass_slice_i = fcs.sc_list_sorted[slice_i[0]:slice_i[1]]
+        for sc_index_i in range(len(three_mass_slice_i)):
+            sc_i = three_mass_slice_i[sc_index_i]
+            for ell_i in sc_i.ell_set:
+                collective_index_j = 0
+                for slice_index_j in range(len(
+                            fcs.slices_by_three_masses)):
+                    slice_j = fcs.slices_by_three_masses[
+                            slice_index_j]
+                    three_mass_slice_j = fcs.sc_list_sorted[
+                            slice_j[0]:slice_j[1]]
+                    g_template_ij = fcs.g_templates[slice_index_i][
+                            slice_index_j]
+                    for sc_index_j in range(len(three_mass_slice_j)):
+                        sc_j = three_mass_slice_j[sc_index_j]
+                        for ell_j in sc_j.ell_set:
+                            g_templates_ell_specific_db.append(
+                                    np.array(
+                                        [slice_index_i,
+                                            slice_index_j,
+                                            ell_i, ell_j,
+                                            np.array([[g_template_ij[
+                                                sc_index_i][sc_index_j]]]),
+                                            sc_index_i, sc_index_j,
+                                            collective_index_i,
+                                            collective_index_j],
+                                        dtype=object))
+                            collective_index_j += 1
+                collective_index_i += 1
+    g_templates_ell_specific_db = np.array(g_templates_ell_specific_db)
+    return g_templates_ell_specific_db
+
+
 def get_g_isospin_ij(fcs, slice_i, slice_j, i, j):
     """Get the g_ij contribution from the isospin of the i,j entry."""
     isospin_i = fcs.sc_list_sorted[slice_i[0]+i].fc.isospin
