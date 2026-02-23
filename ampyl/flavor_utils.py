@@ -416,11 +416,10 @@ def flavor_channel_space_to_string(fcs):
 def build_g_templates_ell_specific(fcs):
     """Build the ell-specific g-templates of the FlavorChannelSpace."""
     if 3 in fcs.possible_numbers_of_particles:
-        g_templates_ell_specific_db = fcs._populate_g_templates_db()
-        g_templates_ell_specific_db = fcs._sort_db(
-            g_templates_ell_specific_db)
-        g_templates_clustered = fcs._populate_g_clustered(
-            g_templates_ell_specific_db)
+        g_templates_ell_specific_db = populate_g_templates_db(fcs)
+        g_templates_ell_specific_db = sort_db(fcs, g_templates_ell_specific_db)
+        g_templates_clustered =\
+            populate_g_clustered(fcs, g_templates_ell_specific_db)
         g_templates_ell_specific = {}
         for g_key in g_templates_clustered:
             g_key_list = list(g_templates_clustered[g_key][:4])
