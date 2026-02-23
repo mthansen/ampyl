@@ -431,6 +431,18 @@ def build_g_templates_ell_specific(fcs):
         fcs.g_templates_ell_specific = {}
 
 
+def sort_db(fcs, g_templates_ell_specific_db):
+    len_dbT = len(g_templates_ell_specific_db.T)
+    for slice_index_i in range(len_dbT):
+        try:
+            g_templates_ell_specific_db = g_templates_ell_specific_db[
+                    g_templates_ell_specific_db[:, len_dbT-slice_index_i-1]
+                    .argsort(kind='mergesort')]
+        except TypeError:
+            pass
+    return g_templates_ell_specific_db
+
+
 def get_g_isospin_ij(fcs, slice_i, slice_j, i, j):
     """Get the g_ij contribution from the isospin of the i,j entry."""
     isospin_i = fcs.sc_list_sorted[slice_i[0]+i].fc.isospin
