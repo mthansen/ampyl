@@ -671,7 +671,7 @@ class FlavorChannelSpace:
     def __init__(self, fc_list=[], ni_list=None, verbosity=0):
         self.verbosity = verbosity
         self._set_lists(fc_list, ni_list)
-        self._build_sorted_sc_list()
+        flavor_utils.build_sorted_sc_list(self)
         flavor_utils.build_g_templates(self)
         flavor_utils.build_g_templates_ell_specific(self)
         if self.verbosity >= 2:
