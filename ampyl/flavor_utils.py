@@ -257,7 +257,7 @@ def build_sorted_sc_list(fcs):
     """Build the sc_list_sorted attribute of the FlavorChannelSpace."""
     n_particles_max = 0
     possible_numbers_of_particles = []
-    for fc in fcs:
+    for fc in fcs.fc_list:
         if fc.n_particles > n_particles_max:
             n_particles_max = fc.n_particles
         if fc.n_particles not in possible_numbers_of_particles:
