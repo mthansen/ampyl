@@ -727,8 +727,7 @@ class FlavorChannelSpace:
                                           ell_set=ell_set)
                 self._add_spectator_channel(sc_tmp)
         else:
-            if fc.flavors[0] == fc.flavors[1]\
-               == fc.flavors[2]:
+            if fc.flavors[0] == fc.flavors[1] == fc.flavors[2]:
                 sc1 = SpectatorChannel(fc)
                 self._add_spectator_channel(sc1)
             elif fc.flavors[0] == fc.flavors[1]:
