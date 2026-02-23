@@ -720,45 +720,8 @@ class FlavorChannelSpace:
             self._add_spectator_channel(sc1)
         elif fc.isospin_channel:
             for entry in fc.summary_reduced:
-                flavors = entry[[2, 4, 5]]
-                sub_isospin = entry[1]
-                indexing = []
-                for flavor in flavors:
-                    tmp_locations = np.where(np.array(fc.flavors)
-                                             == flavor)[0]
-                    added = False
-                    for tmp_location in tmp_locations:
-                        if (tmp_location not in indexing) and not added:
-                            indexing.append(tmp_location)
-                            added = True
-                if (sub_isospin == 0.0) and (flavors[1] == flavors[2]):
-                    ell_set = [0]
-                    warnings.warn(f"\n{bcolors.WARNING}"
-                                  "Assuming ell_set = [0] for spectator with "
-                                  f"sub_isospin = {sub_isospin} and "
-                                  f"flavors = {flavors}"
-                                  f"{bcolors.ENDC}", stacklevel=2)
-                elif (sub_isospin == 1.0) and (flavors[1] == flavors[2]):
-                    ell_set = [1]
-                    warnings.warn(f"\n{bcolors.WARNING}"
-                                  "Assuming ell_set = [1] for spectator with "
-                                  f"sub_isospin = {sub_isospin} and "
-                                  f"flavors = {flavors}"
-                                  f"{bcolors.ENDC}", stacklevel=2)
-                elif (sub_isospin == 2.0) and (flavors[1] == flavors[2]):
-                    ell_set = [0]
-                    warnings.warn(f"\n{bcolors.WARNING}"
-                                  "Assuming ell_set = [0] for spectator with "
-                                  f"sub_isospin = {sub_isospin} and "
-                                  f"flavors = {flavors}"
-                                  f"{bcolors.ENDC}", stacklevel=2)
-                else:
-                    ell_set = [0]
-                    warnings.warn(f"\n{bcolors.WARNING}"
-                                  "Assuming ell_set = [0] for spectator with "
-                                  f"sub_isospin = {sub_isospin} and "
-                                  f"flavors = {flavors}"
-                                  f"{bcolors.ENDC}", stacklevel=2)
+                indexing, sub_isospin, ell_set\
+                    = flavor_utils.parse_three_iso_fc_entry(entry, fc)
                 sc_tmp = SpectatorChannel(fc, indexing=indexing,
                                           sub_isospin=sub_isospin,
                                           ell_set=ell_set)
