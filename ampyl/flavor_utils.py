@@ -207,6 +207,52 @@ def spectator_channel_equality(channel1, channel2):
     return True
 
 
+def parse_three_iso_fc_entry(entry, fc):
+    """
+    Parse an entry of the summary attribute of a three-particle
+    isospin channel.
+    """
+    flavors = entry[[2, 4, 5]]
+    sub_isospin = entry[1]
+    indexing = []
+    for flavor in flavors:
+        tmp_locations = np.where(np.array(fc.flavors) == flavor)[0]
+        added = False
+        for tmp_location in tmp_locations:
+            if (tmp_location not in indexing) and not added:
+                indexing.append(tmp_location)
+                added = True
+    if (sub_isospin == 0.0) and (flavors[1] == flavors[2]):
+        ell_set = [0]
+        warnings.warn(f"\n{bcolors.WARNING}"
+                      "Assuming ell_set = [0] for spectator with "
+                      f"sub_isospin = {sub_isospin} and "
+                      f"flavors = {flavors}"
+                      f"{bcolors.ENDC}", stacklevel=2)
+    elif (sub_isospin == 1.0) and (flavors[1] == flavors[2]):
+        ell_set = [1]
+        warnings.warn(f"\n{bcolors.WARNING}"
+                      "Assuming ell_set = [1] for spectator with "
+                      f"sub_isospin = {sub_isospin} and "
+                      f"flavors = {flavors}"
+                      f"{bcolors.ENDC}", stacklevel=2)
+    elif (sub_isospin == 2.0) and (flavors[1] == flavors[2]):
+        ell_set = [0]
+        warnings.warn(f"\n{bcolors.WARNING}"
+                      "Assuming ell_set = [0] for spectator with "
+                      f"sub_isospin = {sub_isospin} and "
+                      f"flavors = {flavors}"
+                      f"{bcolors.ENDC}", stacklevel=2)
+    else:
+        ell_set = [0]
+        warnings.warn(f"\n{bcolors.WARNING}"
+                      "Assuming ell_set = [0] for spectator with "
+                      f"sub_isospin = {sub_isospin} and "
+                      f"flavors = {flavors}"
+                      f"{bcolors.ENDC}", stacklevel=2)
+    return indexing, sub_isospin, ell_set
+
+
 def generate_flavor_channel_space_summary(fcs):
     fcs_summary = ("FlavorChannelSpace initialized with the "
                    "following properties:\n"
