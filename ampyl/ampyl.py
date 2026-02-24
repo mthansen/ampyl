@@ -984,7 +984,8 @@ class QC:
                                           f"{bcolors.ENDC}")
                         else:
                             all_E_vals[i][j] = Eupdate
-                        self.qcis.fvs.qc_impl['fplusg_smart_interpolate'] = True
+                        self.qcis.fvs.qc_impl['fplusg_smart_interpolate']\
+                            = True
                 else:
                     all_E_vals[i][j] = Eupdate
                 self.qcis.fvs.qc_impl['fplusg_smart_interpolate'] = True
