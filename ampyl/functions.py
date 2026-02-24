@@ -1310,14 +1310,12 @@ class QCFunctions:
                 rvec_arr = rpar_vec_arr + rperp_vec_arr
                 rSQ_arr = (rvec_arr**2).sum(1)
                 if ell1 != 0:
-                    calY1 = BKFunctions.calY(ell1, mazi1, rvec_arr,
-                                             q, qc_impl)
+                    calY1, _ = BKFunctions.calY(ell1, mazi1, rvec_arr,
+                                                q, qc_impl)
                     sph_harm_value = sph_harm_value*calY1
                 if ell2 != 0:
-                    calY2 = BKFunctions.calY(ell2, mazi2, rvec_arr,
-                                             q, qc_impl)
-                    calY2conj = np.conjugate(calY2)
-                    calY2conj = calY2
+                    _, calY2conj = BKFunctions.calY(ell2, mazi2, rvec_arr,
+                                                    q, qc_impl)
                     sph_harm_value = sph_harm_value*calY2conj
                 if ((ell1 == ell2) and (mazi1 == mazi2)):
                     smarter_q_rescale = QC_IMPL_DEFAULTS['smarter_q_rescale']
