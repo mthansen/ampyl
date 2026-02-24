@@ -244,6 +244,21 @@ class K:
         return (1.0+alpha)*threshold**2/4.0-beta*((3.0-alpha)*threshold**2/4.0)
 
 
+class Kdf:
+    """
+    Class for the three-to-three K matrix.
+
+    :param qcis: quantization-condition index space, specifying all data for
+        the class
+    :type qcis: QCIndexSpace
+
+    At this stage only the asymmetric version is implemented, and only for
+    zero total momentum.
+    """
+    def __init__(self, qcis=None):
+        self.qcis = qcis
+
+
 class QC:
     r"""
     QC: A class for handling the quantization condition (QC) in finite-volume
