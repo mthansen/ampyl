@@ -1783,8 +1783,6 @@ class QCFunctions:
             return pre*16.0*PI*ECM/(pcotdelta+qH_IPV)\
                 / pSQ**(ell)
         else:
-            raise ValueError("smarter_q_rescale is required. Please enable "
-                             "smarter_q_rescale in the qc_impl dictionary.")
             pcotdelta = pcotdelta/pSQ**(ell)
             return pre*16.0*PI*ECM/(pcotdelta+qH_IPV)
 
