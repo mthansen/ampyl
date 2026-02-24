@@ -699,19 +699,12 @@ class QCFunctions:
             = QCFunctions.__helperG_single_entry(E, nP, L,
                                                  np1spec, np2spec, m1, m2, m3)
 
-        calY1 = BKFunctions.calY(ell1, mazi1,
-                                 vecstar_for1.reshape((1, 3)),
-                                 q_for1, qc_impl)[0]
-        calY2 = BKFunctions.calY(ell2, mazi2,
-                                 vecstar_for2.reshape((1, 3)),
-                                 q_for2, qc_impl)[0]
-        calY2conj = calY2
-        warnings.warn(f"\n{bcolors.WARNING}"
-                      "not actually conjugating calY2. This is because, if "
-                      "smarter_q_rescale is False, then the q^ell part is in "
-                      "calY and should not be conjugated. For now nothing is "
-                      "conjugated, assuming the rest is real."
-                      f"{bcolors.ENDC}")
+        calY1, _ = BKFunctions.calY(ell1, mazi1,
+                                    vecstar_for1.reshape((1, 3)),
+                                    q_for1, qc_impl)[0]
+        _, calY2conj = BKFunctions.calY(ell2, mazi2,
+                                        vecstar_for2.reshape((1, 3)),
+                                        q_for2, qc_impl)[0]
 
         HH = BKFunctions.H(E2CMSQ_for1, m1+m2, alpha, beta, J_slow)\
             * BKFunctions.H(E2CMSQ_for2, m2+m3, alpha, beta, J_slow)
