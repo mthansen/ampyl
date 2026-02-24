@@ -284,12 +284,11 @@ def build_sorted_sc_list(fcs):
         sc_index += 1
         sc_compact_single = [sc.fc.n_particles]
         if sc.fc.n_particles == 2:
-            sc_compact_single = fcs.\
-                _add_two_particle_compact(sc, sc_index, sc_compact_single)
+            sc_compact_single = add_two_particle_compact(
+                sc, sc_index, sc_compact_single)
         elif sc.fc.n_particles == 3:
-            sc_compact_single = fcs.\
-                _add_three_particle_compact(sc, sc_index,
-                                            sc_compact_single)
+            sc_compact_single = add_three_particle_compact(
+                sc, sc_index, sc_compact_single)
         else:
             return ValueError("n_particles > 3 not implemented yet")
         sc_compact[possible_numbers_of_particles.index(sc.fc.n_particles)]\
@@ -409,7 +408,6 @@ def flavor_channel_space_to_string(fcs):
                                                          "\n        ")[:-1]
         flavor_channel_space_str += ",\n"
     return flavor_channel_space_str[:-2]+"."
-
 
 
 def add_three_particle_compact(sc, sc_index, sc_compact_single):
