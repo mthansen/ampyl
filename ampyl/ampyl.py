@@ -377,6 +377,16 @@ class Kdf:
             Kdfshell = proj_tmp_left@Kdfshell@proj_tmp_right
         return Kdfshell
 
+    def _nPzero_projectors(self, sc_index_row, sc_index_col,
+                           row_shell_index, col_shell_index, irrep):
+        proj_tmp_right = self.qcis.proj_dicts_by_sc_and_shellset[
+                        sc_index_col][0][col_shell_index][irrep]
+        proj_tmp_left = np.conjugate((
+                        self.qcis.proj_dicts_by_sc_and_shellset[
+                            sc_index_row][0][row_shell_index][irrep]
+                        ).T)
+        return proj_tmp_right, proj_tmp_left
+
 class QC:
     r"""
     QC: A class for handling the quantization condition (QC) in finite-volume
