@@ -1269,15 +1269,13 @@ class QCFunctions:
         if nP2SQ == 0.0:
             rSQ_arr = (nvec_arr**2).sum(1)
             if ell1 != 0:
-                calY1 = BKFunctions.calY(ell1, mazi1, nvec_arr,
-                                         q, qc_impl)
+                calY1, _ = BKFunctions.calY(ell1, mazi1, nvec_arr,
+                                            q, qc_impl)
                 sph_harm_value = sph_harm_value*calY1
 
             if ell2 != 0:
-                calY2 = BKFunctions.calY(ell2, mazi2, nvec_arr,
-                                         q, qc_impl)
-                calY2conj = np.conjugate(calY2)
-                calY2conj = calY2
+                _, calY2conj = BKFunctions.calY(ell2, mazi2, nvec_arr,
+                                                q, qc_impl)
                 sph_harm_value = sph_harm_value*calY2conj
 
             if ((ell1 == ell2) and (mazi1 == mazi2)):
