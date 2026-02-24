@@ -169,12 +169,10 @@ class TestFlavorChannelSpace(unittest.TestCase):
 
     def test_add_three_particle_compact(self):
         pion = Particle(mass=1.0, spin=0.0, flavor='pi')
-        kaon = Particle(mass=2.0, spin=0.0, flavor='k')
-        fca = FlavorChannel(3, particles=[kaon, kaon, kaon])
-        fcs = FlavorChannelSpace(fc_list=[fca])
         fcb = FlavorChannel(3, particles=[pion, pion, pion])
         scb = SpectatorChannel(fc=fcb)
-        sc_compact_single = fcs._add_three_particle_compact(scb, 0, [3])
+        sc_compact_single\
+            = flavor_utils.add_three_particle_compact(scb, 0, [3])
         sc_compact_single_expected = [3, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0,
                                       'pi', 'pi', 'pi', False, None, None,
                                       None, None, None, 0]
