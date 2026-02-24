@@ -1539,7 +1539,10 @@ class F(Interpolable):
         alphaKSS = self.alphaKSS
         use_pv_shift_prescription\
             = self.qcis.tbis.use_pv_shift_prescription[sc_ind]
-        pv_shift_parameters = self.qcis.tbis.pv_shift_parameters[sc_ind]
+        if use_pv_shift_prescription:
+            pv_shift_parameters = self.qcis.tbis.pv_shift_parameters[sc_ind]
+        else:
+            pv_shift_parameters = None
 
         mask_slices, slice_entry\
             = self._get_masks_and_shells(E, L, tbks_entry, cindex, slice_index)
