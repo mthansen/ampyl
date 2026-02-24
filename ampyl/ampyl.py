@@ -290,6 +290,50 @@ class Kdf:
                                       "implemented for non-zero nP yet.")
         return tbks_entry, slices
 
+    def _get_value_from_tbks(self, E, L, k3_params, project, irrep, cindex_col,
+                             cindex_row, tbks_entry, slices):
+        m1, m2, m3 = [1.0, 1.0, 1.0]
+        warnings.warn(f"\n{bcolors.WARNING}"
+                      "assuming m1 = m2 = m3 = 1.0 in Kdf"
+                      f"{bcolors.ENDC}")
+        kdf_final = []
+        for sc_row_ind in range(len(self.qcis.fcs.sc_list_sorted)):
+            kdf_outer_row = []
+            row_ell_set = self.qcis.fcs.sc_list_sorted[sc_row_ind].ell_set
+            if len(row_ell_set) != 1:
+                raise ValueError("only length-one ell_set currently "
+                                 "supported in Kdf")
+            ell1 = row_ell_set[0]
+            for sc_col_ind in range(len(self.qcis.fcs.sc_list_sorted)):
+                col_ell_set = self.qcis.fcs.sc_list_sorted[sc_col_ind].ell_set
+                if len(col_ell_set) != 1:
+                    raise ValueError("only length-one ell_set currently "
+                                     "supported in Kdf")
+                ell2 = col_ell_set[0]
+                kdf_inner = []
+                for row_shell_index in range(len(slices)):
+                    kdf_inner_row = []
+                    for col_shell_index in range(len(slices)):
+                        kdf_tmp = self.get_shell(E, L, k3_params,
+                                                 m1, m2, m3,
+                                                 cindex_row, cindex_col,
+                                                 # only for non-zero nP
+                                                 sc_row_ind, sc_col_ind,
+                                                 ell1, ell2,
+                                                 tbks_entry,
+                                                 row_shell_index,
+                                                 col_shell_index,
+                                                 project, irrep)
+                        kdf_inner_row.append(kdf_tmp)
+                    kdf_inner.append(kdf_inner_row)
+                kdf_inner = self._clean_shape(kdf_inner)
+                kdf_block_tmp = np.block(kdf_inner)
+                kdf_outer_row = kdf_outer_row+[kdf_block_tmp]
+            kdf_final.append(kdf_outer_row)
+        kdf_final = self._clean_shape(kdf_final)
+        kdf_final = np.block(kdf_final)
+        return kdf_final
+
 class QC:
     r"""
     QC: A class for handling the quantization condition (QC) in finite-volume
