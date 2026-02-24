@@ -1525,7 +1525,10 @@ class QCFunctions:
             if include_H_in_IPV:
                 partial_shift = IPV/pSQ**(ell)*np.sqrt(pSQ+1.0)
             else:
-                raise ValueError("include_H_in_IPV must be True")
+                if np.abs(Htmp) < EPSILON15:
+                    partial_shift = 0.0
+                else:
+                    partial_shift = IPV/pSQ**(ell)*np.sqrt(pSQ+1.0)/Htmp
             smarter_q_rescale = QC_IMPL_DEFAULTS['smarter_q_rescale']
             if 'smarter_q_rescale' in qc_impl:
                 smarter_q_rescale = qc_impl['smarter_q_rescale']
