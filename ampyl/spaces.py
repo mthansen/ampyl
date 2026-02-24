@@ -277,7 +277,7 @@ class ThreeBodyInteractionScheme:
 
     def __init__(self, fcs=None, ESQmin=0.0, three_scheme='relativistic pole',
                  scheme_data=[-1.0, 0.0], kdf_functions=None,
-                 use_pv_shift_prescription=[False],
+                 use_pv_shift_prescription=None,
                  pv_shift_parameters=None,
                  verbosity=0):
         self.ESQmin = ESQmin
@@ -285,6 +285,10 @@ class ThreeBodyInteractionScheme:
             self.fcs = FlavorChannelSpace(fc_list=[FlavorChannel(3)])
         else:
             self.fcs = fcs
+
+        self._set_flavor_ellm_dim()
+        if use_pv_shift_prescription is None:
+            use_pv_shift_prescription = [False]*self.flavor_ellm_dim
         if any(use_pv_shift_prescription):
             if pv_shift_parameters is None:
                 raise ValueError("pv_shift_parameters must be provided")
@@ -296,7 +300,7 @@ class ThreeBodyInteractionScheme:
                               "Setting pv_shift_parameters to None.")
         self.use_pv_shift_prescription = use_pv_shift_prescription
         self.pv_shift_parameters = pv_shift_parameters
-        self._set_flavor_ellm_dim()
+
         wrong_length = False
         if any(use_pv_shift_prescription):
             wrong_length = len(pv_shift_parameters) != self.flavor_ell_dim
