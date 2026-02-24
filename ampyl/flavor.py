@@ -37,6 +37,7 @@ Created July 2022.
 import numpy as np
 from inspect import signature
 from . import flavor_utils
+from . import flavor_ope_utils
 from .functions import QCFunctions
 from .constants import bcolors
 import warnings
