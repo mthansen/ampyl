@@ -531,6 +531,7 @@ class QC:
                     - 'detF3inverse'
                     - 'kdf_zero_1+_fgcombo'
                     - 'kdf_zero_1+_asym_fgcombo'
+                    - 'kdf+f3inv_asym_fgcombo'
                     - 'kdf_zero_1+_FinverseF3'
                 - 'rescale' (float): Rescaling factor, defaults to 1.0.
                 - 'shift' (float): Shift value, defaults to 0.0.
@@ -616,7 +617,8 @@ class QC:
                         or version == 'f3'
                         or version == 'detF3inverse'
                         or version == 'kdf_zero_1+_fgcombo'
-                        or version == 'kdf_zero_1+_asym_fgcombo')
+                        or version == 'kdf_zero_1+_asym_fgcombo'
+                        or version == 'kdf+f3inv_asym_fgcombo')
         if createFplusG:
             FplusG = self.fplusg.get_value(E, L, project, irrep,
                                            short_string='fplusg')/rescale
@@ -639,6 +641,12 @@ class QC:
                               "This is a temporary fix."
                               f"{bcolors.ENDC}")
                 FplusG = np.zeros(K.shape)
+
+        createKdf = (version == '1+Kdf_F3'
+                     or version == 'kdf+f3inv'
+                     or version == 'kdf+f3inv_asym_fgcombo')
+        if createKdf:
+            Kdf = self.kdf.get_value(E, L, k3_params, project, irrep)*rescale
 
         createG = (version == 'kdf_zero_1+'
                    or version == 'kdf_zero_k2_inv'
@@ -693,6 +701,22 @@ class QC:
                 Hinverse = np.linalg.inv(H)
             F3 = FplusG - FplusG@K@Hinverse@FplusG
             return 1./np.linalg.det(F3)
+
+        if version == 'kdf+f3inv_asym_fgcombo':
+            id_mat = np.identity(len(FplusG))
+            H = id_mat+FplusG@K
+            detH = np.linalg.det(H)
+            if np.abs(detH) < EPSILON10:
+                Hinverse = id_mat/(EPSILON10)
+            else:
+                Hinverse = np.linalg.inv(H)
+            F3 = FplusG - FplusG@K@Hinverse@FplusG
+            detF3 = np.linalg.det(F3)
+            if np.abs(detF3) < EPSILON10:
+                F3inv = id_mat/(EPSILON10)
+            else:
+                F3inv = np.linalg.inv(F3)
+            return np.linalg.det(F3inv+Kdf)
 
         if version == 'kdf_zero_1+':
             id_mat = np.identity(len(G))
