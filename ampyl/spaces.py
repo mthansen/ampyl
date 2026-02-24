@@ -295,6 +295,7 @@ class ThreeBodyInteractionScheme:
                               "use_pv_shift_prescription is False. "
                               "Setting pv_shift_parameters to None.")
         self.use_pv_shift_prescription = use_pv_shift_prescription
+        self.pv_shift_parameters = pv_shift_parameters
         self._set_flavor_ellm_dim()
         wrong_length = False
         if use_pv_shift_prescription:
