@@ -1342,14 +1342,8 @@ class QCFunctions:
                         sph_harm_value = sph_harm_value\
                             - (rSQ_arr**ell1-qSQ**(ell1))
                     else:
-                        raise ValueError("Calculation without "
-                                         "smarter_q_rescale is currently not "
-                                         "supported. Please enable "
-                                         "smarter_q_rescale in the qc_impl "
-                                         "dictionary.")
                         sph_harm_value = sph_harm_value\
-                            - (rSQ_arr**ell1-qSQ**(ell1))
-                        sph_harm_value = sph_harm_value/(qSQ**(ell1))
+                            - (rSQ_arr**ell1-qSQ**(ell1))/(qSQ**(ell1))
         Ds = rSQ_arr-qSQ
         return sph_harm_value*np.exp(-alphaKSS*Ds)/Ds
 
