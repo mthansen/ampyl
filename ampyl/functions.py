@@ -1300,10 +1300,8 @@ class QCFunctions:
                     sph_harm_value = sph_harm_value\
                         - (rSQ_arr**ell1-qSQ**(ell1))
                 else:
-                    raise ValueError("Calculation without smarter_q_rescale "
-                                     "is currently not supported. Please "
-                                     "enable smarter_q_rescale in the qc_impl "
-                                     "dictionary.")
+                    sph_harm_value = sph_harm_value\
+                        - (rSQ_arr**ell1-qSQ**(ell1))/(qSQ**(ell1))
         else:
             if (ell1 == 0 and ell2 == 0):
                 npar_component_arr = ((nvec_arr*nP2).sum(1))/nP2mag
