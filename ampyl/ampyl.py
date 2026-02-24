@@ -480,6 +480,7 @@ class QC:
         self.g = G(qcis=self.qcis)
         self.fplusg = FplusG(qcis=self.qcis, alphaKSS=alphaKSS, C1cut=C1cut)
         self.k = K(qcis=self.qcis)
+        self.kdf = Kdf(qcis=self.qcis)
         self._verbosity = verbosity
         self.verbosity = verbosity
 
