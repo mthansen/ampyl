@@ -1057,19 +1057,15 @@ class QCFunctions:
             calY1row = []
             calY2conjrow = []
             for mazi2 in np.arange(-ell2, ell2+1):
-                calY1 = BKFunctions.calY(ell1, mazi1,
-                                         vecstar_for1.reshape(
-                                             (shape1_tmp[0]*shape1_tmp[1], 3)),
-                                         q_for1_mat.reshape(q_for1_mat.size),
-                                         qc_impl)
+                calY1, _ = BKFunctions.calY(
+                    ell1, mazi1, vecstar_for1.reshape(
+                        (shape1_tmp[0]*shape1_tmp[1], 3)),
+                    q_for1_mat.reshape(q_for1_mat.size), qc_impl)
                 shape2_tmp = vecstar_for2.shape
-                calY2 = BKFunctions.calY(ell2, mazi2,
-                                         vecstar_for2.reshape(
-                                             (shape2_tmp[0]*shape2_tmp[1], 3)),
-                                         q_for2_mat.reshape(q_for2_mat.size),
-                                         qc_impl)
-                calY2conj = np.conjugate(calY2)
-                calY2conj = calY2
+                _, calY2conj = BKFunctions.calY(
+                    ell2, mazi2, vecstar_for2.reshape(
+                        (shape2_tmp[0]*shape2_tmp[1], 3)),
+                    q_for2_mat.reshape(q_for2_mat.size), qc_impl)
                 calY1 = (calY1).reshape(r2_shape)
                 calY1row = calY1row+[calY1]
                 calY2conj = (calY2conj).reshape(r2_shape)
