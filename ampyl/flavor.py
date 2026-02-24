@@ -701,8 +701,8 @@ class FlavorChannelSpace:
 
     def update_g_templates(self):
         """Update the g templates."""
-        flavor_utils.build_g_templates(self)
-        flavor_utils.build_g_templates_ell_specific(self)
+        flavor_ope_utils.build_g_templates(self)
+        flavor_ope_utils.build_g_templates_ell_specific(self)
         if self.verbosity >= 2:
             self.print_summary()
 
