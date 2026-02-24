@@ -1276,7 +1276,7 @@ class QCFunctions:
         """
         nP2SQ = nP2@nP2
         nP2mag = np.sqrt(nP2SQ)
-        q = np.sqrt(np.abs(qSQ))
+        q = np.sqrt(qSQ+0j)
         sph_harm_value = 1.0
         if nP2SQ == 0.0:
             rSQ_arr = (nvec_arr**2).sum(1)
