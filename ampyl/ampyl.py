@@ -258,6 +258,20 @@ class Kdf:
     def __init__(self, qcis=None):
         self.qcis = qcis
 
+    def get_value(self, E, L, k3_params, project, irrep):
+        nP = self.qcis.fvs.nP
+        cindex_row = cindex_col = 0
+        not_projecting = (irrep is None) and (project is False)
+        projecting = not not_projecting
+        irrep_not_in_keys = irrep not in self.qcis.proj_dict.keys()
+        if projecting and irrep_not_in_keys:
+            raise ValueError("irrep "+str(irrep)+" not in "
+                             "qcis.proj_dict.keys()")
+        tbks_entry, slices = self._get_entry_and_slices(E, L, nP)
+        kdf_final = self._get_value_from_tbks(E, L, k3_params, project, irrep,
+                                              cindex_col, cindex_row,
+                                              tbks_entry, slices)
+        return kdf_final
 
 class QC:
     r"""
