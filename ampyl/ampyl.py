@@ -334,6 +334,15 @@ class Kdf:
         kdf_final = np.block(kdf_final)
         return kdf_final
 
+    def get_shell(self, E=5.0, L=5.0, k3_params=None, m1=1.0, m2=1.0, m3=1.0,
+                  cindex_row=None, cindex_col=None,  # only for non-zero nP
+                  sc_index_row=None, sc_index_col=None, ell1=0, ell2=0,
+                  tbks_entry=None, row_shell_index=None, col_shell_index=None,
+                  project=False, irrep=None):
+        """Build the Kdf matrix on a single shell."""
+        Kdfshell = None
+        return Kdfshell
+
 class QC:
     r"""
     QC: A class for handling the quantization condition (QC) in finite-volume
