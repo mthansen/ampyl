@@ -530,7 +530,7 @@ class QC:
                     - 'kdf+f3inv'
                     - 'detF3inverse'
                     - 'kdf_zero_1+_fgcombo'
-                    - 'kdf_zero_1+_asym_fgcombo'
+                    - 'kdf_zero_detf3inv_asym_fgcombo'
                     - 'kdf+f3inv_asym_fgcombo'
                     - 'kdf_zero_1+_FinverseF3'
                 - 'rescale' (float): Rescaling factor, defaults to 1.0.
@@ -617,7 +617,7 @@ class QC:
                         or version == 'f3'
                         or version == 'detF3inverse'
                         or version == 'kdf_zero_1+_fgcombo'
-                        or version == 'kdf_zero_1+_asym_fgcombo'
+                        or version == 'kdf_zero_detf3inv_asym_fgcombo'
                         or version == 'kdf+f3inv_asym_fgcombo')
         if createFplusG:
             FplusG = self.fplusg.get_value(E, L, project, irrep,
@@ -691,7 +691,7 @@ class QC:
             id_mat = np.identity(len(FplusG))
             return np.linalg.det(id_mat+(FplusG)@K)-shift
 
-        if version == 'kdf_zero_1+_asym_fgcombo':
+        if version == 'kdf_zero_detf3inv_asym_fgcombo':
             id_mat = np.identity(len(FplusG))
             H = id_mat+FplusG@K
             detH = np.linalg.det(H)
@@ -870,7 +870,8 @@ class QC:
         return np.nan
 
     def extract_EL_set(self, version, dL):
-        if (version in ['kdf_zero_1+_fgcombo', 'kdf_zero_1+_asym_fgcombo']
+        if (version in ['kdf_zero_1+_fgcombo',
+                        'kdf_zero_detf3inv_asym_fgcombo']
            and self.qcis.fvs.qc_impl['fplusg_smart_interpolate']):
             Emin = self.fplusg.Emin_interp + MINMAXOFFSET
             Emax = self.fplusg.Emax_interp - MINMAXOFFSET
