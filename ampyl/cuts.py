@@ -1537,12 +1537,18 @@ class F(Interpolable):
         beta = self.beta
         C1cut = self.C1cut
         alphaKSS = self.alphaKSS
+        use_pv_shift_prescription\
+            = self.qcis.tbis.use_pv_shift_prescription[sc_ind]
+        pv_shift_parameters = self.qcis.tbis.pv_shift_parameters[sc_ind]
 
         mask_slices, slice_entry\
             = self._get_masks_and_shells(E, L, tbks_entry, cindex, slice_index)
         Fshell = QCFunctions.getF_array(
             E, nP, L, m1, m2, m3, tbks_entry, slice_entry, ell1, ell2,
-            alpha, beta, C1cut, alphaKSS, qc_impl, three_scheme)
+            alpha, beta, C1cut, alphaKSS, qc_impl, three_scheme,
+            use_pv_shift_prescription=use_pv_shift_prescription,
+            pv_shift_parameters=pv_shift_parameters)
+
         if project:
             try:
                 if nP@nP != 0:
