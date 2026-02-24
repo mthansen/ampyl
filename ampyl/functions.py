@@ -483,12 +483,7 @@ class BKFunctions:
         if smarter_q_rescale:
             calY = Y
         else:
-            calY = Y
-            raise ValueError("Calculation without smarter_q_rescale "
-                             "is currently not supported. Please "
-                             "enable smarter_q_rescale in the qc_impl "
-                             "dictionary.")
-            # calY = Y/np.abs(q**ell)
+            calY = Y/q**ell
         return calY
 
     @staticmethod
@@ -707,7 +702,13 @@ class QCFunctions:
         calY2 = BKFunctions.calY(ell2, mazi2,
                                  vecstar_for2.reshape((1, 3)),
                                  q_for2, qc_impl)[0]
-        calY2conj = np.conjugate(calY2)
+        calY2conj = calY2
+        warnings.warn(f"\n{bcolors.WARNING}"
+                      "not actually conjugating calY2. This is because, if "
+                      "smarter_q_rescale is False, then the q^ell part is in "
+                      "calY and should not be conjugated. For now nothing is "
+                      "conjugated, assuming the rest is real."
+                      f"{bcolors.ENDC}")
 
         HH = BKFunctions.H(E2CMSQ_for1, m1+m2, alpha, beta, J_slow)\
             * BKFunctions.H(E2CMSQ_for2, m2+m3, alpha, beta, J_slow)
