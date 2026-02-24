@@ -118,13 +118,19 @@ class K:
         qc_impl = self.qcis.fvs.qc_impl
         alpha = self.alpha
         beta = self.beta
+        use_pv_shift_prescription\
+            = self.qcis.tbis.use_pv_shift_prescription[sc_ind]
+        pv_shift_parameters = self.qcis.tbis.pv_shift_parameters[sc_ind]
 
         mask_slices, slice_entry\
             = self._get_masks_and_shells(E, L, tbks_entry, cindex, slice_index)
         Kshell = QCFunctions.getK_array(
             E, nP, L, m1, m2, m3, tbks_entry, slice_entry, ell,
             pcotdelta_function, pcotdelta_parameter_list, alpha, beta,
-            qc_impl, three_scheme)
+            qc_impl, three_scheme,
+            use_pv_shift_prescription=use_pv_shift_prescription,
+            pv_shift_parameters=pv_shift_parameters)
+
         if project:
             try:
                 if nP@nP != 0:
