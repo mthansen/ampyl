@@ -387,6 +387,26 @@ class Kdf:
                         ).T)
         return proj_tmp_right, proj_tmp_left
 
+    def _get_masks_and_shells(self, E, L, tbks_entry,
+                              cindex_row, cindex_col,
+                              row_shell_index, col_shell_index):
+        nP = self.qcis.fvs.nP
+        three_slice_index_row =\
+            self.qcis.sc_to_three_slice[cindex_row]
+        three_slice_index_col =\
+            self.qcis.sc_to_three_slice[cindex_col]
+        if not (three_slice_index_row == three_slice_index_col == 0):
+            raise ValueError("only one mass slice is supported in Kdf")
+        if nP@nP == 0:
+            mask_row_shells, mask_col_shells, row_shell, col_shell\
+                = self._mask_and_shell_helper_nPzero(tbks_entry,
+                                                     row_shell_index,
+                                                     col_shell_index)
+        else:
+            raise NotImplementedError("masking for non-zero nP is not "
+                                      "implemented yet.")
+        return mask_row_shells, mask_col_shells, row_shell, col_shell
+
 class QC:
     r"""
     QC: A class for handling the quantization condition (QC) in finite-volume
