@@ -1073,6 +1073,7 @@ class QCFunctions:
                                          q_for2_mat.reshape(q_for2_mat.size),
                                          qc_impl)
                 calY2conj = np.conjugate(calY2)
+                calY2conj = calY2
                 calY1 = (calY1).reshape(r2_shape)
                 calY1row = calY1row+[calY1]
                 calY2conj = (calY2conj).reshape(r2_shape)
@@ -1193,6 +1194,7 @@ class QCFunctions:
                                          q_for2_mat.reshape(q_for2_mat.size),
                                          qc_impl)
                 calY2conj = np.conjugate(calY2)
+                calY2conj = calY2
                 calY1 = (calY1).reshape(r2_shape)
                 calY1row = calY1row+[calY1]
                 calY2conj = (calY2conj).reshape(r2_shape)
@@ -1287,6 +1289,7 @@ class QCFunctions:
                 calY2 = BKFunctions.calY(ell2, mazi2, nvec_arr,
                                          q, qc_impl)
                 calY2conj = np.conjugate(calY2)
+                calY2conj = calY2
                 sph_harm_value = sph_harm_value*calY2conj
 
             if ((ell1 == ell2) and (mazi1 == mazi2)):
@@ -1330,6 +1333,7 @@ class QCFunctions:
                     calY2 = BKFunctions.calY(ell2, mazi2, rvec_arr,
                                              q, qc_impl)
                     calY2conj = np.conjugate(calY2)
+                    calY2conj = calY2
                     sph_harm_value = sph_harm_value*calY2conj
                 if ((ell1 == ell2) and (mazi1 == mazi2)):
                     smarter_q_rescale = QC_IMPL_DEFAULTS['smarter_q_rescale']
