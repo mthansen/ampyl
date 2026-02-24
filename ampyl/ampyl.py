@@ -273,6 +273,23 @@ class Kdf:
                                               tbks_entry, slices)
         return kdf_final
 
+    def _get_entry_and_slices(self, E, L, nP):
+        if nP@nP == 0:
+            tbks_sub_indices = self.qcis.get_tbks_sub_indices(E=E, L=L)
+            if len(self.qcis.tbks_list) > 1:
+                raise ValueError("get_value within G assumes tbks_list is "
+                                 "length one.")
+            tbks_entry = self.qcis.tbks_list[0][tbks_sub_indices[0]]
+            slices = tbks_entry.shells
+            if self.qcis.verbosity >= 2:
+                print('tbks_sub_indices =', tbks_sub_indices)
+                print('tbks_entry =', tbks_entry)
+                print('slices =', slices)
+        else:
+            raise NotImplementedError("get_value within Kdf is not "
+                                      "implemented for non-zero nP yet.")
+        return tbks_entry, slices
+
 class QC:
     r"""
     QC: A class for handling the quantization condition (QC) in finite-volume
