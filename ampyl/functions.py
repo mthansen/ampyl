@@ -477,14 +477,17 @@ class BKFunctions:
                 Y = BKFunctions.cart_sph_harm_real(ell, mazi, nvec_arr)
         else:
             Y = BKFunctions.cart_sph_harm(ell, mazi, nvec_arr)
+        Yconj = np.conjugate(Y)
         smarter_q_rescale = QC_IMPL_DEFAULTS['smarter_q_rescale']
         if 'smarter_q_rescale' in qc_impl:
             smarter_q_rescale = qc_impl['smarter_q_rescale']
         if smarter_q_rescale:
             calY = Y
+            calYconj = Yconj
         else:
             calY = Y/q**ell
-        return calY
+            calYconj = Yconj/q**ell
+        return calY, calYconj
 
     @staticmethod
     def standard_boost(beta_vec=np.array([0.0, 0.0, 0.0]),
