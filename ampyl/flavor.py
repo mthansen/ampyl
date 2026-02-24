@@ -754,42 +754,6 @@ class FlavorChannelSpace:
                 self._add_spectator_channel(sc2)
                 self._add_spectator_channel(sc3)
 
-    def _add_three_particle_compact(self, sc, sc_index, sc_compact_single):
-        sc_compact_single = sc_compact_single\
-            + list(np.array(sc.fc.masses)[sc.indexing])
-        sc_compact_single = sc_compact_single\
-            + list(np.array(sc.fc.spins)[sc.indexing])
-        sc_compact_single = sc_compact_single\
-            + list(np.array(sc.fc.flavors)[sc.indexing])
-        sc_compact_single = sc_compact_single+[sc.fc.isospin_channel]
-        if sc.fc.isospin_channel:
-            sc_compact_single = sc_compact_single\
-                        + list(np.array(sc.fc.isospins)[sc.indexing])
-            sc_compact_single = sc_compact_single+[sc.fc.isospin]
-            sc_compact_single = sc_compact_single+[sc.sub_isospin]
-        else:
-            sc_compact_single = sc_compact_single\
-                        + [None, None, None, None, None]
-        sc_compact_single = sc_compact_single+[sc_index]
-        return sc_compact_single
-
-    def _add_two_particle_compact(self, sc, sc_index, sc_compact_single):
-        sc_compact_single = sc_compact_single\
-            + list(np.array(sc.fc.masses))
-        sc_compact_single = sc_compact_single\
-            + list(np.array(sc.fc.spins))
-        sc_compact_single = sc_compact_single\
-            + list(np.array(sc.fc.flavors))
-        sc_compact_single = sc_compact_single+[sc.fc.isospin_channel]
-        if sc.fc.isospin_channel:
-            sc_compact_single = sc_compact_single\
-                        + list(np.array(sc.fc.isospins))
-            sc_compact_single = sc_compact_single+[sc.fc.isospin]
-        else:
-            sc_compact_single = sc_compact_single+[None, None, None]
-        sc_compact_single = sc_compact_single+[sc_index]
-        return sc_compact_single
-
     def print_summary(self):
         fcs_summary = flavor_utils.generate_flavor_channel_space_summary(self)
         print(f"{bcolors.OKGREEN}{fcs_summary}{bcolors.ENDC}")
