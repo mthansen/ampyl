@@ -965,8 +965,10 @@ class QC:
                     elif len(E_set) > 1:
                         index = np.abs(E_set - Etmp).argmin()
                         Eupdate = E_set[index]
-                        warnings.warn(f'Multiple solutions found for L = {L}.'
-                                      f'Differences are {np.abs(E_set - Etmp)}')
+                        warnings.warn(f"\n{bcolors.WARNING}"
+                                      f"multiple solutions found for L = {L},"
+                                      f"differences are {np.abs(E_set - Etmp)}"
+                                      f"{bcolors.ENDC}")
                     bracket_shift = bracket_shift*10.
                 if np.isnan(Eupdate):
                     bracket_shift = 1.e-10
@@ -976,7 +978,10 @@ class QC:
                             E_bracket, Ltmp, qc_dict)
                         bracket_shift = bracket_shift*5.
                         if np.isnan(Eupdate):
-                            warnings.warn(f'Failed to find solution for L = {L}')
+                            warnings.warn(f"\n{bcolors.WARNING}"
+                                          "failed to find solution for "
+                                          f"L = {L}"
+                                          f"{bcolors.ENDC}")
                         else:
                             all_E_vals[i][j] = Eupdate
                         self.qcis.fvs.qc_impl['fplusg_smart_interpolate'] = True
