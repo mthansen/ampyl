@@ -340,7 +340,41 @@ class Kdf:
                   tbks_entry=None, row_shell_index=None, col_shell_index=None,
                   project=False, irrep=None):
         """Build the Kdf matrix on a single shell."""
-        Kdfshell = None
+        nP = self.qcis.fvs.nP
+
+        mask_row_shells, mask_col_shells, row_shell, col_shell\
+            = self._get_masks_and_shells(E, L, tbks_entry,
+                                         cindex_row, cindex_col,
+                                         row_shell_index, col_shell_index)
+        if project:
+            try:
+                if nP@nP != 0:
+                    proj_tmp_right, proj_tmp_left = self.\
+                        _nP_nonzero_projectors(E, L,
+                                               sc_index_row, sc_index_col,
+                                               row_shell_index,
+                                               col_shell_index,
+                                               irrep,
+                                               mask_row_shells,
+                                               mask_col_shells)
+                else:
+                    raise NotImplementedError("projection for nP=0 is not "
+                                              "implemented yet.")
+            except KeyError:
+                return np.array([])
+
+        if len(k3_params) != 1:
+            raise ValueError("k3_params must have length 1 for the version "
+                             "of Kdf currently implemented.")
+
+        if ell1 == ell2 == 1:
+            Kdfshell = np.ones((proj_tmp_left.shape[1],
+                                proj_tmp_right.shape[0]))*k3_params[0]
+        else:
+            Kdfshell = np.zeros((proj_tmp_left.shape[1],
+                                 proj_tmp_right.shape[0]))
+        if project:
+            Kdfshell = proj_tmp_left@Kdfshell@proj_tmp_right
         return Kdfshell
 
 class QC:
