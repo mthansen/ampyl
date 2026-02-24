@@ -40,6 +40,7 @@ from ampyl.flavor import FlavorChannel
 from ampyl.flavor import SpectatorChannel
 from ampyl.flavor import FlavorChannelSpace
 import ampyl.flavor_utils as flavor_utils
+import ampyl.flavor_ope_utils as flavor_ope_utils
 
 
 class TestFlavorChannelSpace(unittest.TestCase):
@@ -197,7 +198,7 @@ class TestFlavorChannelSpace(unittest.TestCase):
         fcs._add_flavor_channel(fcb)
         self.assertEqual(fcs.g_templates, expected_g_templates)
         flavor_utils.build_sorted_sc_list(fcs)
-        flavor_utils.build_g_templates(fcs)
+        flavor_ope_utils.build_g_templates(fcs)
         expected_g_templates = [[np.array([[0.]]),
                                  np.array([[1.]]),
                                  np.array([[0.]])],
