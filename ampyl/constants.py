@@ -68,7 +68,7 @@ QC_IMPL_DEFAULTS = {'hermitian': True,
                     'use_cob_matrices': True,
                     'reduce_size': True,
                     'populate_interp_zeros': False,
-                    'use_pv_shift_prescription': False,
+                    'use_pv_shift_prescription': [False],
                     'pv_shift_parameters': [0.],
                     'include_H_in_IPV': True,
                     'ibest_always_zero': True}

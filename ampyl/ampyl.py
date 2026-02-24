@@ -120,7 +120,10 @@ class K:
         beta = self.beta
         use_pv_shift_prescription\
             = self.qcis.tbis.use_pv_shift_prescription[sc_ind]
-        pv_shift_parameters = self.qcis.tbis.pv_shift_parameters[sc_ind]
+        if use_pv_shift_prescription:
+            pv_shift_parameters = self.qcis.tbis.pv_shift_parameters[sc_ind]
+        else:
+            pv_shift_parameters = None
 
         mask_slices, slice_entry\
             = self._get_masks_and_shells(E, L, tbks_entry, cindex, slice_index)
@@ -348,15 +351,10 @@ class Kdf:
                                          row_shell_index, col_shell_index)
         if project:
             try:
-                if nP@nP != 0:
-                    proj_tmp_right, proj_tmp_left = self.\
-                        _nP_nonzero_projectors(E, L,
-                                               sc_index_row, sc_index_col,
-                                               row_shell_index,
-                                               col_shell_index,
-                                               irrep,
-                                               mask_row_shells,
-                                               mask_col_shells)
+                if nP@nP == 0:
+                    proj_tmp_right, proj_tmp_left = self._nPzero_projectors(
+                        sc_index_row, sc_index_col,
+                        row_shell_index, col_shell_index, irrep)
                 else:
                     raise NotImplementedError("projection for nP=0 is not "
                                               "implemented yet.")
