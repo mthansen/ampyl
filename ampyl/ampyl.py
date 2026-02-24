@@ -415,6 +415,25 @@ class Kdf:
         col_shell = tbks_entry.shells[col_shell_index]
         return mask_row_shells, mask_col_shells, row_shell, col_shell
 
+    def _clean_shape(self, kdf_collection):
+        rowsizes = [0]*len(kdf_collection)
+        colsizes = [0]*len(kdf_collection)
+        for i in range(len(kdf_collection)):
+            for j in range(len(kdf_collection)):
+                shtmp = kdf_collection[i][j].shape
+                if shtmp != (0,):
+                    if shtmp[0] > rowsizes[i]:
+                        rowsizes[i] = shtmp[0]
+                    if shtmp[1] > colsizes[j]:
+                        colsizes[j] = shtmp[1]
+        for i in range(len(kdf_collection)):
+            for j in range(len(kdf_collection)):
+                shtmp = kdf_collection[i][j].shape
+                if shtmp == (0,) or shtmp == (0, 0):
+                    kdf_collection[i][j].shape = (rowsizes[i], colsizes[j])
+        return kdf_collection
+
+
 class QC:
     r"""
     QC: A class for handling the quantization condition (QC) in finite-volume
