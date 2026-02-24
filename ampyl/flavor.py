@@ -673,8 +673,8 @@ class FlavorChannelSpace:
         self.verbosity = verbosity
         self._set_lists(fc_list, ni_list)
         flavor_utils.build_sorted_sc_list(self)
-        flavor_utils.build_g_templates(self)
-        flavor_utils.build_g_templates_ell_specific(self)
+        flavor_ope_utils.build_g_templates(self)
+        flavor_ope_utils.build_g_templates_ell_specific(self)
         if self.verbosity >= 2:
             self.print_summary()
 
