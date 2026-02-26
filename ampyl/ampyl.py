@@ -391,6 +391,24 @@ class Kdf:
                         ).T)
         return proj_tmp_right, proj_tmp_left
 
+    def _nP_nonzero_projectors(self, E, L, sc_index_row, sc_index_col,
+                               row_shell_index, col_shell_index, irrep,
+                               mask_row_shells, mask_col_shells):
+        ibest = self.qcis._get_ibest(E, L)
+        ibest = 0
+        warnings.warn(f"\n{bcolors.WARNING}"
+                      "ibest is set to 0. This is a temporary fix."
+                      f"{bcolors.ENDC}")
+        proj_tmp_right\
+            = np.array(
+                self.qcis.proj_dicts_by_sc_and_shellset[sc_index_col][ibest]
+                )[mask_col_shells][col_shell_index][irrep]
+        proj_tmp_left = np.conjugate((
+            np.array(
+                self.qcis.proj_dicts_by_sc_and_shellset[sc_index_row][ibest]
+                     )[mask_row_shells][row_shell_index][irrep]).T)
+        return proj_tmp_right, proj_tmp_left
+
     def _get_masks_and_shells(self, E, L, tbks_entry,
                               cindex_row, cindex_col,
                               row_shell_index, col_shell_index):
