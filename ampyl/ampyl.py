@@ -356,8 +356,14 @@ class Kdf:
                         sc_index_row, sc_index_col,
                         row_shell_index, col_shell_index, irrep)
                 else:
-                    raise NotImplementedError("projection for nP=0 is not "
-                                              "implemented yet.")
+                    proj_tmp_right, proj_tmp_left = self.\
+                        _nP_nonzero_projectors(E, L,
+                                               sc_index_row, sc_index_col,
+                                               row_shell_index,
+                                               col_shell_index,
+                                               irrep,
+                                               mask_row_shells,
+                                               mask_col_shells)
             except KeyError:
                 return np.array([])
 
