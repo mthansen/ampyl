@@ -894,14 +894,19 @@ class QC:
         warnings.warn("Root not found, not sure why. Returning NaN.")
         return np.nan
 
-    def extract_EL_set(self, version, dL):
+    def extract_EL_set(self, version, irrep, dL):
         if (version in ['kdf_zero_1+_fgcombo',
-                        'kdf_zero_detf3inv_asym_fgcombo']
+                        'kdf_zero_detf3inv_asym_fgcombo',
+                        'kdf+f3inv_asym_fgcombo']
            and self.qcis.fvs.qc_impl['fplusg_smart_interpolate']):
-            Emin = self.fplusg.Emin_interp + MINMAXOFFSET
-            Emax = self.fplusg.Emax_interp - MINMAXOFFSET
-            Lmin = self.fplusg.Lmin_interp + MINMAXOFFSET
-            Lmax = self.fplusg.Lmax_interp - MINMAXOFFSET
+
+            Emin_interp, Emax_interp, Lmin_interp, Lmax_interp =\
+                self.fplusg.interp_data_lists[irrep][0][0][0]
+
+            Emin = Emin_interp + MINMAXOFFSET
+            Emax = Emax_interp - MINMAXOFFSET
+            Lmin = Lmin_interp + MINMAXOFFSET
+            Lmax = Lmax_interp - MINMAXOFFSET
         else:
             Emin = DEFAULT_EMIN
             Emax = self.qcis.Emax
