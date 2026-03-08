@@ -1050,9 +1050,9 @@ class QC:
                     E_range = [E_guess-dE, E_guess+dE]
                     if (E_guess+dE > Emax or E_guess-dE > Emax or
                        E_guess-dE < Emin or E_guess+dE < Emin):
-                        warnings.warn('E_guess+dE > Emax')
+                        warnings.warn('E_guess+-dE out of bounds')
+                        dE = 1.0
                         continue
-
                     cuts = np.linspace(0.1, 0.9, 3)
                     E_val = self.get_roots_from_range(
                         E_range, L, qc_dict, ni_functions, cuts=cuts)
