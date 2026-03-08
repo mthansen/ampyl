@@ -727,14 +727,14 @@ class QC:
             id_mat = np.identity(len(FplusG))
             H = id_mat+FplusG@K
             detH = np.linalg.det(H)
-            if np.abs(detH) < EPSILON10:
-                Hinverse = id_mat/(EPSILON10)
+            if np.abs(detH) < EPSILON30:
+                Hinverse = id_mat/(EPSILON30)
             else:
                 Hinverse = np.linalg.inv(H)
-            F3 = FplusG - FplusG@K@Hinverse@FplusG
+            F3 = (FplusG - FplusG@K@Hinverse@FplusG)/L**3
             detF3 = np.linalg.det(F3)
-            if np.abs(detF3) < EPSILON10:
-                F3inv = id_mat/(EPSILON10)
+            if np.abs(detF3) < EPSILON30:
+                F3inv = id_mat/(EPSILON30)
             else:
                 F3inv = np.linalg.inv(F3)
             return np.linalg.det(F3inv+Kdf)
