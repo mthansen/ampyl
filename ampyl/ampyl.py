@@ -40,6 +40,8 @@ from scipy.optimize import root_scalar
 from .constants import TWOPI
 from .constants import FOURPI2
 from .constants import EPSILON4
+from .constants import EPSILON5
+from .constants import EPSILON6
 from .constants import EPSILON30
 from .constants import QC_IMPL_DEFAULTS
 from .constants import DEFAULT_CUTS
@@ -878,8 +880,9 @@ class QC:
             root = root_scalar(self.get_value,
                                args=(L, qc_dict),
                                bracket=E_bracket).root
-            qc_tmp = self.get_value(root, L, qc_dict)
-            if np.abs(qc_tmp) < 1.e-5:
+            qc_ratio = np.abs(self.get_value(root, L, qc_dict)
+                              / self.get_value(root+EPSILON6, L, qc_dict))
+            if qc_ratio < EPSILON5:
                 return root
             warnings.warn("Root was found but QC at the root is not "
                           "sufficiently close to zero, returning NaN.")
