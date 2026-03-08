@@ -797,166 +797,6 @@ class QC:
             raise TypeError("qc_dict['irrep'][1] must be an int")
         return qc_dict
 
-    def get_roots_from_range(self, E_range, L, qc_dict, ni_functions,
-                             cuts=DEFAULT_CUTS):
-        """
-        Compute the roots of the QC within a specified energy range.
-
-        This method calculates the roots of the QC for a given energy range
-        and box size `L`, considering non-interacting energy levels and
-        specified breakpoints. It uses a dictionary of parameters to define the
-        QC.
-
-        Args:
-            E_range (list): A list of two floats specifying the energy range
-                [E_min, E_max] within which to search for roots.
-            L (float): The box size parameter.
-            qc_dict (dict): See `get_value` method for details.
-            ni_functions (list): A list of functions that compute
-                non-interacting energy levels for a given `L`.
-            cuts (list, optional): A list of floats specifying the fractional
-                positions within each range to add additional breakpoints.
-                Defaults to `DEFAULT_CUTS`.
-
-        Returns:
-            list: A list of roots found within the specified energy range.
-
-        Raises:
-            TypeError: If `E_range` is not a list of two floats.
-            TypeError: If `L` is not a float.
-            TypeError: If `qc_dict` is not a dictionary or is missing
-                        required keys.
-            TypeError: If the types of values in `qc_dict` do not match the
-                        expected types.
-
-        Notes:
-            - The method identifies non-interacting energy levels within the
-                specified range and uses them to define subranges for root
-                finding.
-            - The `simple_try_at_fixed_L` method is used to find roots within
-                each subrange.
-            - Roots that are `np.nan` are excluded from the results.
-        """
-        if not isinstance(E_range, list) or len(E_range) != 2 or \
-                not all(isinstance(E, float) for E in E_range):
-            raise TypeError("E_range must be a list of two floats")
-        if not isinstance(L, float):
-            raise TypeError("L must be a float")
-        self.validate_qc_dict(qc_dict)
-        nonint_energies = []
-        for ni_function in ni_functions:
-            nonint_energies.append(ni_function(L))
-        nonint_energies = np.array(nonint_energies)
-        nonint_in_range = nonint_energies[E_range[0] < nonint_energies]
-        nonint_in_range = nonint_in_range[nonint_in_range < E_range[1]]
-        breakpoints = np.concatenate(([E_range[0]], nonint_in_range,
-                                      [E_range[1]]))
-        breakpoints = np.sort(breakpoints)
-        differences = np.diff(breakpoints)
-        cuts = np.sort(cuts)
-        all_breakpoints = []
-        for i in range(len(differences)):
-            for cut in cuts:
-                all_breakpoints.append(breakpoints[i]+cut*differences[i])
-        all_breakpoints.append(breakpoints[-1])
-        all_breakpoints = np.array(all_breakpoints)
-        all_ranges = []
-        for i in range(len(all_breakpoints)-1):
-            candidate_range = [all_breakpoints[i], all_breakpoints[i+1]]
-            no_nonint_in_candidate = True
-            for nonint_energy in nonint_in_range:
-                if candidate_range[0] < nonint_energy < candidate_range[1]:
-                    no_nonint_in_candidate = False
-            if no_nonint_in_candidate:
-                all_ranges.append([all_breakpoints[i], all_breakpoints[i+1]])
-        all_roots = []
-        for E_bracket in all_ranges:
-            root = self.simple_try_at_fixed_L(E_bracket, L, qc_dict)
-            if root is not np.nan:
-                all_roots.append(root)
-        return all_roots
-
-    def simple_try_at_fixed_L(self, E_bracket, L, qc_dict):
-        try:
-            root = root_scalar(self.get_value,
-                               args=(L, qc_dict),
-                               bracket=E_bracket).root
-            qc_ratio = np.abs(self.get_value(root, L, qc_dict)
-                              / self.get_value(root+EPSILON6, L, qc_dict))
-            if qc_ratio < EPSILON5:
-                return root
-            warnings.warn("Root was found but QC at the root is not "
-                          "sufficiently close to zero, returning NaN.")
-            return np.nan
-        except ValueError:
-            warnings.warn("Root not found and ValueError was raised either by "
-                          "root_scalar or by get_value. Returning NaN.")
-            return np.nan
-        warnings.warn("Root not found, not sure why. Returning NaN.")
-        return np.nan
-
-    def extract_EL_set(self, version, irrep, dL):
-        if (version in ['kdf_zero_1+_fgcombo',
-                        'kdf_zero_detf3inv_asym_fgcombo',
-                        'kdf+f3inv_asym_fgcombo']
-           and self.qcis.fvs.qc_impl['fplusg_smart_interpolate']):
-
-            Emin_interp, Emax_interp, Lmin_interp, Lmax_interp =\
-                self.fplusg.interp_data_lists[irrep][0][0][0]
-
-            Emin = Emin_interp + MINMAXOFFSET
-            Emax = Emax_interp - MINMAXOFFSET
-            Lmin = Lmin_interp + MINMAXOFFSET
-            Lmax = Lmax_interp - MINMAXOFFSET
-        else:
-            Emin = DEFAULT_EMIN
-            Emax = self.qcis.Emax
-            Lmin = DEFAULT_LMIN
-            Lmax = self.qcis.Lmax
-        if dL > 0.:
-            L = Lmin+dL+EPSILON4
-        else:
-            L = Lmax+dL-EPSILON4
-        E_range = [Emin, Emax]
-        L_vals = [L-dL, L]
-        return E_range, L, L_vals, Lmin, Lmax, Emax, Emin
-
-    def get_version_and_irrep(self, qc_dict):
-        project = qc_dict['project']
-        if not project:
-            raise ValueError("project must be True")
-        irrep = qc_dict['irrep']
-        version = qc_dict['version']
-        return version, irrep
-
-    def get_ni_functions(self, irrep):
-        ni_functions = []
-        for ni_function_channel in self.qcis.nonint_functions:
-            ni_functions.extend(ni_function_channel[irrep])
-        return ni_functions
-
-    def build_interpolated_E_vals(self, all_E_vals, L_vals, n_interp_points=4):
-        cleaned = []
-        for E_vals in all_E_vals:
-            unique_vals = []
-            for val in E_vals:
-                if not any(np.isclose(val, seen) for seen in unique_vals):
-                    unique_vals.append(val)
-            cleaned.append(sorted(unique_vals))
-        n = min(len(vals) for vals in cleaned)
-        trimmed = [vals[:n] for vals in cleaned]
-        for vals in trimmed:
-            assert np.all(np.diff(vals) >= 0)
-        grouped_E_vals = np.array(trimmed).T
-        target_L_vals = np.linspace(*L_vals, n_interp_points)
-        source_L_vals = np.array([target_L_vals[0], target_L_vals[-1]])
-        interp_E_vals = [
-            np.interp(target_L_vals, source_L_vals, E_pair).tolist()
-            for E_pair in grouped_E_vals
-        ]
-        interp_L_vals = [target_L_vals.copy() for _ in range(len(all_E_vals))]
-        return interp_E_vals, interp_L_vals
-
     def get_all_energies(self, qc_dict, dL=0.1):
         version, irrep = self.get_version_and_irrep(qc_dict)
         E_range, L, L_vals, Lmin, Lmax, Emax, Emin =\
@@ -1065,6 +905,46 @@ class QC:
                     self.qcis.fvs.qc_impl['fplusg_smart_interpolate'] = True
         return interp_L_vals, interp_E_vals
 
+    def get_version_and_irrep(self, qc_dict):
+        project = qc_dict['project']
+        if not project:
+            raise ValueError("project must be True")
+        irrep = qc_dict['irrep']
+        version = qc_dict['version']
+        return version, irrep
+
+    def extract_EL_set(self, version, irrep, dL):
+        if (version in ['kdf_zero_1+_fgcombo',
+                        'kdf_zero_detf3inv_asym_fgcombo',
+                        'kdf+f3inv_asym_fgcombo']
+           and self.qcis.fvs.qc_impl['fplusg_smart_interpolate']):
+
+            Emin_interp, Emax_interp, Lmin_interp, Lmax_interp =\
+                self.fplusg.interp_data_lists[irrep][0][0][0]
+
+            Emin = Emin_interp + MINMAXOFFSET
+            Emax = Emax_interp - MINMAXOFFSET
+            Lmin = Lmin_interp + MINMAXOFFSET
+            Lmax = Lmax_interp - MINMAXOFFSET
+        else:
+            Emin = DEFAULT_EMIN
+            Emax = self.qcis.Emax
+            Lmin = DEFAULT_LMIN
+            Lmax = self.qcis.Lmax
+        if dL > 0.:
+            L = Lmin+dL+EPSILON4
+        else:
+            L = Lmax+dL-EPSILON4
+        E_range = [Emin, Emax]
+        L_vals = [L-dL, L]
+        return E_range, L, L_vals, Lmin, Lmax, Emax, Emin
+
+    def get_ni_functions(self, irrep):
+        ni_functions = []
+        for ni_function_channel in self.qcis.nonint_functions:
+            ni_functions.extend(ni_function_channel[irrep])
+        return ni_functions
+
     def get_roots_for_Erange_and_LdL(self, E_range, L, dL, ni_functions,
                                      qc_dict, cuts=DEFAULT_CUTS):
         L_values = [L-dL, L]
@@ -1074,3 +954,123 @@ class QC:
                                               ni_functions, cuts=cuts)
             E_sets.append(E_set)
         return E_sets
+
+    def get_roots_from_range(self, E_range, L, qc_dict, ni_functions,
+                             cuts=DEFAULT_CUTS):
+        """
+        Compute the roots of the QC within a specified energy range.
+
+        This method calculates the roots of the QC for a given energy range
+        and box size `L`, considering non-interacting energy levels and
+        specified breakpoints. It uses a dictionary of parameters to define the
+        QC.
+
+        Args:
+            E_range (list): A list of two floats specifying the energy range
+                [E_min, E_max] within which to search for roots.
+            L (float): The box size parameter.
+            qc_dict (dict): See `get_value` method for details.
+            ni_functions (list): A list of functions that compute
+                non-interacting energy levels for a given `L`.
+            cuts (list, optional): A list of floats specifying the fractional
+                positions within each range to add additional breakpoints.
+                Defaults to `DEFAULT_CUTS`.
+
+        Returns:
+            list: A list of roots found within the specified energy range.
+
+        Raises:
+            TypeError: If `E_range` is not a list of two floats.
+            TypeError: If `L` is not a float.
+            TypeError: If `qc_dict` is not a dictionary or is missing
+                        required keys.
+            TypeError: If the types of values in `qc_dict` do not match the
+                        expected types.
+
+        Notes:
+            - The method identifies non-interacting energy levels within the
+                specified range and uses them to define subranges for root
+                finding.
+            - The `simple_try_at_fixed_L` method is used to find roots within
+                each subrange.
+            - Roots that are `np.nan` are excluded from the results.
+        """
+        if not isinstance(E_range, list) or len(E_range) != 2 or \
+                not all(isinstance(E, float) for E in E_range):
+            raise TypeError("E_range must be a list of two floats")
+        if not isinstance(L, float):
+            raise TypeError("L must be a float")
+        self.validate_qc_dict(qc_dict)
+        nonint_energies = []
+        for ni_function in ni_functions:
+            nonint_energies.append(ni_function(L))
+        nonint_energies = np.array(nonint_energies)
+        nonint_in_range = nonint_energies[E_range[0] < nonint_energies]
+        nonint_in_range = nonint_in_range[nonint_in_range < E_range[1]]
+        breakpoints = np.concatenate(([E_range[0]], nonint_in_range,
+                                      [E_range[1]]))
+        breakpoints = np.sort(breakpoints)
+        differences = np.diff(breakpoints)
+        cuts = np.sort(cuts)
+        all_breakpoints = []
+        for i in range(len(differences)):
+            for cut in cuts:
+                all_breakpoints.append(breakpoints[i]+cut*differences[i])
+        all_breakpoints.append(breakpoints[-1])
+        all_breakpoints = np.array(all_breakpoints)
+        all_ranges = []
+        for i in range(len(all_breakpoints)-1):
+            candidate_range = [all_breakpoints[i], all_breakpoints[i+1]]
+            no_nonint_in_candidate = True
+            for nonint_energy in nonint_in_range:
+                if candidate_range[0] < nonint_energy < candidate_range[1]:
+                    no_nonint_in_candidate = False
+            if no_nonint_in_candidate:
+                all_ranges.append([all_breakpoints[i], all_breakpoints[i+1]])
+        all_roots = []
+        for E_bracket in all_ranges:
+            root = self.simple_try_at_fixed_L(E_bracket, L, qc_dict)
+            if root is not np.nan:
+                all_roots.append(root)
+        return all_roots
+
+    def simple_try_at_fixed_L(self, E_bracket, L, qc_dict):
+        try:
+            root = root_scalar(self.get_value,
+                               args=(L, qc_dict),
+                               bracket=E_bracket).root
+            qc_ratio = np.abs(self.get_value(root, L, qc_dict)
+                              / self.get_value(root+EPSILON6, L, qc_dict))
+            if qc_ratio < EPSILON5:
+                return root
+            warnings.warn("Root was found but QC at the root is not "
+                          "sufficiently close to zero, returning NaN.")
+            return np.nan
+        except ValueError:
+            warnings.warn("Root not found and ValueError was raised either by "
+                          "root_scalar or by get_value. Returning NaN.")
+            return np.nan
+        warnings.warn("Root not found, not sure why. Returning NaN.")
+        return np.nan
+
+    def build_interpolated_E_vals(self, all_E_vals, L_vals, n_interp_points=4):
+        cleaned = []
+        for E_vals in all_E_vals:
+            unique_vals = []
+            for val in E_vals:
+                if not any(np.isclose(val, seen) for seen in unique_vals):
+                    unique_vals.append(val)
+            cleaned.append(sorted(unique_vals))
+        n = min(len(vals) for vals in cleaned)
+        trimmed = [vals[:n] for vals in cleaned]
+        for vals in trimmed:
+            assert np.all(np.diff(vals) >= 0)
+        grouped_E_vals = np.array(trimmed).T
+        target_L_vals = np.linspace(*L_vals, n_interp_points)
+        source_L_vals = np.array([target_L_vals[0], target_L_vals[-1]])
+        interp_E_vals = [
+            np.interp(target_L_vals, source_L_vals, E_pair).tolist()
+            for E_pair in grouped_E_vals
+        ]
+        interp_L_vals = [target_L_vals.copy() for _ in range(len(all_E_vals))]
+        return interp_E_vals, interp_L_vals
