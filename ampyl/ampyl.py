@@ -40,6 +40,7 @@ from scipy.optimize import root_scalar
 from .constants import TWOPI
 from .constants import FOURPI2
 from .constants import EPSILON4
+from .constants import EPSILON30
 from .constants import QC_IMPL_DEFAULTS
 from .constants import DEFAULT_CUTS
 from .constants import QC_DICT_DEFAULTS
@@ -715,11 +716,11 @@ class QC:
             id_mat = np.identity(len(FplusG))
             H = id_mat+FplusG@K
             detH = np.linalg.det(H)
-            if np.abs(detH) < EPSILON10:
-                Hinverse = id_mat/(EPSILON10)
+            if np.abs(detH) < EPSILON30:
+                Hinverse = id_mat/(EPSILON30)
             else:
                 Hinverse = np.linalg.inv(H)
-            F3 = FplusG - FplusG@K@Hinverse@FplusG
+            F3 = (FplusG - FplusG@K@Hinverse@FplusG)/L**3
             return 1./np.linalg.det(F3)
 
         if version == 'kdf+f3inv_asym_fgcombo':
