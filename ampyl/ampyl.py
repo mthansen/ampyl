@@ -944,17 +944,15 @@ class QC:
                     unique_E_vals.append(E_val)
             all_E_vals[k] = sorted(unique_E_vals)
         return all_E_vals
+
     def prune_tolist_and_build_all_L_vals(self, all_E_vals, L_vals):
-        min_len = min(len(all_E_vals[0]), len(all_E_vals[1]))
-        all_E_vals[0] = all_E_vals[0][:min_len]
-        all_E_vals[1] = all_E_vals[1][:min_len]
-        all_E_vals = np.array(all_E_vals).T.tolist()
-        all_L_vals = [deepcopy(L_vals) for i in range(len(all_E_vals))]
-        L_vals = list(np.linspace(all_L_vals[0][0], all_L_vals[0][1], 4))
-        all_L_vals = [deepcopy(L_vals) for i in range(len(all_L_vals))]
-        assert len(all_E_vals) == 2
-        for arr in (np.array(all_E_vals).T):
+        n = min(map(len, all_E_vals))
+        trimmed = [vals[:n] for vals in all_E_vals]
+        for arr in trimmed:
             assert np.all(np.diff(arr) >= 0)
+        all_E_vals = np.array(trimmed).T.tolist()
+        L_vals = list(np.linspace(*L_vals, 4))
+        all_L_vals = [L_vals.copy() for _ in all_E_vals]
         return all_E_vals, all_L_vals
         for i in range(len(all_E_vals)):
             E_vals = np.array(all_E_vals[i])
