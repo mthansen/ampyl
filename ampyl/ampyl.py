@@ -848,6 +848,7 @@ class QC:
         nonint_in_range = nonint_in_range[nonint_in_range < E_range[1]]
         breakpoints = np.concatenate(([E_range[0]], nonint_in_range,
                                       [E_range[1]]))
+        breakpoints = np.sort(breakpoints)
         differences = np.diff(breakpoints)
         cuts = np.sort(cuts)
         all_breakpoints = []
