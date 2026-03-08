@@ -65,7 +65,7 @@ class TestQC(unittest.TestCase):
         qcis.populate()
         qc = ampyl.QC(qcis=qcis)
         L = 16*0.06906*3.444
-        k_params = [[[5.80, 2.184], [0.296]], [-9.0/L**3]]
+        k_params = [[[5.80, 2.184], [0.296]], [-9.0]]
         project = True
         irrep = ('T1MINUS', 1)
         qc_dict = {'k_params': k_params, 'project': project, 'irrep': irrep,
