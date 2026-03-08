@@ -953,7 +953,8 @@ class QC:
             np.interp(target_L_vals, source_L_vals, E_pair).tolist()
             for E_pair in grouped_E_vals
         ]
-        return interp_E_vals
+        interp_L_vals = [target_L_vals.copy() for _ in range(len(all_E_vals))]
+        return interp_E_vals, interp_L_vals
 
     def get_all_energies(self, qc_dict, dL=0.1):
         version, irrep = self.get_version_and_irrep(qc_dict)
@@ -962,21 +963,22 @@ class QC:
         ni_functions = self.get_ni_functions(irrep)
         all_E_vals = self.get_roots_for_Erange_and_LdL(
             E_range, L, dL, ni_functions, qc_dict)
-        interp_E_vals = self.build_interpolated_E_vals(all_E_vals, L_vals)
+        interp_E_vals, interp_L_vals =\
+            self.build_interpolated_E_vals(all_E_vals, L_vals)
 
-        for i in range(len(all_E_vals)):
-            for j in range(len(all_E_vals[i])):
-                Ltmp = all_L_vals[i][j]
-                Etmp = all_E_vals[i][j]
-                E_vals_tmp = np.array(all_E_vals[i])
-                L_vals_tmp = np.array(all_L_vals[i])
+        for i in range(len(interp_E_vals)):
+            for j in range(len(interp_E_vals[i])):
+                Ltmp = interp_L_vals[i][j]
+                Etmp = interp_E_vals[i][j]
+                E_vals_tmp = np.array(interp_E_vals[i])
+                L_vals_tmp = np.array(interp_L_vals[i])
                 if j != 0 and j != len(E_vals_tmp)-1:
                     E_vals_tmp = np.delete(E_vals_tmp, j)
                     L_vals_tmp = np.delete(L_vals_tmp, j)
                 sorted_indices = np.argsort(L_vals_tmp)
                 Etmp = np.interp(Ltmp, L_vals_tmp[sorted_indices],
                                  E_vals_tmp[sorted_indices])
-                all_E_vals[i][j] = Etmp
+                interp_E_vals[i][j] = Etmp
                 Eupdate = np.nan
                 bracket_shift = 1.e-10
                 while np.isnan(Eupdate) and bracket_shift < 1.e-1:
@@ -1011,22 +1013,24 @@ class QC:
                                           f"L = {L}"
                                           f"{bcolors.ENDC}")
                         else:
-                            all_E_vals[i][j] = Eupdate
+                            interp_E_vals[i][j] = Eupdate
                         self.qcis.fvs.qc_impl['fplusg_smart_interpolate']\
                             = True
                 else:
-                    all_E_vals[i][j] = Eupdate
+                    interp_E_vals[i][j] = Eupdate
                 self.qcis.fvs.qc_impl['fplusg_smart_interpolate'] = True
 
         while Lmin+np.abs(dL) <= L <= Lmax-np.abs(dL):
             L = L+dL
-            for i in range(len(all_E_vals)):
-                degree = min(len(all_L_vals[i])-1, 3)
-                if len(all_L_vals[i]) > 9:
-                    fit = np.polyfit(all_L_vals[i][-9:], all_E_vals[i][-9:],
+            for i in range(len(interp_E_vals)):
+                degree = min(len(interp_L_vals[i])-1, 3)
+                if len(interp_L_vals[i]) > 9:
+                    fit = np.polyfit(interp_L_vals[i][-9:],
+                                     interp_E_vals[i][-9:],
                                      degree)
                 else:
-                    fit = np.polyfit(all_L_vals[i], all_E_vals[i], degree)
+                    fit = np.polyfit(interp_L_vals[i], interp_E_vals[i],
+                                     degree)
                 line = np.poly1d(fit)
                 E_guess = line(L)
                 dE = 1.e-6
@@ -1047,18 +1051,18 @@ class QC:
                 if len(E_val) == 1:
                     print(f'Unique solution found with dE = {dE}')
                     print(f'L = {L}, E = {E_val[0]}')
-                    all_E_vals[i].append(E_val[0])
-                    all_L_vals[i].append(L)
+                    interp_E_vals[i].append(E_val[0])
+                    interp_L_vals[i].append(L)
                 elif len(E_val) > 1:
                     index = np.abs(E_val - E_guess).argmin()
                     Eupdate = E_val[index]
-                    all_E_vals[i].append(Eupdate)
-                    all_L_vals[i].append(L)
+                    interp_E_vals[i].append(Eupdate)
+                    interp_L_vals[i].append(L)
                     warnings.warn(f'Multiple solutions found for L = {L}.\n'
                                   f'Differences are {np.abs(E_set - Etmp)}')
 
                     self.qcis.fvs.qc_impl['fplusg_smart_interpolate'] = True
-        return all_L_vals, all_E_vals
+        return interp_L_vals, interp_E_vals
 
     def get_roots_for_Erange_and_LdL(self, E_range, L, dL, ni_functions,
                                      qc_dict, cuts=DEFAULT_CUTS):
