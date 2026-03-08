@@ -934,37 +934,27 @@ class QC:
             ni_functions.extend(ni_function_channel[irrep])
         return ni_functions
 
-    def unique_and_sort(self, all_E_vals):
-        for k in range(len(all_E_vals)):
-            E_vals = all_E_vals[k]
-            unique_E_vals = []
-            for E_val in E_vals:
-                if not any(np.isclose(E_val, unique_E_val)
-                           for unique_E_val in unique_E_vals):
-                    unique_E_vals.append(E_val)
-            all_E_vals[k] = sorted(unique_E_vals)
-        return all_E_vals
 
-    def prune_tolist_and_build_all_L_vals(self, all_E_vals, L_vals):
-        n = min(map(len, all_E_vals))
-        trimmed = [vals[:n] for vals in all_E_vals]
-        for arr in trimmed:
-            assert np.all(np.diff(arr) >= 0)
-        all_E_vals = np.array(trimmed).T.tolist()
-        L_vals = list(np.linspace(*L_vals, 4))
-        all_L_vals = [L_vals.copy() for _ in all_E_vals]
-        return all_E_vals, all_L_vals
-
-    def interpolate_E_vals(self, all_E_vals, all_L_vals):
-        for i in range(len(all_E_vals)):
-            E_vals = np.array(all_E_vals[i])
-            L_vals_tmp = np.array([all_L_vals[i][0], all_L_vals[i][-1]])
-            sorted_indices = np.argsort(L_vals_tmp)
-            E_vals = np.interp(all_L_vals[i],
-                               L_vals_tmp[sorted_indices],
-                               E_vals[sorted_indices])
-            all_E_vals[i] = list(E_vals)
-        return all_E_vals
+    def build_interpolated_E_vals(self, all_E_vals, L_vals, n_interp_points=4):
+        cleaned = []
+        for E_vals in all_E_vals:
+            unique_vals = []
+            for val in E_vals:
+                if not any(np.isclose(val, seen) for seen in unique_vals):
+                    unique_vals.append(val)
+            cleaned.append(sorted(unique_vals))
+        n = min(len(vals) for vals in cleaned)
+        trimmed = [vals[:n] for vals in cleaned]
+        for vals in trimmed:
+            assert np.all(np.diff(vals) >= 0)
+        grouped_E_vals = np.array(trimmed).T
+        target_L_vals = np.linspace(*L_vals, n_interp_points)
+        source_L_vals = np.array([target_L_vals[0], target_L_vals[-1]])
+        interp_E_vals = [
+            np.interp(target_L_vals, source_L_vals, E_pair).tolist()
+            for E_pair in grouped_E_vals
+        ]
+        return interp_E_vals
 
     def get_all_energies(self, qc_dict, dL=0.1):
         version, irrep = self.get_version_and_irrep(qc_dict)
