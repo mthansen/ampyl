@@ -966,6 +966,18 @@ class QC:
             all_E_vals[i] = list(E_vals)
         return all_E_vals
 
+    def get_all_energies(self, qc_dict, dL=0.1):
+        version, irrep = self.get_version_and_irrep(qc_dict)
+        E_range, L, L_vals, Lmin, Lmax, Emax, Emin =\
+            self.extract_EL_set(version, irrep, dL)
+        ni_functions = self.get_ni_functions(irrep)
+        all_E_vals = self.get_roots_for_Erange_and_LdL(
+            E_range, L, dL, ni_functions, qc_dict)
+        all_E_vals = self.unique_and_sort(all_E_vals)
+        all_E_vals, all_L_vals =\
+            self.prune_tolist_and_build_all_L_vals(all_E_vals, L_vals)
+        all_E_vals = self.interpolate_E_vals(all_E_vals, all_L_vals)
+
         for i in range(len(all_E_vals)):
             for j in range(len(all_E_vals[i])):
                 Ltmp = all_L_vals[i][j]
