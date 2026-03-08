@@ -920,20 +920,21 @@ class QC:
         L_vals = [L-dL, L]
         return E_range, L, L_vals, Lmin, Lmax, Emax, Emin
 
-    def get_all_energies(self, qc_dict, dL=0.1):
-        version = qc_dict['version']
-        E_range, L, L_vals, Lmin, Lmax, Emax, Emin =\
-            self.extract_EL_set(version, dL)
+    def get_version_and_irrep(self, qc_dict):
         project = qc_dict['project']
         if not project:
             raise ValueError("project must be True")
         irrep = qc_dict['irrep']
+        version = qc_dict['version']
+        return version, irrep
+
+    def get_ni_functions(self, irrep):
         ni_functions = []
         for ni_function_channel in self.qcis.nonint_functions:
             ni_functions.extend(ni_function_channel[irrep])
-        all_E_vals = self.get_roots_for_Erange_and_LdL(
-            E_range, L, dL, ni_functions, qc_dict)
+        return ni_functions
 
+    def unique_and_sort(self, all_E_vals):
         for k in range(len(all_E_vals)):
             E_vals = all_E_vals[k]
             unique_E_vals = []
@@ -942,14 +943,7 @@ class QC:
                            for unique_E_val in unique_E_vals):
                     unique_E_vals.append(E_val)
             all_E_vals[k] = sorted(unique_E_vals)
-        assert len(all_E_vals) == 2
-        min_len = min(len(all_E_vals[0]), len(all_E_vals[1]))
-        all_E_vals[0] = all_E_vals[0][:min_len]
-        all_E_vals[1] = all_E_vals[1][:min_len]
-        all_E_vals = np.array(all_E_vals).T.tolist()
-        all_L_vals = [deepcopy(L_vals) for i in range(len(all_E_vals))]
-
-        for arr in (np.array(all_E_vals).T):
+        return all_E_vals
             assert np.all(np.diff(arr) >= 0)
 
         for i in range(len(all_L_vals)):
