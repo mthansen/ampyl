@@ -49,9 +49,9 @@ QC_DICT_DEFAULTS = {
     'shift': 0.
 }
 
-MINMAXOFFSET = 0.1
+MINMAXOFFSET = 0.01
 DEFAULT_EMIN = 1.801
-DEFAULT_LMIN = 5.8
+DEFAULT_LMIN = 3.0
 
 QC_IMPL_DEFAULTS = {'hermitian': True,
                     'real_harmonics': True,
