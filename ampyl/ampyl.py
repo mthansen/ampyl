@@ -944,14 +944,18 @@ class QC:
                     unique_E_vals.append(E_val)
             all_E_vals[k] = sorted(unique_E_vals)
         return all_E_vals
-            assert np.all(np.diff(arr) >= 0)
-
-        for i in range(len(all_L_vals)):
-            assert len(all_L_vals[i]) == len(all_L_vals[0])
-            for j in range(len(L_vals)):
-                assert all_L_vals[i][j] == all_L_vals[0][j]
+    def prune_tolist_and_build_all_L_vals(self, all_E_vals, L_vals):
+        min_len = min(len(all_E_vals[0]), len(all_E_vals[1]))
+        all_E_vals[0] = all_E_vals[0][:min_len]
+        all_E_vals[1] = all_E_vals[1][:min_len]
+        all_E_vals = np.array(all_E_vals).T.tolist()
+        all_L_vals = [deepcopy(L_vals) for i in range(len(all_E_vals))]
         L_vals = list(np.linspace(all_L_vals[0][0], all_L_vals[0][1], 4))
         all_L_vals = [deepcopy(L_vals) for i in range(len(all_L_vals))]
+        assert len(all_E_vals) == 2
+        for arr in (np.array(all_E_vals).T):
+            assert np.all(np.diff(arr) >= 0)
+        return all_E_vals, all_L_vals
         for i in range(len(all_E_vals)):
             E_vals = np.array(all_E_vals[i])
             L_vals_tmp = np.array([all_L_vals[i][0], all_L_vals[i][-1]])
