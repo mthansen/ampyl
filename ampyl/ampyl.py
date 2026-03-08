@@ -954,6 +954,8 @@ class QC:
         L_vals = list(np.linspace(*L_vals, 4))
         all_L_vals = [L_vals.copy() for _ in all_E_vals]
         return all_E_vals, all_L_vals
+
+    def interpolate_E_vals(self, all_E_vals, all_L_vals):
         for i in range(len(all_E_vals)):
             E_vals = np.array(all_E_vals[i])
             L_vals_tmp = np.array([all_L_vals[i][0], all_L_vals[i][-1]])
@@ -962,6 +964,7 @@ class QC:
                                L_vals_tmp[sorted_indices],
                                E_vals[sorted_indices])
             all_E_vals[i] = list(E_vals)
+        return all_E_vals
 
         for i in range(len(all_E_vals)):
             for j in range(len(all_E_vals[i])):
