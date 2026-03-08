@@ -40,7 +40,6 @@ from scipy.optimize import root_scalar
 from .constants import TWOPI
 from .constants import FOURPI2
 from .constants import EPSILON4
-from .constants import EPSILON10
 from .constants import QC_IMPL_DEFAULTS
 from .constants import DEFAULT_CUTS
 from .constants import QC_DICT_DEFAULTS
@@ -53,7 +52,6 @@ from .cuts import G
 from .cuts import F
 from .cuts import FplusG
 import warnings
-from copy import deepcopy
 warnings.simplefilter("once")
 
 
