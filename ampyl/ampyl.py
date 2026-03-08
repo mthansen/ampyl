@@ -963,10 +963,7 @@ class QC:
         ni_functions = self.get_ni_functions(irrep)
         all_E_vals = self.get_roots_for_Erange_and_LdL(
             E_range, L, dL, ni_functions, qc_dict)
-        all_E_vals = self.unique_and_sort(all_E_vals)
-        all_E_vals, all_L_vals =\
-            self.prune_tolist_and_build_all_L_vals(all_E_vals, L_vals)
-        all_E_vals = self.interpolate_E_vals(all_E_vals, all_L_vals)
+        interp_E_vals = self.build_interpolated_E_vals(all_E_vals, L_vals)
 
         for i in range(len(all_E_vals)):
             for j in range(len(all_E_vals[i])):
