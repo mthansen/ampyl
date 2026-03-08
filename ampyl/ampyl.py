@@ -934,7 +934,6 @@ class QC:
             ni_functions.extend(ni_function_channel[irrep])
         return ni_functions
 
-
     def build_interpolated_E_vals(self, all_E_vals, L_vals, n_interp_points=4):
         cleaned = []
         for E_vals in all_E_vals:
