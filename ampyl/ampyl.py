@@ -42,6 +42,7 @@ from .constants import FOURPI2
 from .constants import EPSILON4
 from .constants import EPSILON5
 from .constants import EPSILON6
+from .constants import EPSILON10
 from .constants import EPSILON30
 from .constants import QC_IMPL_DEFAULTS
 from .constants import DEFAULT_CUTS
@@ -980,7 +981,7 @@ class QC:
                                  E_vals_tmp[sorted_indices])
                 interp_E_vals[i][j] = Etmp
                 Eupdate = np.nan
-                bracket_shift = 1.e-10
+                bracket_shift = EPSILON10
                 while np.isnan(Eupdate) and bracket_shift < 1.e-1:
                     E_range = [Etmp-bracket_shift, Etmp+bracket_shift]
                     cuts_a = np.logspace(-8, -2, 4)
