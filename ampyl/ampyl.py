@@ -37,6 +37,7 @@ Created July 2022.
 import numpy as np
 from scipy.linalg import block_diag
 from scipy.optimize import root_scalar
+from . import shell_utils
 from .constants import TWOPI
 from .constants import FOURPI2
 from .constants import EPSILON4
@@ -61,7 +62,7 @@ warnings.simplefilter("once")
 
 class K:
     """
-    Class for the two-to-two k matrix.
+    Class for the two-to-two K matrix.
 
     :param qcis: quantization-condition index space, specifying all data for
         the class
@@ -75,39 +76,6 @@ class K:
             or (three_scheme == 'relativistic pole')
         if alpha_beta_scheme:
             [self.alpha, self.beta] = self.qcis.tbis.scheme_data
-
-    def _get_masks_and_shells(self, E, L, tbks_entry, cindex, slice_index):
-        nP = self.qcis.fvs.nP
-        mask_slices = None
-        three_slice_index = self.qcis.sc_to_three_slice[cindex]
-        if nP@nP == 0:
-            slice_entry = tbks_entry.shells[slice_index]
-        else:
-            sc_list_sorted = self.qcis.fcs.sc_list_sorted
-            slices_by_three_masses = self.qcis.fcs.slices_by_three_masses
-            inslice_index = 0
-            sc_index = slices_by_three_masses[three_slice_index][inslice_index]
-            masses = sc_list_sorted[sc_index].masses_indexed
-            spec_index = 0
-            mspec = masses[spec_index]
-            kvecSQ_arr = FOURPI2*tbks_entry.nvecSQ_arr/L**2
-            kvec_arr = TWOPI*tbks_entry.nvec_arr/L
-            omk_arr = np.sqrt(mspec**2+kvecSQ_arr)
-            Pvec = TWOPI*nP/L
-            PmkSQ_arr = ((Pvec-kvec_arr)**2).sum(axis=1)
-            scatterer_a_index = 1
-            scatterer_b_index = 2
-            threshold = masses[scatterer_a_index] + masses[scatterer_b_index]
-            zero_support_point = self._get_zero_support_point(threshold)
-            mask = (E-omk_arr)**2-PmkSQ_arr > zero_support_point
-            slices = tbks_entry.shells
-            mask_slices = []
-            for slice_entry in slices:
-                mask_slices = mask_slices\
-                    + [mask[slice_entry[0]:slice_entry[1]].all()]
-            slices = list(np.array(slices)[mask_slices])
-            slice_entry = slices[slice_index]
-        return mask_slices, slice_entry
 
     def get_shell(self, E=5.0, L=5.0, m1=1.0, m2=1.0, m3=1.0,
                   cindex=None, sc_ind=None, ell=0,
@@ -128,7 +96,8 @@ class K:
             pv_shift_parameters = None
 
         mask_slices, slice_entry\
-            = self._get_masks_and_shells(E, L, tbks_entry, cindex, slice_index)
+            = shell_utils.get_masks_and_shells_for_k(self, E, L, tbks_entry,
+                                                     cindex, slice_index)
         Kshell = QCFunctions.getK_array(
             E, nP, L, m1, m2, m3, tbks_entry, slice_entry, ell,
             pcotdelta_function, pcotdelta_parameter_list, alpha, beta,
@@ -348,9 +317,9 @@ class Kdf:
         nP = self.qcis.fvs.nP
 
         mask_row_shells, mask_col_shells, row_shell, col_shell\
-            = self._get_masks_and_shells(E, L, tbks_entry,
-                                         cindex_row, cindex_col,
-                                         row_shell_index, col_shell_index)
+            = shell_utils.get_masks_and_shells_for_kdf(
+                self, E, L, tbks_entry, cindex_row, cindex_col,
+                row_shell_index, col_shell_index)
         if project:
             try:
                 if nP@nP == 0:
@@ -410,26 +379,6 @@ class Kdf:
                 self.qcis.proj_dicts_by_sc_and_shellset[sc_index_row][ibest]
                      )[mask_row_shells][row_shell_index][irrep]).T)
         return proj_tmp_right, proj_tmp_left
-
-    def _get_masks_and_shells(self, E, L, tbks_entry,
-                              cindex_row, cindex_col,
-                              row_shell_index, col_shell_index):
-        nP = self.qcis.fvs.nP
-        three_slice_index_row =\
-            self.qcis.sc_to_three_slice[cindex_row]
-        three_slice_index_col =\
-            self.qcis.sc_to_three_slice[cindex_col]
-        if not (three_slice_index_row == three_slice_index_col == 0):
-            raise ValueError("only one mass slice is supported in Kdf")
-        if nP@nP == 0:
-            mask_row_shells, mask_col_shells, row_shell, col_shell\
-                = self._mask_and_shell_helper_nPzero(tbks_entry,
-                                                     row_shell_index,
-                                                     col_shell_index)
-        else:
-            raise NotImplementedError("masking for non-zero nP is not "
-                                      "implemented yet.")
-        return mask_row_shells, mask_col_shells, row_shell, col_shell
 
     def _mask_and_shell_helper_nPzero(self, tbks_entry, row_shell_index,
                                       col_shell_index):
