@@ -1072,5 +1072,6 @@ class QC:
             np.interp(target_L_vals, source_L_vals, E_pair).tolist()
             for E_pair in grouped_E_vals
         ]
-        interp_L_vals = [target_L_vals.copy() for _ in range(len(all_E_vals))]
+        interp_L_vals = [target_L_vals.copy().tolist()
+                         for _ in range(len(interp_E_vals))]
         return interp_E_vals, interp_L_vals
