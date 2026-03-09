@@ -274,6 +274,10 @@ class FlavorChannel:
             particles = [Particle() for _ in range(self.n_particles)]
         if len(particles) != self.n_particles:
             raise ValueError("len(particles) must be equal to n_particles")
+        self.check_particles(particles)
+        self._particles = particles
+
+    def check_particles(self, particles):
         for particle in particles:
             if not isinstance(particle, Particle):
                 raise ValueError("particles must be a list of Particle "
@@ -295,7 +299,6 @@ class FlavorChannel:
                 raise ValueError("none of the particles can be an isospin "
                                  "multiplet if the channel is not an "
                                  "isospin channel")
-        self._particles = particles
 
     @property
     def isospin_channel(self):
