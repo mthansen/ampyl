@@ -33,3 +33,61 @@ Created July 2022.
 # SOFTWARE.
 #
 ###############################################################################
+
+import numpy as np
+from .constants import FOURPI2, TWOPI
+
+
+def get_masks_and_shells_for_k(k, E, L, tbks_entry, cindex, slice_index):
+    nP = k.qcis.fvs.nP
+    mask_slices = None
+    three_slice_index = k.qcis.sc_to_three_slice[cindex]
+    if nP@nP == 0:
+        slice_entry = tbks_entry.shells[slice_index]
+    else:
+        sc_list_sorted = k.qcis.fcs.sc_list_sorted
+        slices_by_three_masses = k.qcis.fcs.slices_by_three_masses
+        inslice_index = 0
+        sc_index = slices_by_three_masses[three_slice_index][inslice_index]
+        masses = sc_list_sorted[sc_index].masses_indexed
+        spec_index = 0
+        mspec = masses[spec_index]
+        kvecSQ_arr = FOURPI2*tbks_entry.nvecSQ_arr/L**2
+        kvec_arr = TWOPI*tbks_entry.nvec_arr/L
+        omk_arr = np.sqrt(mspec**2+kvecSQ_arr)
+        Pvec = TWOPI*nP/L
+        PmkSQ_arr = ((Pvec-kvec_arr)**2).sum(axis=1)
+        scatterer_a_index = 1
+        scatterer_b_index = 2
+        threshold = masses[scatterer_a_index] + masses[scatterer_b_index]
+        zero_support_point = k._get_zero_support_point(threshold)
+        mask = (E-omk_arr)**2-PmkSQ_arr > zero_support_point
+        slices = tbks_entry.shells
+        mask_slices = []
+        for slice_entry in slices:
+            mask_slices = mask_slices\
+                + [mask[slice_entry[0]:slice_entry[1]].all()]
+        slices = list(np.array(slices)[mask_slices])
+        slice_entry = slices[slice_index]
+    return mask_slices, slice_entry
+
+
+def get_masks_and_shells_for_kdf(kdf, E, L, tbks_entry,
+                                 cindex_row, cindex_col,
+                                 row_shell_index, col_shell_index):
+    nP = kdf.qcis.fvs.nP
+    three_slice_index_row =\
+        kdf.qcis.sc_to_three_slice[cindex_row]
+    three_slice_index_col =\
+        kdf.qcis.sc_to_three_slice[cindex_col]
+    if not (three_slice_index_row == three_slice_index_col == 0):
+        raise ValueError("only one mass slice is supported in Kdf")
+    if nP@nP == 0:
+        mask_row_shells, mask_col_shells, row_shell, col_shell\
+            = kdf._mask_and_shell_helper_nPzero(tbks_entry,
+                                                row_shell_index,
+                                                col_shell_index)
+    else:
+        raise NotImplementedError("masking for non-zero nP is not "
+                                  "implemented yet.")
+    return mask_row_shells, mask_col_shells, row_shell, col_shell
