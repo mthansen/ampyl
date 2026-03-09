@@ -130,7 +130,7 @@ class TestFlavorChannelSpace(unittest.TestCase):
         for sc in fcs.sc_list:
             previous_sc_list.append(sc)
         sc = SpectatorChannel(fc=fcb)
-        fcs._add_spectator_channel(sc)
+        fcs.add_spectator_channel(sc)
         expected_sc_list = previous_sc_list+[sc]
         self.assertEqual(len(fcs.sc_list), len(expected_sc_list))
         for i in range(len(fcs.sc_list)):
@@ -147,7 +147,7 @@ class TestFlavorChannelSpace(unittest.TestCase):
         previous_sc_list = []
         for sc in fcs.sc_list:
             previous_sc_list.append(sc)
-        fcs._add_flavor_channel(fca)
+        fcs.add_flavor_channel(fca)
         expected_sc_list = previous_sc_list+[sca1]
         expected_sc_list = expected_sc_list+[sca2]
         self.assertEqual(len(fcs.sc_list), len(expected_sc_list))
@@ -161,7 +161,7 @@ class TestFlavorChannelSpace(unittest.TestCase):
         fcs = FlavorChannelSpace(fc_list=[fca])
         fcb = FlavorChannel(3, particles=[pion, pion, pion])
         scb = SpectatorChannel(fc=fcb)
-        fcs._add_spectator_channel(scb)
+        fcs.add_spectator_channel(scb)
         self.assertEqual(len(fcs.sc_list_sorted), 1)
         flavor_utils.build_sorted_sc_list(fcs)
         self.assertEqual(len(fcs.sc_list_sorted), 2)
@@ -193,7 +193,7 @@ class TestFlavorChannelSpace(unittest.TestCase):
         self.assertEqual(fcs.g_templates, expected_g_templates)
         sigma = Particle(mass=3.0, spin=0.0, flavor='sigma')
         fcb = FlavorChannel(3, particles=[sigma, sigma, sigma])
-        fcs._add_flavor_channel(fcb)
+        fcs.add_flavor_channel(fcb)
         self.assertEqual(fcs.g_templates, expected_g_templates)
         flavor_utils.build_sorted_sc_list(fcs)
         flavor_ope_utils.build_g_templates(fcs)
