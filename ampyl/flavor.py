@@ -674,7 +674,7 @@ class FlavorChannelSpace:
 
     def __init__(self, fc_list=[], ni_list=None, verbosity=0):
         self.verbosity = verbosity
-        self._set_lists(fc_list, ni_list)
+        self.set_fc_and_ni_lists(fc_list, ni_list)
         flavor_utils.build_sorted_sc_list(self)
         flavor_ope_utils.build_g_templates(self)
         flavor_ope_utils.build_g_templates_ell_specific(self)
@@ -692,7 +692,7 @@ class FlavorChannelSpace:
         flavor_utils.check_type(verbosity, "verbosity", int, "int")
         self._verbosity = verbosity
 
-    def _set_lists(self, fc_list, ni_list):
+    def set_fc_and_ni_lists(self, fc_list, ni_list):
         self.fc_list = fc_list
         if ni_list is None:
             self.ni_list = fc_list
@@ -700,7 +700,7 @@ class FlavorChannelSpace:
             self.ni_list = ni_list
         self.sc_list = []
         for fc in fc_list:
-            self._add_flavor_channel(fc)
+            self.add_flavor_channel(fc)
 
     def update_g_templates(self):
         """Update the g templates."""
@@ -709,10 +709,10 @@ class FlavorChannelSpace:
         if self.verbosity >= 2:
             self.print_summary()
 
-    def _add_spectator_channel(self, sc):
+    def add_spectator_channel(self, sc):
         self.sc_list.append(sc)
 
-    def _add_flavor_channel(self, fc):
+    def add_flavor_channel(self, fc):
         """
         Add a FlavorChannel to the FlavorChannelSpace.
 
@@ -721,7 +721,7 @@ class FlavorChannelSpace:
         """
         if fc.n_particles == 2:
             sc1 = SpectatorChannel(fc, indexing=None)
-            self._add_spectator_channel(sc1)
+            self.add_spectator_channel(sc1)
         elif fc.isospin_channel:
             for entry in fc.summary_reduced:
                 indexing, sub_isospin, ell_set\
@@ -729,33 +729,33 @@ class FlavorChannelSpace:
                 sc_tmp = SpectatorChannel(fc, indexing=indexing,
                                           sub_isospin=sub_isospin,
                                           ell_set=ell_set)
-                self._add_spectator_channel(sc_tmp)
+                self.add_spectator_channel(sc_tmp)
         else:
             if fc.flavors[0] == fc.flavors[1] == fc.flavors[2]:
                 sc1 = SpectatorChannel(fc)
-                self._add_spectator_channel(sc1)
+                self.add_spectator_channel(sc1)
             elif fc.flavors[0] == fc.flavors[1]:
                 sc1 = SpectatorChannel(fc)
                 sc2 = SpectatorChannel(fc, indexing=[2, 0, 1])
-                self._add_spectator_channel(sc1)
-                self._add_spectator_channel(sc2)
+                self.add_spectator_channel(sc1)
+                self.add_spectator_channel(sc2)
             elif fc.flavors[0] == fc.flavors[2]:
                 sc1 = SpectatorChannel(fc)
                 sc2 = SpectatorChannel(fc, indexing=[1, 2, 0])
-                self._add_spectator_channel(sc1)
-                self._add_spectator_channel(sc2)
+                self.add_spectator_channel(sc1)
+                self.add_spectator_channel(sc2)
             elif fc.flavors[1] == fc.flavors[2]:
                 sc1 = SpectatorChannel(fc)
                 sc2 = SpectatorChannel(fc, indexing=[1, 2, 0])
-                self._add_spectator_channel(sc1)
-                self._add_spectator_channel(sc2)
+                self.add_spectator_channel(sc1)
+                self.add_spectator_channel(sc2)
             else:
                 sc1 = SpectatorChannel(fc=fc)
                 sc2 = SpectatorChannel(fc=fc, indexing=[1, 2, 0])
                 sc3 = SpectatorChannel(fc=fc, indexing=[2, 0, 1])
-                self._add_spectator_channel(sc1)
-                self._add_spectator_channel(sc2)
-                self._add_spectator_channel(sc3)
+                self.add_spectator_channel(sc1)
+                self.add_spectator_channel(sc2)
+                self.add_spectator_channel(sc3)
 
     def print_summary(self):
         fcs_summary = flavor_utils.generate_flavor_channel_space_summary(self)
