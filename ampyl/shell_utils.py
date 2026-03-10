@@ -61,7 +61,7 @@ def get_masks_and_shells_for_k(k, E, L, tbks_entry, cindex, slice_index):
         scatterer_a_index = 1
         scatterer_b_index = 2
         threshold = masses[scatterer_a_index] + masses[scatterer_b_index]
-        zero_support_point = k._get_zero_support_point(threshold)
+        zero_support_point = get_zero_support_point(k, threshold)
         mask = (E-omk_arr)**2-PmkSQ_arr > zero_support_point
         slices = tbks_entry.shells
         mask_slices = []
@@ -119,7 +119,7 @@ def mask_and_shell_helper_nPnonzero(nondiagonal, E, nP, L, tbks_entry,
         Pvec = TWOPI*nP/L
         PmkSQ_arr = ((Pvec-kvec_arr)**2).sum(axis=1)
         threshold = m2+m3
-        zero_support_point = nondiagonal._get_zero_support_point(threshold)
+        zero_support_point = get_zero_support_point(nondiagonal, threshold)
         mask_row = (E-omk_arr)**2-PmkSQ_arr > zero_support_point
         row_shells = tbks_entry.shells
         mask_row_shells = []
@@ -168,7 +168,7 @@ def get_masks_and_shells_for_f(f, E, L, tbks_entry, cindex, slice_index):
             Pvec = TWOPI*nP/L
             PmkSQ_arr = ((Pvec-kvec_arr)**2).sum(axis=1)
             threshold = m2+m3
-            zero_support_point = f._get_zero_support_point(threshold)
+            zero_support_point = get_zero_support_point(f, threshold)
             mask = (E-omk_arr)**2-PmkSQ_arr > zero_support_point
             slices = tbks_entry.shells
             mask_slices = []
@@ -181,3 +181,9 @@ def get_masks_and_shells_for_f(f, E, L, tbks_entry, cindex, slice_index):
             slice_entry = tbks_entry.shells[slice_index]
             mask_slices = [True]*len(tbks_entry.shells)
     return mask_slices, slice_entry
+
+
+def get_zero_support_point(qcmatrix, threshold):
+    alpha = qcmatrix.alpha
+    beta = qcmatrix.beta
+    return (1.0+alpha)*threshold**2/4.0-beta*((3.0-alpha)*threshold**2/4.0)
