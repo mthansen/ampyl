@@ -112,7 +112,7 @@ def mask_and_shell_helper_nPnonzero(nondiagonal, E, nP, L, tbks_entry,
     if 'reduce_size' in nondiagonal.qcis.fvs.qc_impl:
         reduce_size = nondiagonal.qcis.fvs.qc_impl['reduce_size']
     if reduce_size:
-        mspec, m2, m3 = nondiagonal._extract_masses()
+        mspec, m2, m3 = nondiagonal.extract_masses()
         kvecSQ_arr = FOURPI2*tbks_entry.nvecSQ_arr/L**2
         kvec_arr = TWOPI*tbks_entry.nvec_arr/L
         omk_arr = np.sqrt(mspec**2+kvecSQ_arr)
@@ -161,7 +161,7 @@ def get_masks_and_shells_for_f(f, E, L, tbks_entry, cindex, slice_index):
         if 'reduce_size' in f.qcis.fvs.qc_impl:
             reduce_size = f.qcis.fvs.qc_impl['reduce_size']
         if reduce_size:
-            mspec, m2, m3 = f._extract_masses()
+            mspec, m2, m3 = f.extract_masses()
             kvecSQ_arr = FOURPI2*tbks_entry.nvecSQ_arr/L**2
             kvec_arr = TWOPI*tbks_entry.nvec_arr/L
             omk_arr = np.sqrt(mspec**2+kvecSQ_arr)

@@ -1203,7 +1203,7 @@ class G(Interpolable):
         else:
             if self.qcis.verbosity >= 2:
                 print('nP != [0 0 0] indexing')
-            mspec, m2, m3 = self._extract_masses()
+            mspec, m2, m3 = self.extract_masses()
             ibest = self.qcis._get_ibest(E, L)
             ibest = 0
             warnings.warn(f"\n{bcolors.WARNING}"
@@ -1239,7 +1239,7 @@ class G(Interpolable):
 
     def _get_value_from_tbks(self, E, L, project, irrep, cindex_col,
                              cindex_row, tbks_entry, slices):
-        m1, m2, m3 = self._extract_masses()
+        m1, m2, m3 = self.extract_masses()
         g_final = []
         if self.qcis.verbosity >= 2:
             print('iterating over spectator channels, slices')
@@ -1487,12 +1487,12 @@ class F(Interpolable):
             raise ValueError("only n_three_slices = 1 is supported")
 
         cindex = 0
-        m1, m2, m3 = self._extract_masses()
+        m1, m2, m3 = self.extract_masses()
         if nP@nP == 0:
             tbks_sub_indices = self.qcis.get_tbks_sub_indices(E=E, L=L)
             if len(self.qcis.tbks_list) > 1:
                 raise ValueError("get_value within F assumes tbks_list is "
-                                 + "length one.")
+                                 "length one.")
             tbks_entry = self.qcis.tbks_list[0][
                 tbks_sub_indices[0]]
             slices = tbks_entry.shells
@@ -1548,7 +1548,7 @@ class F(Interpolable):
             ell_set = self.qcis.fcs.sc_list_sorted[sc_ind].ell_set
             if len(ell_set) != 1:
                 raise ValueError("only length-one ell_set currently "
-                                 + "supported in F")
+                                 "supported in F")
             ell1 = ell_set[0]
             ell2 = ell1
             for slice_index in range(len(slices)):
