@@ -38,6 +38,7 @@ import numpy as np
 from scipy.interpolate import RegularGridInterpolator
 from scipy.linalg import block_diag
 from copy import deepcopy
+from . import shell_utils
 from .constants import QC_IMPL_DEFAULTS
 from .constants import TWOPI
 from .constants import FOURPI2
@@ -647,9 +648,9 @@ class Interpolable:
         nP = self.qcis.fvs.nP
 
         mask_row_shells, mask_col_shells, row_shell, col_shell\
-            = self._get_masks_and_shells(E, L, tbks_entry,
-                                         cindex_row, cindex_col,
-                                         row_shell_index, col_shell_index)
+            = shell_utils.get_masks_and_shells_for_interpolable(
+                self, E, L, tbks_entry, cindex_row, cindex_col,
+                row_shell_index, col_shell_index)
         if project:
             try:
                 if nP@nP != 0:
@@ -681,30 +682,6 @@ class Interpolable:
         nvecSQ_mat_shells = QCFunctions\
             .get_nvecSQ_mat_shells(tbks_entry, row_shell, col_shell)
         return [nvecSQ_mat_shells, proj_tmp_left, proj_tmp_right]
-
-    def _get_masks_and_shells(self, E, L, tbks_entry,
-                              cindex_row, cindex_col,
-                              row_shell_index, col_shell_index):
-        nP = self.qcis.fvs.nP
-        three_slice_index_row =\
-            self.qcis.sc_to_three_slice[cindex_row]
-        three_slice_index_col =\
-            self.qcis.sc_to_three_slice[cindex_col]
-        if not (three_slice_index_row == three_slice_index_col == 0):
-            raise ValueError("only one mass slice is supported in G")
-        three_slice_index = three_slice_index_row
-        if nP@nP == 0:
-            mask_row_shells, mask_col_shells, row_shell, col_shell\
-                = self._mask_and_shell_helper_nPzero(tbks_entry,
-                                                     row_shell_index,
-                                                     col_shell_index)
-        else:
-            mask_row_shells, mask_col_shells, row_shell, col_shell = self.\
-                _mask_and_shell_helper_nPnonzero(E, nP, L, tbks_entry,
-                                                 row_shell_index,
-                                                 col_shell_index,
-                                                 three_slice_index)
-        return mask_row_shells, mask_col_shells, row_shell, col_shell
 
     def _mask_and_shell_helper_nPzero(self, tbks_entry, row_shell_index,
                                       col_shell_index):
@@ -1374,9 +1351,9 @@ class G(Interpolable):
         beta = self.beta
 
         mask_row_shells, mask_col_shells, row_shell, col_shell\
-            = self._get_masks_and_shells(E, L, tbks_entry,
-                                         cindex_row, cindex_col,
-                                         row_shell_index, col_shell_index)
+            = shell_utils.get_masks_and_shells_for_interpolable(
+                self, E, L, tbks_entry, cindex_row, cindex_col,
+                row_shell_index, col_shell_index)
         if project:
             try:
                 if nP@nP != 0:
@@ -1492,39 +1469,6 @@ class F(Interpolable):
         self.C1cut = C1cut
         self.alphaKSS = alphaKSS
 
-    def _get_masks_and_shells(self, E, L, tbks_entry, cindex, slice_index):
-        nP = self.qcis.fvs.nP
-        mask_slices = None
-        # three_slice_index\
-        #     = self.qcis._get_three_slice_index(cindex)
-        if nP@nP == 0:
-            slice_entry = tbks_entry.shells[slice_index]
-        else:
-            reduce_size = QC_IMPL_DEFAULTS['reduce_size']
-            if 'reduce_size' in self.qcis.fvs.qc_impl:
-                reduce_size = self.qcis.fvs.qc_impl['reduce_size']
-            if reduce_size:
-                mspec, m2, m3 = self._extract_masses()
-                kvecSQ_arr = FOURPI2*tbks_entry.nvecSQ_arr/L**2
-                kvec_arr = TWOPI*tbks_entry.nvec_arr/L
-                omk_arr = np.sqrt(mspec**2+kvecSQ_arr)
-                Pvec = TWOPI*nP/L
-                PmkSQ_arr = ((Pvec-kvec_arr)**2).sum(axis=1)
-                threshold = m2+m3
-                zero_support_point = self._get_zero_support_point(threshold)
-                mask = (E-omk_arr)**2-PmkSQ_arr > zero_support_point
-                slices = tbks_entry.shells
-                mask_slices = []
-                for slice_entry in slices:
-                    mask_slices = mask_slices\
-                        + [mask[slice_entry[0]:slice_entry[1]].all()]
-                slices = list(np.array(slices)[mask_slices])
-                slice_entry = slices[slice_index]
-            else:
-                slice_entry = tbks_entry.shells[slice_index]
-                mask_slices = [True]*len(tbks_entry.shells)
-        return mask_slices, slice_entry
-
     def get_shell(self, E=5.0, L=5.0, m1=1.0, m2=1.0, m3=1.0,
                   cindex=None, sc_ind=None, ell1=0, ell2=0, tbks_entry=None,
                   slice_index=None, project=False, irrep=None,
@@ -1545,7 +1489,8 @@ class F(Interpolable):
             pv_shift_parameters = None
 
         mask_slices, slice_entry\
-            = self._get_masks_and_shells(E, L, tbks_entry, cindex, slice_index)
+            = shell_utils.get_masks_and_shells_for_f(
+                self, E, L, tbks_entry, cindex, slice_index)
         Fshell = QCFunctions.getF_array(
             E, nP, L, m1, m2, m3, tbks_entry, slice_entry, ell1, ell2,
             alpha, beta, C1cut, alphaKSS, qc_impl, three_scheme,

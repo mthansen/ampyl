@@ -36,6 +36,7 @@ Created July 2022.
 
 import numpy as np
 from .constants import FOURPI2, TWOPI
+from .constants import QC_IMPL_DEFAULTS
 
 
 def get_masks_and_shells_for_k(k, E, L, tbks_entry, cindex, slice_index):
@@ -91,3 +92,62 @@ def get_masks_and_shells_for_kdf(kdf, E, L, tbks_entry,
         raise NotImplementedError("masking for non-zero nP is not "
                                   "implemented yet.")
     return mask_row_shells, mask_col_shells, row_shell, col_shell
+
+
+def get_masks_and_shells_for_interpolable(interp, E, L, tbks_entry,
+                                          cindex_row, cindex_col,
+                                          row_shell_index, col_shell_index):
+    nP = interp.qcis.fvs.nP
+    three_slice_index_row =\
+        interp.qcis.sc_to_three_slice[cindex_row]
+    three_slice_index_col =\
+        interp.qcis.sc_to_three_slice[cindex_col]
+    if not (three_slice_index_row == three_slice_index_col == 0):
+        raise ValueError("only one mass slice is supported in G")
+    three_slice_index = three_slice_index_row
+    if nP@nP == 0:
+        mask_row_shells, mask_col_shells, row_shell, col_shell\
+            = interp._mask_and_shell_helper_nPzero(tbks_entry,
+                                                   row_shell_index,
+                                                   col_shell_index)
+    else:
+        mask_row_shells, mask_col_shells, row_shell, col_shell = interp.\
+            _mask_and_shell_helper_nPnonzero(E, nP, L, tbks_entry,
+                                             row_shell_index,
+                                             col_shell_index,
+                                             three_slice_index)
+    return mask_row_shells, mask_col_shells, row_shell, col_shell
+
+
+def get_masks_and_shells_for_f(f, E, L, tbks_entry, cindex, slice_index):
+    nP = f.qcis.fvs.nP
+    mask_slices = None
+    # three_slice_index\
+    #     = self.qcis._get_three_slice_index(cindex)
+    if nP@nP == 0:
+        slice_entry = tbks_entry.shells[slice_index]
+    else:
+        reduce_size = QC_IMPL_DEFAULTS['reduce_size']
+        if 'reduce_size' in f.qcis.fvs.qc_impl:
+            reduce_size = f.qcis.fvs.qc_impl['reduce_size']
+        if reduce_size:
+            mspec, m2, m3 = f._extract_masses()
+            kvecSQ_arr = FOURPI2*tbks_entry.nvecSQ_arr/L**2
+            kvec_arr = TWOPI*tbks_entry.nvec_arr/L
+            omk_arr = np.sqrt(mspec**2+kvecSQ_arr)
+            Pvec = TWOPI*nP/L
+            PmkSQ_arr = ((Pvec-kvec_arr)**2).sum(axis=1)
+            threshold = m2+m3
+            zero_support_point = f._get_zero_support_point(threshold)
+            mask = (E-omk_arr)**2-PmkSQ_arr > zero_support_point
+            slices = tbks_entry.shells
+            mask_slices = []
+            for slice_entry in slices:
+                mask_slices = mask_slices\
+                    + [mask[slice_entry[0]:slice_entry[1]].all()]
+            slices = list(np.array(slices)[mask_slices])
+            slice_entry = slices[slice_index]
+        else:
+            slice_entry = tbks_entry.shells[slice_index]
+            mask_slices = [True]*len(tbks_entry.shells)
+    return mask_slices, slice_entry
