@@ -83,11 +83,16 @@ def get_masks_and_shells_for_kdf(kdf, E, L, tbks_entry,
         kdf.qcis.sc_to_three_slice[cindex_col]
     if not (three_slice_index_row == three_slice_index_col == 0):
         raise ValueError("only one mass slice is supported in Kdf")
+    three_slice_index = three_slice_index_row
     if nP@nP == 0:
         mask_row_shells, mask_col_shells, row_shell, col_shell\
             = mask_and_shell_helper_nPzero(
                 kdf, tbks_entry, row_shell_index, col_shell_index)
     else:
+        mask_row_shells, mask_col_shells, row_shell, col_shell =\
+            mask_and_shell_helper_nPnonzero(
+                kdf, E, nP, L, tbks_entry, row_shell_index, col_shell_index,
+                three_slice_index)
         raise NotImplementedError("masking for non-zero nP is not "
                                   "implemented yet.")
     return mask_row_shells, mask_col_shells, row_shell, col_shell
@@ -110,9 +115,9 @@ def get_masks_and_shells_for_interpolable(interp, E, L, tbks_entry,
                 interp, tbks_entry, row_shell_index, col_shell_index)
     else:
         mask_row_shells, mask_col_shells, row_shell, col_shell =\
-            mask_and_shell_helper_nPnonzero_for_interpolable(
-                interp, E, nP, L, tbks_entry, row_shell_index,
-                col_shell_index, three_slice_index)
+            mask_and_shell_helper_nPnonzero(
+                interp, E, nP, L, tbks_entry, row_shell_index, col_shell_index,
+                three_slice_index)
     return mask_row_shells, mask_col_shells, row_shell, col_shell
 
 
@@ -125,11 +130,9 @@ def mask_and_shell_helper_nPzero(interp, tbks_entry,
     return mask_row_shells, mask_col_shells, row_shell, col_shell
 
 
-def mask_and_shell_helper_nPnonzero_for_interpolable(interp, E, nP, L,
-                                                     tbks_entry,
-                                                     row_shell_index,
-                                                     col_shell_index,
-                                                     three_slice_index):
+def mask_and_shell_helper_nPnonzero(interp, E, nP, L, tbks_entry,
+                                    row_shell_index, col_shell_index,
+                                    three_slice_index):
     reduce_size = QC_IMPL_DEFAULTS['reduce_size']
     if 'reduce_size' in interp.qcis.fvs.qc_impl:
         reduce_size = interp.qcis.fvs.qc_impl['reduce_size']
