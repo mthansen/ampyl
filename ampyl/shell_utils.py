@@ -73,55 +73,30 @@ def get_masks_and_shells_for_k(k, E, L, tbks_entry, cindex, slice_index):
     return mask_slices, slice_entry
 
 
-def get_masks_and_shells_for_kdf(kdf, E, L, tbks_entry,
-                                 cindex_row, cindex_col,
-                                 row_shell_index, col_shell_index):
-    nP = kdf.qcis.fvs.nP
+def get_masks_and_shells_for_nondiagonal(nondiagonal, E, L, tbks_entry,
+                                         cindex_row, cindex_col,
+                                         row_shell_index, col_shell_index):
+    nP = nondiagonal.qcis.fvs.nP
     three_slice_index_row =\
-        kdf.qcis.sc_to_three_slice[cindex_row]
+        nondiagonal.qcis.sc_to_three_slice[cindex_row]
     three_slice_index_col =\
-        kdf.qcis.sc_to_three_slice[cindex_col]
+        nondiagonal.qcis.sc_to_three_slice[cindex_col]
     if not (three_slice_index_row == three_slice_index_col == 0):
-        raise ValueError("only one mass slice is supported in Kdf")
-    three_slice_index = three_slice_index_row
-    if nP@nP == 0:
-        mask_row_shells, mask_col_shells, row_shell, col_shell\
-            = mask_and_shell_helper_nPzero(
-                kdf, tbks_entry, row_shell_index, col_shell_index)
-    else:
-        mask_row_shells, mask_col_shells, row_shell, col_shell =\
-            mask_and_shell_helper_nPnonzero(
-                kdf, E, nP, L, tbks_entry, row_shell_index, col_shell_index,
-                three_slice_index)
-        raise NotImplementedError("masking for non-zero nP is not "
-                                  "implemented yet.")
-    return mask_row_shells, mask_col_shells, row_shell, col_shell
-
-
-def get_masks_and_shells_for_interpolable(interp, E, L, tbks_entry,
-                                          cindex_row, cindex_col,
-                                          row_shell_index, col_shell_index):
-    nP = interp.qcis.fvs.nP
-    three_slice_index_row =\
-        interp.qcis.sc_to_three_slice[cindex_row]
-    three_slice_index_col =\
-        interp.qcis.sc_to_three_slice[cindex_col]
-    if not (three_slice_index_row == three_slice_index_col == 0):
-        raise ValueError("only one mass slice is supported in G")
+        raise ValueError("only one mass slice is supported")
     three_slice_index = three_slice_index_row
     if nP@nP == 0:
         mask_row_shells, mask_col_shells, row_shell, col_shell =\
             mask_and_shell_helper_nPzero(
-                interp, tbks_entry, row_shell_index, col_shell_index)
+                nondiagonal, tbks_entry, row_shell_index, col_shell_index)
     else:
         mask_row_shells, mask_col_shells, row_shell, col_shell =\
             mask_and_shell_helper_nPnonzero(
-                interp, E, nP, L, tbks_entry, row_shell_index, col_shell_index,
-                three_slice_index)
+                nondiagonal, E, nP, L, tbks_entry,
+                row_shell_index, col_shell_index, three_slice_index)
     return mask_row_shells, mask_col_shells, row_shell, col_shell
 
 
-def mask_and_shell_helper_nPzero(interp, tbks_entry,
+def mask_and_shell_helper_nPzero(nondiagonal, tbks_entry,
                                  row_shell_index, col_shell_index):
     mask_row_shells = None
     mask_col_shells = None
@@ -130,21 +105,21 @@ def mask_and_shell_helper_nPzero(interp, tbks_entry,
     return mask_row_shells, mask_col_shells, row_shell, col_shell
 
 
-def mask_and_shell_helper_nPnonzero(interp, E, nP, L, tbks_entry,
+def mask_and_shell_helper_nPnonzero(nondiagonal, E, nP, L, tbks_entry,
                                     row_shell_index, col_shell_index,
                                     three_slice_index):
     reduce_size = QC_IMPL_DEFAULTS['reduce_size']
-    if 'reduce_size' in interp.qcis.fvs.qc_impl:
-        reduce_size = interp.qcis.fvs.qc_impl['reduce_size']
+    if 'reduce_size' in nondiagonal.qcis.fvs.qc_impl:
+        reduce_size = nondiagonal.qcis.fvs.qc_impl['reduce_size']
     if reduce_size:
-        mspec, m2, m3 = interp._extract_masses()
+        mspec, m2, m3 = nondiagonal._extract_masses()
         kvecSQ_arr = FOURPI2*tbks_entry.nvecSQ_arr/L**2
         kvec_arr = TWOPI*tbks_entry.nvec_arr/L
         omk_arr = np.sqrt(mspec**2+kvecSQ_arr)
         Pvec = TWOPI*nP/L
         PmkSQ_arr = ((Pvec-kvec_arr)**2).sum(axis=1)
         threshold = m2+m3
-        zero_support_point = interp._get_zero_support_point(threshold)
+        zero_support_point = nondiagonal._get_zero_support_point(threshold)
         mask_row = (E-omk_arr)**2-PmkSQ_arr > zero_support_point
         row_shells = tbks_entry.shells
         mask_row_shells = []

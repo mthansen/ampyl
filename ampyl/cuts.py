@@ -648,7 +648,7 @@ class Interpolable:
         nP = self.qcis.fvs.nP
 
         mask_row_shells, mask_col_shells, row_shell, col_shell\
-            = shell_utils.get_masks_and_shells_for_interpolable(
+            = shell_utils.get_masks_and_shells_for_nondiagonal(
                 self, E, L, tbks_entry, cindex_row, cindex_col,
                 row_shell_index, col_shell_index)
         if project:
@@ -1300,7 +1300,7 @@ class G(Interpolable):
         beta = self.beta
 
         mask_row_shells, mask_col_shells, row_shell, col_shell\
-            = shell_utils.get_masks_and_shells_for_interpolable(
+            = shell_utils.get_masks_and_shells_for_nondiagonal(
                 self, E, L, tbks_entry, cindex_row, cindex_col,
                 row_shell_index, col_shell_index)
         if project:
