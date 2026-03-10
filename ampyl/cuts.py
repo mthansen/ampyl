@@ -683,57 +683,6 @@ class Interpolable:
             .get_nvecSQ_mat_shells(tbks_entry, row_shell, col_shell)
         return [nvecSQ_mat_shells, proj_tmp_left, proj_tmp_right]
 
-    def _mask_and_shell_helper_nPzero(self, tbks_entry, row_shell_index,
-                                      col_shell_index):
-        mask_row_shells = None
-        mask_col_shells = None
-        row_shell = tbks_entry.shells[row_shell_index]
-        col_shell = tbks_entry.shells[col_shell_index]
-        return mask_row_shells, mask_col_shells, row_shell, col_shell
-
-    def _mask_and_shell_helper_nPnonzero(self, E, nP, L, tbks_entry,
-                                         row_shell_index, col_shell_index,
-                                         three_slice_index):
-        reduce_size = QC_IMPL_DEFAULTS['reduce_size']
-        if 'reduce_size' in self.qcis.fvs.qc_impl:
-            reduce_size = self.qcis.fvs.qc_impl['reduce_size']
-        if reduce_size:
-            mspec, m2, m3 = self._extract_masses()
-            kvecSQ_arr = FOURPI2*tbks_entry.nvecSQ_arr/L**2
-            kvec_arr = TWOPI*tbks_entry.nvec_arr/L
-            omk_arr = np.sqrt(mspec**2+kvecSQ_arr)
-            Pvec = TWOPI*nP/L
-            PmkSQ_arr = ((Pvec-kvec_arr)**2).sum(axis=1)
-            threshold = m2+m3
-            zero_support_point = self._get_zero_support_point(threshold)
-            mask_row = (E-omk_arr)**2-PmkSQ_arr > zero_support_point
-            row_shells = tbks_entry.shells
-            mask_row_shells = []
-            for row_shell in row_shells:
-                mask_row_shells = mask_row_shells\
-                        + [mask_row[row_shell[0]:row_shell[1]].all()]
-            row_shells = list(np.array(row_shells)[mask_row_shells])
-            row_shell = list(row_shells[row_shell_index])
-        else:
-            row_shells = tbks_entry.shells
-            mask_row_shells = len(row_shells)*[True]
-            row_shell = list(row_shells[row_shell_index])
-
-        if reduce_size:
-            mask_col = mask_row
-            col_shells = tbks_entry.shells
-            mask_col_shells = []
-            for col_shell in col_shells:
-                mask_col_shells = mask_col_shells\
-                        + [mask_col[col_shell[0]:col_shell[1]].all()]
-            col_shells = list(np.array(col_shells)[mask_col_shells])
-            col_shell = list(col_shells[col_shell_index])
-        else:
-            col_shells = tbks_entry.shells
-            mask_col_shells = len(col_shells)*[True]
-            col_shell = list(col_shells[col_shell_index])
-        return mask_row_shells, mask_col_shells, row_shell, col_shell
-
     def _get_all_nvecSQs(self, nvecSQs_by_shell):
         all_nvecSQs = []
         for outer_nvecSQ_row in nvecSQs_by_shell:

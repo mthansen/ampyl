@@ -380,14 +380,6 @@ class Kdf:
                      )[mask_row_shells][row_shell_index][irrep]).T)
         return proj_tmp_right, proj_tmp_left
 
-    def _mask_and_shell_helper_nPzero(self, tbks_entry, row_shell_index,
-                                      col_shell_index):
-        mask_row_shells = None
-        mask_col_shells = None
-        row_shell = tbks_entry.shells[row_shell_index]
-        col_shell = tbks_entry.shells[col_shell_index]
-        return mask_row_shells, mask_col_shells, row_shell, col_shell
-
     def _clean_shape(self, kdf_collection):
         rowsizes = [0]*len(kdf_collection)
         colsizes = [0]*len(kdf_collection)
