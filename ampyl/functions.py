@@ -1810,6 +1810,16 @@ class QCFunctions:
             k_list = k_list+[k_entry]*(2*ell+1)
         return block_diag(*k_list)
 
+    def get_kdf_array(E, nP, L, m1, m2, m3,
+                      tbks_entry, slice_entry, ell, k3_params):
+        nvec_arr_slice = tbks_entry.nvec_arr[slice_entry[0]:slice_entry[1]]
+        len_slice = len(nvec_arr_slice)
+        if ell == 1:
+            k_block = np.ones((len_slice*(2*ell+1), len_slice*(2*ell+1)))
+        else:
+            k_block = np.zeros((len_slice*(2*ell+1), len_slice*(2*ell+1)))
+        return k_block*k3_params[0]
+
     def getKdf_array(E, nP, L, m1, m2, m3,
                      tbks_entry,
                      row_shell, col_shell,
