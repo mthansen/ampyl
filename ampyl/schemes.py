@@ -260,16 +260,50 @@ class ThreeBodyInteractionScheme:
     :type kdf_functions: list of callables
     """
 
-    def __init__(self, fcs=None, ESQmin=0.0, three_scheme='relativistic pole',
-                 scheme_data=[-1.0, 0.0], kdf_functions=None,
+    def __init__(self, fcs=None, ESQmin=None, three_scheme='relativistic pole',
+                 scheme_data=None, kdf_functions=None,
                  use_pv_shift_prescription=None,
                  pv_shift_parameters=None,
                  verbosity=0):
-        self.ESQmin = ESQmin
+        ESQmin_input = ESQmin
         if fcs is None:
-            self.fcs = FlavorChannelSpace(fc_list=[FlavorChannel(3)])
+            fcs = FlavorChannelSpace(fc_list=[FlavorChannel(3)])
+        self.fcs = fcs
+
+        threshSQs = []
+        for sc in fcs.sc_list_sorted:
+            m1 = sc.fc.masses[sc.indexing[1]]
+            m2 = sc.fc.masses[sc.indexing[2]]
+            threshSQs.append((m1+m2)**2)
+        self.threshSQs = threshSQs
+
+        ESQmins = []
+        if scheme_data is None:
+            scheme_data = []
+            for sc in fcs.sc_list_sorted:
+                m1 = sc.fc.masses[sc.indexing[1]]
+                m2 = sc.fc.masses[sc.indexing[2]]
+                m_max = max(m1, m2)
+                m_min = min(m1, m2)
+                delta_mSQ = m_max**2 - m_min**2
+                ESQmins.append(delta_mSQ)
+                alpha = (3.*m_max - 5.*m_min) / (m_max + m_min)
+                beta = 0.
+                scheme_data.append([alpha, beta])
         else:
-            self.fcs = fcs
+            scheme_data_by_channel = self._scheme_data_by_channel(
+                scheme_data, len(threshSQs))
+            for i, scheme in enumerate(scheme_data_by_channel):
+                if not isinstance(scheme, list) or len(scheme) != 2:
+                    raise ValueError("scheme_data must be a list of lists "
+                                     "with length 2")
+                alpha, beta = scheme
+                ESQmin_tmp = 0.25*(1.0+alpha)*threshSQs[i]
+                ESQmins.append(ESQmin_tmp)
+        if ESQmin_input is not None:
+            ESQmins = [ESQmin_input]*len(threshSQs)
+        self.ESQmin = ESQmins[0]
+        self.ESQmins = ESQmins
 
         self._set_flavor_ellm_dim()
         if use_pv_shift_prescription is None:
@@ -308,6 +342,11 @@ class ThreeBodyInteractionScheme:
             print(f"{bcolors.OKGREEN}")
             print(self)
             print(f"{bcolors.ENDC}")
+
+    def _scheme_data_by_channel(self, scheme_data, n_channels):
+        if len(scheme_data) == 2 and not isinstance(scheme_data[0], list):
+            return [scheme_data]*n_channels
+        return scheme_data
 
     def _set_flavor_ellm_dim(self):
         self.flavor_ell_dim = sum(len(sc.ell_set) for sc in self.fcs.sc_list)
