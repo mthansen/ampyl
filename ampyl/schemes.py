@@ -279,7 +279,7 @@ class ThreeBodyInteractionScheme:
 
         ESQmins = []
         if scheme_data is None:
-            scheme_data = []
+            scheme_data_by_channel = []
             for sc in fcs.sc_list_sorted:
                 m1 = sc.fc.masses[sc.indexing[1]]
                 m2 = sc.fc.masses[sc.indexing[2]]
@@ -289,7 +289,7 @@ class ThreeBodyInteractionScheme:
                 ESQmins.append(delta_mSQ)
                 alpha = (3.*m_max - 5.*m_min) / (m_max + m_min)
                 beta = 0.
-                scheme_data.append([alpha, beta])
+                scheme_data_by_channel.append([alpha, beta])
         else:
             scheme_data_by_channel = self._scheme_data_by_channel(
                 scheme_data, len(threshSQs))
@@ -329,7 +329,8 @@ class ThreeBodyInteractionScheme:
             raise ValueError("pv_shift_parameters must have length equal "
                              "to flavor_ellm_dim")
         self.three_scheme = three_scheme
-        self.scheme_data = scheme_data
+        self.scheme_data_by_channel = scheme_data_by_channel
+        self.scheme_data = scheme_data_by_channel[0]
         if kdf_functions is None:
             self.kdf_functions = []
             for fc in self.fcs.fc_list:
