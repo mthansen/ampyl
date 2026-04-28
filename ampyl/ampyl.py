@@ -250,6 +250,123 @@ class QCVersionEvaluator:
         return (FplusG - FplusG@K@Hinverse@FplusG)/L**3
 
 
+class QC:
+    r"""
+    QC: A class for handling the quantization condition (QC) in finite-volume
+    lattice calculations. This class provides methods for computing QC values.
+
+    Warning: It is up to the user to select values of alphaKSS and C1cut that
+    lead to a sufficient estimate of the F matrix.
+
+    Attributes:
+        qcis (QCIndexSpace): The quantization-condition index space, specifying
+            data for the class.
+        f (F): The F matrix, derived from the quantization condition.
+        g (G): The G matrix, derived from the quantization condition.
+        fplusg (FplusG): The sum of F and G matrices.
+        k (K): The K matrix, representing the two-particle interaction.
+        verbosity (int): The verbosity level for logging and debugging.
+
+    Methods:
+        get_value(E, L, qc_dict):
+            Computes a QC value based on the specified parameters and version.
+
+    Use :class:`QCEnergySolver` to trace energy levels from a QC instance.
+    """
+
+    def __init__(self, qcis=None, C1cut=5, alphaKSS=1.0, verbosity=0):
+        self.qcis = qcis
+        self.matrix_builder = QCMatrixBuilder(qcis=self.qcis,
+                                              C1cut=C1cut,
+                                              alphaKSS=alphaKSS)
+        self.version_evaluator = QCVersionEvaluator()
+        self.f = self.matrix_builder.f
+        self.g = self.matrix_builder.g
+        self.fplusg = self.matrix_builder.fplusg
+        self.k = self.matrix_builder.k
+        self.kdf = self.matrix_builder.kdf
+        self._verbosity = verbosity
+        self.verbosity = verbosity
+
+    @property
+    def verbosity(self):
+        """Verbosity of the QC."""
+        return self._verbosity
+
+    @verbosity.setter
+    def verbosity(self, verbosity):
+        """Set the verbosity of the QC."""
+        if not isinstance(verbosity, int):
+            raise ValueError("verbosity must be an int")
+        self._verbosity = verbosity
+
+    def get_value(self, E, L, qc_dict):
+        r"""
+        Evaluate the selected quantization-condition expression.
+
+        :param E: energy value
+        :type E: float
+        :param L: box length
+        :type L: float
+        :param qc_dict: options for the QC evaluation. Must include
+            ``'k_params'`` and may override ``'project'``, ``'irrep'``,
+            ``'version'``, ``'rescale'``, and ``'shift'``.
+        :type qc_dict: dict
+        :return: value of the selected QC version
+        :rtype: float or numpy.ndarray
+
+        Supported versions are handled by :class:`QCVersionEvaluator`.
+        """
+        self._validate_energy_and_volume(E, L)
+        qc_dict = self.validate_qc_dict(qc_dict)
+        matrices = self.matrix_builder.build(E, L, qc_dict)
+        return self.version_evaluator.evaluate(L, qc_dict, matrices)
+
+    def _validate_energy_and_volume(self, E, L):
+        if not isinstance(E, float):
+            raise TypeError("E must be a float")
+        if not isinstance(L, float):
+            raise TypeError("L must be a float")
+
+    def validate_qc_dict(self, qc_dict):
+        if not isinstance(qc_dict, dict):
+            raise TypeError("qc_dict must be a dictionary")
+        key_is_required = {
+            'k_params': True,
+            'project': False,
+            'irrep': False,
+            'version': False,
+            'rescale': False,
+            'shift': False
+        }
+        for key in key_is_required:
+            if key not in qc_dict and key_is_required[key]:
+                raise ValueError(f"qc_dict must contain the key '{key}'")
+            if key not in qc_dict:
+                qc_dict[key] = QC_DICT_DEFAULTS[key]
+        expected_types = {
+            'k_params': list,
+            'project': bool,
+            'irrep': (tuple, type(None)),
+            'version': str,
+            'rescale': float,
+            'shift': float
+        }
+        for key, expected_type in expected_types.items():
+            if not isinstance(qc_dict[key], expected_type):
+                raise TypeError(f"qc_dict['{key}'] must be of type "
+                                f"{expected_type}")
+        if qc_dict['project'] and not isinstance(qc_dict['irrep'], tuple):
+            raise TypeError("qc_dict['irrep'] must be a tuple")
+        if qc_dict['project'] and len(qc_dict['irrep']) != 2:
+            raise ValueError("qc_dict['irrep'] must be a tuple of length 2")
+        if qc_dict['project'] and not isinstance(qc_dict['irrep'][0], str):
+            raise TypeError("qc_dict['irrep'][0] must be a string")
+        if qc_dict['project'] and not isinstance(qc_dict['irrep'][1], int):
+            raise TypeError("qc_dict['irrep'][1] must be an int")
+        return qc_dict
+
+
 class QCEnergySolver:
     """Find QC roots and trace energy levels for a QC instance."""
 
@@ -499,120 +616,3 @@ class QCEnergySolver:
         interp_L_vals = [target_L_vals.copy().tolist()
                          for _ in range(len(interp_E_vals))]
         return interp_E_vals, interp_L_vals
-
-
-class QC:
-    r"""
-    QC: A class for handling the quantization condition (QC) in finite-volume
-    lattice calculations. This class provides methods for computing QC values.
-
-    Warning: It is up to the user to select values of alphaKSS and C1cut that
-    lead to a sufficient estimate of the F matrix.
-
-    Attributes:
-        qcis (QCIndexSpace): The quantization-condition index space, specifying
-            data for the class.
-        f (F): The F matrix, derived from the quantization condition.
-        g (G): The G matrix, derived from the quantization condition.
-        fplusg (FplusG): The sum of F and G matrices.
-        k (K): The K matrix, representing the two-particle interaction.
-        verbosity (int): The verbosity level for logging and debugging.
-
-    Methods:
-        get_value(E, L, qc_dict):
-            Computes a QC value based on the specified parameters and version.
-
-    Use :class:`QCEnergySolver` to trace energy levels from a QC instance.
-    """
-
-    def __init__(self, qcis=None, C1cut=5, alphaKSS=1.0, verbosity=0):
-        self.qcis = qcis
-        self.matrix_builder = QCMatrixBuilder(qcis=self.qcis,
-                                              C1cut=C1cut,
-                                              alphaKSS=alphaKSS)
-        self.version_evaluator = QCVersionEvaluator()
-        self.f = self.matrix_builder.f
-        self.g = self.matrix_builder.g
-        self.fplusg = self.matrix_builder.fplusg
-        self.k = self.matrix_builder.k
-        self.kdf = self.matrix_builder.kdf
-        self._verbosity = verbosity
-        self.verbosity = verbosity
-
-    @property
-    def verbosity(self):
-        """Verbosity of the QC."""
-        return self._verbosity
-
-    @verbosity.setter
-    def verbosity(self, verbosity):
-        """Set the verbosity of the QC."""
-        if not isinstance(verbosity, int):
-            raise ValueError("verbosity must be an int")
-        self._verbosity = verbosity
-
-    def get_value(self, E, L, qc_dict):
-        r"""
-        Evaluate the selected quantization-condition expression.
-
-        :param E: energy value
-        :type E: float
-        :param L: box length
-        :type L: float
-        :param qc_dict: options for the QC evaluation. Must include
-            ``'k_params'`` and may override ``'project'``, ``'irrep'``,
-            ``'version'``, ``'rescale'``, and ``'shift'``.
-        :type qc_dict: dict
-        :return: value of the selected QC version
-        :rtype: float or numpy.ndarray
-
-        Supported versions are handled by :class:`QCVersionEvaluator`.
-        """
-        self._validate_energy_and_volume(E, L)
-        qc_dict = self.validate_qc_dict(qc_dict)
-        matrices = self.matrix_builder.build(E, L, qc_dict)
-        return self.version_evaluator.evaluate(L, qc_dict, matrices)
-
-    def _validate_energy_and_volume(self, E, L):
-        if not isinstance(E, float):
-            raise TypeError("E must be a float")
-        if not isinstance(L, float):
-            raise TypeError("L must be a float")
-
-    def validate_qc_dict(self, qc_dict):
-        if not isinstance(qc_dict, dict):
-            raise TypeError("qc_dict must be a dictionary")
-        key_is_required = {
-            'k_params': True,
-            'project': False,
-            'irrep': False,
-            'version': False,
-            'rescale': False,
-            'shift': False
-        }
-        for key in key_is_required:
-            if key not in qc_dict and key_is_required[key]:
-                raise ValueError(f"qc_dict must contain the key '{key}'")
-            if key not in qc_dict:
-                qc_dict[key] = QC_DICT_DEFAULTS[key]
-        expected_types = {
-            'k_params': list,
-            'project': bool,
-            'irrep': (tuple, type(None)),
-            'version': str,
-            'rescale': float,
-            'shift': float
-        }
-        for key, expected_type in expected_types.items():
-            if not isinstance(qc_dict[key], expected_type):
-                raise TypeError(f"qc_dict['{key}'] must be of type "
-                                f"{expected_type}")
-        if qc_dict['project'] and not isinstance(qc_dict['irrep'], tuple):
-            raise TypeError("qc_dict['irrep'] must be a tuple")
-        if qc_dict['project'] and len(qc_dict['irrep']) != 2:
-            raise ValueError("qc_dict['irrep'] must be a tuple of length 2")
-        if qc_dict['project'] and not isinstance(qc_dict['irrep'][0], str):
-            raise TypeError("qc_dict['irrep'][0] must be a string")
-        if qc_dict['project'] and not isinstance(qc_dict['irrep'][1], int):
-            raise TypeError("qc_dict['irrep'][1] must be an int")
-        return qc_dict
