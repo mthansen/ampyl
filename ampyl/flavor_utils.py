@@ -43,7 +43,7 @@ warnings.simplefilter("once")
 
 def _check_type(variable, variable_string, variable_type,
                 variable_type_str):
-    """Check that a variable is of the correct type."""
+    """Validate the type of a value when it is not ``None``."""
     if variable is not None:
         if not isinstance(variable, variable_type):
             raise TypeError(f"{variable_string} must be of type "
@@ -51,7 +51,7 @@ def _check_type(variable, variable_string, variable_type,
 
 
 def _particle_to_string(particle):
-    """Convert a particle to a string."""
+    """Return a readable string summary for a particle."""
     particle_str = "Particle with the following properties:\n"
     particle_str += f"    mass: {particle.mass},\n"
     particle_str += f"    spin: {particle.spin},\n"
@@ -63,7 +63,7 @@ def _particle_to_string(particle):
 
 
 def _particles_equal(particle1, particle2):
-    """Check if two particles are equivalent."""
+    """Return whether two particle objects have matching properties."""
     return (particle1.mass == particle2.mass and
             particle1.spin == particle2.spin and
             particle1.flavor == particle2.flavor and
@@ -72,6 +72,7 @@ def _particles_equal(particle1, particle2):
 
 
 def _get_allowed_total_isospins(channel, isospins=None):
+    """Return the allowed total isospins for a flavor channel."""
     if not channel._isospin_channel:
         return None
     if isospins is None:
@@ -130,6 +131,7 @@ def _get_allowed_total_isospins(channel, isospins=None):
 
 
 def _get_allowed_sub_isospins(channel):
+    """Return the allowed two-body sub-isospins for a flavor channel."""
     if not channel.isospin_channel:
         return None
     if channel.n_particles == 2:
@@ -149,7 +151,7 @@ def _get_allowed_sub_isospins(channel):
 
 
 def _flavor_channel_to_string(channel):
-    """Convert a FlavorChannel to a string."""
+    """Return a readable string summary for a flavor channel."""
     channel_str = "FlavorChannel with the following details:\n"
     channel_str += f"    {channel.n_particles} particles,\n"
     channel_str += f"    masses: {channel.masses},\n"
@@ -169,7 +171,7 @@ def _flavor_channel_to_string(channel):
 
 
 def _spectator_channel_to_string(channel):
-    """Convert a spectator channel to a string."""
+    """Return a readable string summary for a spectator channel."""
     channel_str = channel.fc.__str__().replace("Flavor", "Spectator")
     channel_str = channel_str[:-1]+",\n"
     channel_str += f"    indexing: {channel.indexing},\n"
@@ -189,7 +191,7 @@ def _spectator_channel_to_string(channel):
 
 
 def _spectator_channel_equality(channel1, channel2):
-    """Check if two spectator channels are equivalent."""
+    """Return whether two spectator channels are equivalent."""
     if not (channel1.fc == channel2.fc):
         return False
     if not (channel1.indexing == channel2.indexing):
@@ -206,10 +208,7 @@ def _spectator_channel_equality(channel1, channel2):
 
 
 def _parse_three_iso_fc_entry(entry, fc):
-    """
-    Parse an entry of the summary attribute of a three-particle
-    isospin channel.
-    """
+    """Parse one summary entry for a three-particle isospin channel."""
     flavors = entry[[2, 4, 5]]
     sub_isospin = entry[1]
     dimer_individual_isospins = entry[[6, 7]]
@@ -256,7 +255,7 @@ def _parse_three_iso_fc_entry(entry, fc):
 
 
 def _build_sorted_sc_list(fcs):
-    """Build the sc_list_sorted attribute of the FlavorChannelSpace."""
+    """Build the sorted spectator-channel list and its slice metadata."""
     n_particles_max = 0
     possible_numbers_of_particles = []
     for fc in fcs.fc_list:
@@ -353,6 +352,7 @@ def _build_sorted_sc_list(fcs):
 
 
 def _generate_flavor_channel_space_summary(fcs):
+    """Build a verbose summary string for a flavor-channel space."""
     fcs_summary = ("FlavorChannelSpace initialized with the "
                    "following properties:\n"
                    "    fc_list (Flavor Channel list) with the following "
@@ -403,7 +403,7 @@ def _generate_flavor_channel_space_summary(fcs):
 
 
 def _flavor_channel_space_to_string(fcs):
-    """Convert a FlavorChannelSpace to a string."""
+    """Return a readable string summary for a flavor-channel space."""
     flavor_channel_space_str = ("FlavorChannelSpace with the following "
                                 "SpectatorChannels:\n")
     for sc in fcs.sc_list_sorted:
@@ -415,7 +415,7 @@ def _flavor_channel_space_to_string(fcs):
 
 
 def _add_three_particle_compact(sc, sc_index, sc_compact_single):
-    """Add entries of a three-particle spectator channel to a compact list."""
+    """Append a three-particle spectator channel to a compact record."""
     sc_compact_single = sc_compact_single\
         + list(np.array(sc.fc.masses)[sc.indexing])
     sc_compact_single = sc_compact_single\
@@ -436,7 +436,7 @@ def _add_three_particle_compact(sc, sc_index, sc_compact_single):
 
 
 def _add_two_particle_compact(sc, sc_index, sc_compact_single):
-    """Add entries of a two-particle spectator channel to a compact list."""
+    """Append a two-particle spectator channel to a compact record."""
     sc_compact_single = sc_compact_single\
         + list(np.array(sc.fc.masses))
     sc_compact_single = sc_compact_single\
