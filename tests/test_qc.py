@@ -93,14 +93,18 @@ class TestQC(unittest.TestCase):
         qc = self.build_qc()
         L, qc_dict = self.build_qc_case()
         solver = ampyl.QCEnergySolver(qc)
+        irrep = qc_dict['irrep']
+        ni_functions = []
+        for ni_function_channel in qc.qcis.nonint_functions:
+            ni_functions.extend(ni_function_channel[irrep])
 
         self.assertFalse(hasattr(qc, 'energy_solver'))
         self.assertFalse(hasattr(qc, 'get_all_energies'))
+        self.assertFalse(hasattr(solver, 'simple_try_at_fixed_L'))
 
-        roots = np.array([
-            solver.simple_try_at_fixed_L([4.6, 4.7], L, qc_dict),
-            solver.simple_try_at_fixed_L([4.7, 4.9], L, qc_dict)
-        ])
+        roots = np.array(
+            solver.get_roots_from_range([4.6, 4.9], L, qc_dict, ni_functions)
+        )
 
         roots_expected = np.array([4.63304377, 4.84871987])
         diffSQ = np.sum((roots - roots_expected)**2)

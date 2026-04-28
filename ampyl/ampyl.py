@@ -374,115 +374,193 @@ class QCEnergySolver:
         self.qc = qc
 
     def get_all_energies(self, qc_dict, dL=0.1):
-        version, irrep = self.get_version_and_irrep(qc_dict)
-        E_range, L, L_vals, Lmin, Lmax, Emax, Emin =\
-            self.extract_EL_set(version, irrep, dL)
-        ni_functions = self.get_ni_functions(irrep)
-        all_E_vals = self.get_roots_for_Erange_and_LdL(
-            E_range, L, dL, ni_functions, qc_dict)
-        interp_E_vals, interp_L_vals =\
-            self.build_interpolated_E_vals(all_E_vals, L_vals)
-
-        for i in range(len(interp_E_vals)):
-            for j in range(len(interp_E_vals[i])):
-                Ltmp = interp_L_vals[i][j]
-                Etmp = interp_E_vals[i][j]
-                E_vals_tmp = np.array(interp_E_vals[i])
-                L_vals_tmp = np.array(interp_L_vals[i])
-                if j != 0 and j != len(E_vals_tmp)-1:
-                    E_vals_tmp = np.delete(E_vals_tmp, j)
-                    L_vals_tmp = np.delete(L_vals_tmp, j)
-                sorted_indices = np.argsort(L_vals_tmp)
-                Etmp = np.interp(Ltmp, L_vals_tmp[sorted_indices],
-                                 E_vals_tmp[sorted_indices])
-                interp_E_vals[i][j] = Etmp
-                Eupdate = np.nan
-                bracket_shift = EPSILON10
-                while np.isnan(Eupdate) and bracket_shift < 1.e-1:
-                    E_range = [Etmp-bracket_shift, Etmp+bracket_shift]
-                    cuts_a = np.logspace(-8, -2, 4)
-                    cuts_b = np.linspace(0.011, 0.989, 10)
-                    cuts_c = 1.-np.logspace(-8, -2, 4)
-                    cuts = np.concatenate((cuts_a, cuts_b, cuts_c))
-                    cuts = np.sort(cuts)
-                    E_set = self.get_roots_from_range(
-                        E_range, Ltmp, qc_dict, ni_functions, cuts=cuts)
-                    if len(E_set) == 1:
-                        Eupdate = E_set[0]
-                    elif len(E_set) > 1:
-                        index = np.abs(E_set - Etmp).argmin()
-                        Eupdate = E_set[index]
-                        warnings.warn(f"\n{bcolors.WARNING}"
-                                      f"multiple solutions found for L = {L},"
-                                      f"differences are {np.abs(E_set - Etmp)}"
-                                      f"{bcolors.ENDC}")
-                    bracket_shift = bracket_shift*10.
-                if np.isnan(Eupdate):
-                    bracket_shift = 1.e-10
-                    while np.isnan(Eupdate) and bracket_shift < 3.e-1:
-                        E_bracket = [Etmp-bracket_shift, Etmp+bracket_shift]
-                        Eupdate = self.simple_try_at_fixed_L(
-                            E_bracket, Ltmp, qc_dict)
-                        bracket_shift = bracket_shift*5.
-                        if np.isnan(Eupdate):
-                            warnings.warn(f"\n{bcolors.WARNING}"
-                                          "failed to find solution for "
-                                          f"L = {L}"
-                                          f"{bcolors.ENDC}")
-                        else:
-                            interp_E_vals[i][j] = Eupdate
-                        self.qc.qcis.fvs.qc_impl[
-                            'fplusg_smart_interpolate'] = True
-                else:
-                    interp_E_vals[i][j] = Eupdate
-                self.qc.qcis.fvs.qc_impl['fplusg_smart_interpolate'] = True
-
-        while Lmin+np.abs(dL) <= L <= Lmax-np.abs(dL):
-            L = L+dL
-            for i in range(len(interp_E_vals)):
-                degree = min(len(interp_L_vals[i])-1, 3)
-                if len(interp_L_vals[i]) > 9:
-                    fit = np.polyfit(interp_L_vals[i][-9:],
-                                     interp_E_vals[i][-9:],
-                                     degree)
-                else:
-                    fit = np.polyfit(interp_L_vals[i], interp_E_vals[i],
-                                     degree)
-                line = np.poly1d(fit)
-                E_guess = line(L)
-                dE = 1.e-6
-                E_val = []
-                while len(E_val) == 0 and dE < 1.e-1:
-                    print(f'E_guess = {E_guess}, dE = {dE}')
-                    E_range = [E_guess-dE, E_guess+dE]
-                    if (E_guess+dE > Emax or E_guess-dE > Emax or
-                       E_guess-dE < Emin or E_guess+dE < Emin):
-                        warnings.warn('E_guess+-dE out of bounds')
-                        dE = 1.0
-                        continue
-                    cuts = np.linspace(0.1, 0.9, 3)
-                    E_val = self.get_roots_from_range(
-                        E_range, L, qc_dict, ni_functions, cuts=cuts)
-                    print(f'E_val = {E_val}')
-                    dE = dE*10.
-                if len(E_val) == 1:
-                    print(f'Unique solution found with dE = {dE}')
-                    print(f'L = {L}, E = {E_val[0]}')
-                    interp_E_vals[i].append(E_val[0])
-                    interp_L_vals[i].append(L)
-                elif len(E_val) > 1:
-                    index = np.abs(E_val - E_guess).argmin()
-                    Eupdate = E_val[index]
-                    interp_E_vals[i].append(Eupdate)
-                    interp_L_vals[i].append(L)
-                    warnings.warn(f'Multiple solutions found for L = {L}.\n'
-                                  f'Differences are {np.abs(E_set - Etmp)}')
-
-                    self.qc.qcis.fvs.qc_impl[
-                        'fplusg_smart_interpolate'] = True
+        version, irrep = self._get_version_and_irrep(qc_dict)
+        solver_state = self._initialize_energy_scan(
+            version, irrep, qc_dict, dL)
+        self._refine_interpolated_energies(
+            solver_state['interp_E_vals'],
+            solver_state['interp_L_vals'],
+            qc_dict,
+            solver_state['ni_functions']
+        )
+        self._extend_energy_levels(
+            solver_state['L'],
+            solver_state['Lmin'],
+            solver_state['Lmax'],
+            solver_state['Emin'],
+            solver_state['Emax'],
+            dL,
+            qc_dict,
+            solver_state['ni_functions'],
+            solver_state['interp_E_vals'],
+            solver_state['interp_L_vals']
+        )
+        interp_L_vals = solver_state['interp_L_vals']
+        interp_E_vals = solver_state['interp_E_vals']
         return interp_L_vals, interp_E_vals
 
-    def get_version_and_irrep(self, qc_dict):
+    def _initialize_energy_scan(self, version, irrep, qc_dict, dL):
+        E_range, L, L_vals, Lmin, Lmax, Emax, Emin = \
+            self._extract_EL_set(version, irrep, dL)
+        ni_functions = self._get_ni_functions(irrep)
+        all_E_vals = self._get_roots_for_Erange_and_LdL(
+            E_range, L, dL, ni_functions, qc_dict)
+        interp_E_vals, interp_L_vals = self._build_interpolated_E_vals(
+            all_E_vals, L_vals)
+        return {
+            'Emax': Emax,
+            'Emin': Emin,
+            'L': L,
+            'Lmax': Lmax,
+            'Lmin': Lmin,
+            'interp_E_vals': interp_E_vals,
+            'interp_L_vals': interp_L_vals,
+            'ni_functions': ni_functions
+        }
+
+    def _refine_interpolated_energies(self, interp_E_vals, interp_L_vals,
+                                      qc_dict, ni_functions):
+        for band_index, _ in enumerate(interp_E_vals):
+            for point_index, _ in enumerate(interp_E_vals[band_index]):
+                self._refine_interpolated_energy(
+                    band_index, point_index, interp_E_vals, interp_L_vals,
+                    qc_dict, ni_functions)
+
+    def _refine_interpolated_energy(self, band_index, point_index,
+                                    interp_E_vals, interp_L_vals, qc_dict,
+                                    ni_functions):
+        Ltmp = interp_L_vals[band_index][point_index]
+        Etmp = self._get_interpolated_energy_guess(
+            band_index, point_index, interp_E_vals, interp_L_vals)
+        interp_E_vals[band_index][point_index] = Etmp
+        Eupdate = self._find_updated_energy(Etmp, Ltmp, qc_dict, ni_functions)
+        interp_E_vals[band_index][point_index] = Eupdate
+        self.qc.qcis.fvs.qc_impl['fplusg_smart_interpolate'] = True
+
+    def _get_interpolated_energy_guess(self, band_index, point_index,
+                                       interp_E_vals, interp_L_vals):
+        E_vals_tmp = np.array(interp_E_vals[band_index])
+        L_vals_tmp = np.array(interp_L_vals[band_index])
+        if point_index != 0 and point_index != len(E_vals_tmp)-1:
+            E_vals_tmp = np.delete(E_vals_tmp, point_index)
+            L_vals_tmp = np.delete(L_vals_tmp, point_index)
+        sorted_indices = np.argsort(L_vals_tmp)
+        Ltmp = interp_L_vals[band_index][point_index]
+        return np.interp(Ltmp, L_vals_tmp[sorted_indices],
+                         E_vals_tmp[sorted_indices])
+
+    def _find_updated_energy(self, Etmp, Ltmp, qc_dict, ni_functions):
+        Eupdate = self._find_root_near_interpolated_energy(
+            Etmp, Ltmp, qc_dict, ni_functions)
+        if np.isnan(Eupdate):
+            return self._retry_root_near_interpolated_energy(
+                Etmp, Ltmp, qc_dict)
+        return Eupdate
+
+    def _find_root_near_interpolated_energy(self, Etmp, Ltmp, qc_dict,
+                                            ni_functions):
+        Eupdate = np.nan
+        bracket_shift = EPSILON10
+        while np.isnan(Eupdate) and bracket_shift < 1.e-1:
+            E_range = [Etmp-bracket_shift, Etmp+bracket_shift]
+            cuts = self._get_refinement_cuts()
+            E_set = self.get_roots_from_range(
+                E_range, Ltmp, qc_dict, ni_functions, cuts=cuts)
+            if len(E_set) == 1:
+                Eupdate = E_set[0]
+            elif len(E_set) > 1:
+                index = np.abs(E_set - Etmp).argmin()
+                Eupdate = E_set[index]
+                warnings.warn(f"\n{bcolors.WARNING}"
+                              f"multiple solutions found for L = {Ltmp},"
+                              f"differences are {np.abs(E_set - Etmp)}"
+                              f"{bcolors.ENDC}")
+            bracket_shift = bracket_shift*10.
+        return Eupdate
+
+    def _retry_root_near_interpolated_energy(self, Etmp, Ltmp, qc_dict):
+        Eupdate = np.nan
+        bracket_shift = 1.e-10
+        while np.isnan(Eupdate) and bracket_shift < 3.e-1:
+            E_bracket = [Etmp-bracket_shift, Etmp+bracket_shift]
+            Eupdate = self._simple_try_at_fixed_L(E_bracket, Ltmp, qc_dict)
+            bracket_shift = bracket_shift*5.
+            if np.isnan(Eupdate):
+                warnings.warn(f"\n{bcolors.WARNING}"
+                              "failed to find solution for "
+                              f"L = {Ltmp}"
+                              f"{bcolors.ENDC}")
+        return Eupdate
+
+    def _get_refinement_cuts(self):
+        cuts_a = np.logspace(-8, -2, 4)
+        cuts_b = np.linspace(0.011, 0.989, 10)
+        cuts_c = 1.-np.logspace(-8, -2, 4)
+        cuts = np.concatenate((cuts_a, cuts_b, cuts_c))
+        return np.sort(cuts)
+
+    def _extend_energy_levels(self, L, Lmin, Lmax, Emin, Emax, dL, qc_dict,
+                              ni_functions, interp_E_vals, interp_L_vals):
+        while Lmin+np.abs(dL) <= L <= Lmax-np.abs(dL):
+            L = L+dL
+            for band_index, _ in enumerate(interp_E_vals):
+                self._append_energy_level_at_volume(
+                    band_index, L, Emin, Emax, qc_dict, ni_functions,
+                    interp_E_vals, interp_L_vals)
+
+    def _append_energy_level_at_volume(self, band_index, L, Emin, Emax,
+                                       qc_dict, ni_functions, interp_E_vals,
+                                       interp_L_vals):
+        E_guess = self._fit_energy_guess(
+            interp_L_vals[band_index], interp_E_vals[band_index], L)
+        E_val, dE = self._find_roots_near_energy_guess(
+            E_guess, L, Emin, Emax, qc_dict, ni_functions)
+        if len(E_val) == 1:
+            print(f'Unique solution found with dE = {dE}')
+            print(f'L = {L}, E = {E_val[0]}')
+            interp_E_vals[band_index].append(E_val[0])
+            interp_L_vals[band_index].append(L)
+        elif len(E_val) > 1:
+            index = np.abs(E_val - E_guess).argmin()
+            Eupdate = E_val[index]
+            interp_E_vals[band_index].append(Eupdate)
+            interp_L_vals[band_index].append(L)
+            warnings.warn(f'Multiple solutions found for L = {L}.\n'
+                          f'Differences are {np.abs(E_val - E_guess)}')
+            self.qc.qcis.fvs.qc_impl['fplusg_smart_interpolate'] = True
+
+    def _fit_energy_guess(self, L_vals, E_vals, L):
+        degree = min(len(L_vals)-1, 3)
+        if len(L_vals) > 9:
+            fit = np.polyfit(L_vals[-9:], E_vals[-9:], degree)
+        else:
+            fit = np.polyfit(L_vals, E_vals, degree)
+        line = np.poly1d(fit)
+        return line(L)
+
+    def _find_roots_near_energy_guess(self, E_guess, L, Emin, Emax, qc_dict,
+                                      ni_functions):
+        dE = 1.e-6
+        E_val = []
+        while len(E_val) == 0 and dE < 1.e-1:
+            print(f'E_guess = {E_guess}, dE = {dE}')
+            E_range = [E_guess-dE, E_guess+dE]
+            if self._energy_guess_is_out_of_bounds(E_guess, dE, Emin, Emax):
+                warnings.warn('E_guess+-dE out of bounds')
+                dE = 1.0
+                continue
+            cuts = np.linspace(0.1, 0.9, 3)
+            E_val = self.get_roots_from_range(
+                E_range, L, qc_dict, ni_functions, cuts=cuts)
+            print(f'E_val = {E_val}')
+            dE = dE*10.
+        return E_val, dE
+
+    def _energy_guess_is_out_of_bounds(self, E_guess, dE, Emin, Emax):
+        return (E_guess+dE > Emax or E_guess-dE > Emax or
+                E_guess-dE < Emin or E_guess+dE < Emin)
+
+    def _get_version_and_irrep(self, qc_dict):
         project = qc_dict['project']
         if not project:
             raise ValueError("project must be True")
@@ -490,7 +568,7 @@ class QCEnergySolver:
         version = qc_dict['version']
         return version, irrep
 
-    def extract_EL_set(self, version, irrep, dL):
+    def _extract_EL_set(self, version, irrep, dL):
         if (version in ['kdf_zero_1+_fgcombo',
                         'kdf_zero_detf3inv_asym_fgcombo',
                         'kdf+f3inv_asym_fgcombo']
@@ -516,14 +594,14 @@ class QCEnergySolver:
         L_vals = [L-dL, L]
         return E_range, L, L_vals, Lmin, Lmax, Emax, Emin
 
-    def get_ni_functions(self, irrep):
+    def _get_ni_functions(self, irrep):
         ni_functions = []
         for ni_function_channel in self.qc.qcis.nonint_functions:
             ni_functions.extend(ni_function_channel[irrep])
         return ni_functions
 
-    def get_roots_for_Erange_and_LdL(self, E_range, L, dL, ni_functions,
-                                     qc_dict, cuts=DEFAULT_CUTS):
+    def _get_roots_for_Erange_and_LdL(self, E_range, L, dL, ni_functions,
+                                      qc_dict, cuts=DEFAULT_CUTS):
         L_values = [L-dL, L]
         E_sets = []
         for Ltmp in L_values:
@@ -568,12 +646,12 @@ class QCEnergySolver:
                 all_ranges.append([all_breakpoints[i], all_breakpoints[i+1]])
         all_roots = []
         for E_bracket in all_ranges:
-            root = self.simple_try_at_fixed_L(E_bracket, L, qc_dict)
+            root = self._simple_try_at_fixed_L(E_bracket, L, qc_dict)
             if root is not np.nan:
                 all_roots.append(root)
         return all_roots
 
-    def simple_try_at_fixed_L(self, E_bracket, L, qc_dict):
+    def _simple_try_at_fixed_L(self, E_bracket, L, qc_dict):
         try:
             root = root_scalar(self.qc.get_value,
                                args=(L, qc_dict),
@@ -593,8 +671,8 @@ class QCEnergySolver:
         warnings.warn("Root not found, not sure why. Returning NaN.")
         return np.nan
 
-    def build_interpolated_E_vals(self, all_E_vals, L_vals,
-                                  n_interp_points=4):
+    def _build_interpolated_E_vals(self, all_E_vals, L_vals,
+                                   n_interp_points=4):
         cleaned = []
         for E_vals in all_E_vals:
             unique_vals = []
