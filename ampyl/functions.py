@@ -36,7 +36,6 @@ Created July 2022.
 
 import numpy as np
 from sympy.physics.quantum.cg import CG
-# from sympy import S
 from scipy.special import sph_harm
 from scipy.special import erfi
 from scipy.special import erf
