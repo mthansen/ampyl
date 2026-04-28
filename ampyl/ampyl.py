@@ -251,7 +251,7 @@ class QCVersionEvaluator:
 
 
 class QCEnergySolver:
-    """Find QC roots and trace energy levels."""
+    """Find QC roots and trace energy levels for a QC instance."""
 
     def __init__(self, qc):
         self.qc = qc
@@ -504,8 +504,7 @@ class QCEnergySolver:
 class QC:
     r"""
     QC: A class for handling the quantization condition (QC) in finite-volume
-    lattice calculations. This class provides methods for computing QC values
-    and finding roots.
+    lattice calculations. This class provides methods for computing QC values.
 
     Warning: It is up to the user to select values of alphaKSS and C1cut that
     lead to a sufficient estimate of the F matrix.
@@ -523,22 +522,7 @@ class QC:
         get_value(E, L, qc_dict):
             Computes a QC value based on the specified parameters and version.
 
-        get_roots_from_range(E_range, L, qc_dict, ni_functions,
-                             cuts=DEFAULT_CUTS):
-            Finds roots of the QC within a specified energy range.
-
-        get_all_energies(qc_dict, dL=0.1):
-            Computes all energy levels for a given box length and step size.
-
-        simple_try_at_fixed_L(E_bracket, L, qc_dict):
-            Simplified method for finding a single root of the QC at a fixed
-            box length.
-
-        get_roots_for_Erange_and_LdL(E_range, L, qc_dict, ni_functions,
-                                     qc_dict, cuts=DEFAULT_CUTS):
-            Computes the roots of the QC for a given energy range and box size,
-            considering non-interacting energy levels and specified
-            breakpoints.
+    Use :class:`QCEnergySolver` to trace energy levels from a QC instance.
     """
 
     def __init__(self, qcis=None, C1cut=5, alphaKSS=1.0, verbosity=0):
@@ -547,7 +531,6 @@ class QC:
                                               C1cut=C1cut,
                                               alphaKSS=alphaKSS)
         self.version_evaluator = QCVersionEvaluator()
-        self.energy_solver = QCEnergySolver(self)
         self.f = self.matrix_builder.f
         self.g = self.matrix_builder.g
         self.fplusg = self.matrix_builder.fplusg
@@ -633,33 +616,3 @@ class QC:
         if qc_dict['project'] and not isinstance(qc_dict['irrep'][1], int):
             raise TypeError("qc_dict['irrep'][1] must be an int")
         return qc_dict
-
-    def get_all_energies(self, qc_dict, dL=0.1):
-        return self.energy_solver.get_all_energies(qc_dict, dL)
-
-    def get_version_and_irrep(self, qc_dict):
-        return self.energy_solver.get_version_and_irrep(qc_dict)
-
-    def extract_EL_set(self, version, irrep, dL):
-        return self.energy_solver.extract_EL_set(version, irrep, dL)
-
-    def get_ni_functions(self, irrep):
-        return self.energy_solver.get_ni_functions(irrep)
-
-    def get_roots_for_Erange_and_LdL(self, E_range, L, dL, ni_functions,
-                                     qc_dict, cuts=DEFAULT_CUTS):
-        return self.energy_solver.get_roots_for_Erange_and_LdL(
-            E_range, L, dL, ni_functions, qc_dict, cuts)
-
-    def get_roots_from_range(self, E_range, L, qc_dict, ni_functions,
-                             cuts=DEFAULT_CUTS):
-        return self.energy_solver.get_roots_from_range(
-            E_range, L, qc_dict, ni_functions, cuts)
-
-    def simple_try_at_fixed_L(self, E_bracket, L, qc_dict):
-        return self.energy_solver.simple_try_at_fixed_L(
-            E_bracket, L, qc_dict)
-
-    def build_interpolated_E_vals(self, all_E_vals, L_vals, n_interp_points=4):
-        return self.energy_solver.build_interpolated_E_vals(
-            all_E_vals, L_vals, n_interp_points)

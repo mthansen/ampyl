@@ -40,7 +40,7 @@ import ampyl
 
 
 class TestQC(unittest.TestCase):
-    def test_qc(self):
+    def build_qc(self):
         mrho = 2.197791
         pion = ampyl.flavor.Particle(mass=1., spin=0., flavor='pi',
                                      isospin_multiplet=True, isospin=1.)
@@ -63,13 +63,20 @@ class TestQC(unittest.TestCase):
         qcis = ampyl.spaces.QCIndexSpace(fcs=fcs, fvs=fvs, tbis=tbis,
                                          Emax=5.5, Lmax=4.0)
         qcis.populate()
-        qc = ampyl.QC(qcis=qcis)
+        return ampyl.QC(qcis=qcis)
+
+    def build_qc_case(self):
         L = 16*0.06906*3.444
         k_params = [[[5.80, 2.184], [0.296]], [-9.0]]
         project = True
         irrep = ('T1MINUS', 1)
         qc_dict = {'k_params': k_params, 'project': project, 'irrep': irrep,
                    'version': 'kdf+f3inv_asym_fgcombo'}
+        return L, qc_dict
+
+    def test_qc(self):
+        qc = self.build_qc()
+        L, qc_dict = self.build_qc_case()
         brackets = [[4.6, 4.7], [4.7, 4.9]]
         roots = []
         for bracket in brackets:
@@ -77,6 +84,23 @@ class TestQC(unittest.TestCase):
                                bracket=bracket).root
             roots.append(root)
         roots = np.array(roots)
+
+        roots_expected = np.array([4.63304377, 4.84871987])
+        diffSQ = np.sum((roots - roots_expected)**2)
+        self.assertTrue(diffSQ < 1.e-15)
+
+    def test_qc_energy_solver_is_explicit(self):
+        qc = self.build_qc()
+        L, qc_dict = self.build_qc_case()
+        solver = ampyl.QCEnergySolver(qc)
+
+        self.assertFalse(hasattr(qc, 'energy_solver'))
+        self.assertFalse(hasattr(qc, 'get_all_energies'))
+
+        roots = np.array([
+            solver.simple_try_at_fixed_L([4.6, 4.7], L, qc_dict),
+            solver.simple_try_at_fixed_L([4.7, 4.9], L, qc_dict)
+        ])
 
         roots_expected = np.array([4.63304377, 4.84871987])
         diffSQ = np.sum((roots - roots_expected)**2)
