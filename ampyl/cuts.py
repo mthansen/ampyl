@@ -49,18 +49,10 @@ warnings.simplefilter("once")
 
 
 class G(Interpolable):
-    r"""
-    Class for the finite-volume G matrix.
-
-    The G matrix is responsible for finite-volume effects arising from switches
-        in the scattering pair.
-
-    :param qcis: quantization-condition index space, specifying all data for
-        the class
-    :type qcis: QCIndexSpace
-    """
+    """Represent the finite-volume G matrix."""
 
     def _get_value_not_interpolated(self, E, L, project, irrep):
+        """Build the un-interpolated G matrix."""
         nP = self.qcis.fvs.nP
         if self.qcis.verbosity >= 2:
             self._g_verbose_a(E, L, nP)
@@ -84,6 +76,7 @@ class G(Interpolable):
         return g_final
 
     def _g_verbose_a(self, E, L, nP):
+        """Print detailed diagnostic information for G evaluation."""
         print('evaluating G using numpy accelerated version')
         print('E = ', E, ', nP = ', nP, ', L = ', L)
 
@@ -104,6 +97,7 @@ class G(Interpolable):
         print('G = YY*H1*H2\n    * '+sf+'\n    * 1./(E-w1-w2-w3)\n')
 
     def _get_entry_and_slices(self, E, L, nP):
+        """Return the relevant TBKS entry and shell slices for G."""
         if nP@nP == 0:
             if self.qcis.verbosity >= 2:
                 print('nP = [0 0 0] indexing')
@@ -157,6 +151,7 @@ class G(Interpolable):
 
     def _get_value_from_tbks(self, E, L, project, irrep, cindex_col,
                              cindex_row, tbks_entry, slices):
+        """Assemble the full G matrix from a TBKS entry."""
         m1, m2, m3 = self.extract_masses()
         g_final = []
         if self.qcis.verbosity >= 2:
@@ -211,7 +206,38 @@ class G(Interpolable):
                   row_shell_index=None,
                   col_shell_index=None,
                   project=False, irrep=None):
-        """Build the G matrix on a single shell."""
+        """Build the G matrix block for a single pair of shells.
+
+        Parameters
+        ----------
+        E : float, optional
+            Energy value.
+        L : float, optional
+            Box length.
+        m1, m2, m3 : float, optional
+            Particle masses.
+        cindex_row, cindex_col : int, optional
+            Three-slice indices for nonzero total momentum.
+        sc_index_row, sc_index_col : int, optional
+            Spectator-channel indices.
+        ell1, ell2 : int, optional
+            Partial-wave indices.
+        g_rescale : float, optional
+            Overall rescaling factor for the shell block.
+        tbks_entry : object, optional
+            Precomputed TBKS entry used to define the shell structure.
+        row_shell_index, col_shell_index : int, optional
+            Shell indices for the block row and column.
+        project : bool, optional
+            Whether to project onto an irrep.
+        irrep : tuple, optional
+            Target irrep when projecting.
+
+        Returns
+        -------
+        numpy.ndarray
+            G-matrix block for the requested shells.
+        """
         three_scheme = self.qcis.tbis.three_scheme
         nP = self.qcis.fvs.nP
         qc_impl = self.qcis.fvs.qc_impl
@@ -268,6 +294,7 @@ class G(Interpolable):
     def _nP_nonzero_projectors(self, E, L, sc_index_row, sc_index_col,
                                row_shell_index, col_shell_index, irrep,
                                mask_row_shells, mask_col_shells):
+        """Return shell projectors for nonzero total momentum."""
         ibest = self.qcis._get_ibest(E, L)
         ibest = 0
         warnings.warn(f"\n{bcolors.WARNING}"
@@ -284,6 +311,7 @@ class G(Interpolable):
 
     def _nPzero_projectors(self, sc_index_row, sc_index_col,
                            row_shell_index, col_shell_index, irrep):
+        """Return shell projectors for zero total momentum."""
         proj_tmp_right = self.qcis.proj_dicts_by_sc_and_shellset[
                         sc_index_col][0][col_shell_index][irrep]
         proj_tmp_left = np.conjugate((
@@ -293,6 +321,7 @@ class G(Interpolable):
         return proj_tmp_right, proj_tmp_left
 
     def _clean_shape(self, g_collection):
+        """Pad empty blocks so a nested G collection can be assembled."""
         rowsizes = [0]*len(g_collection)
         colsizes = [0]*len(g_collection)
         for i in range(len(g_collection)):
@@ -312,22 +341,10 @@ class G(Interpolable):
 
 
 class F(Interpolable):
-    """
-    Class for the finite-volume F matrix.
-
-    Warning: It is up to the user to select values of alphaKSS and C1cut that
-    lead to a sufficient estimate of the F matrix.
-
-    :param qcis: quantization-condition index space, specifying all data for
-        the class
-    :type qcis: QCIndexSpace
-    :param alphaKSS: damping factor entering the zeta functions
-    :type alphaKSS: float
-    :param C1cut: hard cutoff used in the zeta functions
-    :type C1cut: int
-    """
+    """Represent the finite-volume F matrix."""
 
     def __init__(self, qcis=None, alphaKSS=1.0, C1cut=3):
+        """Initialize the F matrix with zeta-function cutoff parameters."""
         self.qcis = qcis
         three_scheme = self.qcis.tbis.three_scheme
         alpha_beta_scheme = (three_scheme == 'original pole')\
@@ -341,7 +358,38 @@ class F(Interpolable):
                   cindex=None, sc_ind=None, ell1=0, ell2=0, tbks_entry=None,
                   slice_index=None, project=False, irrep=None,
                   mask=None):
-        """Build the F matrix on a single shell."""
+        """Build the F matrix block for a single shell.
+
+        Parameters
+        ----------
+        E : float, optional
+            Energy value.
+        L : float, optional
+            Box length.
+        m1, m2, m3 : float, optional
+            Particle masses.
+        cindex : int, optional
+            Three-slice index for nonzero total momentum.
+        sc_ind : int, optional
+            Spectator-channel index.
+        ell1, ell2 : int, optional
+            Partial-wave indices.
+        tbks_entry : object, optional
+            Precomputed TBKS entry used to define the shell structure.
+        slice_index : int, optional
+            Shell index to evaluate.
+        project : bool, optional
+            Whether to project onto an irrep.
+        irrep : tuple, optional
+            Target irrep when projecting.
+        mask : array-like, optional
+            Shell mask used when reducing nonzero-momentum data.
+
+        Returns
+        -------
+        numpy.ndarray
+            F-matrix block for the requested shell.
+        """
         three_scheme = self.qcis.tbis.three_scheme
         nP = self.qcis.fvs.nP
         qc_impl = self.qcis.fvs.qc_impl
@@ -388,7 +436,7 @@ class F(Interpolable):
         return Fshell
 
     def _get_value_not_interpolated(self, E, L, project, irrep):
-        """Build the F matrix in a shell-based way."""
+        """Build the un-interpolated F matrix shell by shell."""
         Lmax = self.qcis.Lmax
         Emax = self.qcis.Emax
         three_slice_index = 0
@@ -490,11 +538,10 @@ class F(Interpolable):
 
 
 class FplusG(Interpolable):
-    r"""
-    Class for F+G (typically with interpolation).
-    """
+    """Represent the combined F+G matrix."""
 
     def __init__(self, qcis=QCIndexSpace(), alphaKSS=1.0, C1cut=3):
+        """Initialize the combined F+G object from F and G components."""
         super().__init__(qcis)
         self.C1cut = C1cut
         self.alphaKSS = alphaKSS
@@ -502,10 +549,12 @@ class FplusG(Interpolable):
         self.g = G(qcis=qcis)
 
     def _get_value_not_interpolated(self, E, L, project, irrep):
+        """Build the un-interpolated F+G matrix."""
         return self.g.get_value(E=E, L=L, project=project, irrep=irrep)\
                 + self.f.get_value(E=E, L=L, project=project, irrep=irrep)
 
     def _get_all_nvecSQs(self, nvecSQs_by_shell):
+        """Collect all squared momentum triples appearing in shell data."""
         all_nvecSQs = []
         for outer_nvecSQ_row in nvecSQs_by_shell:
             for outer_nvecSQ_entry in outer_nvecSQ_row:
