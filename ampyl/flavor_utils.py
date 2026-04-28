@@ -320,20 +320,20 @@ def build_sorted_sc_list(fcs):
             fcs.possible_numbers_of_particles.index(3)]
         first_mass_index = 1
         last_mass_index = 4
-        sc_three_previous_masses = sc_compact_three_subspace[0][
+        sc_three_masses_previous = sc_compact_three_subspace[0][
             first_mass_index:last_mass_index]
         slice_min = three_offset
         slice_max = three_offset
         for sc_compact_entry in sc_compact_three_subspace:
             sc_three_masses_current = sc_compact_entry[first_mass_index:
                                                        last_mass_index]
-            if (sc_three_previous_masses == sc_three_masses_current).all():
+            if (sc_three_masses_previous == sc_three_masses_current).all():
                 slice_max = slice_max+1
             else:
                 slices_by_three_masses.append([slice_min, slice_max])
                 slice_min = slice_max
                 slice_max = slice_max+1
-                sc_three_previous_masses = sc_three_masses_current
+                sc_three_masses_previous = sc_three_masses_current
         slices_by_three_masses.append([slice_min, slice_max])
         fcs.slices_by_three_masses = slices_by_three_masses
         fcs.n_three_slices = len(slices_by_three_masses)
