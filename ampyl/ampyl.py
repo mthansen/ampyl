@@ -50,9 +50,10 @@ warnings.simplefilter("once")
 
 
 class QCMatrixBuilder:
-    """Build the matrices needed by each QC version."""
+    """Build the matrix inputs needed to evaluate QC expressions."""
 
     def __init__(self, qcis=None, C1cut=5, alphaKSS=1.0):
+        """Initialize the matrix builder for a QC index space."""
         self.qcis = qcis
         self.f = F(qcis=self.qcis, alphaKSS=alphaKSS, C1cut=C1cut)
         self.g = G(qcis=self.qcis)
@@ -61,6 +62,7 @@ class QCMatrixBuilder:
         self.kdf = Kdf(qcis=self.qcis)
 
     def build(self, E, L, qc_dict):
+        """Build the matrices required for the selected QC version."""
         k_params = qc_dict['k_params']
         project = qc_dict['project']
         irrep = qc_dict['irrep']
@@ -97,6 +99,7 @@ class QCMatrixBuilder:
         return matrices
 
     def _get_f_matrix(self, E, L, project, irrep, rescale):
+        """Return the F matrix for the requested kinematics."""
         f_smart_interpolate = QC_IMPL_DEFAULTS['f_smart_interpolate']
         if 'f_smart_interpolate' in self.qcis.fvs.qc_impl:
             f_smart_interpolate = self.qcis.fvs.qc_impl[
@@ -110,6 +113,7 @@ class QCMatrixBuilder:
                                 short_string='f')/rescale
 
     def _match_matrix_to_k(self, matrix, K, matrix_name):
+        """Adjust a matrix shape so it can be combined with K."""
         if len(matrix) > len(K):
             warnings.warn(f"\n{bcolors.WARNING}"
                           f"{matrix_name} and K have different shapes, and "
@@ -129,6 +133,7 @@ class QCMatrixBuilder:
         return K, matrix
 
     def _creates_f(self, version):
+        """Return whether a QC version requires the F matrix."""
         return version in [
             '1+Kdf_F3',
             'kdf+f3inv',
@@ -141,6 +146,7 @@ class QCMatrixBuilder:
         ]
 
     def _creates_fplusg(self, version):
+        """Return whether a QC version requires the F+G matrix."""
         return version in [
             '1+Kdf_F3',
             'kdf+f3inv',
@@ -152,6 +158,7 @@ class QCMatrixBuilder:
         ]
 
     def _creates_kdf(self, version):
+        """Return whether a QC version requires the Kdf matrix."""
         return version in [
             '1+Kdf_F3',
             'kdf+f3inv',
@@ -159,6 +166,7 @@ class QCMatrixBuilder:
         ]
 
     def _creates_g(self, version):
+        """Return whether a QC version requires the G matrix."""
         return version in [
             'kdf_zero_1+',
             'kdf_zero_k2_inv',
@@ -168,9 +176,10 @@ class QCMatrixBuilder:
 
 
 class QCVersionEvaluator:
-    """Evaluate QC formulas once the needed matrices have been built."""
+    """Evaluate QC formulas from a prepared set of matrices."""
 
     def evaluate(self, L, qc_dict, matrices):
+        """Evaluate the selected QC expression."""
         version = qc_dict['version']
         shift = qc_dict['shift']
         K = matrices['K']
@@ -229,9 +238,11 @@ class QCVersionEvaluator:
             return inverse_det
 
     def _get_symmetric_f3(self, F, FplusG, K, L):
+        """Return the symmetric F3 matrix."""
         return (F/3 - F @ np.linalg.inv(np.linalg.inv(K)+FplusG) @ F)/L**3
 
     def _get_asymmetric_f3(self, FplusG, K, L):
+        """Return the asymmetric F3 matrix."""
         id_mat = np.identity(len(FplusG))
         H = id_mat+FplusG@K
         detH = np.linalg.det(H)
@@ -243,30 +254,15 @@ class QCVersionEvaluator:
 
 
 class QC:
-    r"""
-    QC: A class for handling the quantization condition (QC) in finite-volume
-    lattice calculations. This class provides methods for computing QC values.
+    """Represent a finite-volume quantization condition.
 
-    Warning: It is up to the user to select values of alphaKSS and C1cut that
-    lead to a sufficient estimate of the F matrix.
-
-    Attributes:
-        qcis (QCIndexSpace): The quantization-condition index space, specifying
-            data for the class.
-        f (F): The F matrix, derived from the quantization condition.
-        g (G): The G matrix, derived from the quantization condition.
-        fplusg (FplusG): The sum of F and G matrices.
-        k (K): The K matrix, representing the two-particle interaction.
-        verbosity (int): The verbosity level for logging and debugging.
-
-    Methods:
-        get_value(E, L, qc_dict):
-            Computes a QC value based on the specified parameters and version.
-
-    Use :class:`FVSpectrum` to trace energy levels from a QC instance.
+    The class owns the matrix-building and QC-evaluation machinery for a
+    populated QC index space. Use :class:`FVSpectrum` to trace finite-volume
+    energy levels from a QC instance.
     """
 
     def __init__(self, qcis=None, C1cut=5, alphaKSS=1.0, verbosity=0):
+        """Initialize a QC evaluator and its matrix components."""
         self.qcis = qcis
         self.matrix_builder = QCMatrixBuilder(qcis=self.qcis,
                                               C1cut=C1cut,
@@ -282,32 +278,34 @@ class QC:
 
     @property
     def verbosity(self):
-        """Verbosity of the QC."""
+        """int: Verbosity level for QC-related diagnostics."""
         return self._verbosity
 
     @verbosity.setter
     def verbosity(self, verbosity):
-        """Set the verbosity of the QC."""
+        """Set the verbosity level."""
         if not isinstance(verbosity, int):
             raise ValueError("verbosity must be an int")
         self._verbosity = verbosity
 
     def get_value(self, E, L, qc_dict):
-        r"""
-        Evaluate the selected quantization-condition expression.
+        """Evaluate the selected quantization-condition expression.
 
-        :param E: energy value
-        :type E: float
-        :param L: box length
-        :type L: float
-        :param qc_dict: options for the QC evaluation. Must include
-            ``'k_params'`` and may override ``'project'``, ``'irrep'``,
-            ``'version'``, ``'rescale'``, and ``'shift'``.
-        :type qc_dict: dict
-        :return: value of the selected QC version
-        :rtype: float or numpy.ndarray
+        Parameters
+        ----------
+        E : float
+            Energy value.
+        L : float
+            Box length.
+        qc_dict : dict
+            QC evaluation options. Must include ``'k_params'`` and may
+            override ``'project'``, ``'irrep'``, ``'version'``,
+            ``'rescale'``, and ``'shift'``.
 
-        Supported versions are handled by :class:`QCVersionEvaluator`.
+        Returns
+        -------
+        float or numpy.ndarray
+            Value of the selected QC version.
         """
         self._validate_energy_and_volume(E, L)
         qc_dict = self.validate_qc_dict(qc_dict)
@@ -315,12 +313,14 @@ class QC:
         return self.version_evaluator.evaluate(L, qc_dict, matrices)
 
     def _validate_energy_and_volume(self, E, L):
+        """Validate scalar energy and volume inputs."""
         if not isinstance(E, float):
             raise TypeError("E must be a float")
         if not isinstance(L, float):
             raise TypeError("L must be a float")
 
     def validate_qc_dict(self, qc_dict):
+        """Validate and fill defaults in a QC evaluation dictionary."""
         if not isinstance(qc_dict, dict):
             raise TypeError("qc_dict must be a dictionary")
         key_is_required = {
@@ -360,12 +360,27 @@ class QC:
 
 
 class FVSpectrum:
-    """Find finite-volume energy levels for a QC instance."""
+    """Trace finite-volume spectra for a QC instance."""
 
     def __init__(self, qc):
+        """Initialize a finite-volume spectrum solver from a QC instance."""
         self.qc = qc
 
     def get_all_energies(self, qc_dict, dL=0.1):
+        """Track all interpolated energy levels across a range of volumes.
+
+        Parameters
+        ----------
+        qc_dict : dict
+            QC evaluation options for the spectrum calculation.
+        dL : float, optional
+            Step size in box length.
+
+        Returns
+        -------
+        tuple[list[list[float]], list[list[float]]]
+            Interpolated volume values and their corresponding energy levels.
+        """
         version, irrep = fv_spectrum_utils._get_version_and_irrep(qc_dict)
         solver_state = fv_spectrum_utils._initialize_energy_scan(
             self, version, irrep, qc_dict, dL)
@@ -395,5 +410,25 @@ class FVSpectrum:
 
     def get_roots_from_range(self, E_range, L, qc_dict, ni_functions,
                              cuts=fv_spectrum_utils.DEFAULT_CUTS):
+        """Return QC roots in an energy window at fixed volume.
+
+        Parameters
+        ----------
+        E_range : list[float]
+            Two-element energy interval to search.
+        L : float
+            Box length.
+        qc_dict : dict
+            QC evaluation options.
+        ni_functions : list[callable]
+            Noninteracting energy functions used to split the search interval.
+        cuts : array-like, optional
+            Fractional cut positions used when subdividing each bracket.
+
+        Returns
+        -------
+        list[float]
+            Roots found in the requested interval.
+        """
         return fv_spectrum_utils.get_roots_from_range(
             self, E_range, L, qc_dict, ni_functions, cuts)
