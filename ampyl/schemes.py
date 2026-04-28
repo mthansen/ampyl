@@ -239,8 +239,6 @@ class ThreeBodyInteractionScheme:
 
     :param fcs: flavor-channel space needed to define the domain of Kdf
     :type fcs: :class:`FlavorChannelSpace` object
-    :param Emin: minimum energy extent of the subthreshold region
-    :type Emin: float
     :param flavor_ellm_dim: dimension of the flavor-ellm space
     :type flavor_ellm_dim: int
     :param use_pv_shift_prescription: whether to use the IPV prescription for
@@ -281,10 +279,12 @@ class ThreeBodyInteractionScheme:
                 raise ValueError("pv_shift_parameters must be provided")
         else:
             if pv_shift_parameters is not None:
-                pv_shift_parameters = None
+                pv_shift_parameters = [None]*self.flavor_ellm_dim
                 warnings.warn("pv_shift_parameters provided but "
                               "use_pv_shift_prescription is False. "
                               "Setting pv_shift_parameters to None.")
+            if pv_shift_parameters is None:
+                pv_shift_parameters = [None]*self.flavor_ellm_dim
         self.use_pv_shift_prescription = use_pv_shift_prescription
         self.pv_shift_parameters = pv_shift_parameters
 
