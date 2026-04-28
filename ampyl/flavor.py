@@ -121,7 +121,7 @@ class Particle:
     def isospin_multiplet(self, isospin_multiplet):
         """Set whether the particle is an isospin multiplet."""
         flavor_utils._check_type(isospin_multiplet, 'isospin_multiplet',
-                                bool, 'bool')
+                                 bool, 'bool')
 
         if not isospin_multiplet and self._isospin is not None:
             isospin_multiplet = True
@@ -309,7 +309,7 @@ class FlavorChannel:
     def isospin_channel(self, isospin_channel):
         """Set whether the channel is an isospin channel."""
         flavor_utils._check_type(isospin_channel, 'isospin_channel',
-                                bool, 'bool')
+                                 bool, 'bool')
         if not isospin_channel and self._isospin is not None:
             isospin_channel = True
         if isospin_channel and self._isospin is None:

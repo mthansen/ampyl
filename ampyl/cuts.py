@@ -551,7 +551,7 @@ class FplusG(Interpolable):
     def _get_value_not_interpolated(self, E, L, project, irrep):
         """Build the un-interpolated F+G matrix."""
         return self.g.get_value(E=E, L=L, project=project, irrep=irrep)\
-                + self.f.get_value(E=E, L=L, project=project, irrep=irrep)
+            + self.f.get_value(E=E, L=L, project=project, irrep=irrep)
 
     def _get_all_nvecSQs(self, nvecSQs_by_shell):
         """Collect all squared momentum triples appearing in shell data."""
