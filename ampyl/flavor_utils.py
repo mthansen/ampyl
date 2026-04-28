@@ -212,6 +212,7 @@ def parse_three_iso_fc_entry(entry, fc):
     """
     flavors = entry[[2, 4, 5]]
     sub_isospin = entry[1]
+    dimer_individual_isospins = entry[[6, 7]]
     indexing = []
     for flavor in flavors:
         tmp_locations = np.where(np.array(fc.flavors) == flavor)[0]
@@ -220,33 +221,36 @@ def parse_three_iso_fc_entry(entry, fc):
             if (tmp_location not in indexing) and not added:
                 indexing.append(tmp_location)
                 added = True
-    if (sub_isospin == 0.0) and (flavors[1] == flavors[2]):
+    identical_in_dimer = (flavors[1] == flavors[2])
+    pion_iso_in_dimer = (dimer_individual_isospins[0] == 1.0)
+    ident_pions_in_dimer = identical_in_dimer and pion_iso_in_dimer
+    if (sub_isospin == 0.0) and ident_pions_in_dimer:
         ell_set = [0]
         warnings.warn(f"\n{bcolors.WARNING}"
-                      "Assuming ell_set = [0] for spectator with "
+                      "Assuming ell_set = [0] for dimer with "
                       f"sub_isospin = {sub_isospin} and "
                       f"flavors = {flavors}"
                       f"{bcolors.ENDC}", stacklevel=2)
-    elif (sub_isospin == 1.0) and (flavors[1] == flavors[2]):
+    elif (sub_isospin == 1.0) and ident_pions_in_dimer:
         ell_set = [1]
         warnings.warn(f"\n{bcolors.WARNING}"
-                      "Assuming ell_set = [1] for spectator with "
+                      "Assuming ell_set = [1] for dimer with "
                       f"sub_isospin = {sub_isospin} and "
                       f"flavors = {flavors}"
                       f"{bcolors.ENDC}", stacklevel=2)
-    elif (sub_isospin == 2.0) and (flavors[1] == flavors[2]):
+    elif (sub_isospin == 2.0) and ident_pions_in_dimer:
         ell_set = [0]
         warnings.warn(f"\n{bcolors.WARNING}"
-                      "Assuming ell_set = [0] for spectator with "
+                      "Assuming ell_set = [0] for dimer with "
                       f"sub_isospin = {sub_isospin} and "
                       f"flavors = {flavors}"
                       f"{bcolors.ENDC}", stacklevel=2)
     else:
         ell_set = [0]
         warnings.warn(f"\n{bcolors.WARNING}"
-                      "Assuming ell_set = [0] for spectator with "
+                      "Assuming ell_set = [0] for dimer with "
                       f"sub_isospin = {sub_isospin} and "
-                      f"flavors = {flavors}"
+                      f"flavors = {flavors[1:]}"
                       f"{bcolors.ENDC}", stacklevel=2)
     return indexing, sub_isospin, ell_set
 
