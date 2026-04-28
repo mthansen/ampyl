@@ -35,7 +35,6 @@ Created July 2022.
 ###############################################################################
 
 import numpy as np
-from .constants import EPSILON4
 from .constants import EPSILON30
 from .constants import QC_IMPL_DEFAULTS
 from .constants import QC_DICT_DEFAULTS
