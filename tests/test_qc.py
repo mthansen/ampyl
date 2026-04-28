@@ -92,7 +92,7 @@ class TestQC(unittest.TestCase):
     def test_qc_energy_solver_is_explicit(self):
         qc = self.build_qc()
         L, qc_dict = self.build_qc_case()
-        solver = ampyl.QCEnergySolver(qc)
+        spectrum = ampyl.FVSpectrum(qc)
         irrep = qc_dict['irrep']
         ni_functions = []
         for ni_function_channel in qc.qcis.nonint_functions:
@@ -100,10 +100,10 @@ class TestQC(unittest.TestCase):
 
         self.assertFalse(hasattr(qc, 'energy_solver'))
         self.assertFalse(hasattr(qc, 'get_all_energies'))
-        self.assertFalse(hasattr(solver, 'simple_try_at_fixed_L'))
+        self.assertFalse(hasattr(spectrum, 'simple_try_at_fixed_L'))
 
         roots = np.array(
-            solver.get_roots_from_range([4.6, 4.9], L, qc_dict, ni_functions)
+            spectrum.get_roots_from_range([4.6, 4.9], L, qc_dict, ni_functions)
         )
 
         roots_expected = np.array([4.63304377, 4.84871987])
