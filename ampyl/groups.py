@@ -37,8 +37,6 @@ Created July 2022.
 import numpy as np
 from scipy.linalg import block_diag
 from scipy.linalg import expm
-import quaternionic
-import spherical
 from .constants import RTHREE
 from .constants import RTWO
 from .constants import ISO_PROJECTORS
@@ -48,6 +46,7 @@ from .constants import EPSILON8
 from .constants import EPSILON10
 from .constants import EPSILON15
 from .constants import bcolors
+from .wigner import generate_wigner_d
 import warnings
 warnings.simplefilter("once")
 
@@ -56,7 +55,7 @@ class Groups:
     """Class for finite-volume group-theory relevant for three particles."""
 
     def __init__(self, ell_max, spin_half=False):
-        self.wigner = spherical.Wigner(ell_max=ell_max)
+        self.ell_max = ell_max
         self.spin_half = spin_half
 
         self.OhP = np.array(
@@ -766,45 +765,7 @@ class Groups:
     def generate_wigner_d(self, ell, g_elem=np.identity(3),
                           real_harmonics=True):
         """Generate the Wigner D matrix."""
-        if np.linalg.det(g_elem) < 0.0:
-            g_rot = -1.0*g_elem
-            multiplier = (-1.0)**ell
-        else:
-            g_rot = 1.0*g_elem
-            multiplier = 1.0
-        R = quaternionic.array.from_rotation_matrix(g_rot)
-        D = self.wigner.D(R)
-        wig_d = [[]]
-        for m in range(-ell, ell+1):
-            row = []
-            for mp in range(-ell, ell+1):
-                entry = D[self.wigner.Dindex(ell, m, mp)]
-                row = row+[entry]
-            wig_d = wig_d+[row]
-        wig_d = np.array(wig_d[1:])
-
-        if real_harmonics:
-            U = np.zeros((2*ell+1, 2*ell+1))*1j
-            for m_real in range(-ell, ell+1):
-                for m_imag in range(-ell, ell+1):
-                    if m_real == m_imag == 0:
-                        U[m_real+ell][m_imag+ell] = 1.+0.*1j
-                    elif m_real == m_imag < 0:
-                        U[m_real+ell][m_imag+ell] = 1j/np.sqrt(2.)
-                    elif m_real == -m_imag < 0:
-                        U[m_real+ell][m_imag+ell] = -1j*(-1.)**m_real\
-                            / np.sqrt(2.)
-                    elif m_real == m_imag > 0:
-                        U[m_real+ell][m_imag+ell] = (-1.)**m_real/np.sqrt(2.)
-                    elif m_real == -m_imag > 0:
-                        U[m_real+ell][m_imag+ell] = 1./np.sqrt(2.)
-            Udagger = np.conjugate(U).T
-            wig_d = U@wig_d@Udagger
-            if not (np.abs(wig_d.imag) < EPSILON8).all():
-                raise ValueError("real Wigner-D is complex")
-            wig_d = wig_d.real
-        wig_d = wig_d*multiplier
-        return wig_d
+        return generate_wigner_d(ell, g_elem, real_harmonics)
 
     def generate_wigner_d_half(self, spin,
                                g_elem=[np.identity(3), np.identity(2)]):
