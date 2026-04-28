@@ -8,7 +8,7 @@ Created July 2022.
 
 from setuptools import setup
 
-VERSION = (0, 1, 0)
+VERSION = (0, 9, 0)
 
 
 def version():
@@ -38,12 +38,10 @@ setup(
         "License :: OSI Approved :: MIT license",
         "Operating System :: OS Independent",
     ],
-    python_requires='>=3.6',
+    python_requires='>=3.9',
     install_requires=[
         "numpy",
         "scipy",
-        "quaternionic",
-        "spherical",
         "sympy"
     ],
 )
