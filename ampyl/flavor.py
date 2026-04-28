@@ -45,26 +45,27 @@ warnings.simplefilter("once")
 
 
 class Particle:
-    """
-    Class used to represent a particle.
+    """Represent a single particle and its quantum numbers."""
 
-    :param mass: mass of the particle (default is ``1.``)
-    :type mass: float
-    :param spin: spin of the particle (default is ``0.``)
-    :type spin: float
-    :param flavor: flavor of the particle (default is ``'pi'``)
-    :type flavor: str
-    :param isospin_multiplet: specifies whether this is an isospin multiplet\
-        (default is ``False``)
-    :type isospin_multiplet: bool
-    :param isospin: isospin of the particle (default is ``None``)
-    :type isospin: float
-
-    :raises ValueError: If `isospin_multiplet` is ``True`` but `isospin` is
-        ``None``.
-    """
     def __init__(self, mass=1., spin=0., flavor='pi',
                  isospin_multiplet=False, isospin=None, verbosity=0):
+        """Initialize a particle.
+
+        Parameters
+        ----------
+        mass : float, optional
+            Particle mass.
+        spin : float, optional
+            Particle spin.
+        flavor : str, optional
+            Particle flavor label.
+        isospin_multiplet : bool, optional
+            Whether the particle belongs to an isospin multiplet.
+        isospin : float, optional
+            Particle isospin.
+        verbosity : int, optional
+            Verbosity level for initialization output.
+        """
 
         self.mass = mass
         self.spin = spin
@@ -161,71 +162,43 @@ class Particle:
         self._verbosity = verbosity
 
     def __eq__(self, other):
+        """Return whether two particles are equivalent."""
         if not isinstance(other, Particle):
             return False
         return flavor_utils._particles_equal(self, other)
 
     def print_summary(self):
+        """Print a formatted summary of the particle."""
         print(f"{bcolors.OKGREEN}Particle initialized with the following "
               "properties:\n"
               f"{self.__str__()}"
               f"{bcolors.ENDC}")
 
     def __str__(self):
+        """Return a readable string representation of the particle."""
         return flavor_utils._particle_to_string(self)
 
 
 class FlavorChannel:
-    """
-    Class used to represent a flavor channel.
-
-    :param n_particles: number of particles in the flavor channel
-    :type n_particles: int
-    :param particles: particles in the flavor channel. If not specified,\
-        the channel will be initialized with `n_particles` default Particle\
-        objects.
-    :type particles: list of :class:`Particle` objects, optional
-    :param isospin_channel: specifies whether this is an isospin channel\
-        (Default is ``False``)
-    :type isospin_channel: bool, optional
-    :param isospin: isospin of the flavor channel (Default is ``None``)
-    :type isospin: float, optional
-
-    :raises ValueError: If `n_particles` is not an int or if `n_particles` is
-        less than 2.
-
-    :raises ValueError: If `isospin_channel` is ``True`` but `isospin` is
-        ``None``.
-
-    .. note::
-        Contains particle properties (masses, spins, flavors, isospins) and the
-        derived lists of allowed total/sub-isospins plus channel summaries. All
-        fields are set automatically.
-
-        If `particles` is not specified, the channel will be initialized with
-        `n_particles` default :class:`Particle` objects.
-
-    Example:
-
-    >>> import ampyl
-    >>> pion = ampyl.flavor.Particle(isospin=1.)
-    >>> fc = ampyl.flavor.FlavorChannel(3, particles=[pion, pion, pion],
-    ...                                  isospin_channel=True, isospin=3.)
-    >>> print(fc)
-    FlavorChannel with the following details:
-        3 particles,
-        masses: [1.0, 1.0, 1.0],
-        spins: [0.0, 0.0, 0.0],
-        flavors: ['pi', 'pi', 'pi'],
-        isospin_channel: True,
-        isospins: [1.0, 1.0, 1.0],
-        allowed_total_isospins: 0.0, 1.0, 2.0, 3.0,
-        isospin: 3.0.
-
-    """
+    """Represent a flavor channel built from a set of particles."""
 
     def __init__(self, n_particles, particles=[], isospin_channel=False,
                  isospin=None, verbosity=0):
+        """Initialize a flavor channel.
+
+        Parameters
+        ----------
+        n_particles : int
+            Number of particles in the channel.
+        particles : list[Particle], optional
+            Particles in the channel. When empty, default particles are used.
+        isospin_channel : bool, optional
+            Whether the channel is treated as an isospin channel.
+        isospin : float, optional
+            Total isospin assigned to the channel.
+        verbosity : int, optional
+            Verbosity level for initialization output.
+        """
         self.verbosity = verbosity
 
         self.n_particles = n_particles
@@ -249,15 +222,19 @@ class FlavorChannel:
             self.print_summary()
 
     def _get_masses(self):
+        """Return the particle masses in channel order."""
         return [particle.mass for particle in self.particles]
 
     def _get_spins(self):
+        """Return the particle spins in channel order."""
         return [particle.spin for particle in self.particles]
 
     def _get_flavors(self):
+        """Return the particle flavors in channel order."""
         return [particle.flavor for particle in self.particles]
 
     def _get_isospins(self):
+        """Return the particle isospins in channel order."""
         return [particle.isospin for particle in self.particles]
 
     @property
@@ -278,6 +255,7 @@ class FlavorChannel:
         self._particles = particles
 
     def check_particles(self, particles):
+        """Validate particle content against channel constraints."""
         for particle in particles:
             if not isinstance(particle, Particle):
                 raise ValueError("particles must be a list of Particle "
@@ -355,63 +333,37 @@ class FlavorChannel:
         self._verbosity = verbosity
 
     def print_summary(self):
+        """Print a formatted summary of the flavor channel."""
         print(f"{bcolors.OKGREEN}FlavorChannel initialized with the following "
               "properties:\n"
               f"{self.__str__()}"
               f"{bcolors.ENDC}")
 
     def __str__(self):
+        """Return a readable string representation of the flavor channel."""
         return flavor_utils._flavor_channel_to_string(self)
 
 
 class SpectatorChannel:
-    """
-    Class used to represent a spectator channel.
-
-    :param fc: FlavorChannel object used to define the spectator channel
-    :type fc: :class:`FlavorChannel` object
-    :param indexing: indices of the particles in the FlavorChannel. The first
-        entry corresponds to the spectator particle.
-    :type indexing: list of ints
-    :param sub_isospin: isospin value of the two-particle sub-channel
-    :type sub_isospin: float, optional
-    :param ell_set: angular momentum values of the channel
-    :type ell_set: list of ints, optional
-    :param p_cot_deltas: p_cot_delta functions of the channel
-    :type p_cot_deltas: list of callables, optional
-
-    :ivar masses_indexed: masses of the particles in the channel with the
-        spectator first
-    :vartype masses_indexed: list of floats
-    :ivar spins_indexed: spins of the particles in the channel with the
-        spectator first
-    :vartype spins_indexed: list of floats
-    :ivar flavors_indexed: flavors of the particles in the channel with the
-        spectator first
-    :vartype flavors_indexed: list of strings
-    :ivar isospins_indexed: isospins of the particles in the channel with the
-        spectator first
-    :vartype isospins_indexed: list of floats
-    :ivar allowed_sub_isospins: allowed sub-channel isospins
-    :vartype allowed_sub_isospins: list of floats
-    :ivar n_params_set: parameter counts for the channel p_cot_delta functions
-    :vartype n_params_set: list of ints
-
-    :raises ValueError: If the `fc` parameter is not a `FlavorChannel` object.
-
-    .. note::
-        If `p_cot_deltas` is not specified, it will be set to
-        :attr:`QCFunctions.pcotdelta_scattering_length`.
-
-    :Example:
-
-    >>> fc = FlavorChannel(3)
-    >>> sc = SpectatorChannel(fc=fc, indexing=[0, 1, 2])
-
-    """
+    """Represent a spectator-channel view of a flavor channel."""
 
     def __init__(self, fc=FlavorChannel(3), indexing=[0, 1, 2],
                  sub_isospin=None, ell_set=[0], p_cot_deltas=None):
+        """Initialize a spectator channel.
+
+        Parameters
+        ----------
+        fc : FlavorChannel, optional
+            Flavor channel used to define the spectator channel.
+        indexing : list[int], optional
+            Particle ordering with the spectator listed first.
+        sub_isospin : float, optional
+            Two-particle subchannel isospin.
+        ell_set : list[int], optional
+            Partial waves included in the channel.
+        p_cot_deltas : list[callable], optional
+            Functions defining the two-body interaction input.
+        """
 
         self.allowed_sub_isospins = None
 
@@ -563,24 +515,7 @@ class SpectatorChannel:
 
     @p_cot_deltas.setter
     def p_cot_deltas(self, p_cot_deltas):
-        """
-        Set the p-cot-delta functions of the spectator channel.
-
-        :param p_cot_deltas: p-cot-delta functions to set
-        :type p_cot_deltas: list of callables
-
-        .. note::
-            If `p_cot_deltas` is not specified, sets :attr:`ell_set`,
-            :attr:`p_cot_deltas`, and :attr:`n_params_set` to None.
-
-        .. warning::
-            The number of elements in `p_cot_deltas` must be equal to the
-            length of :attr:`ell_set`.
-
-        :raises ValueError: If the length of `p_cot_deltas` is less than the
-            length of :attr:`ell_set`.
-
-        """
+        """Set the p-cot-delta functions for the spectator channel."""
 
         if p_cot_deltas is None:
             self._ell_set = None
@@ -605,6 +540,7 @@ class SpectatorChannel:
             self._p_cot_deltas = p_cot_deltas
 
     def set_allowed_sub_isospins(self):
+        """Populate the allowed sub-isospin values from the parent channel."""
         if self._fc.isospin_channel and self._fc.n_particles > 2:
             allowed_sub_isospins = []
             for entry in self._fc.summary_reduced:
@@ -618,61 +554,31 @@ class SpectatorChannel:
         return self._n_params_set
 
     def __eq__(self, other):
+        """Return whether two spectator channels are equivalent."""
         if not isinstance(other, SpectatorChannel):
             return False
         return flavor_utils._spectator_channel_equality(self, other)
 
     def __str__(self):
+        """Return a readable string representation of the spectator channel."""
         return flavor_utils._spectator_channel_to_string(self)
 
 
 class FlavorChannelSpace:
-    """
-    Class used to represent a flavor-channel space.
-
-    :param fc_list: list of FlavorChannel objects
-    :type fc_list: list
-    :param ni_list: list of FlavorChannel objects (corresponding to
-    non-interacting channels)
-    :type ni_list: list
-    :param sc_list: list of SpectatorChannel objects built autmatically from
-    fc_list
-    :type sc_list: list
-    :param sc_list_sorted: list of SpectatorChannel objects sorted first by
-    particle number, then mass, then other properties
-    :type sc_list_sorted: list
-    :param n_particles_max: maximum number of particles in the space
-    :type n_particles_max: int
-    :param possible_numbers_of_particles: possible numbers of particles in the
-    space, typically either ``[2]``, ``[3]`` or ``[2, 3]``
-    :type possible_numbers_of_particles: list
-    :param n_particle_numbers: number of distinct counts in the space (e.g.
-    for ``possible_numbers_of_particles == [2, 3]`` one has
-    ``n_particle_numbers == 2``)
-    :type n_particle_numbers: int
-    :param n_channels_by_particle_number: number of spectator channels for a
-    fixed number of particles. For example, for ``possible_numbers_of_particles
-    == [2, 3]`` and ``n_channels_by_particle_number == [2, 3]`` one has two
-    two-particle and three three-particle channels. The ordering matches
-    ``possible_numbers_of_particles``.
-    :type n_channels_by_particle_number: list
-    :param slices_by_particle_number: slices of the channel space by particle
-    number (e.g. for three two- and one three-particle channel one has
-    ``slices_by_particle_number = [[0, 3], [3, 4]]``)
-    :type slices_by_particle_number: list
-    :param slices_by_three_masses: mass-dependent slicing of the three-particle
-    channel space (e.g. for one two- and two three-particle channels with
-    distinct masses one has ``slices_by_three_masses = [[1, 2], [2, 3]]``)
-    :type slices_by_three_masses: list
-    :param n_three_slices: length of ``slices_by_three_masses``
-    :type n_three_slices: int
-    :param g_templates: templates for the g matrices
-    :type g_templates: list
-    :param g_templates_ell_specific: templates for the g matrices, ell-specific
-    :type g_templates_ell_specific: dict
-    """
+    """Represent a collection of flavor and spectator channels."""
 
     def __init__(self, fc_list=[], ni_list=None, verbosity=0):
+        """Initialize a flavor-channel space.
+
+        Parameters
+        ----------
+        fc_list : list[FlavorChannel], optional
+            Flavor channels included in the space.
+        ni_list : list[FlavorChannel], optional
+            Noninteracting channels associated with the space.
+        verbosity : int, optional
+            Verbosity level for initialization output.
+        """
         self.verbosity = verbosity
         self.set_fc_and_ni_lists(fc_list, ni_list)
         flavor_utils._build_sorted_sc_list(self)
@@ -693,6 +599,7 @@ class FlavorChannelSpace:
         self._verbosity = verbosity
 
     def set_fc_and_ni_lists(self, fc_list, ni_list):
+        """Set the interacting and noninteracting channel lists."""
         self.fc_list = fc_list
         if ni_list is None:
             self.ni_list = fc_list
@@ -710,15 +617,11 @@ class FlavorChannelSpace:
             self.print_summary()
 
     def add_spectator_channel(self, sc):
+        """Append a spectator channel to the channel space."""
         self.sc_list.append(sc)
 
     def add_flavor_channel(self, fc):
-        """
-        Add a FlavorChannel to the FlavorChannelSpace.
-
-        This method hard codes some choices for the ell_set and p_cot_deltas.
-        This should be changed in the future.
-        """
+        """Expand a flavor channel into spectator channels and add them."""
         if fc.n_particles == 2:
             sc1 = SpectatorChannel(fc, indexing=None)
             self.add_spectator_channel(sc1)
@@ -758,8 +661,10 @@ class FlavorChannelSpace:
                 self.add_spectator_channel(sc3)
 
     def print_summary(self):
+        """Print a formatted summary of the flavor-channel space."""
         fcs_summary = flavor_utils._generate_flavor_channel_space_summary(self)
         print(f"{bcolors.OKGREEN}{fcs_summary}{bcolors.ENDC}")
 
     def __str__(self):
+        """Return a readable string representation of the channel space."""
         return flavor_utils._flavor_channel_space_to_string(self)
