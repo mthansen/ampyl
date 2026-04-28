@@ -43,7 +43,7 @@ warnings.simplefilter("once")
 
 
 def _build_g_templates_ell_specific(fcs):
-    """Build the ell-specific g-templates of the FlavorChannelSpace."""
+    """Build ell-resolved G templates for a flavor-channel space."""
     if 3 in fcs.possible_numbers_of_particles:
         g_templates_ell_specific_db = _populate_g_templates_db(fcs)
         g_templates_ell_specific_db = _sort_db(
@@ -62,6 +62,7 @@ def _build_g_templates_ell_specific(fcs):
 
 
 def _sort_db(fcs, g_templates_ell_specific_db):
+    """Sort the ell-specific G-template database lexicographically."""
     len_dbT = len(g_templates_ell_specific_db.T)
     for slice_index_i in range(len_dbT):
         try:
@@ -74,7 +75,7 @@ def _sort_db(fcs, g_templates_ell_specific_db):
 
 
 def _populate_g_templates_db(fcs):
-    """Populate the g_templates_ell_specific_db attribute."""
+    """Build the raw database used for ell-resolved G templates."""
     g_templates_ell_specific_db = []
     collective_index_i = 0
     for slice_index_i in range(len(fcs.slices_by_three_masses)):
@@ -113,7 +114,7 @@ def _populate_g_templates_db(fcs):
 
 
 def _populate_g_clustered(fcs, g_templates_ell_specific_db):
-    """Cluster the g_templates_ell_specific_db by the first four entries."""
+    """Cluster G-template database entries by slice and partial wave."""
     g_templates_clustered = {}
     for g_template_entry in g_templates_ell_specific_db:
         g_key = str(g_template_entry[:4])
@@ -169,7 +170,7 @@ def _populate_g_clustered(fcs, g_templates_ell_specific_db):
 
 
 def _get_g_isospin_ij(fcs, slice_i, slice_j, i, j):
-    """Get the g_ij contribution from the isospin of the i,j entry."""
+    """Return the isospin factor for a single G-template entry."""
     isospin_i = fcs.sc_list_sorted[slice_i[0]+i].fc.isospin
     isospin_j = fcs.sc_list_sorted[slice_j[0]+j].fc.isospin
     flavors_indexed_i = fcs.sc_list_sorted[slice_i[0]+i].flavors_indexed
@@ -227,7 +228,7 @@ def _get_g_isospin_ij(fcs, slice_i, slice_j, i, j):
 
 
 def _add_to_g_template(fcs, slice_i, i, slice_j, j, g_template):
-    """Add the contribution from the i,j entry to the g_template."""
+    """Insert a single channel contribution into a G template."""
     flavors_i = fcs.sc_list_sorted[slice_i[0]+i].flavors_indexed
     flavors_j = fcs.sc_list_sorted[slice_j[0]+j].flavors_indexed
 
@@ -258,7 +259,7 @@ def _add_to_g_template(fcs, slice_i, i, slice_j, j, g_template):
 
 
 def _build_g_templates(fcs):
-    """Build the g_templates attribute of the FlavorChannelSpace."""
+    """Build the coarse G templates for a flavor-channel space."""
     g_templates = []
     for slice_i in fcs.slices_by_three_masses:
         slice_i_len = slice_i[1]-slice_i[0]
