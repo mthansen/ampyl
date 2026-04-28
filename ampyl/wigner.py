@@ -9,7 +9,7 @@ Created July 2022.
 
 ###############################################################################
 #
-# spaces.py
+# wigner.py
 #
 # MIT License
 # Copyright (c) 2022 Maxwell T. Hansen
