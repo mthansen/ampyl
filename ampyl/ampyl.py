@@ -459,180 +459,146 @@ class QC:
 
     def get_value(self, E, L, qc_dict):
         r"""
-        Compute a value based on the specified parameters and version.
+        Evaluate the selected quantization-condition expression.
 
-        This method calculates a value using various mathematical operations
-        and matrix manipulations. The behavior of the computation depends on
-        the `version` parameter, which determines the specific formula or
-        algorithm to be used. The method supports multiple versions, each
-        corresponding to a different computation strategy.
+        :param E: energy value
+        :type E: float
+        :param L: box length
+        :type L: float
+        :param qc_dict: options for the QC evaluation. Must include
+            ``'k_params'`` and may override ``'project'``, ``'irrep'``,
+            ``'version'``, ``'rescale'``, and ``'shift'``.
+        :type qc_dict: dict
+        :return: value of the selected QC version
+        :rtype: float or numpy.ndarray
 
-        Parameters:
-            E (float): The energy value. This is a required parameter.
-            L (float): The box length. This is a required parameter.
-            qc_dict (dict): A dictionary containing the following keys:
-                - 'k_params' (list): Parameters for the K-matrices, which
-                    splits into:
-                    - pcotdelta_parameter_lists (list): Lists of parameters
-                        for the K-matrix.
-                    - k3_params (list): Parameters for the K3 matrix.
-                    This is a required parameter.
-                - 'project' (bool): Whether to project the function, defaults
-                    to False.
-                - 'irrep' (tuple): Irreducible representation information,
-                    defaults to None.
-                - 'version' (str): Version identifier, defaults to
-                    'kdf_zero_1+'. Supported versions include:
-                    - 'kdf_zero_1+'
-                    - 'f3'
-                    - 'kdf_zero_k2_inv'
-                    - 'kdf_zero_f+g_inv'
-                    - '1+Kdf_F3'
-                    - 'kdf+f3inv'
-                    - 'detF3inverse'
-                    - 'kdf_zero_1+_fgcombo'
-                    - 'kdf_zero_detf3inv_asym_fgcombo'
-                    - 'kdf+f3inv_asym_fgcombo'
-                    - 'kdf_zero_1+_FinverseF3'
-                - 'rescale' (float): Rescaling factor, defaults to 1.0.
-                - 'shift' (float): Shift value, defaults to 0.0.
-
-        Returns:
-            float: The computed value based on the specified parameters and
-            version.
-
-        Raises:
-            TypeError: If any of the required parameters (`E`, `L`, `k_params`,
-                or `irrep` when `project` is True) are missing.
-
-        Notes:
-            - The method performs matrix operations and may issue warnings
-                if matrix dimensions are mismatched. Temporary fixes are
-                applied in such cases by padding or zeroing matrices.
-            - The computation involves various components such as `F`, `G`,
-                `FplusG`, and `K`, which are derived from other methods or
-                interpolations.
+        Supported versions are checked in :meth:`_evaluate_qc_version`.
         """
+        self._validate_energy_and_volume(E, L)
+        qc_dict = self.validate_qc_dict(qc_dict)
+        matrices = self._build_qc_matrices(E, L, qc_dict)
+        return self._evaluate_qc_version(L, qc_dict, matrices)
+
+    def _validate_energy_and_volume(self, E, L):
         if not isinstance(E, float):
             raise TypeError("E must be a float")
         if not isinstance(L, float):
             raise TypeError("L must be a float")
 
-        qc_dict = self.validate_qc_dict(qc_dict)
+    def _build_qc_matrices(self, E, L, qc_dict):
         k_params = qc_dict['k_params']
         project = qc_dict['project']
         irrep = qc_dict['irrep']
         version = qc_dict['version']
         rescale = qc_dict['rescale']
-        shift = qc_dict['shift']
 
         [pcotdelta_parameter_lists, k3_params] = k_params
 
         K = self.k.get_value(E, L, pcotdelta_parameter_lists,
                              project, irrep)*rescale
+        matrices = {'K': K}
 
-        createF = (version == '1+Kdf_F3'
-                   or version == 'kdf+f3inv'
-                   or version == 'f3'
-                   or version == 'detF3inverse'
-                   or version == 'kdf_zero_1+'
-                   or version == 'kdf_zero_k2_inv'
-                   or version == 'kdf_zero_f+g_inv'
-                   or version == 'kdf_zero_1+_FinverseF3')
-        if createF:
-            f_smart_interpolate = QC_IMPL_DEFAULTS['f_smart_interpolate']
-            if 'f_smart_interpolate' in self.qcis.fvs.qc_impl:
-                f_smart_interpolate =\
-                    self.qcis.fvs.qc_impl['f_smart_interpolate']
+        if self._creates_f(version):
+            F = self._get_f_matrix(E, L, project, irrep, rescale)
+            matrices['K'], matrices['F'] = self._match_matrix_to_k(F, K, 'F')
+            K = matrices['K']
 
-            if f_smart_interpolate:
-                warnings.warn(f"\n{bcolors.WARNING}"
-                              "f_smart_interpolate is not yet supported. "
-                              "Using f instead."
-                              f"{bcolors.ENDC}")
-                F = self.f.get_value(E, L, project, irrep,
-                                     short_string='f')/rescale
-            else:
-                F = self.f.get_value(E, L, project, irrep,
-                                     short_string='f')/rescale
+        if self._creates_fplusg(version):
+            FplusG = self.fplusg.get_value(
+                E, L, project, irrep, short_string='fplusg')/rescale
+            matrices['K'], matrices['FplusG'] = self._match_matrix_to_k(
+                FplusG, K, 'FplusG')
+            K = matrices['K']
 
-            if len(F) > len(K):
-                warnings.warn(f"\n{bcolors.WARNING}"
-                              "F and K have different shapes, and F is "
-                              "larger. Padding K with extra entries. "
-                              "This is a temporary fix."
-                              f"{bcolors.ENDC}")
-                padded_K = np.zeros_like(F)
-                padded_K[:len(K), :len(K)] = K
-                K = padded_K
-            elif len(F) < len(K):
-                warnings.warn(f"\n{bcolors.WARNING}"
-                              "F and K have different shapes, and F is "
-                              "smaller. Setting F to zero. "
-                              "This is a temporary fix."
-                              f"{bcolors.ENDC}")
-                F = np.zeros(K.shape)
+        if self._creates_kdf(version):
+            matrices['Kdf'] = self.kdf.get_value(
+                E, L, k3_params, project, irrep)*rescale
 
-        createFplusG = (version == '1+Kdf_F3'
-                        or version == 'kdf+f3inv'
-                        or version == 'f3'
-                        or version == 'detF3inverse'
-                        or version == 'kdf_zero_1+_fgcombo'
-                        or version == 'kdf_zero_detf3inv_asym_fgcombo'
-                        or version == 'kdf+f3inv_asym_fgcombo')
-        if createFplusG:
-            FplusG = self.fplusg.get_value(E, L, project, irrep,
-                                           short_string='fplusg')/rescale
-
-            if len(FplusG) > len(K):
-                warnings.warn(f"\n{bcolors.WARNING}"
-                              "FplusG and K have different shapes, and "
-                              "FplusG is larger. "
-                              "Padding K with extra entries. "
-                              "This is a temporary fix."
-                              f"{bcolors.ENDC}")
-                padded_K = np.zeros_like(FplusG)
-                padded_K[:len(K), :len(K)] = K
-                K = padded_K
-            elif len(FplusG) < len(K):
-                warnings.warn(f"\n{bcolors.WARNING}"
-                              "FplusG and K have different shapes, and "
-                              "FplusG is smaller. "
-                              "Setting FplusG to zero. "
-                              "This is a temporary fix."
-                              f"{bcolors.ENDC}")
-                FplusG = np.zeros(K.shape)
-
-        createKdf = (version == '1+Kdf_F3'
-                     or version == 'kdf+f3inv'
-                     or version == 'kdf+f3inv_asym_fgcombo')
-        if createKdf:
-            Kdf = self.kdf.get_value(E, L, k3_params, project, irrep)*rescale
-
-        createG = (version == 'kdf_zero_1+'
-                   or version == 'kdf_zero_k2_inv'
-                   or version == 'kdf_zero_f+g_inv'
-                   or version == 'kdf_zero_1+_FinverseF3')
-        if createG:
+        if self._creates_g(version):
             G = self.g.get_value(E, L, project, irrep,
                                  short_string='g')/rescale
+            matrices['K'], matrices['G'] = self._match_matrix_to_k(G, K, 'G')
 
-            if len(G) > len(K):
-                warnings.warn(f"\n{bcolors.WARNING}"
-                              "G and K have different shapes, and G is "
-                              "larger. Padding K with extra entries. "
-                              "This is a temporary fix."
-                              f"{bcolors.ENDC}")
-                padded_K = np.zeros_like(G)
-                padded_K[:len(K), :len(K)] = K
-                K = padded_K
-            elif len(G) < len(K):
-                warnings.warn(f"\n{bcolors.WARNING}"
-                              "G and K have different shapes, and G is "
-                              "smaller. Setting G to zero. "
-                              "This is a temporary fix."
-                              f"{bcolors.ENDC}")
-                G = np.zeros(K.shape)
+        return matrices
+
+    def _get_f_matrix(self, E, L, project, irrep, rescale):
+        f_smart_interpolate = QC_IMPL_DEFAULTS['f_smart_interpolate']
+        if 'f_smart_interpolate' in self.qcis.fvs.qc_impl:
+            f_smart_interpolate = self.qcis.fvs.qc_impl[
+                'f_smart_interpolate']
+        if f_smart_interpolate:
+            warnings.warn(f"\n{bcolors.WARNING}"
+                          "f_smart_interpolate is not yet supported. "
+                          "Using f instead."
+                          f"{bcolors.ENDC}")
+        return self.f.get_value(E, L, project, irrep,
+                                short_string='f')/rescale
+
+    def _match_matrix_to_k(self, matrix, K, matrix_name):
+        if len(matrix) > len(K):
+            warnings.warn(f"\n{bcolors.WARNING}"
+                          f"{matrix_name} and K have different shapes, and "
+                          f"{matrix_name} is larger. Padding K with extra "
+                          "entries. This is a temporary fix."
+                          f"{bcolors.ENDC}")
+            padded_K = np.zeros_like(matrix)
+            padded_K[:len(K), :len(K)] = K
+            K = padded_K
+        elif len(matrix) < len(K):
+            warnings.warn(f"\n{bcolors.WARNING}"
+                          f"{matrix_name} and K have different shapes, and "
+                          f"{matrix_name} is smaller. Setting {matrix_name} "
+                          "to zero. This is a temporary fix."
+                          f"{bcolors.ENDC}")
+            matrix = np.zeros(K.shape)
+        return K, matrix
+
+    def _creates_f(self, version):
+        return version in [
+            '1+Kdf_F3',
+            'kdf+f3inv',
+            'f3',
+            'detF3inverse',
+            'kdf_zero_1+',
+            'kdf_zero_k2_inv',
+            'kdf_zero_f+g_inv',
+            'kdf_zero_1+_FinverseF3'
+        ]
+
+    def _creates_fplusg(self, version):
+        return version in [
+            '1+Kdf_F3',
+            'kdf+f3inv',
+            'f3',
+            'detF3inverse',
+            'kdf_zero_1+_fgcombo',
+            'kdf_zero_detf3inv_asym_fgcombo',
+            'kdf+f3inv_asym_fgcombo'
+        ]
+
+    def _creates_kdf(self, version):
+        return version in [
+            '1+Kdf_F3',
+            'kdf+f3inv',
+            'kdf+f3inv_asym_fgcombo'
+        ]
+
+    def _creates_g(self, version):
+        return version in [
+            'kdf_zero_1+',
+            'kdf_zero_k2_inv',
+            'kdf_zero_f+g_inv',
+            'kdf_zero_1+_FinverseF3'
+        ]
+
+    def _evaluate_qc_version(self, L, qc_dict, matrices):
+        version = qc_dict['version']
+        shift = qc_dict['shift']
+        K = matrices['K']
+        F = matrices.get('F')
+        FplusG = matrices.get('FplusG')
+        Kdf = matrices.get('Kdf')
+        G = matrices.get('G')
 
         if version == '1+Kdf_F3':
             raise NotImplementedError(
@@ -642,10 +608,10 @@ class QC:
             raise NotImplementedError("kdf+f3inv is not implemented yet")
 
         if version == 'f3':
-            return (F/3 - F @ np.linalg.inv(np.linalg.inv(K)+FplusG) @ F)/L**3
+            return self._get_symmetric_f3(F, FplusG, K, L)
 
         if version == 'detF3inverse':
-            F3 = (F/3 - F @ np.linalg.inv(np.linalg.inv(K)+FplusG) @ F)/L**3
+            F3 = self._get_symmetric_f3(F, FplusG, K, L)
             return 1./np.linalg.det(F3)
 
         if version == 'kdf_zero_1+_fgcombo':
@@ -653,25 +619,12 @@ class QC:
             return np.linalg.det(id_mat+(FplusG)@K)-shift
 
         if version == 'kdf_zero_detf3inv_asym_fgcombo':
-            id_mat = np.identity(len(FplusG))
-            H = id_mat+FplusG@K
-            detH = np.linalg.det(H)
-            if np.abs(detH) < EPSILON30:
-                Hinverse = id_mat/(EPSILON30)
-            else:
-                Hinverse = np.linalg.inv(H)
-            F3 = (FplusG - FplusG@K@Hinverse@FplusG)/L**3
+            F3 = self._get_asymmetric_f3(FplusG, K, L)
             return 1./np.linalg.det(F3)
 
         if version == 'kdf+f3inv_asym_fgcombo':
+            F3 = self._get_asymmetric_f3(FplusG, K, L)
             id_mat = np.identity(len(FplusG))
-            H = id_mat+FplusG@K
-            detH = np.linalg.det(H)
-            if np.abs(detH) < EPSILON30:
-                Hinverse = id_mat/(EPSILON30)
-            else:
-                Hinverse = np.linalg.inv(H)
-            F3 = (FplusG - FplusG@K@Hinverse@FplusG)/L**3
             detF3 = np.linalg.det(F3)
             if np.abs(detF3) < EPSILON30:
                 F3inv = id_mat/(EPSILON30)
@@ -695,6 +648,19 @@ class QC:
             matrix_in_det = id_mat-3.*block_inv@F
             inverse_det = 1./np.linalg.det(matrix_in_det)
             return inverse_det
+
+    def _get_symmetric_f3(self, F, FplusG, K, L):
+        return (F/3 - F @ np.linalg.inv(np.linalg.inv(K)+FplusG) @ F)/L**3
+
+    def _get_asymmetric_f3(self, FplusG, K, L):
+        id_mat = np.identity(len(FplusG))
+        H = id_mat+FplusG@K
+        detH = np.linalg.det(H)
+        if np.abs(detH) < EPSILON30:
+            Hinverse = id_mat/(EPSILON30)
+        else:
+            Hinverse = np.linalg.inv(H)
+        return (FplusG - FplusG@K@Hinverse@FplusG)/L**3
 
     def validate_qc_dict(self, qc_dict):
         if not isinstance(qc_dict, dict):
