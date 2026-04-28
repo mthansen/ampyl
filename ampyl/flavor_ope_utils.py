@@ -178,6 +178,11 @@ def get_g_isospin_ij(fcs, slice_i, slice_j, i, j):
     flavors_sorted_i.sort()
     flavors_sorted_j.sort()
     isospins_indexed_i = fcs.sc_list_sorted[slice_i[0]+i].isospins_indexed
+    isospins_indexed_j = fcs.sc_list_sorted[slice_j[0]+j].isospins_indexed
+    isospins_sorted_i = deepcopy(isospins_indexed_i)
+    isospins_sorted_j = deepcopy(isospins_indexed_j)
+    isospins_sorted_i.sort()
+    isospins_sorted_j.sort()
 
     if not flavors_sorted_i == flavors_sorted_j:
         return 0.
@@ -209,8 +214,13 @@ def get_g_isospin_ij(fcs, slice_i, slice_j, i, j):
             ind_i = int(sub_isospin_i-1.0)
             ind_j = int(sub_isospin_j-1.0)
         return g_template_isospin[ind_i][ind_j]
+    if (np.all(isospins_sorted_i == np.array([0.5, 0.5, 1.0]))
+       and np.all(isospins_sorted_j == np.array([0.5, 0.5, 1.0]))
+       and isospin_i == 2.0
+       and isospin_j == 2.0):
+        return 1.0
     warnings.warn(f"\n{bcolors.WARNING}"
-                  f"Unknown value within get_g_isospin_ij; assuming 100"
+                  "Unknown value within get_g_isospin_ij; assuming 100"
                   f"{bcolors.ENDC}", stacklevel=2)
     return 100.
 
@@ -220,14 +230,14 @@ def add_to_g_template(fcs, slice_i, i, slice_j, j, g_template):
     flavors_i = fcs.sc_list_sorted[slice_i[0]+i].flavors_indexed
     flavors_j = fcs.sc_list_sorted[slice_j[0]+j].flavors_indexed
 
-    i0_is_j2 = (flavors_i[0] == flavors_j[2])
-    flav_i0_is_j2 = (np.sort(flavors_i[1:]) == np.sort(flavors_j[:-1])).all()
-    i0_is_j1 = (flavors_i[0] == flavors_j[1])
-    flav_i0_is_j1 = (np.sort(flavors_i[1:]) == np.sort([flavors_j[0]]
-                                                       + [flavors_j[2]])).all()
+    spec_i0_is_j2 = (flavors_i[0] == flavors_j[2])
+    dim_i0_is_j2 = (np.sort(flavors_i[1:]) == np.sort(flavors_j[:-1])).all()
+    spec_i0_is_j1 = (flavors_i[0] == flavors_j[1])
+    dim_i0_is_j1 = (np.sort(flavors_i[1:]) == np.sort([flavors_j[0]]
+                                                      + [flavors_j[2]])).all()
 
-    g_is_nonzero = ((i0_is_j2 and flav_i0_is_j2)
-                    or (i0_is_j1 and flav_i0_is_j1))
+    g_is_nonzero = ((spec_i0_is_j2 and dim_i0_is_j2)
+                    or (spec_i0_is_j1 and dim_i0_is_j1))
 
     if g_is_nonzero:
         isospin_channel_i = fcs.sc_list_sorted[slice_i[0]+i].fc.isospin_channel
