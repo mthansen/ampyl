@@ -39,7 +39,7 @@ from .constants import FOURPI2, TWOPI
 from .constants import QC_IMPL_DEFAULTS
 
 
-def get_masks_and_shells_for_k(k, E, L, tbks_entry, cindex, slice_index):
+def _get_masks_and_shells_for_k(k, E, L, tbks_entry, cindex, slice_index):
     nP = k.qcis.fvs.nP
     mask_slices = None
     three_slice_index = k.qcis.sc_to_three_slice[cindex]
@@ -61,7 +61,7 @@ def get_masks_and_shells_for_k(k, E, L, tbks_entry, cindex, slice_index):
         scatterer_a_index = 1
         scatterer_b_index = 2
         threshold = masses[scatterer_a_index] + masses[scatterer_b_index]
-        zero_support_point = get_zero_support_point(k, threshold)
+        zero_support_point = _get_zero_support_point(k, threshold)
         mask = (E-omk_arr)**2-PmkSQ_arr > zero_support_point
         slices = tbks_entry.shells
         mask_slices = []
@@ -73,9 +73,9 @@ def get_masks_and_shells_for_k(k, E, L, tbks_entry, cindex, slice_index):
     return mask_slices, slice_entry
 
 
-def get_masks_and_shells_for_nondiagonal(nondiagonal, E, L, tbks_entry,
-                                         cindex_row, cindex_col,
-                                         row_shell_index, col_shell_index):
+def _get_masks_and_shells_for_nondiagonal(nondiagonal, E, L, tbks_entry,
+                                          cindex_row, cindex_col,
+                                          row_shell_index, col_shell_index):
     nP = nondiagonal.qcis.fvs.nP
     three_slice_index_row =\
         nondiagonal.qcis.sc_to_three_slice[cindex_row]
@@ -86,18 +86,18 @@ def get_masks_and_shells_for_nondiagonal(nondiagonal, E, L, tbks_entry,
     three_slice_index = three_slice_index_row
     if nP@nP == 0:
         mask_row_shells, mask_col_shells, row_shell, col_shell =\
-            mask_and_shell_helper_nPzero(
+            _mask_and_shell_helper_nPzero(
                 nondiagonal, tbks_entry, row_shell_index, col_shell_index)
     else:
         mask_row_shells, mask_col_shells, row_shell, col_shell =\
-            mask_and_shell_helper_nPnonzero(
+            _mask_and_shell_helper_nPnonzero(
                 nondiagonal, E, nP, L, tbks_entry,
                 row_shell_index, col_shell_index, three_slice_index)
     return mask_row_shells, mask_col_shells, row_shell, col_shell
 
 
-def mask_and_shell_helper_nPzero(nondiagonal, tbks_entry,
-                                 row_shell_index, col_shell_index):
+def _mask_and_shell_helper_nPzero(nondiagonal, tbks_entry,
+                                  row_shell_index, col_shell_index):
     mask_row_shells = None
     mask_col_shells = None
     row_shell = tbks_entry.shells[row_shell_index]
@@ -105,9 +105,9 @@ def mask_and_shell_helper_nPzero(nondiagonal, tbks_entry,
     return mask_row_shells, mask_col_shells, row_shell, col_shell
 
 
-def mask_and_shell_helper_nPnonzero(nondiagonal, E, nP, L, tbks_entry,
-                                    row_shell_index, col_shell_index,
-                                    three_slice_index):
+def _mask_and_shell_helper_nPnonzero(nondiagonal, E, nP, L, tbks_entry,
+                                     row_shell_index, col_shell_index,
+                                     three_slice_index):
     reduce_size = QC_IMPL_DEFAULTS['reduce_size']
     if 'reduce_size' in nondiagonal.qcis.fvs.qc_impl:
         reduce_size = nondiagonal.qcis.fvs.qc_impl['reduce_size']
@@ -119,7 +119,7 @@ def mask_and_shell_helper_nPnonzero(nondiagonal, E, nP, L, tbks_entry,
         Pvec = TWOPI*nP/L
         PmkSQ_arr = ((Pvec-kvec_arr)**2).sum(axis=1)
         threshold = m2+m3
-        zero_support_point = get_zero_support_point(nondiagonal, threshold)
+        zero_support_point = _get_zero_support_point(nondiagonal, threshold)
         mask_row = (E-omk_arr)**2-PmkSQ_arr > zero_support_point
         row_shells = tbks_entry.shells
         mask_row_shells = []
@@ -149,7 +149,7 @@ def mask_and_shell_helper_nPnonzero(nondiagonal, E, nP, L, tbks_entry,
     return mask_row_shells, mask_col_shells, row_shell, col_shell
 
 
-def get_masks_and_shells_for_f(f, E, L, tbks_entry, cindex, slice_index):
+def _get_masks_and_shells_for_f(f, E, L, tbks_entry, cindex, slice_index):
     nP = f.qcis.fvs.nP
     mask_slices = None
     # three_slice_index\
@@ -168,7 +168,7 @@ def get_masks_and_shells_for_f(f, E, L, tbks_entry, cindex, slice_index):
             Pvec = TWOPI*nP/L
             PmkSQ_arr = ((Pvec-kvec_arr)**2).sum(axis=1)
             threshold = m2+m3
-            zero_support_point = get_zero_support_point(f, threshold)
+            zero_support_point = _get_zero_support_point(f, threshold)
             mask = (E-omk_arr)**2-PmkSQ_arr > zero_support_point
             slices = tbks_entry.shells
             mask_slices = []
@@ -183,7 +183,7 @@ def get_masks_and_shells_for_f(f, E, L, tbks_entry, cindex, slice_index):
     return mask_slices, slice_entry
 
 
-def get_zero_support_point(qcmatrix, threshold):
+def _get_zero_support_point(qcmatrix, threshold):
     alpha = qcmatrix.alpha
     beta = qcmatrix.beta
     return (1.0+alpha)*threshold**2/4.0-beta*((3.0-alpha)*threshold**2/4.0)

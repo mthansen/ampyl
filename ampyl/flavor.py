@@ -87,7 +87,7 @@ class Particle:
     @mass.setter
     def mass(self, mass):
         """Set the mass of the particle."""
-        flavor_utils.check_type(mass, 'mass', float, 'float')
+        flavor_utils._check_type(mass, 'mass', float, 'float')
         self._mass = mass
 
     @property
@@ -98,7 +98,7 @@ class Particle:
     @spin.setter
     def spin(self, spin):
         """Set the spin of the particle."""
-        flavor_utils.check_type(spin, 'spin', float, 'float')
+        flavor_utils._check_type(spin, 'spin', float, 'float')
         self._spin = spin
 
     @property
@@ -109,7 +109,7 @@ class Particle:
     @flavor.setter
     def flavor(self, flavor):
         """Set the flavor of the particle."""
-        flavor_utils.check_type(flavor, 'flavor', str, 'str')
+        flavor_utils._check_type(flavor, 'flavor', str, 'str')
         self._flavor = flavor
 
     @property
@@ -120,7 +120,7 @@ class Particle:
     @isospin_multiplet.setter
     def isospin_multiplet(self, isospin_multiplet):
         """Set whether the particle is an isospin multiplet."""
-        flavor_utils.check_type(isospin_multiplet, 'isospin_multiplet',
+        flavor_utils._check_type(isospin_multiplet, 'isospin_multiplet',
                                 bool, 'bool')
 
         if not isospin_multiplet and self._isospin is not None:
@@ -139,7 +139,7 @@ class Particle:
     @isospin.setter
     def isospin(self, isospin):
         """Set the isospin of the particle."""
-        flavor_utils.check_type(isospin, 'isospin', float, 'float')
+        flavor_utils._check_type(isospin, 'isospin', float, 'float')
 
         if not self._isospin_multiplet and isospin is not None:
             self._isospin_multiplet = True
@@ -157,13 +157,13 @@ class Particle:
     @verbosity.setter
     def verbosity(self, verbosity):
         """Set the verbosity of the particle."""
-        flavor_utils.check_type(verbosity, 'verbosity', int, 'int')
+        flavor_utils._check_type(verbosity, 'verbosity', int, 'int')
         self._verbosity = verbosity
 
     def __eq__(self, other):
         if not isinstance(other, Particle):
             return False
-        return flavor_utils.particles_equal(self, other)
+        return flavor_utils._particles_equal(self, other)
 
     def print_summary(self):
         print(f"{bcolors.OKGREEN}Particle initialized with the following "
@@ -172,7 +172,7 @@ class Particle:
               f"{bcolors.ENDC}")
 
     def __str__(self):
-        return flavor_utils.particle_to_string(self)
+        return flavor_utils._particle_to_string(self)
 
 
 class FlavorChannel:
@@ -240,10 +240,10 @@ class FlavorChannel:
         self.isospins = self._get_isospins()
 
         self.allowed_total_isospins\
-            = flavor_utils.get_allowed_total_isospins(self)
+            = flavor_utils._get_allowed_total_isospins(self)
         self.isospin = self._isospin  # check if value is valid
         self.allowed_sub_isospins\
-            = flavor_utils.get_allowed_sub_isospins(self)
+            = flavor_utils._get_allowed_sub_isospins(self)
 
         if self.verbosity >= 2:
             self.print_summary()
@@ -308,7 +308,7 @@ class FlavorChannel:
     @isospin_channel.setter
     def isospin_channel(self, isospin_channel):
         """Set whether the channel is an isospin channel."""
-        flavor_utils.check_type(isospin_channel, 'isospin_channel',
+        flavor_utils._check_type(isospin_channel, 'isospin_channel',
                                 bool, 'bool')
         if not isospin_channel and self._isospin is not None:
             isospin_channel = True
@@ -325,7 +325,7 @@ class FlavorChannel:
     @isospin.setter
     def isospin(self, isospin):
         """Set the isospin value of the channel."""
-        flavor_utils.check_type(isospin, "isospin", float, "float")
+        flavor_utils._check_type(isospin, "isospin", float, "float")
         if isospin is not None and isospin not in self.allowed_total_isospins:
             raise ValueError("isospin must be in allowed_total_isospins")
         self._isospin = isospin
@@ -338,7 +338,7 @@ class FlavorChannel:
     @n_particles.setter
     def n_particles(self, n_particles):
         """Set the number of particles in the channel."""
-        flavor_utils.check_type(n_particles, "n_particles", int, "int")
+        flavor_utils._check_type(n_particles, "n_particles", int, "int")
         if n_particles < 2:
             raise ValueError("n_particles must be >= 2")
         self._n_particles = n_particles
@@ -351,7 +351,7 @@ class FlavorChannel:
     @verbosity.setter
     def verbosity(self, verbosity):
         """Set the verbosity of the channel."""
-        flavor_utils.check_type(verbosity, "verbosity", int, "int")
+        flavor_utils._check_type(verbosity, "verbosity", int, "int")
         self._verbosity = verbosity
 
     def print_summary(self):
@@ -361,7 +361,7 @@ class FlavorChannel:
               f"{bcolors.ENDC}")
 
     def __str__(self):
-        return flavor_utils.flavor_channel_to_string(self)
+        return flavor_utils._flavor_channel_to_string(self)
 
 
 class SpectatorChannel:
@@ -459,7 +459,7 @@ class SpectatorChannel:
     @fc.setter
     def fc(self, fc):
         """Set the FlavorChannel object of the spectator channel."""
-        flavor_utils.check_type(fc, "fc", FlavorChannel, "FlavorChannel")
+        flavor_utils._check_type(fc, "fc", FlavorChannel, "FlavorChannel")
         self._fc = fc
         self.indexing = self._indexing
         self.sub_isospin = self._sub_isospin
@@ -620,10 +620,10 @@ class SpectatorChannel:
     def __eq__(self, other):
         if not isinstance(other, SpectatorChannel):
             return False
-        return flavor_utils.spectator_channel_equality(self, other)
+        return flavor_utils._spectator_channel_equality(self, other)
 
     def __str__(self):
-        return flavor_utils.spectator_channel_to_string(self)
+        return flavor_utils._spectator_channel_to_string(self)
 
 
 class FlavorChannelSpace:
@@ -675,9 +675,9 @@ class FlavorChannelSpace:
     def __init__(self, fc_list=[], ni_list=None, verbosity=0):
         self.verbosity = verbosity
         self.set_fc_and_ni_lists(fc_list, ni_list)
-        flavor_utils.build_sorted_sc_list(self)
-        flavor_ope_utils.build_g_templates(self)
-        flavor_ope_utils.build_g_templates_ell_specific(self)
+        flavor_utils._build_sorted_sc_list(self)
+        flavor_ope_utils._build_g_templates(self)
+        flavor_ope_utils._build_g_templates_ell_specific(self)
         if self.verbosity >= 2:
             self.print_summary()
 
@@ -689,7 +689,7 @@ class FlavorChannelSpace:
     @verbosity.setter
     def verbosity(self, verbosity):
         """Set the verbosity of the channel space."""
-        flavor_utils.check_type(verbosity, "verbosity", int, "int")
+        flavor_utils._check_type(verbosity, "verbosity", int, "int")
         self._verbosity = verbosity
 
     def set_fc_and_ni_lists(self, fc_list, ni_list):
@@ -704,8 +704,8 @@ class FlavorChannelSpace:
 
     def update_g_templates(self):
         """Update the g templates."""
-        flavor_ope_utils.build_g_templates(self)
-        flavor_ope_utils.build_g_templates_ell_specific(self)
+        flavor_ope_utils._build_g_templates(self)
+        flavor_ope_utils._build_g_templates_ell_specific(self)
         if self.verbosity >= 2:
             self.print_summary()
 
@@ -725,7 +725,7 @@ class FlavorChannelSpace:
         elif fc.isospin_channel:
             for entry in fc.summary_reduced:
                 indexing, sub_isospin, ell_set\
-                    = flavor_utils.parse_three_iso_fc_entry(entry, fc)
+                    = flavor_utils._parse_three_iso_fc_entry(entry, fc)
                 sc_tmp = SpectatorChannel(fc, indexing=indexing,
                                           sub_isospin=sub_isospin,
                                           ell_set=ell_set)
@@ -758,8 +758,8 @@ class FlavorChannelSpace:
                 self.add_spectator_channel(sc3)
 
     def print_summary(self):
-        fcs_summary = flavor_utils.generate_flavor_channel_space_summary(self)
+        fcs_summary = flavor_utils._generate_flavor_channel_space_summary(self)
         print(f"{bcolors.OKGREEN}{fcs_summary}{bcolors.ENDC}")
 
     def __str__(self):
-        return flavor_utils.flavor_channel_space_to_string(self)
+        return flavor_utils._flavor_channel_space_to_string(self)

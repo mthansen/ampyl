@@ -152,7 +152,7 @@ class TestFlavorChannel(unittest.TestCase):
         channel = FlavorChannel(3, particles=[kaon, pion, Omega],
                                 isospin_channel=True, isospin=1.0)
         expected_result = [0.0, 1., 2., 3.]
-        result = flavor_utils.get_allowed_total_isospins(channel)
+        result = flavor_utils._get_allowed_total_isospins(channel)
         self.assertEqual(expected_result, result)
 
     def test_get_allowed_three_particles_summary(self):

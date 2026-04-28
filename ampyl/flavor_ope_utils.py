@@ -42,13 +42,14 @@ import warnings
 warnings.simplefilter("once")
 
 
-def build_g_templates_ell_specific(fcs):
+def _build_g_templates_ell_specific(fcs):
     """Build the ell-specific g-templates of the FlavorChannelSpace."""
     if 3 in fcs.possible_numbers_of_particles:
-        g_templates_ell_specific_db = populate_g_templates_db(fcs)
-        g_templates_ell_specific_db = sort_db(fcs, g_templates_ell_specific_db)
+        g_templates_ell_specific_db = _populate_g_templates_db(fcs)
+        g_templates_ell_specific_db = _sort_db(
+            fcs, g_templates_ell_specific_db)
         g_templates_clustered =\
-            populate_g_clustered(fcs, g_templates_ell_specific_db)
+            _populate_g_clustered(fcs, g_templates_ell_specific_db)
         g_templates_ell_specific = {}
         for g_key in g_templates_clustered:
             g_key_list = list(g_templates_clustered[g_key][:4])
@@ -60,7 +61,7 @@ def build_g_templates_ell_specific(fcs):
         fcs.g_templates_ell_specific = {}
 
 
-def sort_db(fcs, g_templates_ell_specific_db):
+def _sort_db(fcs, g_templates_ell_specific_db):
     len_dbT = len(g_templates_ell_specific_db.T)
     for slice_index_i in range(len_dbT):
         try:
@@ -72,7 +73,7 @@ def sort_db(fcs, g_templates_ell_specific_db):
     return g_templates_ell_specific_db
 
 
-def populate_g_templates_db(fcs):
+def _populate_g_templates_db(fcs):
     """Populate the g_templates_ell_specific_db attribute."""
     g_templates_ell_specific_db = []
     collective_index_i = 0
@@ -111,7 +112,7 @@ def populate_g_templates_db(fcs):
     return g_templates_ell_specific_db
 
 
-def populate_g_clustered(fcs, g_templates_ell_specific_db):
+def _populate_g_clustered(fcs, g_templates_ell_specific_db):
     """Cluster the g_templates_ell_specific_db by the first four entries."""
     g_templates_clustered = {}
     for g_template_entry in g_templates_ell_specific_db:
@@ -167,7 +168,7 @@ def populate_g_clustered(fcs, g_templates_ell_specific_db):
     return g_templates_clustered
 
 
-def get_g_isospin_ij(fcs, slice_i, slice_j, i, j):
+def _get_g_isospin_ij(fcs, slice_i, slice_j, i, j):
     """Get the g_ij contribution from the isospin of the i,j entry."""
     isospin_i = fcs.sc_list_sorted[slice_i[0]+i].fc.isospin
     isospin_j = fcs.sc_list_sorted[slice_j[0]+j].fc.isospin
@@ -225,7 +226,7 @@ def get_g_isospin_ij(fcs, slice_i, slice_j, i, j):
     return 100.
 
 
-def add_to_g_template(fcs, slice_i, i, slice_j, j, g_template):
+def _add_to_g_template(fcs, slice_i, i, slice_j, j, g_template):
     """Add the contribution from the i,j entry to the g_template."""
     flavors_i = fcs.sc_list_sorted[slice_i[0]+i].flavors_indexed
     flavors_j = fcs.sc_list_sorted[slice_j[0]+j].flavors_indexed
@@ -248,7 +249,7 @@ def add_to_g_template(fcs, slice_i, i, slice_j, j, g_template):
         if neither_are_isospin_channels:
             g_template[i][j] = 1.0
         elif both_are_isospin_channels:
-            g_isospin_ij = get_g_isospin_ij(fcs, slice_i, slice_j, i, j)
+            g_isospin_ij = _get_g_isospin_ij(fcs, slice_i, slice_j, i, j)
             g_template[i][j] = g_isospin_ij
         else:
             raise NotImplementedError("Mixing of isospin and non-isospin "
@@ -256,7 +257,7 @@ def add_to_g_template(fcs, slice_i, i, slice_j, j, g_template):
     return g_template
 
 
-def build_g_templates(fcs):
+def _build_g_templates(fcs):
     """Build the g_templates attribute of the FlavorChannelSpace."""
     g_templates = []
     for slice_i in fcs.slices_by_three_masses:
@@ -267,7 +268,7 @@ def build_g_templates(fcs):
             g_template = np.zeros((slice_i_len, slice_j_len))
             for i in range(slice_i_len):
                 for j in range(slice_j_len):
-                    g_template = add_to_g_template(
+                    g_template = _add_to_g_template(
                         fcs, slice_i, i, slice_j, j, g_template)
             g_templates_row.append(g_template)
         g_templates.append(g_templates_row)

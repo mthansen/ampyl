@@ -82,8 +82,8 @@ class K:
             pv_shift_parameters = None
 
         mask_slices, slice_entry\
-            = shell_utils.get_masks_and_shells_for_k(self, E, L, tbks_entry,
-                                                     cindex, slice_index)
+            = shell_utils._get_masks_and_shells_for_k(
+                self, E, L, tbks_entry, cindex, slice_index)
         Kshell = QCFunctions.getK_array(
             E, nP, L, m1, m2, m3, tbks_entry, slice_entry, ell,
             pcotdelta_function, pcotdelta_parameter_list, alpha, beta,
@@ -166,7 +166,7 @@ class K:
             Pvec = TWOPI*nP/L
             PmkSQ_arr = ((Pvec-kvec_arr)**2).sum(axis=1)
             threshold = m2+m3
-            zero_support_point = shell_utils.get_zero_support_point(
+            zero_support_point = shell_utils._get_zero_support_point(
                 self, threshold)
             mask = (E-omk_arr)**2-PmkSQ_arr > zero_support_point
             if self.qcis.verbosity >= 2:
@@ -299,7 +299,7 @@ class Kdf:
         nP = self.qcis.fvs.nP
 
         mask_row_shells, mask_col_shells, row_shell, col_shell\
-            = shell_utils.get_masks_and_shells_for_nondiagonal(
+            = shell_utils._get_masks_and_shells_for_nondiagonal(
                 self, E, L, tbks_entry, cindex_row, cindex_col,
                 row_shell_index, col_shell_index)
         if project:

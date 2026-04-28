@@ -163,7 +163,7 @@ class TestFlavorChannelSpace(unittest.TestCase):
         scb = SpectatorChannel(fc=fcb)
         fcs.add_spectator_channel(scb)
         self.assertEqual(len(fcs.sc_list_sorted), 1)
-        flavor_utils.build_sorted_sc_list(fcs)
+        flavor_utils._build_sorted_sc_list(fcs)
         self.assertEqual(len(fcs.sc_list_sorted), 2)
         self.assertEqual(fcs.sc_list_sorted[0], scb)
 
@@ -172,7 +172,7 @@ class TestFlavorChannelSpace(unittest.TestCase):
         fcb = FlavorChannel(3, particles=[pion, pion, pion])
         scb = SpectatorChannel(fc=fcb)
         sc_compact_single\
-            = flavor_utils.add_three_particle_compact(scb, 0, [3])
+            = flavor_utils._add_three_particle_compact(scb, 0, [3])
         sc_compact_single_expected = [3, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0,
                                       'pi', 'pi', 'pi', False, None, None,
                                       None, None, None, 0]
@@ -195,8 +195,8 @@ class TestFlavorChannelSpace(unittest.TestCase):
         fcb = FlavorChannel(3, particles=[sigma, sigma, sigma])
         fcs.add_flavor_channel(fcb)
         self.assertEqual(fcs.g_templates, expected_g_templates)
-        flavor_utils.build_sorted_sc_list(fcs)
-        flavor_ope_utils.build_g_templates(fcs)
+        flavor_utils._build_sorted_sc_list(fcs)
+        flavor_ope_utils._build_g_templates(fcs)
         expected_g_templates = [[np.array([[0.]]),
                                  np.array([[1.]]),
                                  np.array([[0.]])],

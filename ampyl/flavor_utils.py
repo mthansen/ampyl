@@ -41,8 +41,8 @@ import warnings
 warnings.simplefilter("once")
 
 
-def check_type(variable, variable_string, variable_type,
-               variable_type_str):
+def _check_type(variable, variable_string, variable_type,
+                variable_type_str):
     """Check that a variable is of the correct type."""
     if variable is not None:
         if not isinstance(variable, variable_type):
@@ -50,7 +50,7 @@ def check_type(variable, variable_string, variable_type,
                             f"{variable_type_str}")
 
 
-def particle_to_string(particle):
+def _particle_to_string(particle):
     """Convert a particle to a string."""
     particle_str = "Particle with the following properties:\n"
     particle_str += f"    mass: {particle.mass},\n"
@@ -62,7 +62,7 @@ def particle_to_string(particle):
     return particle_str[:-2]+"."
 
 
-def particles_equal(particle1, particle2):
+def _particles_equal(particle1, particle2):
     """Check if two particles are equivalent."""
     return (particle1.mass == particle2.mass and
             particle1.spin == particle2.spin and
@@ -71,7 +71,7 @@ def particles_equal(particle1, particle2):
             particle1.isospin == particle2.isospin)
 
 
-def get_allowed_total_isospins(channel, isospins=None):
+def _get_allowed_total_isospins(channel, isospins=None):
     if not channel._isospin_channel:
         return None
     if isospins is None:
@@ -97,10 +97,10 @@ def get_allowed_total_isospins(channel, isospins=None):
             pair_isospins = isospins[:i] + isospins[i+1:]
             pair_flavors = channel.flavors[:i] + channel.flavors[i+1:]
             combined_pair_isospins =\
-                get_allowed_total_isospins(channel, isospins=pair_isospins)
+                _get_allowed_total_isospins(channel, isospins=pair_isospins)
             for combined_pair_isospin in combined_pair_isospins:
                 combined_three_isospins =\
-                    get_allowed_total_isospins(
+                    _get_allowed_total_isospins(
                         channel, isospins=[spectator_isospin,
                                            combined_pair_isospin]
                         )
@@ -129,7 +129,7 @@ def get_allowed_total_isospins(channel, isospins=None):
     raise NotImplementedError("more than three particles not implemented yet")
 
 
-def get_allowed_sub_isospins(channel):
+def _get_allowed_sub_isospins(channel):
     if not channel.isospin_channel:
         return None
     if channel.n_particles == 2:
@@ -148,7 +148,7 @@ def get_allowed_sub_isospins(channel):
                               f"particles")
 
 
-def flavor_channel_to_string(channel):
+def _flavor_channel_to_string(channel):
     """Convert a FlavorChannel to a string."""
     channel_str = "FlavorChannel with the following details:\n"
     channel_str += f"    {channel.n_particles} particles,\n"
@@ -168,7 +168,7 @@ def flavor_channel_to_string(channel):
     return channel_str[:-2]+"."
 
 
-def spectator_channel_to_string(channel):
+def _spectator_channel_to_string(channel):
     """Convert a spectator channel to a string."""
     channel_str = channel.fc.__str__().replace("Flavor", "Spectator")
     channel_str = channel_str[:-1]+",\n"
@@ -188,7 +188,7 @@ def spectator_channel_to_string(channel):
     return channel_str[:-2]+"."
 
 
-def spectator_channel_equality(channel1, channel2):
+def _spectator_channel_equality(channel1, channel2):
     """Check if two spectator channels are equivalent."""
     if not (channel1.fc == channel2.fc):
         return False
@@ -205,7 +205,7 @@ def spectator_channel_equality(channel1, channel2):
     return True
 
 
-def parse_three_iso_fc_entry(entry, fc):
+def _parse_three_iso_fc_entry(entry, fc):
     """
     Parse an entry of the summary attribute of a three-particle
     isospin channel.
@@ -255,7 +255,7 @@ def parse_three_iso_fc_entry(entry, fc):
     return indexing, sub_isospin, ell_set
 
 
-def build_sorted_sc_list(fcs):
+def _build_sorted_sc_list(fcs):
     """Build the sc_list_sorted attribute of the FlavorChannelSpace."""
     n_particles_max = 0
     possible_numbers_of_particles = []
@@ -288,10 +288,10 @@ def build_sorted_sc_list(fcs):
         sc_index += 1
         sc_compact_single = [sc.fc.n_particles]
         if sc.fc.n_particles == 2:
-            sc_compact_single = add_two_particle_compact(
+            sc_compact_single = _add_two_particle_compact(
                 sc, sc_index, sc_compact_single)
         elif sc.fc.n_particles == 3:
-            sc_compact_single = add_three_particle_compact(
+            sc_compact_single = _add_three_particle_compact(
                 sc, sc_index, sc_compact_single)
         else:
             return ValueError("n_particles > 3 not implemented yet")
@@ -352,7 +352,7 @@ def build_sorted_sc_list(fcs):
     fcs.sc_list_sorted = sc_list_sorted
 
 
-def generate_flavor_channel_space_summary(fcs):
+def _generate_flavor_channel_space_summary(fcs):
     fcs_summary = ("FlavorChannelSpace initialized with the "
                    "following properties:\n"
                    "    fc_list (Flavor Channel list) with the following "
@@ -402,7 +402,7 @@ def generate_flavor_channel_space_summary(fcs):
     return fcs_summary
 
 
-def flavor_channel_space_to_string(fcs):
+def _flavor_channel_space_to_string(fcs):
     """Convert a FlavorChannelSpace to a string."""
     flavor_channel_space_str = ("FlavorChannelSpace with the following "
                                 "SpectatorChannels:\n")
@@ -414,7 +414,7 @@ def flavor_channel_space_to_string(fcs):
     return flavor_channel_space_str[:-2]+"."
 
 
-def add_three_particle_compact(sc, sc_index, sc_compact_single):
+def _add_three_particle_compact(sc, sc_index, sc_compact_single):
     """Add entries of a three-particle spectator channel to a compact list."""
     sc_compact_single = sc_compact_single\
         + list(np.array(sc.fc.masses)[sc.indexing])
@@ -435,7 +435,7 @@ def add_three_particle_compact(sc, sc_index, sc_compact_single):
     return sc_compact_single
 
 
-def add_two_particle_compact(sc, sc_index, sc_compact_single):
+def _add_two_particle_compact(sc, sc_index, sc_compact_single):
     """Add entries of a two-particle spectator channel to a compact list."""
     sc_compact_single = sc_compact_single\
         + list(np.array(sc.fc.masses))

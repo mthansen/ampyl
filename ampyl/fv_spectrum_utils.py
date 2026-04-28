@@ -280,8 +280,8 @@ def _get_roots_for_Erange_and_LdL(spectrum, E_range, L, dL, ni_functions,
     return E_sets
 
 
-def get_roots_from_range(spectrum, E_range, L, qc_dict, ni_functions,
-                         cuts=DEFAULT_CUTS):
+def _get_roots_from_range(spectrum, E_range, L, qc_dict, ni_functions,
+                          cuts=DEFAULT_CUTS):
     if not isinstance(E_range, list) or len(E_range) != 2 or \
             not all(isinstance(E, float) for E in E_range):
         raise TypeError("E_range must be a list of two floats")

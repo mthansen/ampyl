@@ -430,5 +430,5 @@ class FVSpectrum:
         list[float]
             Roots found in the requested interval.
         """
-        return fv_spectrum_utils.get_roots_from_range(
+        return fv_spectrum_utils._get_roots_from_range(
             self, E_range, L, qc_dict, ni_functions, cuts)
