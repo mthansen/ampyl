@@ -35,7 +35,7 @@ Created July 2022.
 
 import unittest
 from ampyl.flavor import Particle
-from ampyl.functions import QCFunctions
+from ampyl import qc_functions
 from ampyl.flavor import FlavorChannel
 from ampyl.flavor import SpectatorChannel
 
@@ -52,7 +52,7 @@ class TestSpectatorChannel(unittest.TestCase):
         self.assertIsNone(sc.sub_isospin)
         self.assertEqual(sc.ell_set, [0])
         self.assertEqual(sc.p_cot_deltas,
-                         [QCFunctions.pcotdelta_scattering_length])
+                         [qc_functions.pcotdelta_scattering_length])
         self.assertEqual(sc.n_params_set, [1])
 
     def test_allowed_sub_isospins(self):
@@ -95,7 +95,7 @@ class TestSpectatorChannel(unittest.TestCase):
         """Test the p_cot_deltas property."""
         sc = SpectatorChannel()
         self.assertEqual(sc.p_cot_deltas,
-                         [QCFunctions.pcotdelta_scattering_length])
+                         [qc_functions.pcotdelta_scattering_length])
 
     def test_n_params_set_property(self):
         """Test the n_params_set property."""
