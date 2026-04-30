@@ -35,30 +35,30 @@ Created July 2022.
 
 import unittest
 import numpy as np
-from ampyl.functions import BKFunctions
+from ampyl import kinematic_functions
 
 
 class TestBKFunctions(unittest.TestCase):
-    """Class to test the BKFunctions class."""
+    """Class to test the kinematic helper functions."""
 
     def check_YY_recon(self, nvec_arr, ell1, mazi1, ell2, mazi2):
         """Check YY recon."""
         nvec_mag = np.sqrt(nvec_arr@nvec_arr)
         nvec_arr = np.array([nvec_arr])
-        YY = BKFunctions.cart_sph_harm(ell1, mazi1, nvec_arr)[0]\
+        YY = kinematic_functions.cart_sph_harm(ell1, mazi1, nvec_arr)[0]\
             / (np.sqrt(4.*np.pi)*nvec_mag**ell1)\
             * np.conjugate(
-                BKFunctions.cart_sph_harm(ell2, mazi2, nvec_arr)[0])\
+                kinematic_functions.cart_sph_harm(ell2, mazi2, nvec_arr)[0])\
             / (np.sqrt(4.*np.pi)*nvec_mag**ell2)
 
-        recombine_YY_set = BKFunctions.recombine_YY(ell1, mazi1,
+        recombine_YY_set = kinematic_functions.recombine_YY(ell1, mazi1,
                                                     ell2, mazi2)
 
         YY_recombined = 0.
         for entry in recombine_YY_set:
             [ell, mazi, coeff] = entry
             YY_recombined = YY_recombined\
-                + coeff*BKFunctions.cart_sph_harm(ell, mazi, nvec_arr)[0]\
+                + coeff*kinematic_functions.cart_sph_harm(ell, mazi, nvec_arr)[0]\
                 / (np.sqrt(4.*np.pi)*nvec_mag**ell)
         return np.abs(YY-YY_recombined)
 
@@ -66,19 +66,19 @@ class TestBKFunctions(unittest.TestCase):
         """Check YY recon real."""
         nvec_mag = np.sqrt(nvec_arr@nvec_arr)
         nvec_arr = np.array([nvec_arr])
-        YY = BKFunctions.cart_sph_harm_real(ell1, mazi1, nvec_arr)[0]\
+        YY = kinematic_functions.cart_sph_harm_real(ell1, mazi1, nvec_arr)[0]\
             / (np.sqrt(4.*np.pi)*nvec_mag**ell1)\
-            * BKFunctions.cart_sph_harm_real(ell2, mazi2, nvec_arr)[0]\
+            * kinematic_functions.cart_sph_harm_real(ell2, mazi2, nvec_arr)[0]\
             / (np.sqrt(4.*np.pi)*nvec_mag**ell2)
 
-        recombine_YY_real_set = BKFunctions.recombine_YY_real(ell1, mazi1,
+        recombine_YY_real_set = kinematic_functions.recombine_YY_real(ell1, mazi1,
                                                               ell2, mazi2)
 
         YY_recombined = 0.
         for entry in recombine_YY_real_set:
             [ell, mazi, coeff] = entry
             YY_recombined = YY_recombined\
-                + coeff*BKFunctions.cart_sph_harm_real(ell, mazi, nvec_arr)[0]\
+                + coeff*kinematic_functions.cart_sph_harm_real(ell, mazi, nvec_arr)[0]\
                 / (np.sqrt(4.*np.pi)*nvec_mag**ell)
         return np.abs(YY-YY_recombined)
 
