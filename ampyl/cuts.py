@@ -41,7 +41,7 @@ from .constants import QC_IMPL_DEFAULTS
 from .constants import TWOPI
 from .constants import FOURPI2
 from .constants import bcolors
-from .functions import QCFunctions
+from . import qc_functions
 from .spaces import QCIndexSpace
 from .interpolable import Interpolable
 import warnings
@@ -271,7 +271,7 @@ class G(Interpolable):
         if 'g_uses_prep_mat' in self.qcis.fvs.qc_impl:
             g_uses_prep_mat = self.qcis.fvs.qc_impl['g_uses_prep_mat']
         if g_uses_prep_mat and (nP@nP == 0):
-            Gshell = QCFunctions.getG_array_prep_mat(E, nP, L, m1, m2, m3,
+            Gshell = qc_functions.getG_array_prep_mat(E, nP, L, m1, m2, m3,
                                                      tbks_entry,
                                                      row_shell_index,
                                                      col_shell_index,
@@ -280,7 +280,7 @@ class G(Interpolable):
                                                      qc_impl, three_scheme,
                                                      g_rescale)
         else:
-            Gshell = QCFunctions.getG_array(E, nP, L, m1, m2, m3,
+            Gshell = qc_functions.getG_array(E, nP, L, m1, m2, m3,
                                             tbks_entry,
                                             row_shell, col_shell,
                                             ell1, ell2,
@@ -407,7 +407,7 @@ class F(Interpolable):
         mask_slices, slice_entry\
             = shell_utils._get_masks_and_shells_for_f(
                 self, E, L, tbks_entry, cindex, slice_index)
-        Fshell = QCFunctions.getF_array(
+        Fshell = qc_functions.getF_array(
             E, nP, L, m1, m2, m3, tbks_entry, slice_entry, ell1, ell2,
             alpha, beta, C1cut, alphaKSS, qc_impl, three_scheme,
             use_pv_shift_prescription=use_pv_shift_prescription,
