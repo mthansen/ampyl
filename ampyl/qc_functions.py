@@ -743,3 +743,442 @@ def getG_array_prep_mat(E, nP, L, m1, m2, m3,
                        2*ell1+1, axis=0)
     return YY*full_mat_big*H1_mat*H2_mat*g_rescale
 
+def summand(nP2=np.array([0, 0, 0]), qSQ=1.5, gamSQ=1.0, alpha_mass=0.5,
+            nvec_arr=np.array([[0, 0, 0]]), alphaKSS=1.0,
+            ell1=0, mazi1=0, ell2=0, mazi2=0,
+            qc_impl={}):
+    """Return the regulated summand entering the ``F`` function.
+
+    Parameters
+    ----------
+    nP2 : numpy.ndarray, optional
+        Dimensionless two-particle momentum.
+    qSQ : float, optional
+        Squared on-shell momentum.
+    gamSQ : float, optional
+        Squared Lorentz factor.
+    alpha_mass : float, optional
+        Mass-dependent boost parameter.
+    nvec_arr : numpy.ndarray, optional
+        Integer vectors included in the regulated sum.
+    alphaKSS : float, optional
+        Exponential damping parameter.
+    ell1, mazi1, ell2, mazi2 : int, optional
+        Angular-momentum labels.
+    qc_impl : dict, optional
+        Quantization-condition implementation options.
+
+    Returns
+    -------
+    numpy.ndarray
+        Value of the regulated summand on ``nvec_arr``.
+    """
+    nP2SQ = nP2@nP2
+    nP2mag = np.sqrt(nP2SQ)
+    q = np.sqrt(qSQ+0j)
+    sph_harm_value = 1.0
+    if nP2SQ == 0.0:
+        rSQ_arr = (nvec_arr**2).sum(1)
+        if ell1 != 0:
+            calY1, _ = calY(ell1, mazi1, nvec_arr,
+                                        q, qc_impl)
+            sph_harm_value = sph_harm_value*calY1
+
+        if ell2 != 0:
+            _, calY2conj = calY(ell2, mazi2, nvec_arr,
+                                            q, qc_impl)
+            sph_harm_value = sph_harm_value*calY2conj
+
+        if ((ell1 == ell2) and (mazi1 == mazi2)):
+            smarter_q_rescale = QC_IMPL_DEFAULTS['smarter_q_rescale']
+            if 'smarter_q_rescale' in qc_impl:
+                smarter_q_rescale = qc_impl['smarter_q_rescale']
+            if smarter_q_rescale:
+                sph_harm_value = sph_harm_value\
+                    - (rSQ_arr**ell1-qSQ**(ell1))
+            else:
+                sph_harm_value = sph_harm_value\
+                    - (rSQ_arr**ell1-qSQ**(ell1))/(qSQ**(ell1))
+    else:
+        if (ell1 == 0 and ell2 == 0):
+            npar_component_arr = ((nvec_arr*nP2).sum(1))/nP2mag
+            rparSQ_arr = (npar_component_arr-nP2mag/2.0)**2/gamSQ
+            nP2_hat = nP2/nP2mag
+            npar_vec_arr = np.dot(np.transpose([npar_component_arr]),
+                                  [nP2_hat])
+            rperpSQ_arr = ((nvec_arr-npar_vec_arr)**2).sum(1)
+            rSQ_arr = rparSQ_arr+rperpSQ_arr
+        else:
+            npar_component_arrtmp = ((nvec_arr*nP2).sum(1))/nP2mag
+            npar_component_arr\
+                = npar_component_arrtmp.reshape(
+                    (len(npar_component_arrtmp),
+                     1))
+            nP2_hat = nP2/nP2mag
+            npar_vec_arr = nP2_hat*npar_component_arr
+            rpar_vec_arr = (npar_vec_arr-nP2*alpha_mass)/np.sqrt(gamSQ)
+            rperp_vec_arr = nvec_arr - npar_vec_arr
+            rvec_arr = rpar_vec_arr + rperp_vec_arr
+            rSQ_arr = (rvec_arr**2).sum(1)
+            if ell1 != 0:
+                calY1, _ = calY(ell1, mazi1, rvec_arr,
+                                            q, qc_impl)
+                sph_harm_value = sph_harm_value*calY1
+            if ell2 != 0:
+                _, calY2conj = calY(ell2, mazi2, rvec_arr,
+                                                q, qc_impl)
+                sph_harm_value = sph_harm_value*calY2conj
+            if ((ell1 == ell2) and (mazi1 == mazi2)):
+                smarter_q_rescale = QC_IMPL_DEFAULTS['smarter_q_rescale']
+                if 'smarter_q_rescale' in qc_impl:
+                    smarter_q_rescale = qc_impl['smarter_q_rescale']
+
+                if smarter_q_rescale:
+                    sph_harm_value = sph_harm_value\
+                        - (rSQ_arr**ell1-qSQ**(ell1))
+                else:
+                    sph_harm_value = sph_harm_value\
+                        - (rSQ_arr**ell1-qSQ**(ell1))/(qSQ**(ell1))
+    Ds = rSQ_arr-qSQ
+    return sph_harm_value*np.exp(-alphaKSS*Ds)/Ds
+
+def __T1(nP2=np.array([0, 0, 0]), qSQ=1.5, gamSQ=1.0, alpha_mass=0.5,
+         C1cut=3, alphaKSS=1.0, ell1=0, mazi1=0, ell2=0, mazi2=0,
+         qc_impl={}):
+    rng = range(-C1cut, C1cut+1)
+    mesh = np.meshgrid(*([rng]*3))
+    nvec_arr = np.vstack([y.flat for y in mesh]).T
+    return np.sum(summand(nP2, qSQ, gamSQ, alpha_mass,
+                                      nvec_arr, alphaKSS,
+                                      ell1, mazi1, ell2, mazi2,
+                                      qc_impl))/R4PI
+
+def __T2(qSQ=1.5, gamSQ=1.0, alphaKSS=1.0,
+         ell1=0, mazi1=0, ell2=0, mazi2=0, qc_impl={}):
+    if ((ell1 == ell2) and (mazi1 == mazi2)):
+        gamma = np.sqrt(gamSQ)
+        if qSQ >= 0:
+            ttmp = 2.0*(np.pi**2)*np.sqrt(qSQ)\
+                  * erfi(np.sqrt(alphaKSS*qSQ))\
+                  - 2.0*np.exp(alphaKSS*qSQ)\
+                  * np.sqrt(np.pi**3)/np.sqrt(alphaKSS)
+        else:
+            ttmp = -2.0*(np.pi**2)*np.sqrt(-qSQ)\
+                  * erf(np.sqrt(-alphaKSS*qSQ))\
+                  - 2.0*np.exp(alphaKSS*qSQ)\
+                  * np.sqrt(np.pi**3)/np.sqrt(alphaKSS)
+        smarter_q_rescale = QC_IMPL_DEFAULTS['smarter_q_rescale']
+        if 'smarter_q_rescale' in qc_impl:
+            smarter_q_rescale = qc_impl['smarter_q_rescale']
+        if smarter_q_rescale:
+            ttmp = ttmp*(qSQ)**ell1
+        return gamma*ttmp/np.sqrt(2.0*TWOPI)
+    else:
+        return 0.0
+
+def getZ_single_entry(nP2=np.array([0, 0, 0]), qSQ=1.5, gamSQ=1.0,
+                      alpha_mass=0.5, C1cut=3, alphaKSS=1.0,
+                      ell1=0, mazi1=0, ell2=0, mazi2=0,
+                      qc_impl={}):
+    r"""Evaluate a single entry of ``Z``."""
+    return __T1(nP2, qSQ, gamSQ, alpha_mass, C1cut, alphaKSS,
+                            ell1, mazi1, ell2, mazi2, qc_impl)\
+        + __T2(qSQ, gamSQ, alphaKSS, ell1, mazi1, ell2, mazi2,
+                           qc_impl)
+
+def getFtwo_single_entry(E2=3.0, nP2=np.array([0, 0, 0]), L=5.0,
+                         m1=1.0, m2=1.0, C1cut=3, alphaKSS=1.0,
+                         ell1=0, mazi1=0, ell2=0, mazi2=0,
+                         qc_impl={}):
+    r"""Evaluate a single entry of ``F_2``."""
+    P2 = TWOPI*nP2/L
+    E2SQ = E2**2
+    P2SQ = P2@P2
+    E2CMSQ = E2SQ-P2SQ
+    gamSQ = E2SQ/E2CMSQ
+    if m1 == m2:
+        qSQ = E2CMSQ/4.0-m1**2
+        qSQ_dimless = (L**2)*(qSQ)/FOURPI2
+    else:
+        qSQ = (E2CMSQ**2-2.0*E2CMSQ*m1**2
+               + m1**4-2.0*E2CMSQ*m2**2-2.0*m1**2*m2**2+m2**4)\
+            / (4.0*E2CMSQ)
+        qSQ_dimless = (L**2)*(qSQ)/FOURPI2
+    if E2CMSQ < 0.0:
+        return 0.0
+    E2CM = np.sqrt(E2CMSQ)
+    gamma = np.sqrt(gamSQ)
+    alpha_mass = 0.5*(1.+(m1**2-m2**2)/E2CMSQ)
+    pre = -2.0/(L*np.sqrt(PI)*16.0*PI*E2CM*gamma)
+    return pre*(getZ_single_entry(nP2, qSQ_dimless, gamSQ,
+                                              alpha_mass, C1cut, alphaKSS,
+                                              ell1, mazi1, ell2, mazi2,
+                                              qc_impl))
+
+def getF_single_entry(E=4.0, nP=np.array([0, 0, 0]), L=5.0,
+                      npspec=np.array([0, 0, 0]),
+                      m1=1.0, m2=1.0, mspec=1.0,
+                      C1cut=3, alphaKSS=1.0, alpha=-1.0, beta=0.0,
+                      ell1=0, mazi1=0, ell2=0, mazi2=0,
+                      three_scheme='relativistic pole',
+                      qc_impl={}):
+    """Evaluate a single entry of the finite-volume ``F`` matrix.
+
+    Parameters
+    ----------
+    E : float, optional
+        Total energy.
+    nP : numpy.ndarray, optional
+        Dimensionless total momentum.
+    L : float, optional
+        Spatial box length.
+    npspec : numpy.ndarray, optional
+        Spectator momentum index.
+    m1, m2, mspec : float, optional
+        Channel masses.
+    C1cut : int, optional
+        Cutoff on the regulated sum.
+    alphaKSS : float, optional
+        Exponential damping parameter.
+    alpha, beta : float, optional
+        Cutoff parameters.
+    ell1, mazi1, ell2, mazi2 : int, optional
+        Angular-momentum labels.
+    three_scheme : str, optional
+        Three-body interaction scheme.
+    qc_impl : dict, optional
+        Quantization-condition implementation options.
+
+    Returns
+    -------
+    complex or float
+        Requested matrix element.
+    """
+    nP2 = nP - npspec
+    pspec = TWOPI*npspec/L
+    pspecSQ = pspec@pspec
+    omspec = np.sqrt(pspecSQ+mspec**2)
+    E2 = E-omspec
+    P2 = TWOPI*nP2/L
+    E2SQ = E2**2
+    P2SQ = P2@P2
+    E2CMSQ = E2SQ-P2SQ
+    if (E2CMSQ < 0.0) or (E2 < 0.0):
+        return 0.0
+    gamSQ = E2SQ/E2CMSQ
+    if m1 == m2:
+        qSQ = E2CMSQ/4.0-m1**2
+        qSQ_dimless = (L**2)*(qSQ)/FOURPI2
+    else:
+        qSQ = (E2CMSQ**2-2.0*E2CMSQ*m1**2
+               + m1**4-2.0*E2CMSQ*m2**2-2.0*m1**2*m2**2+m2**4)\
+            / (4.0*E2CMSQ)
+        qSQ_dimless = (L**2)*(qSQ)/FOURPI2
+    E2CM = np.sqrt(E2CMSQ)
+    gamma = np.sqrt(gamSQ)
+    alpha_mass = 0.5*(1.+(m1**2-m2**2)/E2CMSQ)
+
+    Htmp = H(E2CMSQ, m1+m2, alpha, beta)
+    pre = -Htmp*2.0/(L*np.sqrt(PI)*16.0*PI*E2CM*gamma)
+    hermitian = QC_IMPL_DEFAULTS['hermitian']
+    if 'hermitian' in qc_impl:
+        hermitian = qc_impl['hermitian']
+    if hermitian:
+        pre = pre/(2.0*omspec)
+    smarter_q_rescale = QC_IMPL_DEFAULTS['smarter_q_rescale']
+    if 'smarter_q_rescale' in qc_impl:
+        smarter_q_rescale = qc_impl['smarter_q_rescale']
+    if smarter_q_rescale:
+        pre = pre*(FOURPI2/L**2)**ell1
+    return pre*(getZ_single_entry(nP2, qSQ_dimless, gamSQ,
+                                              alpha_mass, C1cut, alphaKSS,
+                                              ell1, mazi1,
+                                              ell2, mazi2, qc_impl))
+
+def getF_single_entry_IPV(IPV_function=None, IPV_parameters=[1.0],
+                          E=4.0, nP=np.array([0, 0, 0]), L=5.0,
+                          npspec=np.array([0, 0, 0]),
+                          m1=1.0, m2=1.0, mspec=1.0,
+                          C1cut=3, alphaKSS=1.0, alpha=-1.0, beta=0.0,
+                          ell1=0, mazi1=0, ell2=0, mazi2=0,
+                          three_scheme='relativistic pole', qc_impl={}):
+    """Evaluate a single ``F`` entry including the PV-shift prescription.
+
+    Parameters
+    ----------
+    IPV_function : callable, optional
+        Principal-value shift function.
+    IPV_parameters : list[float], optional
+        Parameters passed to ``IPV_function``.
+    E : float, optional
+        Total energy.
+    nP : numpy.ndarray, optional
+        Dimensionless total momentum.
+    L : float, optional
+        Spatial box length.
+    npspec : numpy.ndarray, optional
+        Spectator momentum index.
+    m1, m2, mspec : float, optional
+        Channel masses.
+    C1cut : int, optional
+        Cutoff on the regulated sum.
+    alphaKSS : float, optional
+        Exponential damping parameter.
+    alpha, beta : float, optional
+        Cutoff parameters.
+    ell1, mazi1, ell2, mazi2 : int, optional
+        Angular-momentum labels.
+    three_scheme : str, optional
+        Three-body interaction scheme.
+    qc_impl : dict, optional
+        Quantization-condition implementation options.
+
+    Returns
+    -------
+    complex or float
+        Requested matrix element including the PV-shift term.
+    """
+    if IPV_function is None:
+        IPV_function = IPV_constant
+    nP2 = nP - npspec
+    pspec = TWOPI*npspec/L
+    pspecSQ = pspec@pspec
+    omspec = np.sqrt(pspecSQ+mspec**2)
+    E2 = E-omspec
+    P2 = TWOPI*nP2/L
+    E2SQ = E2**2
+    P2SQ = P2@P2
+    E2CMSQ = E2SQ-P2SQ
+    if (E2CMSQ < 0.0) or (E2 < 0.0):
+        return 0.0
+    gamSQ = E2SQ/E2CMSQ
+    if m1 == m2:
+        qSQ = E2CMSQ/4.0-m1**2
+        qSQ_dimless = (L**2)*(qSQ)/FOURPI2
+    else:
+        qSQ = (E2CMSQ**2-2.0*E2CMSQ*m1**2
+               + m1**4-2.0*E2CMSQ*m2**2-2.0*m1**2*m2**2+m2**4)\
+            / (4.0*E2CMSQ)
+        qSQ_dimless = (L**2)*(qSQ)/FOURPI2
+    E2CM = np.sqrt(E2CMSQ)
+    gamma = np.sqrt(gamSQ)
+    alpha_mass = 0.5*(1.+(m1**2-m2**2)/E2CMSQ)
+    Htmp = H(E2CMSQ, m1+m2, alpha, beta)
+    pre = -Htmp*2.0/(L*np.sqrt(PI)*16.0*PI*E2CM*gamma)
+    pv_shift_value = 0.0
+    if ell1 == ell2 and mazi1 == mazi2:
+        ell = ell1
+        pSQ = qSQ
+        IPV = IPV_function(qSQ, *IPV_parameters)
+        include_H_in_IPV = QC_IMPL_DEFAULTS['include_H_in_IPV']
+        if 'include_H_in_IPV' in qc_impl:
+            include_H_in_IPV = qc_impl['include_H_in_IPV']
+        if include_H_in_IPV:
+            partial_shift = IPV/pSQ**(ell)*np.sqrt(pSQ+1.0)
+        else:
+            if np.abs(Htmp) < EPSILON15:
+                partial_shift = 0.0
+            else:
+                partial_shift = IPV/pSQ**(ell)*np.sqrt(pSQ+1.0)/Htmp
+        smarter_q_rescale = QC_IMPL_DEFAULTS['smarter_q_rescale']
+        if 'smarter_q_rescale' in qc_impl:
+            smarter_q_rescale = qc_impl['smarter_q_rescale']
+        if smarter_q_rescale:
+            pv_shift_value = 0.5*np.sqrt(PI)*L*gamma*partial_shift\
+                * qSQ_dimless**(ell)
+        else:
+            pv_shift_value = 0.5*np.sqrt(PI)*L*gamma*partial_shift
+    hermitian = QC_IMPL_DEFAULTS['hermitian']
+    if 'hermitian' in qc_impl:
+        hermitian = qc_impl['hermitian']
+    if hermitian:
+        pre = pre/(2.0*omspec)
+    smarter_q_rescale = QC_IMPL_DEFAULTS['smarter_q_rescale']
+    if 'smarter_q_rescale' in qc_impl:
+        smarter_q_rescale = qc_impl['smarter_q_rescale']
+    if smarter_q_rescale:
+        pre = pre*(FOURPI2/L**2)**ell1
+    return pre*(getZ_single_entry(nP2, qSQ_dimless, gamSQ,
+                                              alpha_mass, C1cut, alphaKSS,
+                                              ell1, mazi1,
+                                              ell2, mazi2, qc_impl)
+                - pv_shift_value)
+
+def getF_array(E, nP, L, m1, m2, m3, tbks_entry, slice_entry,
+               ell1, ell2, alpha, beta, C1cut, alphaKSS, qc_impl,
+               three_scheme, use_pv_shift_prescription=False,
+               IPV_function=None, pv_shift_parameters=[0.0]):
+    """Return the block-diagonal finite-volume ``F`` matrix.
+
+    Parameters
+    ----------
+    E : float
+        Total energy.
+    nP : numpy.ndarray
+        Dimensionless total momentum.
+    L : float
+        Spatial box length.
+    m1, m2, m3 : float
+        Channel masses.
+    tbks_entry : object
+        TBKS entry providing shell data.
+    slice_entry : tuple[int, int]
+        Slice selecting the spectator shell.
+    ell1, ell2 : int
+        Row and column angular momenta.
+    alpha, beta : float
+        Cutoff parameters.
+    C1cut : int
+        Cutoff on the regulated sum.
+    alphaKSS : float
+        Exponential damping parameter.
+    qc_impl : dict
+        Quantization-condition implementation options.
+    three_scheme : str
+        Three-body interaction scheme.
+    use_pv_shift_prescription : bool, optional
+        Whether to include the PV-shift prescription.
+    IPV_function : callable, optional
+        Principal-value shift function.
+    pv_shift_parameters : list[float], optional
+        Parameters passed to ``IPV_function``.
+
+    Returns
+    -------
+    numpy.ndarray
+        Block-diagonal ``F`` matrix.
+    """
+    nvec_arr_slice = tbks_entry.nvec_arr[slice_entry[0]:slice_entry[1]]
+    f_list = []
+    for nvec in nvec_arr_slice:
+        f_mat_entry = [[]]
+        for mazi1 in range(-ell1, ell1+1):
+            f_row = []
+            for mazi2 in range(-ell2, ell2+1):
+                # Awkward notation for masses here
+                if use_pv_shift_prescription:
+                    f_entry = getF_single_entry_IPV(
+                        IPV_function=IPV_function,
+                        IPV_parameters=pv_shift_parameters,
+                        E=E, nP=nP, L=L, npspec=nvec, m1=m2, m2=m3,
+                        mspec=m1, C1cut=C1cut, alphaKSS=alphaKSS,
+                        alpha=alpha, beta=beta, ell1=ell1, mazi1=mazi1,
+                        ell2=ell2, mazi2=mazi2, three_scheme=three_scheme,
+                        qc_impl=qc_impl)
+                else:
+                    f_entry = getF_single_entry(
+                        E=E, nP=nP, L=L, npspec=nvec, m1=m2, m2=m3,
+                        mspec=m1, C1cut=C1cut, alphaKSS=alphaKSS,
+                        alpha=alpha, beta=beta, ell1=ell1, mazi1=mazi1,
+                        ell2=ell2, mazi2=mazi2, three_scheme=three_scheme,
+                        qc_impl=qc_impl)
+                if np.abs(f_entry.imag) < EPSILON15:
+                    f_entry = f_entry.real
+                if np.abs(f_entry) < EPSILON15:
+                    f_entry = 0.0
+                f_row = f_row+[f_entry]
+            f_mat_entry = f_mat_entry+[f_row]
+        f_mat_entry = np.array(f_mat_entry[1:])
+        f_list = f_list+[f_mat_entry]
+    return block_diag(*f_list)
+
