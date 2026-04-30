@@ -594,6 +594,8 @@ class FplusG(Interpolable):
             ])
         return diagonal_nvecSQs
 
+    def _get_all_nvecSQs_deprecated(self, nvecSQs_by_shell):
+        """Original implementation retained for comparison and validation."""
         all_nvecSQs = []
         for outer_nvecSQ_row in nvecSQs_by_shell:
             for outer_nvecSQ_entry in outer_nvecSQ_row:
