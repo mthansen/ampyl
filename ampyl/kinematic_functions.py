@@ -520,3 +520,102 @@ def calY(ell=0, mazi=0, nvec_arr=np.array([[1.0, 2.0, 3.0]]),
         calYconj = Yconj/q**ell
     return calY, calYconj
 
+def standard_boost(beta_vec=np.array([0.0, 0.0, 0.0]),
+                   four_momentum=np.array([1.0, 0.0, 0.0, 0.0])):
+    r"""Return the Lorentz boost of a single four-momentum.
+
+    Parameters
+    ----------
+    beta_vec : numpy.ndarray, optional
+        Boost velocity vector.
+    four_momentum : numpy.ndarray, optional
+        Four-momentum to be boosted.
+
+    Returns
+    -------
+    numpy.ndarray
+        Boosted four-momentum. If the boost is unphysical, a zero
+        four-vector is returned.
+    """
+    betaSQ = beta_vec@beta_vec
+    if betaSQ == 0.0:
+        return four_momentum
+    if betaSQ < 0.0 or betaSQ >= 1.0:
+        return np.array(4*[0.0])
+    beta = np.sqrt(betaSQ)
+    beta_hat = beta_vec/beta
+    gamma = np.sqrt(1.0/(1.0-betaSQ))
+    momentum_spatial_vec = four_momentum[1:]
+    momentum_par_component = momentum_spatial_vec@beta_hat
+    momentum_par_vec = momentum_par_component*beta_hat
+    momentum_perp_vec = momentum_spatial_vec - momentum_par_vec
+    boost_matrix = np.array([[gamma, beta*gamma], [beta*gamma, gamma]])
+    momentum_par_unboosted = np.array([[four_momentum[0]],
+                                       [momentum_par_component]])
+    momentum_par_boosted = boost_matrix@momentum_par_unboosted
+    momentum_spatial_vec_boosted = momentum_perp_vec\
+        + momentum_par_boosted[1][0]*beta_hat
+    four_momentum_boosted = np.array([momentum_par_boosted[0][0],
+                                      momentum_spatial_vec_boosted[0],
+                                      momentum_spatial_vec_boosted[1],
+                                      momentum_spatial_vec_boosted[2]])
+    return four_momentum_boosted
+
+def standard_boost_array(beta_vec=np.array([[[0.0, 0.0, 0.0]]]),
+                         four_momentum=np.array([[[1.0, 0.0, 0.0, 0.0]]])):
+    r"""Return Lorentz boosts applied elementwise to an array of vectors.
+
+    Parameters
+    ----------
+    beta_vec : numpy.ndarray, optional
+        Array of boost velocity vectors.
+    four_momentum : numpy.ndarray, optional
+        Array of four-momenta to be boosted.
+
+    Returns
+    -------
+    numpy.ndarray
+        Boosted four-momenta. If the boost is unphysical, an array of
+        zeros with the same shape is returned.
+    """
+    betaSQ = (beta_vec[0][0]@beta_vec[0][0])*np.ones(beta_vec.shape[:-1])
+    if betaSQ[0][0] == 0.0:
+        return four_momentum
+    if betaSQ[0][0] < 0.0:
+        return np.zeros(four_momentum.shape)
+    beta = np.sqrt(betaSQ)
+    beta_hat = beta_vec/np.repeat(beta, 3, axis=1).reshape(beta_vec.shape)
+    gamma = np.sqrt(1.0/(1.0-betaSQ))
+    momentum_spatial_vec = four_momentum[:, :, 1:]
+    momentum_par_component = (momentum_spatial_vec*beta_hat).sum(2)
+    momentum_par_vec = np.repeat(momentum_par_component, 3, axis=1
+                                 ).reshape(beta_hat.shape)*beta_hat
+    momentum_perp_vec = momentum_spatial_vec-momentum_par_vec
+
+    boost_matrix = np.transpose(np.array([[gamma, beta*gamma],
+                                          [beta*gamma, gamma]]),
+                                axes=(2, 3, 0, 1))
+    momentum_par_unboosted = np.concatenate(
+        (four_momentum[:, :, 0].reshape(
+            four_momentum[:, :, 0].shape+(1,)
+            ),
+         momentum_par_component.reshape(
+             four_momentum[:, :, 0].shape+(1,)
+             )),
+        axis=2)
+
+    momentum_par_boosted = np.einsum('ijkl,ijl->ijk', boost_matrix,
+                                     momentum_par_unboosted)
+
+    momentum_spatial_vec_boosted = momentum_perp_vec\
+        + np.repeat(
+            momentum_par_boosted[:, :, 1], 3, axis=1
+            ).reshape(beta_hat.shape)*beta_hat
+
+    four_momentum_boosted = np.concatenate(
+        (momentum_par_boosted[:, :, 0].reshape(
+            momentum_par_boosted[:, :, 0].shape+(1,)
+            ),
+            momentum_spatial_vec_boosted),
+        axis=2)
+    return four_momentum_boosted
