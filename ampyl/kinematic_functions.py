@@ -125,3 +125,34 @@ def J(z=np.array([0.5])):
             return 1.0
         return np.exp(-1.0/z*np.exp(-1.0/(1.0-z)))
     raise ValueError("z must be a float or np.ndarray")
+
+def H(E2CMSQ=9.0, threshold=2.0, alpha=-1.0, beta=0.0, J_slow=False):
+    r"""Return the kinematic cutoff function ``H``.
+
+    This function is built from ``J(z)`` and ranges from ``0`` below a
+    chosen two-particle CMF energy to ``1`` above threshold.
+
+    Parameters
+    ----------
+    E2CMSQ : float or numpy.ndarray, optional
+        Squared two-particle center-of-mass energy.
+    threshold : float, optional
+        Two-particle threshold value.
+    alpha : float, optional
+        Width parameter. The standard choice is ``-1.0``.
+    beta : float, optional
+        Shift parameter. The standard choice is ``0.0``.
+    J_slow : bool, optional
+        If ``True``, use :meth:`J_slow` instead of :meth:`J`.
+
+    Returns
+    -------
+    float or numpy.ndarray
+        Value of the cutoff function.
+    """
+    z = (E2CMSQ-(1.0+alpha)*threshold**2/4.0)\
+        / ((3.0-alpha)*threshold**2/4.0)+beta
+    if J_slow:
+        return globals()['J_slow'](z)
+    return J(z)
+
