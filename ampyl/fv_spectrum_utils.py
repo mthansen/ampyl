@@ -327,10 +327,12 @@ def _simple_try_at_fixed_L(spectrum, E_bracket, L, qc_dict):
         root = root_scalar(spectrum.qc.get_value,
                            args=(L, qc_dict),
                            bracket=E_bracket).root
-        qc_ratio = np.abs(spectrum.qc.get_value(root, L, qc_dict)
-                          / spectrum.qc.get_value(root+EPSILON6,
-                                                  L, qc_dict))
-        if qc_ratio < EPSILON5:
+        abs_qc_value_at_root = np.abs(spectrum.qc.get_value(root, L, qc_dict))
+        abs_qc_value_at_root_plus = np.abs(
+            spectrum.qc.get_value(root+EPSILON6, L, qc_dict)
+        )
+        qc_ratio = abs_qc_value_at_root / abs_qc_value_at_root_plus
+        if abs_qc_value_at_root < EPSILON10 and qc_ratio < EPSILON5:
             return root
         warnings.warn("Root was found but QC at the root is not "
                       "sufficiently close to zero, returning NaN.")
