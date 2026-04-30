@@ -47,7 +47,7 @@ from .constants import BAD_MIN_GUESS
 from .constants import BAD_MAX_GUESS
 from .constants import POLE_CUT
 from .constants import bcolors
-from .functions import QCFunctions
+from . import qc_functions
 from .spaces import QCIndexSpace
 import warnings
 warnings.simplefilter("once")
@@ -674,7 +674,7 @@ class Interpolable:
                         ).T)
             except KeyError:
                 return np.array([])
-        nvecSQ_mat_shells = QCFunctions\
+        nvecSQ_mat_shells = qc_functions\
             .get_nvecSQ_mat_shells(tbks_entry, row_shell, col_shell)
         return [nvecSQ_mat_shells, proj_tmp_left, proj_tmp_right]
 
