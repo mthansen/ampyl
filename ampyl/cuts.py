@@ -570,6 +570,13 @@ class FplusG(Interpolable):
                         if len(inner_nvecSQ_entry) != 0:
                             yield inner_nvecSQ_entry[0]
 
+    def _append_nvecSQs(self, all_nvecSQs, seen_nvecSQs, nvecSQs):
+        """Append a sorted nvecSQ triple if it has not been seen yet."""
+        nvecSQs_sorted = tuple(np.sort(nvecSQs))
+        if nvecSQs_sorted not in seen_nvecSQs:
+            seen_nvecSQs.add(nvecSQs_sorted)
+            all_nvecSQs.append(list(nvecSQs_sorted))
+
         all_nvecSQs = []
         for outer_nvecSQ_row in nvecSQs_by_shell:
             for outer_nvecSQ_entry in outer_nvecSQ_row:
