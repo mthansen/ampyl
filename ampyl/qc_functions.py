@@ -1182,3 +1182,365 @@ def getF_array(E, nP, L, m1, m2, m3, tbks_entry, slice_entry,
         f_list = f_list+[f_mat_entry]
     return block_diag(*f_list)
 
+def with_str(str_func):
+    """Change print behavior of a function."""
+    def wrapper(f):
+        class FuncType:
+            def __call__(self, *args, **kwargs):
+                return f(*args, **kwargs)
+
+            def __str__(self):
+                return str_func()
+
+        return functools.wraps(f)(FuncType())
+    return wrapper
+
+def pcotdelta_scattering_length_str():
+    """Print behavior for pcotdelta_scattering_length."""
+    return "pcotdelta_scattering_length"
+
+@with_str(pcotdelta_scattering_length_str)
+def pcotdelta_scattering_length(pSQ=1.5, a=1.0):
+    r"""Evaluate ``p cot(delta)`` in the scattering-length approximation."""
+    return -1.0/a
+
+def IPV_constant(pSQ=1.5, c=1.0):
+    """Return a constant principal-value shift."""
+    return c
+
+def IPV_poly(pSQ=1.5, c=1.0, d=1.0):
+    """Return a linear polynomial principal-value shift."""
+    return c+pSQ*d
+
+def IPV_poly_root_removal(pSQ=1.5, c=1.0, d=1.0):
+    """Return a polynomial PV shift with threshold-root removal."""
+    return (c+pSQ*d)/np.sqrt(pSQ+1.)
+
+def pcotdelta_breit_wigner_str():
+    """Print behavior for pcotdelta_breit_wigner."""
+    return "pcotdelta_breit_wigner"
+
+@with_str(pcotdelta_breit_wigner_str)
+def pcotdelta_breit_wigner(pSQ=1.5, g_value=6.0, mrho_value=3.0):
+    """Evaluate the Breit-Wigner ``p cot(delta)`` parametrization.
+
+    Parameters
+    ----------
+    pSQ : float, optional
+        Squared two-particle momentum.
+    g_value : float, optional
+        Coupling parameter.
+    mrho_value : float, optional
+        Resonance mass parameter.
+
+    Returns
+    -------
+    float or complex
+        Value of ``p cot(delta)``.
+
+    Notes
+    -----
+    The result includes a factor of ``pSQ`` to cancel threshold scaling that
+    is handled elsewhere in the formalism.
+    """
+    # print Ecm with label
+    # print("Ecm: ", Ecm)
+    # print pcotdelta with label
+    # print("pcotdelta in original function: ", 1/tandop)
+    Ecm = 2.0*np.sqrt(1.0+pSQ)
+    GammaEcmop = g_value**2/(6.0*np.pi)*((pSQ))/Ecm**2
+    tandop = GammaEcmop*Ecm/(mrho_value**2-Ecm**2)
+    return pSQ/tandop
+
+def pcotdelta_ere_breit_wigner(pSQ=1.5, g_value=6.0, mrho_value=3.0):
+    """Evaluate the ERE-style Breit-Wigner ``p cot(delta)`` parametrization."""
+    Ecm = 2.0*np.sqrt(1.0+pSQ)
+    GammaEcmop = g_value**2/(6.0*np.pi)*((pSQ))/mrho_value**2
+    tandop = GammaEcmop*Ecm/(mrho_value**2-Ecm**2)
+    return pSQ/tandop
+
+def getK_single_entry(pcotdelta_function=None,
+                      pcotdelta_parameter_list=[1.0],
+                      E=4.0, nP=np.array([0, 0, 0]), L=5.0,
+                      npspec=np.array([0, 0, 0]),
+                      m1=1.0, m2=1.0, mspec=1.0,
+                      alpha=-1.0, beta=0.0,
+                      ell=0,
+                      qc_impl={}):
+    """Evaluate a single entry of the two-body ``K`` matrix.
+
+    Parameters
+    ----------
+    pcotdelta_function : callable, optional
+        Function used to evaluate ``p cot(delta)``.
+    pcotdelta_parameter_list : list[float], optional
+        Parameters passed to ``pcotdelta_function``.
+    E : float, optional
+        Total energy.
+    nP : numpy.ndarray, optional
+        Dimensionless total momentum.
+    L : float, optional
+        Spatial box length.
+    npspec : numpy.ndarray, optional
+        Spectator momentum index.
+    m1, m2, mspec : float, optional
+        Channel masses.
+    alpha, beta : float, optional
+        Cutoff parameters.
+    ell : int, optional
+        Angular momentum.
+    qc_impl : dict, optional
+        Quantization-condition implementation options.
+
+    Returns
+    -------
+    complex or float
+        Requested matrix element.
+    """
+    if pcotdelta_function is None:
+        pcotdelta_function = pcotdelta_scattering_length
+    P = TWOPI*nP/L
+    pspec = TWOPI*npspec/L
+    omspec = np.sqrt(mspec**2+pspec@pspec)
+    E2 = E-omspec
+    P2 = P-pspec
+    E2CMSQ = E2**2-P2@P2
+    if E2CMSQ <= 0.0 or E2 < 0.0:
+        return np.nan
+    ECM = np.sqrt(E2CMSQ)
+    if m1 == m2:
+        pSQ = E2CMSQ/4.0-m1**2
+    else:
+        pSQ = (E2CMSQ**2-2.0*E2CMSQ*m1**2
+               + m1**4-2.0*E2CMSQ*m2**2-2.0*m1**2*m2**2+m2**4)\
+            / (4.0*E2CMSQ)
+    pcotdelta = pcotdelta_function(pSQ, *pcotdelta_parameter_list)
+    # print pcotdelta with label
+    # print("pcotdelta: ", pcotdelta)
+    q_one_minus_H_tmp = q_one_minus_H(E2CMSQ=E2CMSQ,
+                                                  m1=m1, m2=m2,
+                                                  alpha=alpha,
+                                                  beta=beta)
+    pre = 1.0
+    hermitian = QC_IMPL_DEFAULTS['hermitian']
+    if 'hermitian' in qc_impl:
+        hermitian = qc_impl['hermitian']
+    if hermitian:
+        pre = pre*(2.0*omspec)
+
+    smarter_q_rescale = QC_IMPL_DEFAULTS['smarter_q_rescale']
+    if 'smarter_q_rescale' in qc_impl:
+        smarter_q_rescale = qc_impl['smarter_q_rescale']
+
+    if smarter_q_rescale:
+        pcotdelta = pcotdelta/pSQ**(ell)
+        return pre*16.0*PI*ECM/(pcotdelta+q_one_minus_H_tmp)\
+            / pSQ**(ell)
+    else:
+        pcotdelta = pcotdelta/pSQ**(ell)
+        return pre*16.0*PI*ECM/(pcotdelta+q_one_minus_H_tmp)
+
+def getK_single_entry_IPV(pcotdelta_function=None,
+                          IPV_function=None,
+                          pcotdelta_parameter_list=[1.0],
+                          pv_shift_parameters=[1.0],
+                          E=4.0, nP=np.array([0, 0, 0]), L=5.0,
+                          npspec=np.array([0, 0, 0]),
+                          m1=1.0, m2=1.0, mspec=1.0,
+                          alpha=-1.0, beta=0.0,
+                          ell=0,
+                          qc_impl={}):
+    """Evaluate a single ``K`` entry including the PV-shift prescription.
+
+    Parameters
+    ----------
+    pcotdelta_function : callable, optional
+        Function used to evaluate ``p cot(delta)``.
+    IPV_function : callable, optional
+        Principal-value shift function.
+    pcotdelta_parameter_list : list[float], optional
+        Parameters passed to ``pcotdelta_function``.
+    pv_shift_parameters : list[float], optional
+        Parameters passed to ``IPV_function``.
+    E : float, optional
+        Total energy.
+    nP : numpy.ndarray, optional
+        Dimensionless total momentum.
+    L : float, optional
+        Spatial box length.
+    npspec : numpy.ndarray, optional
+        Spectator momentum index.
+    m1, m2, mspec : float, optional
+        Channel masses.
+    alpha, beta : float, optional
+        Cutoff parameters.
+    ell : int, optional
+        Angular momentum.
+    qc_impl : dict, optional
+        Quantization-condition implementation options.
+
+    Returns
+    -------
+    complex or float
+        Requested matrix element including the PV-shift term.
+    """
+    if pcotdelta_function is None:
+        pcotdelta_function = pcotdelta_scattering_length
+    if IPV_function is None:
+        IPV_function = IPV_constant
+    P = TWOPI*nP/L
+    pspec = TWOPI*npspec/L
+    omspec = np.sqrt(mspec**2+pspec@pspec)
+    E2 = E-omspec
+    P2 = P-pspec
+    E2CMSQ = E2**2-P2@P2
+    if E2CMSQ <= 0.0 or E2 < 0.0:
+        return np.nan
+    ECM = np.sqrt(E2CMSQ)
+    if m1 == m2:
+        pSQ = E2CMSQ/4.0-m1**2
+    else:
+        pSQ = (E2CMSQ**2-2.0*E2CMSQ*m1**2
+               + m1**4-2.0*E2CMSQ*m2**2-2.0*m1**2*m2**2+m2**4)\
+            / (4.0*E2CMSQ)
+    pcotdelta = pcotdelta_function(pSQ, *pcotdelta_parameter_list)
+    q_one_minus_H_value = q_one_minus_H(E2CMSQ=E2CMSQ,
+                                        m1=m1, m2=m2,
+                                        alpha=alpha,
+                                        beta=beta)
+    IPV = IPV_function(pSQ, *pv_shift_parameters)
+    include_H_in_IPV = QC_IMPL_DEFAULTS['include_H_in_IPV']
+    if 'include_H_in_IPV' in qc_impl:
+        include_H_in_IPV = qc_impl['include_H_in_IPV']
+    if include_H_in_IPV:
+        Htmp = H(E2CMSQ, m1+m2, alpha, beta)
+        pcot_shift = IPV/pSQ**(ell)*np.sqrt(pSQ+1.0)*Htmp
+    else:
+        pcot_shift = IPV/pSQ**(ell)*np.sqrt(pSQ+1.0)
+    qH_IPV = q_one_minus_H_value-pcot_shift
+
+    pre = 1.0
+    hermitian = QC_IMPL_DEFAULTS['hermitian']
+    if 'hermitian' in qc_impl:
+        hermitian = qc_impl['hermitian']
+    if hermitian:
+        pre = pre*(2.0*omspec)
+
+    smarter_q_rescale = QC_IMPL_DEFAULTS['smarter_q_rescale']
+    if 'smarter_q_rescale' in qc_impl:
+        smarter_q_rescale = qc_impl['smarter_q_rescale']
+
+    if smarter_q_rescale:
+        pcotdelta = pcotdelta/pSQ**(ell)
+        return pre*16.0*PI*ECM/(pcotdelta+qH_IPV)\
+            / pSQ**(ell)
+    else:
+        pcotdelta = pcotdelta/pSQ**(ell)
+        return pre*16.0*PI*ECM/(pcotdelta+qH_IPV)
+
+def getK_array(E, nP, L, m1, m2, m3, tbks_entry, slice_entry, ell,
+               pcotdelta_function, pcotdelta_parameter_list, alpha, beta,
+               qc_impl, three_scheme, use_pv_shift_prescription=False,
+               IPV_function=None,
+               pv_shift_parameters=[0.]):
+    """Return the block-diagonal two-body ``K`` matrix.
+
+    Parameters
+    ----------
+    E : float
+        Total energy.
+    nP : numpy.ndarray
+        Dimensionless total momentum.
+    L : float
+        Spatial box length.
+    m1, m2, m3 : float
+        Channel masses.
+    tbks_entry : object
+        TBKS entry providing shell data.
+    slice_entry : tuple[int, int]
+        Slice selecting the spectator shell.
+    ell : int
+        Angular momentum.
+    pcotdelta_function : callable
+        Function used to evaluate ``p cot(delta)``.
+    pcotdelta_parameter_list : list[float]
+        Parameters passed to ``pcotdelta_function``.
+    alpha, beta : float
+        Cutoff parameters.
+    qc_impl : dict
+        Quantization-condition implementation options.
+    three_scheme : str
+        Three-body interaction scheme.
+    use_pv_shift_prescription : bool, optional
+        Whether to include the PV-shift prescription.
+    IPV_function : callable, optional
+        Principal-value shift function.
+    pv_shift_parameters : list[float], optional
+        Parameters passed to ``IPV_function``.
+
+    Returns
+    -------
+    numpy.ndarray
+        Block-diagonal ``K`` matrix.
+    """
+    nvec_arr_slice = tbks_entry.nvec_arr[slice_entry[0]:slice_entry[1]]
+    k_list = []
+    for nvec in nvec_arr_slice:
+        if use_pv_shift_prescription:
+            k_entry = getK_single_entry_IPV(
+                pcotdelta_function=pcotdelta_function,
+                IPV_function=IPV_function,
+                pcotdelta_parameter_list=pcotdelta_parameter_list,
+                pv_shift_parameters=pv_shift_parameters,
+                E=E, nP=nP, L=L, npspec=nvec, m1=m2, m2=m3, mspec=m1,
+                alpha=alpha, beta=beta, ell=ell, qc_impl=qc_impl)
+        else:
+            k_entry = getK_single_entry(
+                pcotdelta_function=pcotdelta_function,
+                pcotdelta_parameter_list=pcotdelta_parameter_list,
+                E=E, nP=nP, L=L, npspec=nvec, m1=m2, m2=m3, mspec=m1,
+                alpha=alpha, beta=beta, ell=ell, qc_impl=qc_impl)
+        if np.abs(k_entry.imag) < EPSILON15:
+            k_entry = k_entry.real
+        if np.abs(k_entry) < EPSILON15:
+            k_entry = 0.0
+        k_list = k_list+[k_entry]*(2*ell+1)
+    return block_diag(*k_list)
+
+def get_kdf_array(E, nP, L, m1, m2, m3,
+                  tbks_entry, slice_entry, ell, k3_params):
+    """Return the block-diagonal ``Kdf`` contribution for a shell slice."""
+    nvec_arr_slice = tbks_entry.nvec_arr[slice_entry[0]:slice_entry[1]]
+    len_slice = len(nvec_arr_slice)
+    if ell == 1:
+        k_block = np.ones((len_slice*(2*ell+1), len_slice*(2*ell+1)))
+    else:
+        k_block = np.zeros((len_slice*(2*ell+1), len_slice*(2*ell+1)))
+    return k_block*k3_params[0]
+
+def getKdf_array(E, nP, L, m1, m2, m3,
+                 tbks_entry,
+                 row_shell, col_shell,
+                 ell1, ell2,
+                 k3_params,
+                 alpha, beta,
+                 qc_impl, three_scheme,
+                 g_rescale):
+    """Return the shell-resolved ``Kdf`` block for the requested channel."""
+    nvec_arr_slice = tbks_entry.nvec_arr
+    nvec_arr_row_slice = nvec_arr_slice[row_shell[0]:row_shell[1]]
+    nvec_arr_col_slice = nvec_arr_slice[col_shell[0]:col_shell[1]]
+    space_size_row = len(nvec_arr_row_slice)
+    space_size_col = len(nvec_arr_col_slice)
+
+    if ell1 == 0:
+        kdf_value = np.zeros(((2*ell1+1)*space_size_row,
+                              (2*ell2+1)*space_size_col))
+
+    elif ell2 == 0:
+        kdf_value = np.zeros(((2*ell1+1)*space_size_row,
+                              (2*ell2+1)*space_size_col))
+    else:
+        single_entry = k3_params*np.identity(2*ell1+1)
+        kdf_value = np.tile(single_entry, (space_size_row, space_size_col))
+    return kdf_value
