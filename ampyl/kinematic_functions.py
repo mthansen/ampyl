@@ -224,3 +224,299 @@ def q_one_minus_H(E2CMSQ=9.0, m1=1.0, m2=1.0, alpha=-1.0, beta=0.0,
     qCM = np.sqrt(np.abs(qCMSQ))
     return qCM*(1.0-H(E2CMSQ, threshold, alpha, beta, J_slow))
 
+def cart_sph_harm(ell=0, mazi=0,
+                  nvec_arr=np.array([[1.0, 2.0, 3.0]])):
+    r"""Return Cartesian spherical harmonics.
+
+    The normalization includes a factor of ``\sqrt{4\pi}``, so
+    ``Y_{00} == 1``.
+
+    Parameters
+    ----------
+    ell : int, optional
+        Orbital angular momentum.
+    mazi : int, optional
+        Azimuthal component.
+    nvec_arr : numpy.ndarray, optional
+        Array of three-vectors. This routine also relies on the global
+        constant ``EPSILON15`` when building the angular coordinates.
+
+    Returns
+    -------
+    numpy.ndarray
+        Complex Cartesian spherical harmonics evaluated on ``nvec_arr``.
+    """
+    nxs = (nvec_arr.T)[0]
+    nys = (nvec_arr.T)[1]
+    nzs = (nvec_arr.T)[2]
+    nmags = np.sqrt((nvec_arr**2).sum(1))
+    thetas = np.arccos(nzs/(nmags+EPSILON15))
+    phis = np.arctan(nys/(nxs+EPSILON15))\
+        + (1.0-np.sign(nxs+EPSILON15))*PI/2.0
+    return R4PI*(nmags**ell)*sph_harm(mazi, ell, phis, thetas)
+
+def cart_sph_harm_real(ell=0, mazi=0,
+                       nvec_arr=np.array([[1.0, 2.0, 3.0]])):
+    r"""Return real Cartesian spherical harmonics.
+
+    The normalization includes a factor of ``\sqrt{4\pi}``, so
+    ``Y_{00} == 1``.
+
+    Parameters
+    ----------
+    ell : int, optional
+        Orbital angular momentum.
+    mazi : int, optional
+        Azimuthal component.
+    nvec_arr : numpy.ndarray, optional
+        Array of three-vectors. This routine also relies on the global
+        constant ``EPSILON15`` when building the angular coordinates.
+
+    Returns
+    -------
+    numpy.ndarray
+        Real Cartesian spherical harmonics evaluated on ``nvec_arr``.
+    """
+    if mazi == 0:
+        return cart_sph_harm(ell, mazi, nvec_arr).real
+    if mazi < 0:
+        return (np.sqrt(2.0)*(-1.0)**mazi)\
+            * cart_sph_harm(ell, np.abs(mazi), nvec_arr).imag
+    if mazi > 0:
+        return (np.sqrt(2.0)*(-1.0)**mazi)\
+            * cart_sph_harm(ell, mazi, nvec_arr).real
+
+def recombine_YY(ell1, mazi1, ell2, mazi2):
+    """Recombine a harmonic product into a single-harmonic basis.
+
+    Parameters
+    ----------
+    ell1 : int
+        Angular momentum of the first harmonic.
+    mazi1 : int
+        Azimuthal component of the first harmonic.
+    ell2 : int
+        Angular momentum of the second, conjugated harmonic.
+    mazi2 : int
+        Azimuthal component of the second, conjugated harmonic.
+
+    Returns
+    -------
+    list[list[float]]
+        Entries of the form ``[ell, mazi, coeff]`` describing the
+        recombination.
+    """
+    mazi = mazi1-mazi2
+    ell_min = np.max([np.abs(ell1-ell2), np.abs(mazi)])
+    ell_max = ell1+ell2
+    recombine_set = [[]]
+    for ell in range(ell_min, ell_max+1):
+        coeff = ((-1.)**mazi2)\
+                * np.sqrt((2.*ell1+1.)*(2.*ell2+1.)
+                          / (4.*np.pi*(2.*ell+1.)))\
+                * (CG(ell1, mazi1, ell2, -mazi2, ell, mazi).doit())\
+                * (CG(ell1, 0, ell2, 0, ell, 0).doit())
+        coeff = float(coeff.evalf())
+        recombine_set = recombine_set+[[ell, mazi, coeff]]
+    return recombine_set[1:]
+
+def recombine_YY_real(ell1, mazi1, ell2, mazi2):
+    """Recombine products of real spherical harmonics.
+
+    Parameters
+    ----------
+    ell1 : int
+        Angular momentum of the first harmonic.
+    mazi1 : int
+        Azimuthal component of the first harmonic.
+    ell2 : int
+        Angular momentum of the second harmonic.
+    mazi2 : int
+        Azimuthal component of the second harmonic.
+
+    Returns
+    -------
+    list[list[complex]]
+        Entries of the form ``[ell, mazi, coeff]`` describing the
+        recombination in the real-harmonic basis.
+
+    Raises
+    ------
+    ValueError
+        If the azimuthal inputs cannot be interpreted.
+    """
+    if mazi1 < 0 and mazi2 < 0:
+        #
+        # [  1j/sqrt(2)*(Y(ell1, m1)-((-1)^m1)*Y(ell1, -m1))  ]
+        #     * [  1j/sqrt(2)*(Y(ell2, m2)-((-1)^m2)*Y(ell2, -m2))  ]
+        #
+        # -0.5                  * Y(ell1, m1)*Y(ell2, m2)
+        # +0.5*((-1)^m2)        * Y(ell1, m1)*Y(ell2, -m2)
+        # +0.5*((-1)^m1)        * Y(ell1, -m1))*Y(ell2, m2)
+        # -0.5*(((-1)^(m1+m2))) * Y(ell1, -m1))*Y(ell2, -m2)
+        #
+        foil_set = [[ell1, mazi1, ell2, mazi2, -0.5],
+                    [ell1, mazi1, ell2, -mazi2, 0.5*((-1.)**mazi2)],
+                    [ell1, -mazi1, ell2, mazi2, 0.5*((-1.)**mazi1)],
+                    [ell1, -mazi1, ell2, -mazi2,
+                     -0.5*((-1.)**(mazi1+mazi2))]]
+    elif mazi1 < 0 and mazi2 > 0:
+        #
+        # [  1j/sqrt(2)*(Y(ell1, m1)-((-1)^m1)*Y(ell1, -m1))  ]
+        #     * [  1./sqrt(2)*(((-1)^m2)*Y(ell2, m2)+Y(ell2, -m2))  ]
+        #
+        # 1j*0.5*((-1)^m2)       * Y(ell1, m1)*Y(ell2, m2)
+        # 1j*0.5                 * Y(ell1, m1)*Y(ell2, -m2)
+        # -1j*0.5*((-1)^(m1+m2)) * Y(ell1, -m1))*Y(ell2, m2)
+        # -1j*0.5*((-1)^m1)      * Y(ell1, -m1))*Y(ell2, -m2)
+        #
+        foil_set = [[ell1, mazi1, ell2, mazi2, 1j*0.5*((-1.)**mazi2)],
+                    [ell1, mazi1, ell2, -mazi2, 1j*0.5],
+                    [ell1, -mazi1, ell2, mazi2,
+                     -1j*0.5*((-1.)**(mazi1+mazi2))],
+                    [ell1, -mazi1, ell2, -mazi2, -1j*0.5*((-1.)**mazi1)]]
+    elif mazi1 > 0 and mazi2 < 0:
+        foil_set = [[ell1, mazi1, ell2, mazi2, 1j*0.5*((-1.)**mazi1)],
+                    [ell1, mazi1, ell2, -mazi2,
+                     -1j*0.5*((-1.)**(mazi1+mazi2))],
+                    [ell1, -mazi1, ell2, mazi2, 1j*0.5],
+                    [ell1, -mazi1, ell2, -mazi2, -1j*0.5*((-1.)**mazi2)]]
+    elif mazi1 > 0 and mazi2 > 0:
+        #
+        # [  1./sqrt(2)*(((-1)^m1)*Y(ell1, m1)+Y(ell1, -m1))  ]
+        #     * [  1./sqrt(2)*(((-1)^m2)*Y(ell2, m2)+Y(ell2, -m2))  ]
+        #
+        # 0.5*((-1)^(m1+m2)) * Y(ell1, m1)*Y(ell2, m2)
+        # 0.5*((-1)^m1)      * Y(ell1, m1)*Y(ell2, -m2)
+        # 0.5*((-1)^m2)      * Y(ell1, -m1))*Y(ell2, m2)
+        # 0.5                * Y(ell1, -m1))*Y(ell2, -m2)
+        #
+        foil_set = [[ell1, mazi1, ell2, mazi2, 0.5*((-1.)**(mazi1+mazi2))],
+                    [ell1, mazi1, ell2, -mazi2, 0.5*((-1.)**mazi1)],
+                    [ell1, -mazi1, ell2, mazi2, 0.5*((-1.)**mazi2)],
+                    [ell1, -mazi1, ell2, -mazi2, 0.5]]
+    elif mazi1 == 0 and mazi2 < 0:
+        foil_set = [[ell1, mazi1, ell2, mazi2, 1j/np.sqrt(2.)],
+                    [ell1, mazi1, ell2, -mazi2,
+                     -1j/np.sqrt(2.)*((-1.)**mazi2)]]
+    elif mazi2 == 0 and mazi1 < 0:
+        foil_set = [[ell1, mazi1, ell2, mazi2, 1j/np.sqrt(2.)],
+                    [ell1, -mazi1, ell2, mazi2,
+                     -1j/np.sqrt(2.)*((-1.)**mazi1)]]
+    elif mazi1 == 0 and mazi2 > 0:
+        foil_set = [[ell1, mazi1, ell2, mazi2,
+                     1./np.sqrt(2.)*((-1.)**mazi2)],
+                    [ell1, mazi1, ell2, -mazi2, 1./np.sqrt(2.)]]
+    elif mazi2 == 0 and mazi1 > 0:
+        foil_set = [[ell1, mazi1, ell2, mazi2,
+                     1./np.sqrt(2.)*((-1.)**mazi1)],
+                    [ell1, -mazi1, ell2, mazi2, 1./np.sqrt(2.)]]
+    elif mazi1 == 0 and mazi2 == 0:
+        foil_set = [[ell1, mazi1, ell2, mazi2, 1.]]
+    else:
+        raise ValueError("Values for (mazi1, mazi2) not understood")
+
+    reco_list = [[]]
+    for entry in foil_set:
+        [ell1, mazi1, ell2, mazi2, first_coeff] = entry
+        mazi = mazi1+mazi2
+        reco = [[]]
+        ell_min = np.max([np.abs(ell1-ell2), np.abs(mazi)])
+        ell_max = ell1+ell2
+        for ell in range(ell_min, ell_max+1):
+            tmp = np.sqrt((2.*ell1+1.)*(2.*ell2+1.)
+                          / (4.*np.pi*(2.*ell+1.)))\
+                * (CG(ell1, mazi1, ell2, mazi2, ell, mazi).doit())\
+                * (CG(ell1, 0, ell2, 0, ell, 0).doit())
+            second_coeff = float(tmp.evalf())
+            final_coeff = first_coeff*second_coeff
+            reco = reco+[[ell, mazi, final_coeff]]
+        reco = reco[1:]
+        reco_list = reco_list+reco
+    reco_list = reco_list[1:]
+
+    reco_dict = {}
+    for entry in reco_list:
+        if (entry[0], entry[1]) not in reco_dict.keys():
+            reco_dict[(entry[0], entry[1])] = 0.0
+    for entry in reco_list:
+        [ell, mazi, coeff] = entry
+        if mazi < 0:
+            reco_dict[(ell, mazi)] = reco_dict[(ell, mazi)]\
+                - 1j*coeff/np.sqrt(2.)
+            reco_dict[(ell, -mazi)] = reco_dict[(ell, -mazi)]\
+                + coeff/np.sqrt(2.)
+        elif mazi > 0:
+            reco_dict[(ell, mazi)] = reco_dict[(ell, mazi)]\
+                + ((-1.)**mazi)*coeff/np.sqrt(2.)
+            reco_dict[(ell, -mazi)] = reco_dict[(ell, -mazi)]\
+                + 1j*((-1.)**mazi)*coeff/np.sqrt(2.)
+        elif mazi == 0:
+            reco_dict[(ell, mazi)] = reco_dict[(ell, mazi)]+coeff
+        else:
+            raise ValueError("Values for mazi not understood")
+
+    final_reco_list = [[]]
+    for key in reco_dict:
+        if np.abs(reco_dict[key]) > 1.e-10:
+            final_reco_list = final_reco_list+[[key[0], key[1],
+                                                reco_dict[key]]]
+    final_reco_list = final_reco_list[1:]
+    return final_reco_list
+
+def calY(ell=0, mazi=0, nvec_arr=np.array([[1.0, 2.0, 3.0]]),
+         q=1.0, qc_impl={}):
+    r"""Return the caligraphic spherical harmonics.
+
+    Parameters
+    ----------
+    ell : int, optional
+        Orbital angular momentum.
+    mazi : int, optional
+        Azimuthal component.
+    nvec_arr : numpy.ndarray, optional
+        Array of three-vectors.
+    q : float or numpy.ndarray, optional
+        On-shell back-to-back momentum magnitude.
+    qc_impl : dict, optional
+        Organization of the quantization-condition implementation.
+
+    Returns
+    -------
+    tuple[numpy.ndarray, numpy.ndarray]
+        The caligraphic spherical harmonics and their complex conjugates.
+
+    Notes
+    -----
+    This routine also relies on the global constant ``EPSILON15`` through
+    the spherical-harmonic helpers. See ``FiniteVolumeSetup`` for the
+    supported entries in ``qc_impl``.
+    """
+    real_harmonics = QC_IMPL_DEFAULTS['real_harmonics']
+    if 'real_harmonics' in qc_impl:
+        real_harmonics = qc_impl['real_harmonics']
+    if real_harmonics:
+        if ell == 0:
+            Y = np.ones(len(nvec_arr))
+        elif ell == 1 and mazi == 0:
+            Y = np.sqrt(3.)*(nvec_arr.T)[2]
+        elif ell == 1 and mazi == -1:
+            Y = np.sqrt(3.)*(nvec_arr.T)[1]
+        elif ell == 1 and mazi == 1:
+            Y = np.sqrt(3.)*(nvec_arr.T)[0]
+        else:
+            Y = cart_sph_harm_real(ell, mazi, nvec_arr)
+    else:
+        Y = cart_sph_harm(ell, mazi, nvec_arr)
+    Yconj = np.conjugate(Y)
+    smarter_q_rescale = QC_IMPL_DEFAULTS['smarter_q_rescale']
+    if 'smarter_q_rescale' in qc_impl:
+        smarter_q_rescale = qc_impl['smarter_q_rescale']
+    if smarter_q_rescale:
+        calY = Y
+        calYconj = Yconj
+    else:
+        calY = Y/q**ell
+        calYconj = Yconj/q**ell
+    return calY, calYconj
+
