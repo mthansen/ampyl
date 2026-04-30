@@ -46,7 +46,7 @@ class TestF(unittest.TestCase):
         """Get F, abbreviated form."""
         masses = [1.]*3
         alphabeta = [-1., 0.]
-        F = ampyl.functions.QCFunctions.getF_single_entry(
+        F = ampyl.qc_functions.getF_single_entry(
             E, nP, L, k_entry, *masses, C1cut, alphaKSS, *alphabeta,
             ell_row, mazi_row, ell_col, mazi_col, 'relativistic pole',
             {'hermitian': True,
