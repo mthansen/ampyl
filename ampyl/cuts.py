@@ -698,3 +698,38 @@ class FplusG(Interpolable):
                                                         all_nvecSQs+[
                                                             nvecSQ_sets]
         return all_nvecSQs
+
+    def _get_all_nvecSQs_for_pole_detection(self, nvecSQs_by_shell):
+        """Collect nvecSQ triples used to identify interpolation poles."""
+        all_nvecSQs = []
+        seen_nvecSQs = set()
+        diagonal_nvecSQs_by_shell = {}
+
+        for n1vecSQs, n2vecSQs, n3vecSQs in self._iter_nvecSQ_mats(
+                nvecSQs_by_shell):
+            for i, n1vecSQ_row in enumerate(n1vecSQs):
+                for j, n1vecSQ_entry in enumerate(n1vecSQ_row):
+                    # Every shell-pair entry contributes a concrete triple.
+                    self._append_nvecSQs(
+                        all_nvecSQs,
+                        seen_nvecSQs,
+                        [n1vecSQ_entry, n2vecSQs[i][j], n3vecSQs[i][j]],
+                    )
+                    if i != j:
+                        continue
+
+                    shell_nvecSQ = int(n1vecSQs[i][0])
+                    if shell_nvecSQ not in diagonal_nvecSQs_by_shell:
+                        # F contributes only on shell-diagonal blocks, so we
+                        # enrich those shell labels with extra pole candidates.
+                        diagonal_nvecSQs_by_shell[shell_nvecSQ] = (
+                            self._get_diagonal_nvecSQs(shell_nvecSQ)
+                        )
+                    for diagonal_nvecSQs in diagonal_nvecSQs_by_shell[
+                            shell_nvecSQ]:
+                        self._append_nvecSQs(
+                            all_nvecSQs,
+                            seen_nvecSQs,
+                            diagonal_nvecSQs,
+                        )
+        return all_nvecSQs
