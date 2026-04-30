@@ -186,7 +186,9 @@ class Interpolable:
         nvecSQs_by_shell = self._get_all_nvecSQs_by_shell(E=Emax, L=Lmax,
                                                           project=project,
                                                           irrep=irrep)
-        all_nvecSQs = self._get_all_nvecSQs(nvecSQs_by_shell)
+        all_nvecSQs = self._get_all_nvecSQs_for_pole_detection(
+            nvecSQs_by_shell
+        )
         m1, m2, m3 = self.extract_masses()
         all_relevant_nvecSQs_list = self\
             ._get_all_relevant_nvecSQs_list(Emax, project, irrep,
@@ -678,7 +680,7 @@ class Interpolable:
             .get_nvecSQ_mat_shells(tbks_entry, row_shell, col_shell)
         return [nvecSQ_mat_shells, proj_tmp_left, proj_tmp_right]
 
-    def _get_all_nvecSQs(self, nvecSQs_by_shell):
+    def _get_all_nvecSQs_for_pole_detection(self, nvecSQs_by_shell):
         all_nvecSQs = []
         for outer_nvecSQ_row in nvecSQs_by_shell:
             for outer_nvecSQ_entry in outer_nvecSQ_row:
