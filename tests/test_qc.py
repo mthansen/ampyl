@@ -54,7 +54,7 @@ class TestQC(unittest.TestCase):
         fcs = ampyl.flavor.FlavorChannelSpace(fc_list=[fc_three_pi],
                                               ni_list=[fc_three_pi, fc_rho_pi])
         fcs.sc_list[0].p_cot_deltas[0]\
-            = ampyl.functions.QCFunctions.pcotdelta_breit_wigner
+            = ampyl.qc_functions.pcotdelta_breit_wigner
         fvs = ampyl.spaces.FiniteVolumeSetup()
         tbis = ampyl.spaces.ThreeBodyInteractionScheme(
             fcs=fcs, ESQmin=0.3, scheme_data=[-0.7, 0.0],
