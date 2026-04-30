@@ -38,7 +38,7 @@ import numpy as np
 from inspect import signature
 from . import flavor_utils
 from . import flavor_ope_utils
-from .functions import QCFunctions
+from . import qc_functions
 from .constants import bcolors
 import warnings
 warnings.simplefilter("once")
@@ -396,7 +396,7 @@ class SpectatorChannel:
         if p_cot_deltas is None:
             p_cot_deltas = []
             for _ in range(len(ell_set)):
-                p_cot_deltas.append(QCFunctions.pcotdelta_scattering_length)
+                p_cot_deltas.append(qc_functions.pcotdelta_scattering_length)
                 self._p_cot_deltas = p_cot_deltas
                 self.p_cot_deltas = p_cot_deltas
         else:
@@ -501,7 +501,7 @@ class SpectatorChannel:
             elif len(self._p_cot_deltas) < len(ell_set):
                 for _ in range(len(ell_set)-len(self.p_cot_deltas)):
                     self._p_cot_deltas.append(
-                        QCFunctions.pcotdelta_scattering_length)
+                        qc_functions.pcotdelta_scattering_length)
             self._ell_set = ell_set
             self._n_params_set = []
             for p_cot_delta in self._p_cot_deltas:
