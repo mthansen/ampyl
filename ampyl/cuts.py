@@ -577,6 +577,23 @@ class FplusG(Interpolable):
             seen_nvecSQs.add(nvecSQs_sorted)
             all_nvecSQs.append(list(nvecSQs_sorted))
 
+    def _get_diagonal_nvecSQs(self, shell_nvecSQ):
+        """Return extra diagonal nvecSQ triples implied by a shell label."""
+        n3vec = self._DIAGONAL_N3VECS.get(int(shell_nvecSQ))
+        if n3vec is None:
+            return []
+
+        diagonal_nvecSQs = []
+        for n1_entry in np.ndindex((5, 5, 5)):
+            n1vec = np.array(n1_entry)-2
+            n2vec = -n1vec-n3vec
+            diagonal_nvecSQs.append([
+                n1vec@n1vec,
+                n2vec@n2vec,
+                n3vec@n3vec,
+            ])
+        return diagonal_nvecSQs
+
         all_nvecSQs = []
         for outer_nvecSQ_row in nvecSQs_by_shell:
             for outer_nvecSQ_entry in outer_nvecSQ_row:
