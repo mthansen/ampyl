@@ -190,3 +190,37 @@ def phase_space_alt(omk=1.0, m=1.0):
     """
     return 1.0/(32.0*PI*m)/(2.0*omk)
 
+def q_one_minus_H(E2CMSQ=9.0, m1=1.0, m2=1.0, alpha=-1.0, beta=0.0,
+                  J_slow=False):
+    r"""Return the term ``|q| * (1 - H(...))`` relating ``K2`` and ``M2``.
+
+    Parameters
+    ----------
+    E2CMSQ : float or numpy.ndarray, optional
+        Squared two-particle center-of-mass energy.
+    m1 : float or numpy.ndarray, optional
+        First mass.
+    m2 : float or numpy.ndarray, optional
+        Second mass.
+    alpha : float, optional
+        Width parameter. The standard choice is ``-1.0``.
+    beta : float, optional
+        Shift parameter. The standard choice is ``0.0``.
+    J_slow : bool, optional
+        If ``True``, use :meth:`J_slow` instead of :meth:`J`.
+
+    Returns
+    -------
+    float or numpy.ndarray
+        Value of ``|q| * (1 - H(...))``.
+    """
+    threshold = m1+m2
+    if m1 == m2:
+        qCMSQ = E2CMSQ/4.0-m1**2
+    else:
+        qCMSQ = (E2CMSQ**2-2.0*E2CMSQ*m1**2
+                 + m1**4-2.0*E2CMSQ*m2**2-2.0*m1**2*m2**2+m2**4)\
+            / (4.0*E2CMSQ)
+    qCM = np.sqrt(np.abs(qCMSQ))
+    return qCM*(1.0-H(E2CMSQ, threshold, alpha, beta, J_slow))
+
