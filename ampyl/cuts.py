@@ -540,6 +540,14 @@ class F(Interpolable):
 class FplusG(Interpolable):
     """Represent the combined F+G matrix."""
 
+    _DIAGONAL_N3VECS = {
+        0: np.array([0, 0, 0]),
+        1: np.array([0, 0, 1]),
+        2: np.array([0, 1, 1]),
+        3: np.array([1, 1, 1]),
+        4: np.array([0, 0, 2]),
+    }
+
     def __init__(self, qcis=QCIndexSpace(), alphaKSS=1.0, C1cut=3):
         """Initialize the combined F+G object from F and G components."""
         super().__init__(qcis)
@@ -553,8 +561,15 @@ class FplusG(Interpolable):
         return self.g.get_value(E=E, L=L, project=project, irrep=irrep)\
             + self.f.get_value(E=E, L=L, project=project, irrep=irrep)
 
-    def _get_all_nvecSQs(self, nvecSQs_by_shell):
-        """Collect all squared momentum triples appearing in shell data."""
+    def _iter_nvecSQ_mats(self, nvecSQs_by_shell):
+        """Yield the shell nvecSQ matrices stored in nested shell data."""
+        for outer_nvecSQ_row in nvecSQs_by_shell:
+            for outer_nvecSQ_entry in outer_nvecSQ_row:
+                for inner_nvecSQ_row in outer_nvecSQ_entry:
+                    for inner_nvecSQ_entry in inner_nvecSQ_row:
+                        if len(inner_nvecSQ_entry) != 0:
+                            yield inner_nvecSQ_entry[0]
+
         all_nvecSQs = []
         for outer_nvecSQ_row in nvecSQs_by_shell:
             for outer_nvecSQ_entry in outer_nvecSQ_row:
