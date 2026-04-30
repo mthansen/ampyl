@@ -85,3 +85,43 @@ def J_slow(z=0.5):
             return 1.0
         return np.exp(-1.0/z*np.exp(-1.0/(1.0-z)))
     raise ValueError("z must be a float or np.ndarray")
+
+def J(z=np.array([0.5])):
+    r"""Return the vectorized cutoff function ``J(z)``.
+
+    The function smoothly interpolates between ``0`` for ``z < 0`` and
+    ``1`` for ``z > 1``.
+
+    Parameters
+    ----------
+    z : float or numpy.ndarray, optional
+        Cutoff-function argument.
+
+    Returns
+    -------
+    float or numpy.ndarray
+        Value of the cutoff function evaluated at ``z``.
+
+    Raises
+    ------
+    ValueError
+        If ``z`` is neither a float nor a NumPy array.
+    """
+    if isinstance(z, np.ndarray):
+        J_array = np.zeros_like(z)
+        mask1 = 0.0 < z
+        mask2 = z < 1.0
+        mask = (
+            np.concatenate((mask1, mask2)).reshape((2, len(mask1))).T
+            ).all(axis=1)
+        mask_one = 1.0 <= z
+        J_array[mask_one] = 1.0
+        J_array[mask] = np.exp(-1.0/z[mask]*np.exp(-1.0/(1.0-z[mask])))
+        return J_array
+    if isinstance(z, float):
+        if z <= 0:
+            return 0.0
+        if z >= 1.0:
+            return 1.0
+        return np.exp(-1.0/z*np.exp(-1.0/(1.0-z)))
+    raise ValueError("z must be a float or np.ndarray")
