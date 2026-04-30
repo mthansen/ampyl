@@ -41,7 +41,7 @@ from .constants import TWOPI
 from .constants import FOURPI2
 from .constants import QC_IMPL_DEFAULTS
 from .constants import bcolors
-from .functions import QCFunctions
+from . import qc_functions
 import warnings
 warnings.simplefilter("once")
 
@@ -84,7 +84,7 @@ class K:
         mask_slices, slice_entry\
             = shell_utils._get_masks_and_shells_for_k(
                 self, E, L, tbks_entry, cindex, slice_index)
-        Kshell = QCFunctions.getK_array(
+        Kshell = qc_functions.getK_array(
             E, nP, L, m1, m2, m3, tbks_entry, slice_entry, ell,
             pcotdelta_function, pcotdelta_parameter_list, alpha, beta,
             qc_impl, three_scheme,
