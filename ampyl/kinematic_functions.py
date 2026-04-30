@@ -156,3 +156,37 @@ def H(E2CMSQ=9.0, threshold=2.0, alpha=-1.0, beta=0.0, J_slow=False):
         return globals()['J_slow'](z)
     return J(z)
 
+def phase_space(E2CMSQ=9.0, omk=1.0):
+    r"""Return the two-body phase space including ``2\omega_k``.
+
+    Parameters
+    ----------
+    E2CMSQ : float or numpy.ndarray, optional
+        Squared two-particle center-of-mass energy.
+    omk : float or numpy.ndarray, optional
+        Time component of the four-vector ``k``.
+
+    Returns
+    -------
+    float or numpy.ndarray
+        Two-body phase-space factor.
+    """
+    return 1.0/(16.0*PI*np.sqrt(E2CMSQ))/(2.0*omk)
+
+def phase_space_alt(omk=1.0, m=1.0):
+    r"""Return the alternate definition of the two-body phase space.
+
+    Parameters
+    ----------
+    omk : float or numpy.ndarray, optional
+        Time component of the four-vector ``k``.
+    m : float or numpy.ndarray, optional
+        Mass entering the alternate normalization.
+
+    Returns
+    -------
+    float or numpy.ndarray
+        Two-body phase-space factor.
+    """
+    return 1.0/(32.0*PI*m)/(2.0*omk)
+
