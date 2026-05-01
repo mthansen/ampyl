@@ -1,4 +1,4 @@
-name: tutorials
+name: examples
 
 on:
   push:
@@ -8,7 +8,7 @@ on:
   pull_request:
 
 jobs:
-  tutorials:
+  examples:
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: true
@@ -38,4 +38,4 @@ jobs:
           pip install scipy matplotlib
 
       - name: Run tests
-        run: pytest -vv --nbmake tutorials/*.ipynb
+        run: pytest -vv --nbmake examples/*/*.ipynb
