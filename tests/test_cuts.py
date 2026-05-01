@@ -50,6 +50,17 @@ class TestFplusG(unittest.TestCase):
         entry = [[n1vecSQs, n2vecSQs, n3vecSQs], None, None]
         return [[[[entry, []]]]]
 
+    def _entry(self, n1vecSQs, n2vecSQs, n3vecSQs):
+        """Build a non-empty shell entry for custom nested fixtures."""
+        return [[n1vecSQs, n2vecSQs, n3vecSQs], None, None]
+
+    def _assert_matches_deprecated(self, nvecSQs_by_shell):
+        """Assert exact equivalence with the retained original routine."""
+        self.assertEqual(
+            self.fplusg._get_all_nvecSQs_for_pole_detection(nvecSQs_by_shell),
+            self.fplusg._get_all_nvecSQs_deprecated(nvecSQs_by_shell),
+        )
+
     def _expected_diagonal_nvecSQs(self, shell_nvecSQ):
         """Build the diagonal nvecSQ triples for a given shell label."""
         n3vec = self.fplusg._DIAGONAL_N3VECS[shell_nvecSQ]
@@ -111,10 +122,104 @@ class TestFplusG(unittest.TestCase):
             [[0, 1, 2], [4, 3, 7], [4, 8, 2]],
         )
 
-        self.assertEqual(
-            self.fplusg._get_all_nvecSQs_for_pole_detection(nvecSQs_by_shell),
-            self.fplusg._get_all_nvecSQs_deprecated(nvecSQs_by_shell),
-        )
+        self._assert_matches_deprecated(nvecSQs_by_shell)
+
+    def test_get_all_nvecSQs_for_pole_detection_matches_deprecated_cases(self):
+        """Equivalence should hold for representative shell layouts."""
+        nvecSQs_by_shell_cases = [
+            self._wrap_entry(
+                [[0]],
+                [[0]],
+                [[0]],
+            ),
+            self._wrap_entry(
+                [[1, 4], [1, 6]],
+                [[2, 5], [3, 6]],
+                [[3, 6], [4, 6]],
+            ),
+            self._wrap_entry(
+                [[2, 7, 5], [3, 1, 8], [4, 9, 6]],
+                [[4, 5, 1], [3, 0, 2], [2, 8, 7]],
+                [[6, 3, 9], [1, 4, 5], [0, 2, 8]],
+            ),
+            self._wrap_entry(
+                [[6, 2], [7, 3]],
+                [[1, 5], [8, 4]],
+                [[9, 0], [2, 6]],
+            ),
+        ]
+
+        for case_index, nvecSQs_by_shell in enumerate(nvecSQs_by_shell_cases):
+            with self.subTest(case_index=case_index):
+                self._assert_matches_deprecated(nvecSQs_by_shell)
+
+    def test_get_all_nvecSQs_for_pole_detection_matches_deprecated_nested(self):
+        """Equivalence should hold across multiple nested and empty blocks."""
+        nvecSQs_by_shell = [
+            [
+                [
+                    [
+                        self._entry(
+                            [[0, 5], [1, 2]],
+                            [[2, 1], [3, 4]],
+                            [[4, 6], [7, 8]],
+                        ),
+                        [],
+                        self._entry(
+                            [[2, 9, 9], [3, 3, 1], [4, 0, 4]],
+                            [[4, 1, 7], [2, 5, 5], [8, 3, 6]],
+                            [[6, 2, 0], [9, 4, 3], [1, 7, 2]],
+                        ),
+                    ],
+                    [
+                        [],
+                        self._entry(
+                            [[6, 2], [6, 3]],
+                            [[1, 5], [8, 4]],
+                            [[9, 0], [2, 6]],
+                        ),
+                    ],
+                ],
+                [
+                    [
+                        self._entry(
+                            [[4, 1], [0, 4]],
+                            [[4, 1], [0, 4]],
+                            [[4, 1], [0, 4]],
+                        ),
+                    ],
+                ],
+            ],
+            [
+                [
+                    [
+                        [],
+                        self._entry(
+                            [[1, 4, 1], [2, 2, 2], [3, 3, 3]],
+                            [[3, 0, 3], [4, 4, 4], [5, 5, 5]],
+                            [[6, 7, 6], [8, 8, 8], [9, 9, 9]],
+                        ),
+                    ],
+                ],
+            ],
+        ]
+
+        self._assert_matches_deprecated(nvecSQs_by_shell)
+
+    def test_get_all_nvecSQs_for_pole_detection_matches_deprecated_shells(self):
+        """Each diagonal shell supported by the legacy path should match."""
+        for shell_nvecSQ in sorted(self.fplusg._DIAGONAL_N3VECS):
+            with self.subTest(shell_nvecSQ=shell_nvecSQ):
+                nvecSQs_by_shell = self._wrap_entry(
+                    [[shell_nvecSQ, shell_nvecSQ+5],
+                     [shell_nvecSQ, shell_nvecSQ+7]],
+                    [[shell_nvecSQ+1, shell_nvecSQ+6],
+                     [shell_nvecSQ+2, shell_nvecSQ+8]],
+                    [[shell_nvecSQ+3, shell_nvecSQ+9],
+                     [shell_nvecSQ+4, shell_nvecSQ+10]],
+                )
+
+                self._assert_matches_deprecated(nvecSQs_by_shell)
 
 
 if __name__ == '__main__':

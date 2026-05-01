@@ -583,9 +583,11 @@ class FplusG(Interpolable):
         if n3vec is None:
             return []
 
+        rng = range(-2, 2+1)
+        mesh = np.meshgrid(*([rng]*3))
+        nvec_arr = np.vstack([y.flat for y in mesh]).T
         diagonal_nvecSQs = []
-        for n1_entry in np.ndindex((5, 5, 5)):
-            n1vec = np.array(n1_entry)-2
+        for n1vec in nvec_arr:
             n2vec = -n1vec-n3vec
             diagonal_nvecSQs.append([
                 n1vec@n1vec,
