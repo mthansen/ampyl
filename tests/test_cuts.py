@@ -54,13 +54,6 @@ class TestFplusG(unittest.TestCase):
         """Build a non-empty shell entry for custom nested fixtures."""
         return [[n1vecSQs, n2vecSQs, n3vecSQs], None, None]
 
-    def _assert_matches_deprecated(self, nvecSQs_by_shell):
-        """Assert exact equivalence with the retained original routine."""
-        self.assertEqual(
-            self.fplusg._get_all_nvecSQs_for_pole_detection(nvecSQs_by_shell),
-            self.fplusg._get_all_nvecSQs_deprecated(nvecSQs_by_shell),
-        )
-
     def _expected_diagonal_nvecSQs(self, shell_nvecSQ):
         """Build the diagonal nvecSQ triples for a given shell label."""
         n3vec = self.fplusg._DIAGONAL_N3VECS[shell_nvecSQ]
@@ -76,7 +69,7 @@ class TestFplusG(unittest.TestCase):
         return all_nvecSQs
 
     def test_get_all_nvecSQs_for_pole_detection_collects_unique_entries(self):
-        """The collector should sort entries, keep order, and ignore empties."""
+        """The collector should sort entries and ignore duplicate triples."""
         nvecSQs_by_shell = self._wrap_entry(
             [[5, 2], [5, 7]],
             [[1, 4], [3, 2]],
@@ -91,6 +84,52 @@ class TestFplusG(unittest.TestCase):
             all_nvecSQs,
             [[1, 4, 5], [2, 3, 4], [1, 3, 5], [2, 2, 7]],
         )
+
+    def test_get_all_nvecSQs_for_pole_detection_ignores_empty_blocks(self):
+        """Empty nested entries should not contribute pole candidates."""
+        nvecSQs_by_shell = [
+            [
+                [
+                    [
+                        [],
+                        self._entry(
+                            [[5, 2], [5, 7]],
+                            [[1, 4], [3, 2]],
+                            [[4, 3], [1, 2]],
+                        ),
+                    ],
+                    [
+                        [],
+                        [],
+                    ],
+                ],
+                [
+                    [
+                        self._entry(
+                            [[8]],
+                            [[6]],
+                            [[2]],
+                        ),
+                    ],
+                ],
+            ],
+        ]
+
+        all_nvecSQs = self.fplusg._get_all_nvecSQs_for_pole_detection(
+            nvecSQs_by_shell
+        )
+
+        self.assertEqual(
+            {tuple(entry) for entry in all_nvecSQs},
+            {
+                (1, 4, 5),
+                (2, 3, 4),
+                (1, 3, 5),
+                (2, 2, 7),
+                (2, 6, 8),
+            },
+        )
+        self.assertEqual(len(all_nvecSQs), 5)
 
     def test_get_all_nvecSQs_for_pole_detection_adds_diagonal_shells(self):
         """Supported diagonal shells should contribute their implied triples."""
@@ -114,112 +153,113 @@ class TestFplusG(unittest.TestCase):
                 self.assertEqual(all_nvecSQs_set, expected_nvecSQs)
                 self.assertEqual(len(all_nvecSQs), len(all_nvecSQs_set))
 
-    def test_get_all_nvecSQs_for_pole_detection_matches_deprecated(self):
-        """The refactor should agree exactly with the original routine."""
+    def test_get_all_nvecSQs_for_pole_detection_diagonal_shell_explicit_case(
+            self):
+        """A diagonal shell should include concrete and implied triples."""
         nvecSQs_by_shell = self._wrap_entry(
-            [[0, 2, 4], [0, 3, 1], [4, 1, 2]],
-            [[0, 5, 1], [4, 3, 2], [1, 2, 6]],
-            [[0, 1, 2], [4, 3, 7], [4, 8, 2]],
+            [[2, 7], [9, 5]],
+            [[4, 1], [2, 6]],
+            [[6, 3], [1, 8]],
         )
 
-        self._assert_matches_deprecated(nvecSQs_by_shell)
+        all_nvecSQs = self.fplusg._get_all_nvecSQs_for_pole_detection(
+            nvecSQs_by_shell
+        )
+        all_nvecSQs_set = {tuple(entry) for entry in all_nvecSQs}
+        expected_nvecSQs = self._expected_diagonal_nvecSQs(2)
+        expected_nvecSQs.update({
+            (2, 4, 6),
+            (1, 3, 7),
+            (1, 2, 9),
+            (5, 6, 8),
+        })
 
-    def test_get_all_nvecSQs_for_pole_detection_matches_deprecated_cases(self):
-        """Equivalence should hold for representative shell layouts."""
-        nvecSQs_by_shell_cases = [
-            self._wrap_entry(
-                [[0]],
-                [[0]],
-                [[0]],
-            ),
-            self._wrap_entry(
-                [[1, 4], [1, 6]],
-                [[2, 5], [3, 6]],
-                [[3, 6], [4, 6]],
-            ),
-            self._wrap_entry(
-                [[2, 7, 5], [3, 1, 8], [4, 9, 6]],
-                [[4, 5, 1], [3, 0, 2], [2, 8, 7]],
-                [[6, 3, 9], [1, 4, 5], [0, 2, 8]],
-            ),
-            self._wrap_entry(
-                [[6, 2], [7, 3]],
-                [[1, 5], [8, 4]],
-                [[9, 0], [2, 6]],
-            ),
-        ]
+        self.assertEqual(all_nvecSQs_set, expected_nvecSQs)
+        self.assertEqual(len(all_nvecSQs), len(all_nvecSQs_set))
 
-        for case_index, nvecSQs_by_shell in enumerate(nvecSQs_by_shell_cases):
-            with self.subTest(case_index=case_index):
-                self._assert_matches_deprecated(nvecSQs_by_shell)
-
-    def test_get_all_nvecSQs_for_pole_detection_matches_deprecated_nested(self):
-        """Equivalence should hold across multiple nested and empty blocks."""
+    def test_get_all_nvecSQs_for_pole_detection_deduplicates_nested_blocks(
+            self):
+        """Repeated concrete and diagonal triples should appear only once."""
         nvecSQs_by_shell = [
             [
                 [
                     [
                         self._entry(
-                            [[0, 5], [1, 2]],
-                            [[2, 1], [3, 4]],
-                            [[4, 6], [7, 8]],
+                            [[1, 4], [1, 6]],
+                            [[2, 5], [3, 6]],
+                            [[3, 6], [4, 6]],
                         ),
                         [],
                         self._entry(
-                            [[2, 9, 9], [3, 3, 1], [4, 0, 4]],
-                            [[4, 1, 7], [2, 5, 5], [8, 3, 6]],
-                            [[6, 2, 0], [9, 4, 3], [1, 7, 2]],
+                            [[1, 4], [1, 6]],
+                            [[2, 5], [3, 6]],
+                            [[3, 6], [4, 6]],
                         ),
                     ],
                     [
                         [],
                         self._entry(
-                            [[6, 2], [6, 3]],
-                            [[1, 5], [8, 4]],
-                            [[9, 0], [2, 6]],
+                            [[1]],
+                            [[1]],
+                            [[1]],
                         ),
                     ],
                 ],
                 [
                     [
                         self._entry(
-                            [[4, 1], [0, 4]],
-                            [[4, 1], [0, 4]],
-                            [[4, 1], [0, 4]],
-                        ),
-                    ],
-                ],
-            ],
-            [
-                [
-                    [
-                        [],
-                        self._entry(
-                            [[1, 4, 1], [2, 2, 2], [3, 3, 3]],
-                            [[3, 0, 3], [4, 4, 4], [5, 5, 5]],
-                            [[6, 7, 6], [8, 8, 8], [9, 9, 9]],
+                            [[9, 4], [6, 4]],
+                            [[0, 5], [7, 4]],
+                            [[3, 6], [8, 4]],
                         ),
                     ],
                 ],
             ],
         ]
 
-        self._assert_matches_deprecated(nvecSQs_by_shell)
+        all_nvecSQs = self.fplusg._get_all_nvecSQs_for_pole_detection(
+            nvecSQs_by_shell
+        )
+        all_nvecSQs_set = {tuple(entry) for entry in all_nvecSQs}
+        expected_nvecSQs = self._expected_diagonal_nvecSQs(1)
+        expected_nvecSQs.update({
+            (1, 2, 3),
+            (4, 5, 6),
+            (1, 3, 4),
+            (6, 6, 6),
+            (1, 1, 1),
+            (0, 3, 9),
+            (4, 5, 6),
+            (6, 7, 8),
+            (4, 4, 4),
+        })
 
-    def test_get_all_nvecSQs_for_pole_detection_matches_deprecated_shells(self):
-        """Each diagonal shell supported by the legacy path should match."""
-        for shell_nvecSQ in sorted(self.fplusg._DIAGONAL_N3VECS):
-            with self.subTest(shell_nvecSQ=shell_nvecSQ):
-                nvecSQs_by_shell = self._wrap_entry(
-                    [[shell_nvecSQ, shell_nvecSQ+5],
-                     [shell_nvecSQ, shell_nvecSQ+7]],
-                    [[shell_nvecSQ+1, shell_nvecSQ+6],
-                     [shell_nvecSQ+2, shell_nvecSQ+8]],
-                    [[shell_nvecSQ+3, shell_nvecSQ+9],
-                     [shell_nvecSQ+4, shell_nvecSQ+10]],
-                )
+        self.assertEqual(all_nvecSQs_set, expected_nvecSQs)
+        self.assertEqual(len(all_nvecSQs), len(all_nvecSQs_set))
 
-                self._assert_matches_deprecated(nvecSQs_by_shell)
+    def test_get_all_nvecSQs_for_pole_detection_unsupported_diagonal_shell(
+            self):
+        """Unsupported diagonal labels should not add implied triples."""
+        nvecSQs_by_shell = self._wrap_entry(
+            [[6, 2], [7, 3]],
+            [[1, 5], [8, 4]],
+            [[9, 0], [2, 6]],
+        )
+
+        all_nvecSQs = self.fplusg._get_all_nvecSQs_for_pole_detection(
+            nvecSQs_by_shell
+        )
+
+        self.assertEqual(
+            {tuple(entry) for entry in all_nvecSQs},
+            {
+                (1, 6, 9),
+                (0, 2, 5),
+                (2, 7, 8),
+                (3, 4, 6),
+            },
+        )
+        self.assertEqual(len(all_nvecSQs), 4)
 
 
 if __name__ == '__main__':
