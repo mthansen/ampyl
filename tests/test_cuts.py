@@ -38,11 +38,14 @@ import numpy as np
 import ampyl
 
 
-class TestFplusG(unittest.TestCase):
-    """Tests for shell nvecSQ collection in FplusG."""
+class TestPoleCandidates(unittest.TestCase):
+    """Tests for shell nvecSQ collection in cut interpolators."""
 
     def setUp(self):
-        """Create a lightweight FplusG object for helper-method tests."""
+        """Create lightweight cut objects for helper-method tests."""
+        qcis = ampyl.spaces.QCIndexSpace()
+        self.f = ampyl.F(qcis=qcis)
+        self.g = ampyl.G(qcis=qcis)
         self.fplusg = ampyl.FplusG(qcis=ampyl.spaces.QCIndexSpace())
 
     def _wrap_entry(self, n1vecSQs, n2vecSQs, n3vecSQs):
@@ -56,7 +59,7 @@ class TestFplusG(unittest.TestCase):
 
     def _expected_diagonal_nvecSQs(self, shell_nvecSQ):
         """Build the diagonal nvecSQ triples for a given shell label."""
-        n3vec = self.fplusg._DIAGONAL_N3VECS[shell_nvecSQ]
+        n3vec = self.f._DIAGONAL_N3VECS[shell_nvecSQ]
         all_nvecSQs = set()
         for n1_entry in np.ndindex((5, 5, 5)):
             n1vec = np.array(n1_entry)-2
@@ -68,15 +71,15 @@ class TestFplusG(unittest.TestCase):
             ])))
         return all_nvecSQs
 
-    def test_get_all_nvecSQs_for_pole_detection_collects_unique_entries(self):
-        """The collector should sort entries and ignore duplicate triples."""
+    def test_g_pole_candidates_collect_unique_shell_pair_entries(self):
+        """G should sort entries and ignore duplicate triples."""
         nvecSQs_by_shell = self._wrap_entry(
             [[5, 2], [5, 7]],
             [[1, 4], [3, 2]],
             [[4, 3], [1, 2]],
         )
 
-        all_nvecSQs = self.fplusg._get_all_nvecSQs_for_pole_detection(
+        all_nvecSQs = self.g._get_all_nvecSQs_for_pole_detection(
             nvecSQs_by_shell
         )
 
@@ -85,8 +88,8 @@ class TestFplusG(unittest.TestCase):
             [[1, 4, 5], [2, 3, 4], [1, 3, 5], [2, 2, 7]],
         )
 
-    def test_get_all_nvecSQs_for_pole_detection_ignores_empty_blocks(self):
-        """Empty nested entries should not contribute pole candidates."""
+    def test_g_pole_candidates_ignore_empty_blocks(self):
+        """Empty nested entries should not contribute G pole candidates."""
         nvecSQs_by_shell = [
             [
                 [
@@ -115,7 +118,7 @@ class TestFplusG(unittest.TestCase):
             ],
         ]
 
-        all_nvecSQs = self.fplusg._get_all_nvecSQs_for_pole_detection(
+        all_nvecSQs = self.g._get_all_nvecSQs_for_pole_detection(
             nvecSQs_by_shell
         )
 
@@ -131,9 +134,9 @@ class TestFplusG(unittest.TestCase):
         )
         self.assertEqual(len(all_nvecSQs), 5)
 
-    def test_get_all_nvecSQs_for_pole_detection_adds_diagonal_shells(self):
+    def test_f_pole_candidates_add_diagonal_shells(self):
         """Supported diagonal shells should contribute their implied triples."""
-        for shell_nvecSQ in sorted(self.fplusg._DIAGONAL_N3VECS):
+        for shell_nvecSQ in sorted(self.f._DIAGONAL_N3VECS):
             with self.subTest(shell_nvecSQ=shell_nvecSQ):
                 nvecSQs_by_shell = self._wrap_entry(
                     [[shell_nvecSQ]],
@@ -141,7 +144,7 @@ class TestFplusG(unittest.TestCase):
                     [[shell_nvecSQ]],
                 )
 
-                all_nvecSQs = self.fplusg._get_all_nvecSQs_for_pole_detection(
+                all_nvecSQs = self.f._get_all_nvecSQs_for_pole_detection(
                     nvecSQs_by_shell
                 )
                 all_nvecSQs_set = {tuple(entry) for entry in all_nvecSQs}
@@ -153,33 +156,29 @@ class TestFplusG(unittest.TestCase):
                 self.assertEqual(all_nvecSQs_set, expected_nvecSQs)
                 self.assertEqual(len(all_nvecSQs), len(all_nvecSQs_set))
 
-    def test_get_all_nvecSQs_for_pole_detection_diagonal_shell_explicit_case(
-            self):
-        """A diagonal shell should include concrete and implied triples."""
+    def test_f_pole_candidates_keep_only_diagonal_entries(self):
+        """F should include concrete and implied triples only on diagonals."""
         nvecSQs_by_shell = self._wrap_entry(
             [[2, 7], [9, 5]],
             [[4, 1], [2, 6]],
             [[6, 3], [1, 8]],
         )
 
-        all_nvecSQs = self.fplusg._get_all_nvecSQs_for_pole_detection(
+        all_nvecSQs = self.f._get_all_nvecSQs_for_pole_detection(
             nvecSQs_by_shell
         )
         all_nvecSQs_set = {tuple(entry) for entry in all_nvecSQs}
         expected_nvecSQs = self._expected_diagonal_nvecSQs(2)
         expected_nvecSQs.update({
             (2, 4, 6),
-            (1, 3, 7),
-            (1, 2, 9),
             (5, 6, 8),
         })
 
         self.assertEqual(all_nvecSQs_set, expected_nvecSQs)
         self.assertEqual(len(all_nvecSQs), len(all_nvecSQs_set))
 
-    def test_get_all_nvecSQs_for_pole_detection_deduplicates_nested_blocks(
-            self):
-        """Repeated concrete and diagonal triples should appear only once."""
+    def test_fplusg_pole_candidates_merge_f_and_g(self):
+        """FplusG should merge F and G candidates without duplicates."""
         nvecSQs_by_shell = [
             [
                 [
@@ -220,33 +219,30 @@ class TestFplusG(unittest.TestCase):
         all_nvecSQs = self.fplusg._get_all_nvecSQs_for_pole_detection(
             nvecSQs_by_shell
         )
+        f_nvecSQs = self.f._get_all_nvecSQs_for_pole_detection(
+            nvecSQs_by_shell
+        )
+        g_nvecSQs = self.g._get_all_nvecSQs_for_pole_detection(
+            nvecSQs_by_shell
+        )
         all_nvecSQs_set = {tuple(entry) for entry in all_nvecSQs}
-        expected_nvecSQs = self._expected_diagonal_nvecSQs(1)
-        expected_nvecSQs.update({
-            (1, 2, 3),
-            (4, 5, 6),
-            (1, 3, 4),
-            (6, 6, 6),
-            (1, 1, 1),
-            (0, 3, 9),
-            (4, 5, 6),
-            (6, 7, 8),
-            (4, 4, 4),
-        })
+        expected_nvecSQs = (
+            {tuple(entry) for entry in f_nvecSQs}
+            | {tuple(entry) for entry in g_nvecSQs}
+        )
 
         self.assertEqual(all_nvecSQs_set, expected_nvecSQs)
         self.assertEqual(len(all_nvecSQs), len(all_nvecSQs_set))
 
-    def test_get_all_nvecSQs_for_pole_detection_unsupported_diagonal_shell(
-            self):
-        """Unsupported diagonal labels should not add implied triples."""
+    def test_f_pole_candidates_unsupported_diagonal_shell(self):
+        """Unsupported diagonal labels should not add implied F triples."""
         nvecSQs_by_shell = self._wrap_entry(
             [[6, 2], [7, 3]],
             [[1, 5], [8, 4]],
             [[9, 0], [2, 6]],
         )
 
-        all_nvecSQs = self.fplusg._get_all_nvecSQs_for_pole_detection(
+        all_nvecSQs = self.f._get_all_nvecSQs_for_pole_detection(
             nvecSQs_by_shell
         )
 
@@ -254,12 +250,10 @@ class TestFplusG(unittest.TestCase):
             {tuple(entry) for entry in all_nvecSQs},
             {
                 (1, 6, 9),
-                (0, 2, 5),
-                (2, 7, 8),
                 (3, 4, 6),
             },
         )
-        self.assertEqual(len(all_nvecSQs), 4)
+        self.assertEqual(len(all_nvecSQs), 2)
 
 
 if __name__ == '__main__':
