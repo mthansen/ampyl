@@ -111,6 +111,29 @@ class TestQC(unittest.TestCase):
         diffSQ = np.sum((roots - roots_expected)**2)
         self.assertTrue(diffSQ < 1.e-15)
 
+    def test_evaluation_policy_uses_first_matching_element(self):
+        policy = ampyl.EvaluationPolicy([
+            {'Lmin': 3.0, 'Lmax': 5.0, 'Emin': 4.0, 'Emax': 6.0,
+             'version': 'matched-high-id'},
+            {'Lmin': 3.0, 'Lmax': 5.0, 'Emin': 4.0, 'Emax': 6.0,
+             'version': 'matched-lowest-after-order'},
+            {'Lmin': None, 'Lmax': None, 'Emin': None, 'Emax': None,
+             'version': 'default'},
+        ])
+
+        self.assertEqual(policy.select(4.0, 3.0)['version'],
+                         'matched-high-id')
+        self.assertEqual(policy.select(7.0, 3.0)['version'], 'default')
+
+    def test_qc_component_registries_have_ids_and_names(self):
+        qc = self.build_qc()
+        fplusg = qc.add_fplusg(qcis_id=0, name='coarse')
+
+        self.assertEqual(fplusg.id, 1)
+        self.assertEqual(fplusg.name, 'coarse')
+        self.assertIs(qc.fplusg_list[1], fplusg)
+        self.assertIs(qc.fplusg_list['coarse'], fplusg)
+
     def test_root_finder_refinement_defaults_to_false(self):
         class FakeFVS:
             def __init__(self):
