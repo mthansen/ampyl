@@ -49,6 +49,47 @@ import warnings
 warnings.simplefilter("once")
 
 
+class IdentifiedObjectList:
+    """Store objects with integer IDs and optional string names."""
+
+    def __init__(self):
+        self._items = []
+        self._names = {}
+
+    def add(self, item, name=None):
+        """Append an item and attach ``id``/``name`` attributes."""
+        item_id = len(self._items)
+        item_name = str(item_id) if name is None else str(name)
+        if item_name in self._names:
+            raise ValueError(f"name '{item_name}' is already in use")
+        if item is not None:
+            item.id = item_id
+            item.name = item_name
+        self._items.append(item)
+        self._names[item_name] = item_id
+        return item
+
+    def get(self, identifier=0):
+        """Return an item by integer ID or string name."""
+        if isinstance(identifier, str):
+            if identifier not in self._names:
+                raise KeyError(f"unknown name '{identifier}'")
+            identifier = self._names[identifier]
+        if not isinstance(identifier, int):
+            raise TypeError("identifier must be an int or string")
+        return self._items[identifier]
+
+    def __getitem__(self, identifier):
+        return self.get(identifier)
+
+    def __iter__(self):
+        return iter(self._items)
+
+    def __len__(self):
+        return len(self._items)
+
+
+
 class QCMatrixBuilder:
     """Build the matrix inputs needed to evaluate QC expressions."""
 
