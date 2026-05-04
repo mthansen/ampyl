@@ -396,6 +396,22 @@ class Interpolable:
         self.smart_poles_lists[irrep] = smart_poles_list
         self.smart_textures_lists[irrep] = smart_textures_list
         self.complement_textures_lists[irrep] = complement_textures_list
+        self._store_interpolator(name=name)
+
+    def _store_interpolator(self, name=None):
+        """Store the current interpolation data as an addressable entry."""
+        interpolator_id = len(self.interpolators)
+        interpolator_name = str(interpolator_id) if name is None else str(name)
+        if interpolator_name in self.interpolator_names:
+            raise ValueError(f"interpolator name '{interpolator_name}' "
+                             "is already in use")
+        data_attrs = self._interpolator_data_attrs()
+        self.interpolators.append({
+            attr: deepcopy(getattr(self, attr)) for attr in data_attrs
+        })
+        self.interpolator_names[interpolator_name] = interpolator_id
+        self.active_interpolator_id = interpolator_id
+        return interpolator_id
 
     def _grids_and_interp(self, Emin, Emax, Estep, Lmin, Lmax, Lstep,
                           project, irrep):
