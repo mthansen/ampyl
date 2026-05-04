@@ -89,6 +89,64 @@ class IdentifiedObjectList:
         return len(self._items)
 
 
+class EvaluationPolicy:
+    """Select QC options from inclusive E/L ranges."""
+
+    _RANGE_KEYS = ('Lmin', 'Lmax', 'Emin', 'Emax')
+
+    def __init__(self, elements):
+        if isinstance(elements, dict):
+            elements = [elements]
+        if not isinstance(elements, list) or len(elements) == 0:
+            raise TypeError("policy must be a non-empty dict or list")
+        self.elements = [
+            self._validate_element(element_id, element)
+            for element_id, element in enumerate(elements)
+        ]
+        default_element = self.elements[-1]
+        if any(default_element[key] is not None for key in self._RANGE_KEYS):
+            raise ValueError("the last policy element must use None bounds")
+
+    @classmethod
+    def from_qc_dict(cls, qc_dict):
+        """Build a policy from ``qc_dict['policy']`` or legacy version data."""
+        if 'policy' in qc_dict:
+            policy = qc_dict['policy']
+            if isinstance(policy, cls):
+                return policy
+            return cls(policy)
+        return cls([{
+            'version': qc_dict['version'],
+            'Lmin': None,
+            'Lmax': None,
+            'Emin': None,
+            'Emax': None,
+        }])
+
+    def select(self, E, L):
+        """Return the first matching non-default element, then the default."""
+        for element in self.elements[:-1]:
+            if self._matches(element, E, L):
+                return element
+        return self.elements[-1]
+
+    def _validate_element(self, element_id, element):
+        if not isinstance(element, dict):
+            raise TypeError("each policy element must be a dictionary")
+        if 'version' not in element:
+            raise ValueError("each policy element must contain 'version'")
+        normalized = dict(element)
+        normalized['id'] = element_id
+        for key in self._RANGE_KEYS:
+            normalized.setdefault(key, None)
+        return normalized
+
+    def _matches(self, element, E, L):
+        if any(element[key] is None for key in self._RANGE_KEYS):
+            return False
+        return (element['Lmin'] <= L <= element['Lmax']
+                and element['Emin'] <= E <= element['Emax'])
+
 
 class QCMatrixBuilder:
     """Build the matrix inputs needed to evaluate QC expressions."""
