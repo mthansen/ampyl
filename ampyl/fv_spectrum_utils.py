@@ -337,7 +337,8 @@ def _get_roots_from_range(spectrum, E_range, L, qc_dict, ni_functions,
     return all_roots
 
 
-def _simple_try_at_fixed_L(spectrum, E_bracket, L, qc_dict):
+def _simple_try_at_fixed_L(spectrum, E_bracket, L, qc_dict,
+                           nonint_energies=None):
     try:
         root = root_scalar(spectrum.qc.get_value,
                            args=(L, qc_dict),
@@ -348,13 +349,27 @@ def _simple_try_at_fixed_L(spectrum, E_bracket, L, qc_dict):
         )
         qc_ratio = abs_qc_value_at_root / abs_qc_value_at_root_plus
         if qc_ratio < EPSILON6:
+            discard_non_interacting = QC_IMPL_DEFAULTS[
+                'discard_non_interacting']
+            if 'discard_non_interacting' in spectrum.qc.qcis.fvs.qc_impl:
+                discard_non_interacting = spectrum.qc.qcis.fvs.qc_impl[
+                    'discard_non_interacting']
+            if discard_non_interacting and nonint_energies is not None:
+                nonint_energies = np.asarray(nonint_energies, dtype=float)
+                nonint_energies = nonint_energies[
+                    np.isfinite(nonint_energies)]
+                if nonint_energies.size:
+                    min_nonint_dist = np.min(np.abs(root-nonint_energies))
+                    if min_nonint_dist < NONINT_DIST_CUT:
+                        return np.nan
             refine_roots = QC_IMPL_DEFAULTS['refine_roots']
             if 'refine_roots' in spectrum.qc.qcis.fvs.qc_impl:
                 refine_roots = spectrum.qc.qcis.fvs.qc_impl['refine_roots']
             if not refine_roots:
                 return root
             return _refine_root_without_interpolation(spectrum, root, L,
-                                                      qc_dict)
+                                                      qc_dict,
+                                                      nonint_energies)
         warnings.warn("Root was found but it failed the QC consistency "
                       "checks, returning NaN.")
         return np.nan
