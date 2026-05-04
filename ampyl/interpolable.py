@@ -738,24 +738,7 @@ class Interpolable:
         return [nvecSQ_mat_shells, proj_tmp_left, proj_tmp_right]
 
     def _get_all_nvecSQs_for_pole_detection(self, nvecSQs_by_shell):
-        all_nvecSQs = []
-        for outer_nvecSQ_row in nvecSQs_by_shell:
-            for outer_nvecSQ_entry in outer_nvecSQ_row:
-                for inner_nvecSQ_row in outer_nvecSQ_entry:
-                    for inner_nvecSQ_entry in inner_nvecSQ_row:
-                        if len(inner_nvecSQ_entry) != 0:
-                            n1vecSQs = inner_nvecSQ_entry[0][0]
-                            n2vecSQs = inner_nvecSQ_entry[0][1]
-                            n3vecSQs = inner_nvecSQ_entry[0][2]
-                            for i in range(len(n1vecSQs)):
-                                for j in range(len(n1vecSQs[i])):
-                                    nvecSQ_sets = [n1vecSQs[i][j],
-                                                   n2vecSQs[i][j],
-                                                   n3vecSQs[i][j]]
-                                    nvecSQ_sets = list(np.sort(nvecSQ_sets))
-                                    if nvecSQ_sets not in all_nvecSQs:
-                                        all_nvecSQs = all_nvecSQs+[nvecSQ_sets]
-        return all_nvecSQs
+        return []
 
     def extract_masses(self):
         sc_list_sorted = self.qcis.fcs.sc_list_sorted
