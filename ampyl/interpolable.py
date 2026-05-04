@@ -428,6 +428,29 @@ class Interpolable:
             'smart_textures_lists',
             'complement_textures_lists',
         )
+
+    def _load_interpolator(self, interpolator_id=None,
+                           interpolator_name=None):
+        """Activate interpolation data by integer ID or string name."""
+        if interpolator_name is not None:
+            if interpolator_name not in self.interpolator_names:
+                raise KeyError(f"unknown interpolator name "
+                               f"'{interpolator_name}'")
+            interpolator_id = self.interpolator_names[interpolator_name]
+        if interpolator_id is None:
+            interpolator_id = 0
+        if isinstance(interpolator_id, str):
+            if interpolator_id not in self.interpolator_names:
+                raise KeyError(f"unknown interpolator name "
+                               f"'{interpolator_id}'")
+            interpolator_id = self.interpolator_names[interpolator_id]
+        if not isinstance(interpolator_id, int):
+            raise TypeError("interpolator_id must be an int or string")
+        data = self.interpolators[interpolator_id]
+        for attr, value in data.items():
+            setattr(self, attr, value)
+        self.active_interpolator_id = interpolator_id
+
     def _grids_and_interp(self, Emin, Emax, Estep, Lmin, Lmax, Lstep,
                           project, irrep):
         L_grid = np.arange(Lmin, Lmax+EPSILON4, Lstep)
