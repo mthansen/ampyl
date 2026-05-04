@@ -526,8 +526,11 @@ class QC:
         """
         self._validate_energy_and_volume(E, L)
         qc_dict = self.validate_qc_dict(qc_dict)
-        matrices = self.matrix_builder.build(E, L, qc_dict)
-        return self.version_evaluator.evaluate(L, qc_dict, matrices)
+        policy_element = qc_dict['policy'].select(E, L)
+        policy_element = dict(policy_element)
+        policy_element.setdefault('shift', qc_dict['shift'])
+        matrices = self.matrix_builder.build(E, L, qc_dict, policy_element)
+        return self.version_evaluator.evaluate(L, policy_element, matrices)
 
     def _validate_energy_and_volume(self, E, L):
         """Validate scalar energy and volume inputs."""
