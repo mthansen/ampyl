@@ -272,21 +272,21 @@ class G(Interpolable):
             g_uses_prep_mat = self.qcis.fvs.qc_impl['g_uses_prep_mat']
         if g_uses_prep_mat and (nP@nP == 0):
             Gshell = qc_functions.getG_array_prep_mat(E, nP, L, m1, m2, m3,
-                                                     tbks_entry,
-                                                     row_shell_index,
-                                                     col_shell_index,
-                                                     ell1, ell2,
-                                                     alpha, beta,
-                                                     qc_impl, three_scheme,
-                                                     g_rescale)
+                                                      tbks_entry,
+                                                      row_shell_index,
+                                                      col_shell_index,
+                                                      ell1, ell2,
+                                                      alpha, beta,
+                                                      qc_impl, three_scheme,
+                                                      g_rescale)
         else:
             Gshell = qc_functions.getG_array(E, nP, L, m1, m2, m3,
-                                            tbks_entry,
-                                            row_shell, col_shell,
-                                            ell1, ell2,
-                                            alpha, beta,
-                                            qc_impl, three_scheme,
-                                            g_rescale)
+                                             tbks_entry,
+                                             row_shell, col_shell,
+                                             ell1, ell2,
+                                             alpha, beta,
+                                             qc_impl, three_scheme,
+                                             g_rescale)
         if project:
             Gshell = proj_tmp_left@Gshell@proj_tmp_right
         return Gshell
@@ -345,12 +345,7 @@ class F(Interpolable):
 
     def __init__(self, qcis=None, alphaKSS=1.0, C1cut=3):
         """Initialize the F matrix with zeta-function cutoff parameters."""
-        self.qcis = qcis
-        three_scheme = self.qcis.tbis.three_scheme
-        alpha_beta_scheme = (three_scheme == 'original pole')\
-            or (three_scheme == 'relativistic pole')
-        if alpha_beta_scheme:
-            [self.alpha, self.beta] = self.qcis.tbis.scheme_data
+        super().__init__(qcis)
         self.C1cut = C1cut
         self.alphaKSS = alphaKSS
 
