@@ -217,19 +217,68 @@ class QCMatrixBuilder:
 
         return matrices
 
-    def _get_f_matrix(self, E, L, project, irrep, rescale):
+    def _get_f_matrix(self, E, L, project, irrep, rescale, policy_element):
         """Return the F matrix for the requested kinematics."""
+        f = self._select_component('f', policy_element)
+        kwargs = self._interpolator_kwargs('f', policy_element)
+        if kwargs:
+            return f.get_value(E, L, project, irrep,
+                               short_string='f', **kwargs)/rescale
         f_smart_interpolate = QC_IMPL_DEFAULTS['f_smart_interpolate']
-        if 'f_smart_interpolate' in self.qcis.fvs.qc_impl:
-            f_smart_interpolate = self.qcis.fvs.qc_impl[
+        if 'f_smart_interpolate' in f.qcis.fvs.qc_impl:
+            f_smart_interpolate = f.qcis.fvs.qc_impl[
                 'f_smart_interpolate']
         if f_smart_interpolate:
             warnings.warn(f"\n{bcolors.WARNING}"
                           "f_smart_interpolate is not yet supported. "
                           "Using f instead."
                           f"{bcolors.ENDC}")
-        return self.f.get_value(E, L, project, irrep,
-                                short_string='f')/rescale
+        return f.get_value(E, L, project, irrep, short_string='f')/rescale
+
+    def _select_component(self, component, policy_element):
+        """Select a matrix component from the owner's registry."""
+        if self.owner is None:
+            return getattr(self, component)
+        identifier = self._component_identifier(component, policy_element)
+        return getattr(self.owner, f"{component}_list").get(identifier)
+
+    def _component_identifier(self, component, policy_element):
+        for key in (f'{component}_id', f'{component}-id',
+                    f'{component}_name', f'{component}-name', component):
+            if key in policy_element:
+                return policy_element[key]
+        return 0
+
+    def _interpolator_kwargs(self, component, policy_element):
+        use_interpolator = False
+        selected_interpolator = None
+        for key in (f'{component}_interpolator',
+                    f'{component}-interpolator',
+                    f'{component}interpolator'):
+            if key in policy_element:
+                selected_interpolator = policy_element[key]
+                use_interpolator = selected_interpolator
+                break
+        if type(selected_interpolator) in (int, str):
+            use_interpolator = True
+        if not use_interpolator:
+            return {'interpolate': False, 'smart_interpolate': False}
+        kwargs = {'smart_interpolate': True, 'interpolate': False}
+        if type(selected_interpolator) is int:
+            kwargs['interpolator_id'] = selected_interpolator
+        elif type(selected_interpolator) is str:
+            kwargs['interpolator_name'] = selected_interpolator
+        for key in (f'{component}_interpolator_id',
+                    f'{component}-interpolator-id',
+                    f'{component}interpolator_id'):
+            if key in policy_element:
+                kwargs['interpolator_id'] = policy_element[key]
+        for key in (f'{component}_interpolator_name',
+                    f'{component}-interpolator-name',
+                    f'{component}interpolator_name'):
+            if key in policy_element:
+                kwargs['interpolator_name'] = policy_element[key]
+        return kwargs
 
     def _match_matrix_to_k(self, matrix, K, matrix_name):
         """Adjust a matrix shape so it can be combined with K."""
