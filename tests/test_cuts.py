@@ -135,7 +135,7 @@ class TestPoleCandidates(unittest.TestCase):
         self.assertEqual(len(all_nvecSQs), 5)
 
     def test_f_pole_candidates_add_diagonal_shells(self):
-        """Supported diagonal shells should contribute their implied triples."""
+        """Supported diagonal shells should contribute implied triples."""
         for shell_nvecSQ in sorted(self.f._DIAGONAL_N3VECS):
             with self.subTest(shell_nvecSQ=shell_nvecSQ):
                 nvecSQs_by_shell = self._wrap_entry(
