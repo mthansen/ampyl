@@ -37,6 +37,7 @@ import unittest
 import numpy as np
 from scipy.optimize import root_scalar
 import ampyl
+from ampyl import fv_spectrum_utils
 
 
 class TestQC(unittest.TestCase):
@@ -109,6 +110,117 @@ class TestQC(unittest.TestCase):
         roots_expected = np.array([4.63304377, 4.84871987])
         diffSQ = np.sum((roots - roots_expected)**2)
         self.assertTrue(diffSQ < 1.e-15)
+
+    def test_root_finder_refinement_defaults_to_false(self):
+        class FakeFVS:
+            def __init__(self):
+                self.qc_impl = {'fplusg_smart_interpolate': True}
+
+        class FakeQCIS:
+            def __init__(self):
+                self.fvs = FakeFVS()
+
+        class FakeQC:
+            def __init__(self):
+                self.qcis = FakeQCIS()
+
+            def get_value(self, E, L, qc_dict):
+                interpolation_on = any(
+                    value
+                    for key, value in self.qcis.fvs.qc_impl.items()
+                    if 'interp' in key or 'interpolate' in key
+                )
+                root = 1.0 if interpolation_on else 1.00002
+                return E - root
+
+        class FakeSpectrum:
+            def __init__(self):
+                self.qc = FakeQC()
+
+        root = fv_spectrum_utils._simple_try_at_fixed_L(
+            FakeSpectrum(), [0.99, 1.01], 5.0, {}
+        )
+
+        self.assertAlmostEqual(root, 1.0)
+
+    def test_root_finder_refines_without_interpolation(self):
+        class FakeFVS:
+            def __init__(self):
+                self.qc_impl = {
+                    'fplusg_smart_interpolate': True,
+                    'zeta_interp': True,
+                    'refine_roots': True,
+                }
+
+        class FakeQCIS:
+            def __init__(self):
+                self.fvs = FakeFVS()
+
+        class FakeQC:
+            def __init__(self):
+                self.qcis = FakeQCIS()
+
+            def get_value(self, E, L, qc_dict):
+                interpolation_on = any(
+                    value
+                    for key, value in self.qcis.fvs.qc_impl.items()
+                    if 'interp' in key or 'interpolate' in key
+                )
+                root = 1.0 if interpolation_on else 1.00002
+                return E - root
+
+        class FakeSpectrum:
+            def __init__(self):
+                self.qc = FakeQC()
+
+        spectrum = FakeSpectrum()
+        qc_impl_before = dict(spectrum.qc.qcis.fvs.qc_impl)
+
+        root = fv_spectrum_utils._simple_try_at_fixed_L(
+            spectrum, [0.99, 1.01], 5.0, {}
+        )
+
+        self.assertAlmostEqual(root, 1.00002)
+        self.assertEqual(spectrum.qc.qcis.fvs.qc_impl, qc_impl_before)
+
+    def test_root_finder_returns_nan_if_uninterpolated_root_is_absent(self):
+        class FakeFVS:
+            def __init__(self):
+                self.qc_impl = {
+                    'fplusg_smart_interpolate': True,
+                    'refine_roots': True,
+                }
+
+        class FakeQCIS:
+            def __init__(self):
+                self.fvs = FakeFVS()
+
+        class FakeQC:
+            def __init__(self):
+                self.qcis = FakeQCIS()
+
+            def get_value(self, E, L, qc_dict):
+                interpolation_on = any(
+                    value
+                    for key, value in self.qcis.fvs.qc_impl.items()
+                    if 'interp' in key or 'interpolate' in key
+                )
+                root = 1.0 if interpolation_on else 1.01
+                return E - root
+
+        class FakeSpectrum:
+            def __init__(self):
+                self.qc = FakeQC()
+
+        spectrum = FakeSpectrum()
+        qc_impl_before = dict(spectrum.qc.qcis.fvs.qc_impl)
+
+        root = fv_spectrum_utils._simple_try_at_fixed_L(
+            spectrum, [0.99, 1.01], 5.0, {}
+        )
+
+        self.assertTrue(np.isnan(root))
+        self.assertEqual(spectrum.qc.qcis.fvs.qc_impl, qc_impl_before)
 
 
 if __name__ == '__main__':
