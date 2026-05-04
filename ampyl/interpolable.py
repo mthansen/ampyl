@@ -75,9 +75,12 @@ class Interpolable:
         self.smart_poles_lists = {}
         self.smart_textures_lists = {}
         self.complement_textures_lists = {}
+        self.interpolators = []
+        self.interpolator_names = {}
+        self.active_interpolator_id = None
 
     def build_interpolator(self, Emin, Emax, Estep, Lmin, Lmax, Lstep,
-                           project, irrep):
+                           project, irrep, name=None):
         """
         Builds an interpolator.
 
