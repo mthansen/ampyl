@@ -50,6 +50,7 @@ QC_DICT_DEFAULTS = {
 }
 
 MINMAXOFFSET = 0.01
+NONINT_DIST_CUT = 1.0e-4
 DEFAULT_EMIN = 1.801
 DEFAULT_LMIN = 3.0
 
@@ -65,6 +66,7 @@ QC_IMPL_DEFAULTS = {'hermitian': True,
                     'fplusg_interpolate': False,
                     'fplusg_smart_interpolate': False,
                     'refine_roots': False,
+                    'discard_non_interacting': True,
                     'smarter_q_rescale': True,
                     'use_cob_matrices': True,
                     'reduce_size': True,
