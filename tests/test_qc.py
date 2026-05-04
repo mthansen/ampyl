@@ -166,6 +166,61 @@ class TestQC(unittest.TestCase):
 
         self.assertAlmostEqual(root, 1.0)
 
+    def test_root_finder_discards_near_noninteracting_by_default(self):
+        class FakeFVS:
+            def __init__(self):
+                self.qc_impl = {'fplusg_smart_interpolate': True}
+
+        class FakeQCIS:
+            def __init__(self):
+                self.fvs = FakeFVS()
+
+        class FakeQC:
+            def __init__(self):
+                self.qcis = FakeQCIS()
+
+            def get_value(self, E, L, qc_dict):
+                return E - 1.0
+
+        class FakeSpectrum:
+            def __init__(self):
+                self.qc = FakeQC()
+
+        root = fv_spectrum_utils._simple_try_at_fixed_L(
+            FakeSpectrum(), [0.99, 1.01], 5.0, {}, np.array([1.00005])
+        )
+
+        self.assertTrue(np.isnan(root))
+
+    def test_root_finder_can_keep_near_noninteracting_roots(self):
+        class FakeFVS:
+            def __init__(self):
+                self.qc_impl = {
+                    'fplusg_smart_interpolate': True,
+                    'discard_non_interacting': False,
+                }
+
+        class FakeQCIS:
+            def __init__(self):
+                self.fvs = FakeFVS()
+
+        class FakeQC:
+            def __init__(self):
+                self.qcis = FakeQCIS()
+
+            def get_value(self, E, L, qc_dict):
+                return E - 1.0
+
+        class FakeSpectrum:
+            def __init__(self):
+                self.qc = FakeQC()
+
+        root = fv_spectrum_utils._simple_try_at_fixed_L(
+            FakeSpectrum(), [0.99, 1.01], 5.0, {}, np.array([1.00005])
+        )
+
+        self.assertAlmostEqual(root, 1.0)
+
     def test_root_finder_refines_without_interpolation(self):
         class FakeFVS:
             def __init__(self):
