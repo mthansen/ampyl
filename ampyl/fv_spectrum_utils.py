@@ -43,10 +43,10 @@ from .constants import DEFAULT_CUTS
 from .constants import DEFAULT_EMIN
 from .constants import DEFAULT_LMIN
 from .constants import EPSILON4
-from .constants import EPSILON5
 from .constants import EPSILON6
 from .constants import EPSILON10
 from .constants import MINMAXOFFSET
+from .constants import QC_IMPL_DEFAULTS
 from .constants import bcolors
 
 warnings.simplefilter("once")
@@ -333,7 +333,13 @@ def _simple_try_at_fixed_L(spectrum, E_bracket, L, qc_dict):
         )
         qc_ratio = abs_qc_value_at_root / abs_qc_value_at_root_plus
         if qc_ratio < EPSILON6:
-            return root
+            refine_roots = QC_IMPL_DEFAULTS['refine_roots']
+            if 'refine_roots' in spectrum.qc.qcis.fvs.qc_impl:
+                refine_roots = spectrum.qc.qcis.fvs.qc_impl['refine_roots']
+            if not refine_roots:
+                return root
+            return _refine_root_without_interpolation(spectrum, root, L,
+                                                      qc_dict)
         warnings.warn("Root was found but it failed the QC consistency "
                       "checks, returning NaN.")
         return np.nan
@@ -343,6 +349,54 @@ def _simple_try_at_fixed_L(spectrum, E_bracket, L, qc_dict):
         return np.nan
     warnings.warn("Root not found, not sure why. Returning NaN.")
     return np.nan
+
+
+def _refine_root_without_interpolation(spectrum, root, L, qc_dict):
+    qc_impl = spectrum.qc.qcis.fvs.qc_impl
+    default_interpolation_keys = (
+        'zeta_interp',
+        'g_interpolate',
+        'g_smart_interpolate',
+        'f_interpolate',
+        'f_smart_interpolate',
+        'fplusg_interpolate',
+        'fplusg_smart_interpolate',
+        'populate_interp_zeros',
+    )
+    interpolation_keys = sorted(
+        key for key in set(default_interpolation_keys) | set(qc_impl)
+        if ('interp' in key or 'interpolate' in key)
+    )
+    previous_settings = {
+        key: qc_impl[key] for key in interpolation_keys if key in qc_impl
+    }
+    try:
+        for key in interpolation_keys:
+            qc_impl[key] = False
+        for bracket_shift in np.logspace(-9, -3, 7):
+            E_bracket = [root-bracket_shift, root+bracket_shift]
+            try:
+                true_root = root_scalar(spectrum.qc.get_value,
+                                        args=(L, qc_dict),
+                                        bracket=E_bracket).root
+            except ValueError:
+                continue
+            abs_qc_value_at_root = np.abs(
+                spectrum.qc.get_value(true_root, L, qc_dict)
+            )
+            abs_qc_value_at_root_plus = np.abs(
+                spectrum.qc.get_value(true_root+EPSILON6, L, qc_dict)
+            )
+            qc_ratio = abs_qc_value_at_root / abs_qc_value_at_root_plus
+            if qc_ratio < EPSILON6:
+                return true_root
+        return np.nan
+    finally:
+        for key in interpolation_keys:
+            if key in previous_settings:
+                qc_impl[key] = previous_settings[key]
+            else:
+                del qc_impl[key]
 
 
 def _build_interpolated_E_vals(all_E_vals, L_vals, n_interp_points=4):
