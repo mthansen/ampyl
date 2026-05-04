@@ -46,6 +46,7 @@ from .constants import EPSILON4
 from .constants import EPSILON6
 from .constants import EPSILON10
 from .constants import MINMAXOFFSET
+from .constants import NONINT_DIST_CUT
 from .constants import QC_IMPL_DEFAULTS
 from .constants import bcolors
 
