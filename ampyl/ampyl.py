@@ -454,6 +454,45 @@ class QC:
         self._verbosity = verbosity
         self.verbosity = verbosity
 
+    def add_qcis(self, qcis, name=None, C1cut=5, alphaKSS=1.0):
+        """Add a QC index space and default dependent matrix objects."""
+        qcis = self.qcis_list.add(qcis, name=name)
+        self.add_f(qcis_id=qcis.id, name=name, C1cut=C1cut,
+                   alphaKSS=alphaKSS)
+        self.add_g(qcis_id=qcis.id, name=name)
+        self.add_fplusg(qcis_id=qcis.id, name=name, C1cut=C1cut,
+                        alphaKSS=alphaKSS)
+        self.add_k(qcis_id=qcis.id, name=name)
+        self.add_kdf(qcis_id=qcis.id, name=name)
+        return qcis
+
+    def add_f(self, qcis_id=0, name=None, C1cut=5, alphaKSS=1.0):
+        """Add an F instance tied to a registered qcis."""
+        qcis = self.qcis_list.get(qcis_id)
+        return self.f_list.add(F(qcis=qcis, alphaKSS=alphaKSS,
+                                 C1cut=C1cut), name=name)
+
+    def add_g(self, qcis_id=0, name=None):
+        """Add a G instance tied to a registered qcis."""
+        qcis = self.qcis_list.get(qcis_id)
+        return self.g_list.add(G(qcis=qcis), name=name)
+
+    def add_fplusg(self, qcis_id=0, name=None, C1cut=5, alphaKSS=1.0):
+        """Add an F+G instance tied to a registered qcis."""
+        qcis = self.qcis_list.get(qcis_id)
+        return self.fplusg_list.add(FplusG(qcis=qcis, alphaKSS=alphaKSS,
+                                           C1cut=C1cut), name=name)
+
+    def add_k(self, qcis_id=0, name=None):
+        """Add a K instance tied to a registered qcis."""
+        qcis = self.qcis_list.get(qcis_id)
+        return self.k_list.add(K(qcis=qcis), name=name)
+
+    def add_kdf(self, qcis_id=0, name=None):
+        """Add a Kdf instance tied to a registered qcis."""
+        qcis = self.qcis_list.get(qcis_id)
+        return self.kdf_list.add(Kdf(qcis=qcis), name=name)
+
     @property
     def verbosity(self):
         """int: Verbosity level for QC-related diagnostics."""
