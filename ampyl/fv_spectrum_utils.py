@@ -231,7 +231,16 @@ def _get_version_and_irrep(qc_dict):
     if not project:
         raise ValueError("project must be True")
     irrep = qc_dict['irrep']
-    version = qc_dict['version']
+    if 'policy' in qc_dict:
+        policy = qc_dict['policy']
+        if hasattr(policy, 'elements'):
+            version = policy.elements[-1]['version']
+        elif isinstance(policy, dict):
+            version = policy['version']
+        else:
+            version = policy[-1]['version']
+    else:
+        version = qc_dict['version']
     return version, irrep
 
 
