@@ -151,48 +151,68 @@ class EvaluationPolicy:
 class QCMatrixBuilder:
     """Build the matrix inputs needed to evaluate QC expressions."""
 
-    def __init__(self, qcis=None, C1cut=5, alphaKSS=1.0):
+    def __init__(self, qcis=None, C1cut=5, alphaKSS=1.0, owner=None):
         """Initialize the matrix builder for a QC index space."""
+        self.owner = owner
         self.qcis = qcis
-        self.f = F(qcis=self.qcis, alphaKSS=alphaKSS, C1cut=C1cut)
-        self.g = G(qcis=self.qcis)
-        self.fplusg = FplusG(qcis=self.qcis, alphaKSS=alphaKSS, C1cut=C1cut)
-        self.k = K(qcis=self.qcis)
-        self.kdf = Kdf(qcis=self.qcis)
+        if owner is None:
+            self.f = F(qcis=self.qcis, alphaKSS=alphaKSS, C1cut=C1cut)
+            self.g = G(qcis=self.qcis)
+            self.fplusg = FplusG(qcis=self.qcis, alphaKSS=alphaKSS,
+                                 C1cut=C1cut)
+            self.k = K(qcis=self.qcis)
+            self.kdf = Kdf(qcis=self.qcis)
+        else:
+            self.f = owner.f
+            self.g = owner.g
+            self.fplusg = owner.fplusg
+            self.k = owner.k
+            self.kdf = owner.kdf
 
-    def build(self, E, L, qc_dict):
+    def build(self, E, L, qc_dict, policy_element=None):
         """Build the matrices required for the selected QC version."""
         k_params = qc_dict['k_params']
         project = qc_dict['project']
         irrep = qc_dict['irrep']
-        version = qc_dict['version']
+        if policy_element is None:
+            version = qc_dict['version']
+            policy_element = {}
+        else:
+            version = policy_element['version']
         rescale = qc_dict['rescale']
 
         [pcotdelta_parameter_lists, k3_params] = k_params
 
-        K = self.k.get_value(E, L, pcotdelta_parameter_lists,
-                             project, irrep)*rescale
+        k = self._select_component('k', policy_element)
+        K = k.get_value(E, L, pcotdelta_parameter_lists,
+                        project, irrep)*rescale
         matrices = {'K': K}
 
         if self._creates_f(version):
-            F = self._get_f_matrix(E, L, project, irrep, rescale)
+            F = self._get_f_matrix(E, L, project, irrep, rescale,
+                                   policy_element)
             matrices['K'], matrices['F'] = self._match_matrix_to_k(F, K, 'F')
             K = matrices['K']
 
         if self._creates_fplusg(version):
-            FplusG = self.fplusg.get_value(
-                E, L, project, irrep, short_string='fplusg')/rescale
+            fplusg = self._select_component('fplusg', policy_element)
+            kwargs = self._interpolator_kwargs('fplusg', policy_element)
+            FplusG = fplusg.get_value(
+                E, L, project, irrep, short_string='fplusg', **kwargs)/rescale
             matrices['K'], matrices['FplusG'] = self._match_matrix_to_k(
                 FplusG, K, 'FplusG')
             K = matrices['K']
 
         if self._creates_kdf(version):
-            matrices['Kdf'] = self.kdf.get_value(
+            kdf = self._select_component('kdf', policy_element)
+            matrices['Kdf'] = kdf.get_value(
                 E, L, k3_params, project, irrep)*rescale
 
         if self._creates_g(version):
-            G = self.g.get_value(E, L, project, irrep,
-                                 short_string='g')/rescale
+            g = self._select_component('g', policy_element)
+            kwargs = self._interpolator_kwargs('g', policy_element)
+            G = g.get_value(E, L, project, irrep,
+                            short_string='g', **kwargs)/rescale
             matrices['K'], matrices['G'] = self._match_matrix_to_k(G, K, 'G')
 
         return matrices
