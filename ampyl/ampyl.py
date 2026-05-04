@@ -548,22 +548,25 @@ class QC:
             'project': False,
             'irrep': False,
             'version': False,
+            'policy': False,
             'rescale': False,
             'shift': False
         }
         for key in key_is_required:
             if key not in qc_dict and key_is_required[key]:
                 raise ValueError(f"qc_dict must contain the key '{key}'")
-            if key not in qc_dict:
+            if key not in qc_dict and key in QC_DICT_DEFAULTS:
                 qc_dict[key] = QC_DICT_DEFAULTS[key]
         expected_types = {
             'k_params': list,
             'project': bool,
             'irrep': (tuple, type(None)),
             'version': str,
+            'policy': EvaluationPolicy,
             'rescale': float,
             'shift': float
         }
+        qc_dict['policy'] = EvaluationPolicy.from_qc_dict(qc_dict)
         for key, expected_type in expected_types.items():
             if not isinstance(qc_dict[key], expected_type):
                 raise TypeError(f"qc_dict['{key}'] must be of type "
