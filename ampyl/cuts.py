@@ -631,14 +631,6 @@ class F(Interpolable):
 class FplusG(Interpolable):
     """Represent the combined F+G matrix."""
 
-    _DIAGONAL_N3VECS = {
-        0: np.array([0, 0, 0]),
-        1: np.array([0, 0, 1]),
-        2: np.array([0, 1, 1]),
-        3: np.array([1, 1, 1]),
-        4: np.array([0, 0, 2]),
-    }
-
     def __init__(self, qcis=QCIndexSpace(), alphaKSS=1.0, C1cut=3):
         """Initialize the combined F+G object from F and G components."""
         super().__init__(qcis)
@@ -652,15 +644,6 @@ class FplusG(Interpolable):
         return self.g.get_value(E=E, L=L, project=project, irrep=irrep)\
             + self.f.get_value(E=E, L=L, project=project, irrep=irrep)
 
-    def _iter_nvecSQ_mats(self, nvecSQs_by_shell):
-        """Yield the shell nvecSQ matrices stored in nested shell data."""
-        for outer_nvecSQ_row in nvecSQs_by_shell:
-            for outer_nvecSQ_entry in outer_nvecSQ_row:
-                for inner_nvecSQ_row in outer_nvecSQ_entry:
-                    for inner_nvecSQ_entry in inner_nvecSQ_row:
-                        if len(inner_nvecSQ_entry) != 0:
-                            yield inner_nvecSQ_entry[0]
-
     def _append_nvecSQs(self, all_nvecSQs, seen_nvecSQs, nvecSQs):
         """Append a sorted nvecSQ triple if it has not been seen yet."""
         nvecSQs_sorted = tuple(np.sort(nvecSQs))
@@ -668,54 +651,12 @@ class FplusG(Interpolable):
             seen_nvecSQs.add(nvecSQs_sorted)
             all_nvecSQs.append(list(nvecSQs_sorted))
 
-    def _get_diagonal_nvecSQs(self, shell_nvecSQ):
-        """Return extra diagonal nvecSQ triples implied by a shell label."""
-        n3vec = self._DIAGONAL_N3VECS.get(int(shell_nvecSQ))
-        if n3vec is None:
-            return []
-
-        diagonal_nvecSQs = []
-        for n1_entry in np.ndindex((5, 5, 5)):
-            n1vec = np.array(n1_entry)-2
-            n2vec = -n1vec-n3vec
-            diagonal_nvecSQs.append([
-                n1vec@n1vec,
-                n2vec@n2vec,
-                n3vec@n3vec,
-            ])
-        return diagonal_nvecSQs
-
     def _get_all_nvecSQs_for_pole_detection(self, nvecSQs_by_shell):
-        """Collect nvecSQ triples used to identify interpolation poles."""
+        """Merge F and G nvecSQ triples used to identify F+G poles."""
         all_nvecSQs = []
         seen_nvecSQs = set()
-        diagonal_nvecSQs_by_shell = {}
-
-        for n1vecSQs, n2vecSQs, n3vecSQs in self._iter_nvecSQ_mats(
-                nvecSQs_by_shell):
-            for i, n1vecSQ_row in enumerate(n1vecSQs):
-                for j, n1vecSQ_entry in enumerate(n1vecSQ_row):
-                    # Every shell-pair entry contributes a concrete triple.
-                    self._append_nvecSQs(
-                        all_nvecSQs,
-                        seen_nvecSQs,
-                        [n1vecSQ_entry, n2vecSQs[i][j], n3vecSQs[i][j]],
-                    )
-                    if i != j:
-                        continue
-
-                    shell_nvecSQ = int(n1vecSQs[i][0])
-                    if shell_nvecSQ not in diagonal_nvecSQs_by_shell:
-                        # F contributes only on shell-diagonal blocks, so we
-                        # enrich those shell labels with extra pole candidates.
-                        diagonal_nvecSQs_by_shell[shell_nvecSQ] = (
-                            self._get_diagonal_nvecSQs(shell_nvecSQ)
-                        )
-                    for diagonal_nvecSQs in diagonal_nvecSQs_by_shell[
-                            shell_nvecSQ]:
-                        self._append_nvecSQs(
-                            all_nvecSQs,
-                            seen_nvecSQs,
-                            diagonal_nvecSQs,
-                        )
+        for candidate_source in (self.g, self.f):
+            for nvecSQs in candidate_source\
+               ._get_all_nvecSQs_for_pole_detection(nvecSQs_by_shell):
+                self._append_nvecSQs(all_nvecSQs, seen_nvecSQs, nvecSQs)
         return all_nvecSQs
