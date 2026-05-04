@@ -431,16 +431,26 @@ class QC:
 
     def __init__(self, qcis=None, C1cut=5, alphaKSS=1.0, verbosity=0):
         """Initialize a QC evaluator and its matrix components."""
-        self.qcis = qcis
+        self.qcis_list = IdentifiedObjectList()
+        self.f_list = IdentifiedObjectList()
+        self.g_list = IdentifiedObjectList()
+        self.fplusg_list = IdentifiedObjectList()
+        self.k_list = IdentifiedObjectList()
+        self.kdf_list = IdentifiedObjectList()
+        self.qcis = self.qcis_list.add(qcis)
+        self.f = self.f_list.add(F(qcis=self.qcis, alphaKSS=alphaKSS,
+                                   C1cut=C1cut))
+        self.g = self.g_list.add(G(qcis=self.qcis))
+        self.fplusg = self.fplusg_list.add(
+            FplusG(qcis=self.qcis, alphaKSS=alphaKSS, C1cut=C1cut)
+        )
+        self.k = self.k_list.add(K(qcis=self.qcis))
+        self.kdf = self.kdf_list.add(Kdf(qcis=self.qcis))
         self.matrix_builder = QCMatrixBuilder(qcis=self.qcis,
                                               C1cut=C1cut,
-                                              alphaKSS=alphaKSS)
+                                              alphaKSS=alphaKSS,
+                                              owner=self)
         self.version_evaluator = QCVersionEvaluator()
-        self.f = self.matrix_builder.f
-        self.g = self.matrix_builder.g
-        self.fplusg = self.matrix_builder.fplusg
-        self.k = self.matrix_builder.k
-        self.kdf = self.matrix_builder.kdf
         self._verbosity = verbosity
         self.verbosity = verbosity
 
