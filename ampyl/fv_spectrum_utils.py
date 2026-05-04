@@ -112,7 +112,7 @@ def _find_updated_energy(spectrum, Etmp, Ltmp, qc_dict, ni_functions):
         spectrum, Etmp, Ltmp, qc_dict, ni_functions)
     if np.isnan(Eupdate):
         return _retry_root_near_interpolated_energy(
-            spectrum, Etmp, Ltmp, qc_dict)
+            spectrum, Etmp, Ltmp, qc_dict, ni_functions)
     return Eupdate
 
 
