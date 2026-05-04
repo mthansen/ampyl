@@ -75,6 +75,29 @@ class G(Interpolable):
                                             tbks_entry, slices)
         return g_final
 
+    def _get_all_nvecSQs_for_pole_detection(self, nvecSQs_by_shell):
+        """Collect shell-pair nvecSQ triples used to identify G poles."""
+        all_nvecSQs = []
+        for outer_nvecSQ_row in nvecSQs_by_shell:
+            for outer_nvecSQ_entry in outer_nvecSQ_row:
+                for inner_nvecSQ_row in outer_nvecSQ_entry:
+                    for inner_nvecSQ_entry in inner_nvecSQ_row:
+                        if len(inner_nvecSQ_entry) != 0:
+                            n1vecSQs = inner_nvecSQ_entry[0][0]
+                            n2vecSQs = inner_nvecSQ_entry[0][1]
+                            n3vecSQs = inner_nvecSQ_entry[0][2]
+                            for i in range(len(n1vecSQs)):
+                                for j in range(len(n1vecSQs[i])):
+                                    nvecSQ_sets = [
+                                        n1vecSQs[i][j],
+                                        n2vecSQs[i][j],
+                                        n3vecSQs[i][j],
+                                    ]
+                                    nvecSQ_sets = list(np.sort(nvecSQ_sets))
+                                    if nvecSQ_sets not in all_nvecSQs:
+                                        all_nvecSQs = all_nvecSQs+[nvecSQ_sets]
+        return all_nvecSQs
+
     def _g_verbose_a(self, E, L, nP):
         """Print detailed diagnostic information for G evaluation."""
         print('evaluating G using numpy accelerated version')
