@@ -138,12 +138,16 @@ def _find_root_near_interpolated_energy(spectrum, Etmp, Ltmp, qc_dict,
     return Eupdate
 
 
-def _retry_root_near_interpolated_energy(spectrum, Etmp, Ltmp, qc_dict):
+def _retry_root_near_interpolated_energy(spectrum, Etmp, Ltmp, qc_dict,
+                                         ni_functions):
     Eupdate = np.nan
     bracket_shift = 1.e-10
+    nonint_energies = np.array([ni_function(Ltmp)
+                                for ni_function in ni_functions])
     while np.isnan(Eupdate) and bracket_shift < 3.e-1:
         E_bracket = [Etmp-bracket_shift, Etmp+bracket_shift]
-        Eupdate = _simple_try_at_fixed_L(spectrum, E_bracket, Ltmp, qc_dict)
+        Eupdate = _simple_try_at_fixed_L(
+            spectrum, E_bracket, Ltmp, qc_dict, nonint_energies)
         bracket_shift = bracket_shift*5.
         if np.isnan(Eupdate):
             warnings.warn(f"\n{bcolors.WARNING}"
