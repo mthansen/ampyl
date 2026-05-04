@@ -413,6 +413,21 @@ class Interpolable:
         self.active_interpolator_id = interpolator_id
         return interpolator_id
 
+    def _interpolator_data_attrs(self):
+        return (
+            'all_relevant_nvecSQ_lists',
+            'interp_data_lists',
+            'polefree_interp_data_lists',
+            'cob_matrix_lists',
+            'interp_arrays',
+            'matrix_dim_lists',
+            'cob_list_lens',
+            'smart_interp_tensors',
+            'smart_interps',
+            'smart_poles_lists',
+            'smart_textures_lists',
+            'complement_textures_lists',
+        )
     def _grids_and_interp(self, Emin, Emax, Estep, Lmin, Lmax, Lstep,
                           project, irrep):
         L_grid = np.arange(Lmin, Lmax+EPSILON4, Lstep)
