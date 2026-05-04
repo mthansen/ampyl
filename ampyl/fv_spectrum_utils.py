@@ -330,7 +330,8 @@ def _get_roots_from_range(spectrum, E_range, L, qc_dict, ni_functions,
             all_ranges.append([all_breakpoints[i], all_breakpoints[i+1]])
     all_roots = []
     for E_bracket in all_ranges:
-        root = _simple_try_at_fixed_L(spectrum, E_bracket, L, qc_dict)
+        root = _simple_try_at_fixed_L(
+            spectrum, E_bracket, L, qc_dict, nonint_energies)
         if root is not np.nan:
             all_roots.append(root)
     return all_roots
