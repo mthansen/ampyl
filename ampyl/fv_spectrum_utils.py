@@ -381,7 +381,8 @@ def _simple_try_at_fixed_L(spectrum, E_bracket, L, qc_dict,
     return np.nan
 
 
-def _refine_root_without_interpolation(spectrum, root, L, qc_dict):
+def _refine_root_without_interpolation(spectrum, root, L, qc_dict,
+                                       nonint_energies=None):
     qc_impl = spectrum.qc.qcis.fvs.qc_impl
     default_interpolation_keys = (
         'zeta_interp',
@@ -419,6 +420,20 @@ def _refine_root_without_interpolation(spectrum, root, L, qc_dict):
             )
             qc_ratio = abs_qc_value_at_root / abs_qc_value_at_root_plus
             if qc_ratio < EPSILON6:
+                discard_non_interacting = QC_IMPL_DEFAULTS[
+                    'discard_non_interacting']
+                if 'discard_non_interacting' in qc_impl:
+                    discard_non_interacting = qc_impl[
+                        'discard_non_interacting']
+                if discard_non_interacting and nonint_energies is not None:
+                    nonint_energies = np.asarray(nonint_energies, dtype=float)
+                    nonint_energies = nonint_energies[
+                        np.isfinite(nonint_energies)]
+                    if nonint_energies.size:
+                        min_nonint_dist = np.min(
+                            np.abs(true_root-nonint_energies))
+                        if min_nonint_dist < NONINT_DIST_CUT:
+                            return np.nan
                 return true_root
         return np.nan
     finally:
