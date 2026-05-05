@@ -619,7 +619,8 @@ def getG_array_two_tbks(E, nP, L, m1, m2, m3,
                         ell1, ell2,
                         alpha, beta,
                         qc_impl, three_scheme,
-                        g_rescale):
+                        g_rescale,
+                        alpha2=None, beta2=None):
     """Return a G block whose row and column use different TBKS entries."""
     row_nvec_arr = row_tbks_entry.nvec_arr[row_shell[0]:row_shell[1]]
     row_nvecSQ_arr = row_tbks_entry.nvecSQ_arr[row_shell[0]:row_shell[1]]
@@ -667,7 +668,7 @@ def getG_array_two_tbks(E, nP, L, m1, m2, m3,
     return getG_array(E, nP, L, m1, m2, m3,
                       mixed_tbks_entry, row_slice, col_slice,
                       ell1, ell2, alpha, beta, qc_impl, three_scheme,
-                      g_rescale)
+                      g_rescale, alpha2=alpha2, beta2=beta2)
 
 
 def getG_array_prep_mat(E, nP, L, m1, m2, m3,
