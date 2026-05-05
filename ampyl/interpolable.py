@@ -1281,8 +1281,8 @@ class Interpolable:
             Sum of the three finite-volume single-particle energies.
         """
         pole_candidate = np.sqrt(m1**2+(FOURPI2/L**2)*n1vecSQ)\
-                       + np.sqrt(m2**2+(FOURPI2/L**2)*n2vecSQ)\
-                       + np.sqrt(m3**2+(FOURPI2/L**2)*n3vecSQ)
+            + np.sqrt(m2**2+(FOURPI2/L**2)*n2vecSQ)\
+            + np.sqrt(m3**2+(FOURPI2/L**2)*n3vecSQ)
         return pole_candidate
 
     def _get_value_not_interpolated(self, E, L, project, irrep):
