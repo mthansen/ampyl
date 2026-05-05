@@ -393,6 +393,8 @@ class SpectatorChannel:
         else:
             raise NotImplementedError("only 2- and 3-body channels supported")
 
+        self._set_cutoff_scheme_data()
+
         if p_cot_deltas is None:
             p_cot_deltas = []
             for _ in range(len(ell_set)):
@@ -547,6 +549,32 @@ class SpectatorChannel:
                 if self._fc.flavors[self.indexing[0]] == entry[2]:
                     allowed_sub_isospins.append(entry[1])
             self.allowed_sub_isospins = allowed_sub_isospins
+
+    def _set_cutoff_scheme_data(self):
+        """Set default pole-cutoff data for this spectator channel."""
+        if self.fc.n_particles != 3:
+            self.thresholdSQ = None
+            self.ESQmin = None
+            self.ESQMIN = None
+            self.alpha = None
+            self.beta = None
+            self.scheme_data = None
+            return
+        mspec = self.masses_indexed[0]
+        m1 = self.masses_indexed[1]
+        m2 = self.masses_indexed[2]
+        m_max = max(m1, m2)
+        m_min = min(m1, m2)
+        self.thresholdSQ = (m1+m2)**2
+        if np.isclose(m1, m2) and mspec < m1:
+            self.ESQmin = 4.0*(m1**2-mspec**2)
+            self.alpha = 3.0-4.0*mspec**2/m1**2
+        else:
+            self.ESQmin = m_max**2 - m_min**2
+            self.alpha = (3.*m_max - 5.*m_min) / (m_max + m_min)
+        self.ESQMIN = self.ESQmin
+        self.beta = 0.
+        self.scheme_data = [self.alpha, self.beta]
 
     @property
     def n_params_set(self):
