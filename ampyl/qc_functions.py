@@ -101,6 +101,7 @@ def __helperG_single_entry(E, nP, L, np1spec, np2spec, m1, m2, m3):
     return [vecstar_for1, vecstar_for2, E2CMSQ_for1,
             E2CMSQ_for2, q_for1, q_for2]
 
+
 def getG_single_entry(E=4.0, nP=np.array([0, 0, 0]), L=5.0,
                       np1spec=np.array([0, 0, 0]),
                       np2spec=np.array([0, 0, 0]),
@@ -185,6 +186,7 @@ def getG_single_entry(E=4.0, nP=np.array([0, 0, 0]), L=5.0,
     pole_factor = 1.0/(E-omega1-omega2-omega3)
     return calY1*calY2conj*HH*simple_factor*pole_factor*g_rescale
 
+
 def get_nvec_data(tbks_entry, row_shell, col_shell):
     """Get the data for the nvecs."""
     n1vec_arr_shell = tbks_entry.nvec_arr[row_shell[0]:row_shell[1]]
@@ -254,6 +256,7 @@ def get_nvec_data(tbks_entry, row_shell, col_shell):
             n2vec_arr_shell, n2vecSQ_arr_shell,
             n1vec_mat_shell, n2vec_mat_shell, n3vec_mat_shell,
             n1vecSQ_mat_shell, n2vecSQ_mat_shell, n3vecSQ_mat_shell]
+
 
 def __helperG_array(E, nP, L, m1, m2, m3,
                     tbks_entry,
@@ -346,12 +349,14 @@ def __helperG_array(E, nP, L, m1, m2, m3,
             omegap1spec_arr_slice, omegap2spec_arr_slice,
             n3vecSQ_mat_shell]
 
+
 def get_nvecSQ_mat_shells(tbks_entry,
                           row_shell,
                           col_shell):
     """Get n1vecSQ_mat_shell, n2vecSQ_mat_shell, n3vecSQ_mat_shell."""
     return get_nvec_data(tbks_entry,
                                      row_shell, col_shell)[-3:]
+
 
 def __helperG_array_prep_mat(E, nP, L, m1, m2, m3,
                              tbks_entry,
@@ -468,6 +473,7 @@ def __helperG_array_prep_mat(E, nP, L, m1, m2, m3,
             omegap1spec_mat_shell, omegap2spec_mat_shell,
             omegap1spec_arr_slice, omegap2spec_arr_slice,
             n3vecSQ_mat_shell]
+
 
 def getG_array(E, nP, L, m1, m2, m3,
                tbks_entry,
@@ -812,6 +818,7 @@ def getG_array_prep_mat(E, nP, L, m1, m2, m3,
                        2*ell1+1, axis=0)
     return YY*full_mat_big*H1_mat*H2_mat*g_rescale
 
+
 def summand(nP2=np.array([0, 0, 0]), qSQ=1.5, gamSQ=1.0, alpha_mass=0.5,
             nvec_arr=np.array([[0, 0, 0]]), alphaKSS=1.0,
             ell1=0, mazi1=0, ell2=0, mazi2=0,
@@ -911,6 +918,7 @@ def summand(nP2=np.array([0, 0, 0]), qSQ=1.5, gamSQ=1.0, alpha_mass=0.5,
     Ds = rSQ_arr-qSQ
     return sph_harm_value*np.exp(-alphaKSS*Ds)/Ds
 
+
 def __T1(nP2=np.array([0, 0, 0]), qSQ=1.5, gamSQ=1.0, alpha_mass=0.5,
          C1cut=3, alphaKSS=1.0, ell1=0, mazi1=0, ell2=0, mazi2=0,
          qc_impl={}):
@@ -921,6 +929,7 @@ def __T1(nP2=np.array([0, 0, 0]), qSQ=1.5, gamSQ=1.0, alpha_mass=0.5,
                                       nvec_arr, alphaKSS,
                                       ell1, mazi1, ell2, mazi2,
                                       qc_impl))/R4PI
+
 
 def __T2(qSQ=1.5, gamSQ=1.0, alphaKSS=1.0,
          ell1=0, mazi1=0, ell2=0, mazi2=0, qc_impl={}):
@@ -945,6 +954,7 @@ def __T2(qSQ=1.5, gamSQ=1.0, alphaKSS=1.0,
     else:
         return 0.0
 
+
 def getZ_single_entry(nP2=np.array([0, 0, 0]), qSQ=1.5, gamSQ=1.0,
                       alpha_mass=0.5, C1cut=3, alphaKSS=1.0,
                       ell1=0, mazi1=0, ell2=0, mazi2=0,
@@ -954,6 +964,7 @@ def getZ_single_entry(nP2=np.array([0, 0, 0]), qSQ=1.5, gamSQ=1.0,
                             ell1, mazi1, ell2, mazi2, qc_impl)\
         + __T2(qSQ, gamSQ, alphaKSS, ell1, mazi1, ell2, mazi2,
                            qc_impl)
+
 
 def getFtwo_single_entry(E2=3.0, nP2=np.array([0, 0, 0]), L=5.0,
                          m1=1.0, m2=1.0, C1cut=3, alphaKSS=1.0,
@@ -983,6 +994,7 @@ def getFtwo_single_entry(E2=3.0, nP2=np.array([0, 0, 0]), L=5.0,
                                               alpha_mass, C1cut, alphaKSS,
                                               ell1, mazi1, ell2, mazi2,
                                               qc_impl))
+
 
 def getF_single_entry(E=4.0, nP=np.array([0, 0, 0]), L=5.0,
                       npspec=np.array([0, 0, 0]),
@@ -1063,6 +1075,7 @@ def getF_single_entry(E=4.0, nP=np.array([0, 0, 0]), L=5.0,
                                               alpha_mass, C1cut, alphaKSS,
                                               ell1, mazi1,
                                               ell2, mazi2, qc_impl))
+
 
 def getF_single_entry_IPV(IPV_function=None, IPV_parameters=[1.0],
                           E=4.0, nP=np.array([0, 0, 0]), L=5.0,
@@ -1173,6 +1186,7 @@ def getF_single_entry_IPV(IPV_function=None, IPV_parameters=[1.0],
                                               ell2, mazi2, qc_impl)
                 - pv_shift_value)
 
+
 def getF_array(E, nP, L, m1, m2, m3, tbks_entry, slice_entry,
                ell1, ell2, alpha, beta, C1cut, alphaKSS, qc_impl,
                three_scheme, use_pv_shift_prescription=False,
@@ -1251,6 +1265,7 @@ def getF_array(E, nP, L, m1, m2, m3, tbks_entry, slice_entry,
         f_list = f_list+[f_mat_entry]
     return block_diag(*f_list)
 
+
 def with_str(str_func):
     """Change print behavior of a function."""
     def wrapper(f):
@@ -1264,30 +1279,37 @@ def with_str(str_func):
         return functools.wraps(f)(FuncType())
     return wrapper
 
+
 def pcotdelta_scattering_length_str():
     """Print behavior for pcotdelta_scattering_length."""
     return "pcotdelta_scattering_length"
+
 
 @with_str(pcotdelta_scattering_length_str)
 def pcotdelta_scattering_length(pSQ=1.5, a=1.0):
     r"""Evaluate ``p cot(delta)`` in the scattering-length approximation."""
     return -1.0/a
 
+
 def IPV_constant(pSQ=1.5, c=1.0):
     """Return a constant principal-value shift."""
     return c
+
 
 def IPV_poly(pSQ=1.5, c=1.0, d=1.0):
     """Return a linear polynomial principal-value shift."""
     return c+pSQ*d
 
+
 def IPV_poly_root_removal(pSQ=1.5, c=1.0, d=1.0):
     """Return a polynomial PV shift with threshold-root removal."""
     return (c+pSQ*d)/np.sqrt(pSQ+1.)
 
+
 def pcotdelta_breit_wigner_str():
     """Print behavior for pcotdelta_breit_wigner."""
     return "pcotdelta_breit_wigner"
+
 
 @with_str(pcotdelta_breit_wigner_str)
 def pcotdelta_breit_wigner(pSQ=1.5, g_value=6.0, mrho_value=3.0):
@@ -1321,12 +1343,14 @@ def pcotdelta_breit_wigner(pSQ=1.5, g_value=6.0, mrho_value=3.0):
     tandop = GammaEcmop*Ecm/(mrho_value**2-Ecm**2)
     return pSQ/tandop
 
+
 def pcotdelta_ere_breit_wigner(pSQ=1.5, g_value=6.0, mrho_value=3.0):
     """Evaluate the ERE-style Breit-Wigner ``p cot(delta)`` parametrization."""
     Ecm = 2.0*np.sqrt(1.0+pSQ)
     GammaEcmop = g_value**2/(6.0*np.pi)*((pSQ))/mrho_value**2
     tandop = GammaEcmop*Ecm/(mrho_value**2-Ecm**2)
     return pSQ/tandop
+
 
 def getK_single_entry(pcotdelta_function=None,
                       pcotdelta_parameter_list=[1.0],
@@ -1408,6 +1432,7 @@ def getK_single_entry(pcotdelta_function=None,
     else:
         pcotdelta = pcotdelta/pSQ**(ell)
         return pre*16.0*PI*ECM/(pcotdelta+q_one_minus_H_tmp)
+
 
 def getK_single_entry_IPV(pcotdelta_function=None,
                           IPV_function=None,
@@ -1507,6 +1532,7 @@ def getK_single_entry_IPV(pcotdelta_function=None,
         pcotdelta = pcotdelta/pSQ**(ell)
         return pre*16.0*PI*ECM/(pcotdelta+qH_IPV)
 
+
 def getK_array(E, nP, L, m1, m2, m3, tbks_entry, slice_entry, ell,
                pcotdelta_function, pcotdelta_parameter_list, alpha, beta,
                qc_impl, three_scheme, use_pv_shift_prescription=False,
@@ -1576,6 +1602,7 @@ def getK_array(E, nP, L, m1, m2, m3, tbks_entry, slice_entry, ell,
         k_list = k_list+[k_entry]*(2*ell+1)
     return block_diag(*k_list)
 
+
 def get_kdf_array(E, nP, L, m1, m2, m3,
                   tbks_entry, slice_entry, ell, k3_params):
     """Return the block-diagonal ``Kdf`` contribution for a shell slice."""
@@ -1586,6 +1613,7 @@ def get_kdf_array(E, nP, L, m1, m2, m3,
     else:
         k_block = np.zeros((len_slice*(2*ell+1), len_slice*(2*ell+1)))
     return k_block*k3_params[0]
+
 
 def getKdf_array(E, nP, L, m1, m2, m3,
                  tbks_entry,
