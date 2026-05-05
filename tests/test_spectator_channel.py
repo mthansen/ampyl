@@ -54,6 +54,10 @@ class TestSpectatorChannel(unittest.TestCase):
         self.assertEqual(sc.p_cot_deltas,
                          [qc_functions.pcotdelta_scattering_length])
         self.assertEqual(sc.n_params_set, [1])
+        self.assertEqual(sc.thresholdSQ, 4.0)
+        self.assertEqual(sc.ESQmin, 0.0)
+        self.assertEqual(sc.ESQMIN, 0.0)
+        self.assertEqual(sc.scheme_data, [-1.0, 0.0])
 
     def test_allowed_sub_isospins(self):
         """Test the allowed_sub_isospins property."""
