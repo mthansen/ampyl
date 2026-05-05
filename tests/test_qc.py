@@ -59,7 +59,7 @@ class TestQC(unittest.TestCase):
         fvs = ampyl.spaces.FiniteVolumeSetup()
         tbis = ampyl.spaces.ThreeBodyInteractionScheme(
             fcs=fcs, ESQmins=[0.3]*len(fcs.sc_list_sorted),
-            scheme_data=[-0.7, 0.0],
+            scheme_data=[[-0.7, 0.0] for _ in fcs.sc_list_sorted],
             use_pv_shift_prescription=[True, False],
             pv_shift_parameters=[[-20.], [0.]])
         qcis = ampyl.spaces.QCIndexSpace(fcs=fcs, fvs=fvs, tbis=tbis,
