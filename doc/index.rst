@@ -11,13 +11,14 @@ A Python package to relate finite-volume data to amplitudes.
 The software is hosted on `GitHub <https://github.com/mthansen/ampyl>`__ and is distributed
 under the MIT license.
 
-.. Documentation
-.. -------------
-..
-.. .. toctree::
-..    :maxdepth: 4
-..    intro/index
-..    ampyl/index
+Documentation
+-------------
+
+.. toctree::
+   :maxdepth: 4
+
+   intro/index
+   ampyl/index
 
 Features
 --------
@@ -37,9 +38,9 @@ Authors
 
 Maxwell T. Hansen, Copyright (C) 2022
 
-.. Indices and tables
-   ==================
-   
-   * :ref:`genindex`
-   * :ref:`modindex`
-   * :ref:`search`
+Indices and tables
+------------------
+
+* :ref:`genindex`
+* :ref:`modindex`
+* :ref:`search`

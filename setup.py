@@ -44,4 +44,13 @@ setup(
         "scipy",
         "sympy"
     ],
+    extras_require={
+        "docs": [
+            "sphinx",
+            "numpydoc",
+            "nbsphinx",
+            "IPython",
+            "pandoc",
+        ],
+    },
 )

@@ -1,5 +1,5 @@
 [![Build/Test](https://github.com/mthansen/ampyl/workflows/Build/Test/badge.svg)](https://github.com/mthansen/ampyl/actions?query=workflow%3ABuild%2FTest)
-![Build Doc](https://github.com/mthansen/ampyl/workflows/Build%20Doc/badge.svg)
+![Docs](https://github.com/mthansen/ampyl/workflows/Docs/badge.svg)
 [![codecov](https://codecov.io/gh/mthansen/ampyl/branch/main/graph/badge.svg?token=IR43OJAV6T)](https://codecov.io/gh/mthansen/ampyl)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
@@ -31,6 +31,20 @@ python
 import numpy
 import ampyl
 ```
+
+## Documentation
+
+The documentation is generated from NumPy-style docstrings with Sphinx and
+numpydoc. To build it locally, install the documentation dependencies and run:
+
+```bash
+pip install -e ".[docs]"
+make -C doc html
+```
+
+The generated site is written to `doc/_build/html/index.html`. The same Sphinx
+build runs on GitHub Actions for pull requests and publishes from `main` with
+GitHub Pages.
 
 ## Example
 

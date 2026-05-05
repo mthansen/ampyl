@@ -1,24 +1,79 @@
-AmPyL Classes
--------------
+API reference
+=============
 
-.. autoclass:: ampyl.FlavorChannel
+This page is generated from the NumPy-style docstrings in the ``ampyl``
+package.
 
-.. autoclass:: ampyl.SpectatorChannel
+Core classes
+------------
 
-.. autoclass:: ampyl.FlavorChannelSpace
+.. autoclass:: ampyl.flavor.Particle
+   :members:
+   :show-inheritance:
 
-.. autoclass:: ampyl.FiniteVolumeSetup
+.. autoclass:: ampyl.flavor.FlavorChannel
+   :members:
+   :show-inheritance:
 
-.. autoclass:: ampyl.ThreeBodyInteractionScheme
+.. autoclass:: ampyl.flavor.SpectatorChannel
+   :members:
+   :show-inheritance:
 
-.. autoclass:: ampyl.ThreeBodyKinematicSpace
+.. autoclass:: ampyl.flavor.FlavorChannelSpace
+   :members:
+   :show-inheritance:
 
-.. autoclass:: ampyl.QCIndexSpace
+.. autoclass:: ampyl.schemes.FiniteVolumeSetup
+   :members:
+   :show-inheritance:
 
-.. autoclass:: ampyl.G
+.. autoclass:: ampyl.schemes.ThreeBodyInteractionScheme
+   :members:
+   :show-inheritance:
 
-.. autoclass:: ampyl.F
+.. autoclass:: ampyl.spaces.ThreeBodyKinematicSpace
+   :members:
+   :show-inheritance:
 
-.. autoclass:: ampyl.K
+.. autoclass:: ampyl.spaces.QCIndexSpace
+   :members:
+   :show-inheritance:
 
-.. autoclass:: ampyl.QC
+.. autoclass:: ampyl.cuts.G
+   :members:
+   :show-inheritance:
+
+.. autoclass:: ampyl.cuts.F
+   :members:
+   :show-inheritance:
+
+.. autoclass:: ampyl.cuts.FplusG
+   :members:
+   :show-inheritance:
+
+.. autoclass:: ampyl.k_matrices.K
+   :members:
+   :show-inheritance:
+
+.. autoclass:: ampyl.k_matrices.Kdf
+   :members:
+   :show-inheritance:
+
+.. autoclass:: ampyl.ampyl.QC
+   :members:
+   :show-inheritance:
+
+.. autoclass:: ampyl.ampyl.FVSpectrum
+   :members:
+   :show-inheritance:
+
+Function modules
+----------------
+
+.. automodule:: ampyl.kinematic_functions
+   :members:
+   :undoc-members:
+
+.. automodule:: ampyl.qc_functions
+   :members:
+   :undoc-members:

@@ -12,10 +12,9 @@
 #
 import os
 import sys
-cwd=os.getcwd()
-p=f'{cwd}/../'
-print(p)
-sys.path.append(p)
+
+p = os.path.abspath('..')
+sys.path.insert(0, p)
 import ampyl
 
 
@@ -37,9 +36,9 @@ release = str(ampyl.__version__)
 extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.autosummary',
-    'sphinx.ext.napoleon',
     'sphinx.ext.intersphinx',
     'sphinx.ext.mathjax',
+    'numpydoc',
     'nbsphinx',
     'IPython.sphinxext.ipython_console_highlighting',
     #'jupyter_sphinx',
@@ -60,6 +59,10 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 # add_module_names = False
 
 autosummary_generate = True
+autodoc_member_order = 'bysource'
+autodoc_typehints = 'description'
+numpydoc_show_class_members = False
+numpydoc_class_members_toctree = False
 
 # -- Options for HTML output -------------------------------------------------
 

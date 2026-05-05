@@ -1,38 +1,61 @@
-name: Build Doc
+name: Docs
 
 on:
   push:
     branches:
       - main
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
 
 jobs:
-  deploy:
-
+  build:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Clone repository
+        uses: actions/checkout@v4
 
       - name: Setup python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
-          python-version: 3.8
+          python-version: "3.11"
           architecture: x64
-
-      - name: Clone repository
-        uses: actions/checkout@v3
 
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
-          pip install .
-          pip install scipy
           sudo apt-get update
-          sudo apt-get install libfftw3-dev
-          sudo apt-get install pandoc
+          sudo apt-get install -y libfftw3-dev pandoc
+          python -m pip install --upgrade pip
+          pip install -e ".[docs]"
 
-      - name: Deploy
-        uses: mbruno46/deploy-sphinx-doc@v0.1
+      - name: Build docs
+        run: sphinx-build -b html doc doc/_build/html
+
+      - name: Prepare GitHub Pages artifact
+        run: touch doc/_build/html/.nojekyll
+
+      - name: Upload GitHub Pages artifact
+        if: github.ref == 'refs/heads/main'
+        uses: actions/upload-pages-artifact@v3
         with:
-          path: doc
-          doc-branch: 'documentation'
-          pypackages: 'nbsphinx IPython pandoc'
+          path: doc/_build/html
+
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+
+    steps:
+      - name: Deploy to GitHub Pages
+        uses: actions/deploy-pages@v4
