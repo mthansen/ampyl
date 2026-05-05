@@ -608,7 +608,8 @@ class QCIndexSpace:
         n_two_channels = 0
         n_three_channels = 0
         for sc in fcs.sc_list_sorted:
-            if np.sum(sc.masses_indexed) > self.Emax:
+            if np.sum([particle.mass for particle in sc.fc.particles])\
+               > self.Emax:
                 raise ValueError("QCIndexSpace includes channel with "
                                  + "threshold exceeding Emax")
             if sc.fc.n_particles == 2:
@@ -900,10 +901,9 @@ class QCIndexSpace:
         Emax = self.Emax
         deltaE = self.deltaE_nPnz
         deltaL = self.deltaL_nPnz
-        masses = self.fcs.sc_list_sorted[
-            self.fcs.slices_by_three_masses[three_slice_index][0]]\
-            .masses_indexed
-        m_spec = masses[0]
+        sc = self.fcs.sc_list_sorted[
+            self.fcs.slices_by_three_masses[three_slice_index][0]]
+        m_spec = sc.spectator.mass
         nP = self.fvs.nP
         [Evals, Lvals] = self._get_grid_nPnonzero(Emax, Lmax, deltaE, deltaL)
         for Ltmp in Lvals:
@@ -1377,7 +1377,7 @@ class QCIndexSpace:
     def _get_nPspecmax(self, three_slice_index):
         sc = self.fcs.sc_list_sorted[
             self.fcs.slices_by_three_masses[three_slice_index][0]]
-        m_spec = sc.masses_indexed[0]
+        m_spec = sc.spectator.mass
         Emax = self.Emax
         EmaxSQ = Emax**2
         nPSQ = self.nPSQ
@@ -1511,7 +1511,7 @@ class QCIndexSpace:
         for slice_index in range(self.fcs.n_three_slices):
             sc_index = self.fcs.slices_by_three_masses[slice_index][0]
             sc = self.fcs.sc_list_sorted[sc_index]
-            m_spec = sc.masses_indexed[0]
+            m_spec = sc.spectator.mass
             nP = self.nP
             tbkstmp_set = self.tbks_list[sc_index]
             still_searching = True
