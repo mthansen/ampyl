@@ -38,7 +38,6 @@ import numpy as np
 from scipy.linalg import block_diag
 from . import shell_utils
 from . import check_utils
-from . import interpolable_utils
 from .constants import QC_IMPL_DEFAULTS
 from .constants import TWOPI
 from .constants import FOURPI2
