@@ -321,7 +321,8 @@ class ThreeBodyInteractionScheme:
         parameters are inconsistent.
     """
 
-    def __init__(self, fcs=None, ESQmins=None, three_scheme='relativistic pole',
+    def __init__(self, fcs=None, ESQmins=None,
+                 three_scheme='relativistic pole',
                  scheme_data=None, kdf_functions=None,
                  use_pv_shift_prescription=None,
                  pv_shift_parameters=None,
