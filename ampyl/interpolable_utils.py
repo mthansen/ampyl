@@ -237,7 +237,7 @@ def _get_all_nvecSQs_by_shell(interpolable, E=5.0, L=5.0, project=False,
                 "only for zero total momentum")
         if interpolable.qcis.verbosity >= 2:
             print('nP != [0 0 0] indexing')
-        mspec, m2, m3 = interpolable.extract_masses()
+        mspec, m2, m3 = extract_masses(interpolable)
         # ibest = interpolable.qcis._get_ibest(E, L)
         ibest = 0
         warnings.warn(f"\n{bcolors.WARNING}"
@@ -304,16 +304,12 @@ def _get_all_nvecSQs_by_shell(interpolable, E=5.0, L=5.0, project=False,
             for row_shell_index in range(len(row_slices)):
                 nvecSQs_inner_row = []
                 for col_shell_index in range(len(col_slices)):
-                    nvecSQs_tmp = interpolable\
-                        ._get_shell_nvecSQs_projs(E, L,
-                                                  sc_row_ind, sc_col_ind,
-                                                  # only for non-zero nP
-                                                  sc_row_ind, sc_col_ind,
-                                                  row_tbks_entry,
-                                                  row_shell_index,
-                                                  col_shell_index,
-                                                  project, irrep,
-                                                  col_tbks_entry)
+                    nvecSQs_tmp = _get_shell_nvecSQs_projs(
+                        interpolable, E, L, sc_row_ind, sc_col_ind,
+                        # only for non-zero nP
+                        sc_row_ind, sc_col_ind, row_tbks_entry,
+                        row_shell_index, col_shell_index, project, irrep,
+                        col_tbks_entry)
                     nvecSQs_inner_row = nvecSQs_inner_row+[nvecSQs_tmp]
                 nvecSQs_inner = nvecSQs_inner+[nvecSQs_inner_row]
             nvecSQs_block_tmp = nvecSQs_inner[1:]
@@ -428,14 +424,12 @@ def _get_all_relevant_nvecSQs_list_bad_loop(interpolable, Emax, project, irrep,
                     n1vecSQ = nvecSQ_entry[0]
                     n2vecSQ = nvecSQ_entry[1]
                     n3vecSQ = nvecSQ_entry[2]
-                    removal_at_Lmin = interpolable\
-                        .get_pole_candidate(Lmin_tmp,
-                                            n1vecSQ, n2vecSQ, n3vecSQ,
-                                            m1, m2, m3)
-                    removal_at_Lmax = interpolable\
-                        .get_pole_candidate(Lmax_tmp,
-                                            n1vecSQ, n2vecSQ, n3vecSQ,
-                                            m1, m2, m3)
+                    removal_at_Lmin = get_pole_candidate(
+                        interpolable, Lmin_tmp, n1vecSQ, n2vecSQ, n3vecSQ,
+                        m1, m2, m3)
+                    removal_at_Lmax = get_pole_candidate(
+                        interpolable, Lmax_tmp, n1vecSQ, n2vecSQ, n3vecSQ,
+                        m1, m2, m3)
                     if ((Emin_tmp < removal_at_Lmin < Emax_tmp)
                        or (Emin_tmp < removal_at_Lmax < Emax_tmp)):
                         nvecSQs_all_keeps = nvecSQs_all_keeps\
@@ -445,10 +439,9 @@ def _get_all_relevant_nvecSQs_list_bad_loop(interpolable, Emax, project, irrep,
                     [n1vecSQ, n2vecSQ, n3vecSQ] = nvecSQs_keep
                     Lvals_tmp = [Lmin_tmp+EPSILON4, Lmax_tmp-EPSILON4]
                     for Ltmp in Lvals_tmp:
-                        Etmp = interpolable\
-                            ._get_pole_candidate_eps(Ltmp,
-                                                     n1vecSQ, n2vecSQ,
-                                                     n3vecSQ, m1, m2, m3)
+                        Etmp = _get_pole_candidate_eps(
+                            interpolable, Ltmp, n1vecSQ, n2vecSQ, n3vecSQ,
+                            m1, m2, m3)
                         if Etmp < Emax:
                             try:
                                 matrix_tmp = interpolable\
@@ -505,14 +498,12 @@ def _get_all_relevant_nvecSQs_list_good_loop(
                     n1vecSQ = nvecSQ_entry[0]
                     n2vecSQ = nvecSQ_entry[1]
                     n3vecSQ = nvecSQ_entry[2]
-                    removal_at_Lmin = interpolable\
-                        .get_pole_candidate(
-                            Lmin_tmp, n1vecSQ, n2vecSQ, n3vecSQ,
-                            m1, m2, m3)
-                    removal_at_Lmax = interpolable\
-                        .get_pole_candidate(
-                            Lmax_tmp, n1vecSQ, n2vecSQ, n3vecSQ,
-                            m1, m2, m3)
+                    removal_at_Lmin = get_pole_candidate(
+                        interpolable, Lmin_tmp, n1vecSQ, n2vecSQ, n3vecSQ,
+                        m1, m2, m3)
+                    removal_at_Lmax = get_pole_candidate(
+                        interpolable, Lmax_tmp, n1vecSQ, n2vecSQ, n3vecSQ,
+                        m1, m2, m3)
                     if ((Emin_tmp < removal_at_Lmin < Emax_tmp)
                        or (Emin_tmp < removal_at_Lmax < Emax_tmp)):
                         nvecSQs_all_keeps = nvecSQs_all_keeps\
@@ -524,8 +515,8 @@ def _get_all_relevant_nvecSQs_list_good_loop(
         print(nvecSQs_keep)
         Lvals_tmp = [Lmin_tmp+EPSILON4, Lmax_tmp-EPSILON4]
         for Ltmp in Lvals_tmp:
-            Etmp = interpolable._get_pole_candidate_eps(
-                Ltmp, n1vecSQ, n2vecSQ, n3vecSQ, m1, m2, m3)
+            Etmp = _get_pole_candidate_eps(
+                interpolable, Ltmp, n1vecSQ, n2vecSQ, n3vecSQ, m1, m2, m3)
             if Etmp < Emax:
                 try:
                     matrix_tmp = interpolable.get_value(E=Etmp, L=Ltmp,
@@ -564,9 +555,9 @@ def _get_all_relevant_nvecSQs_list(interpolable, Emax, project, irrep,
         populate_interp_zeros =\
             interpolable.qcis.fvs.qc_impl['populate_interp_zeros']
     if populate_interp_zeros:
-        return interpolable._get_all_relevant_nvecSQs_list_good_loop(*args)
+        return _get_all_relevant_nvecSQs_list_good_loop(interpolable, *args)
     else:
-        return interpolable._get_all_relevant_nvecSQs_list_bad_loop(*args)
+        return _get_all_relevant_nvecSQs_list_bad_loop(interpolable, *args)
 
 
 def _get_pole_candidate_eps(interpolable, L, n1vecSQ, n2vecSQ, n3vecSQ,
@@ -601,9 +592,9 @@ def _get_polefree_interp_data_list(interpolable, max_interp_dim,
                     n1vecSQ = nvecSQ[0]
                     n2vecSQ = nvecSQ[1]
                     n3vecSQ = nvecSQ[2]
-                    three_omega = interpolable\
-                        .get_pole_candidate(L, n1vecSQ, n2vecSQ, n3vecSQ,
-                                            m1, m2, m3)
+                    three_omega = get_pole_candidate(
+                        interpolable, L, n1vecSQ, n2vecSQ, n3vecSQ,
+                        m1, m2, m3)
                     pole_removal_factor = E-three_omega
                     interpolable_value\
                         = pole_removal_factor*interpolable_value
@@ -670,7 +661,7 @@ def _get_value_smart_interpolated(interpolable, E, L, irrep):
         cob_list_len = interpolable.cob_list_lens[irrep]
     else:
         cob_list_len = 0
-    m1, m2, m3 = interpolable.extract_masses()
+    m1, m2, m3 = extract_masses(interpolable)
     if len(interpolable.smart_poles_lists[irrep]) == 0:
         pole_parts_smooth_basis = 1.
     else:
@@ -740,7 +731,7 @@ def _get_value_interpolated(interpolable, E, L, irrep):
         matrix_dimension = interpolable.\
             matrix_dim_lists[irrep][cob_list_len-interpolable.
                                     qcis.get_tbks_sub_indices(E, L)[0]-1]
-    m1, m2, m3 = interpolable.extract_masses()
+    m1, m2, m3 = extract_masses(interpolable)
     for i in range(matrix_dimension):
         row_tmp = []
         for j in range(matrix_dimension):
@@ -757,8 +748,8 @@ def _get_value_interpolated(interpolable, E, L, irrep):
                                   f"{bcolors.ENDC}")
                 for pole_data in (interpolable.polefree_interp_data_lists[
                         irrep][i][j][2]):
-                    factor_tmp = E-interpolable.\
-                        get_pole_candidate(L, *pole_data[2], m1, m2, m3)
+                    factor_tmp = E-get_pole_candidate(
+                        interpolable, L, *pole_data[2], m1, m2, m3)
                     value_tmp = value_tmp/factor_tmp
                 row_tmp = row_tmp+[value_tmp]
             else:

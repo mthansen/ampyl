@@ -162,9 +162,9 @@ class Interpolable:
             assert reduce_size is False
 
         # Generate grids and interp structure
-        L_grid, E_grid, max_interp_dim, interp_data_list = self\
-            ._grids_and_interp(Emin, Emax, Estep, Lmin, Lmax, Lstep,
-                               project, irrep)
+        L_grid, E_grid, max_interp_dim, interp_data_list =\
+            interpolable_utils._grids_and_interp(
+                self, Emin, Emax, Estep, Lmin, Lmax, Lstep, project, irrep)
 
         # Determine basis where entries are smooth
         use_cob_matrices = QC_IMPL_DEFAULTS['use_cob_matrices']
@@ -179,13 +179,14 @@ class Interpolable:
                           f"{bcolors.ENDC}", stacklevel=2)
             use_cob_matrices = False
         if use_cob_matrices:
-            dim_with_shell_index_all_scs = self\
-                ._get_dim_with_shell_index_all_scs(irrep)
-            final_set_for_change_of_basis = self\
-                ._get_final_set_for_change_of_basis(
-                    dim_with_shell_index_all_scs)
-            cob_matrix_list = self\
-                ._get_cob_matrix_list(final_set_for_change_of_basis)
+            dim_with_shell_index_all_scs =\
+                interpolable_utils._get_dim_with_shell_index_all_scs(
+                    self, irrep)
+            final_set_for_change_of_basis =\
+                interpolable_utils._get_final_set_for_change_of_basis(
+                    self, dim_with_shell_index_all_scs)
+            cob_matrix_list = interpolable_utils._get_cob_matrix_list(
+                self, final_set_for_change_of_basis)
         else:
             cob_matrix_list = []
 
@@ -231,31 +232,28 @@ class Interpolable:
                 else:
                     for interp_entry in\
                        interp_data_list[i][j][interp_data_index]:
-                        interp_data_list = self\
-                            ._update_mins_and_maxes(interp_data_list,
-                                                    energy_volume_index,
-                                                    i, j, interp_entry)
+                        interp_data_list =\
+                            interpolable_utils._update_mins_and_maxes(
+                                self, interp_data_list, energy_volume_index,
+                                i, j, interp_entry)
 
         # Identify all poles in projected entries
-        nvecSQs_by_shell = self._get_all_nvecSQs_by_shell(E=Emax, L=Lmax,
-                                                          project=project,
-                                                          irrep=irrep)
+        nvecSQs_by_shell = interpolable_utils._get_all_nvecSQs_by_shell(
+            self, E=Emax, L=Lmax, project=project, irrep=irrep)
         all_nvecSQs = self._get_all_nvecSQs_for_pole_detection(
             nvecSQs_by_shell
         )
         m1, m2, m3 = self.extract_masses()
-        all_relevant_nvecSQs_list = self\
-            ._get_all_relevant_nvecSQs_list(Emax, project, irrep,
-                                            max_interp_dim,
-                                            interp_data_list, cob_matrix_list,
-                                            all_nvecSQs, m1, m2, m3)
+        all_relevant_nvecSQs_list =\
+            interpolable_utils._get_all_relevant_nvecSQs_list(
+                self, Emax, project, irrep, max_interp_dim, interp_data_list,
+                cob_matrix_list, all_nvecSQs, m1, m2, m3)
 
         # Remove poles
-        polefree_interp_data_list = self\
-            ._get_polefree_interp_data_list(max_interp_dim,
-                                            interp_data_list,
-                                            interp_data_index, m1, m2, m3,
-                                            all_relevant_nvecSQs_list)
+        polefree_interp_data_list =\
+            interpolable_utils._get_polefree_interp_data_list(
+                self, max_interp_dim, interp_data_list, interp_data_index,
+                m1, m2, m3, all_relevant_nvecSQs_list)
 
         for i in range(max_interp_dim):
             for j in range(max_interp_dim):
@@ -431,7 +429,8 @@ class Interpolable:
                 matrix_dim_list.append(len(cob_matrix))
 
         smart_poles_list, smart_textures_list, complement_textures_list =\
-            self._get_smart_poles(matrix_dim_list, polefree_interp_data_list)
+            interpolable_utils._get_smart_poles(
+                self, matrix_dim_list, polefree_interp_data_list)
 
         # Add relevant data to self
         self.all_relevant_nvecSQ_lists[irrep] = all_relevant_nvecSQs_list
@@ -456,16 +455,13 @@ class Interpolable:
         if interpolator_name in self.interpolator_names:
             raise ValueError(f"interpolator name '{interpolator_name}' "
                              "is already in use")
-        data_attrs = self._interpolator_data_attrs()
+        data_attrs = interpolable_utils._interpolator_data_attrs(self)
         self.interpolators.append({
             attr: deepcopy(getattr(self, attr)) for attr in data_attrs
         })
         self.interpolator_names[interpolator_name] = interpolator_id
         self.active_interpolator_id = interpolator_id
         return interpolator_id
-
-    def _interpolator_data_attrs(self):
-        return interpolable_utils._interpolator_data_attrs(self)
 
     def _load_interpolator(self, interpolator_id=None,
                            interpolator_name=None):
@@ -489,96 +485,11 @@ class Interpolable:
             setattr(self, attr, value)
         self.active_interpolator_id = interpolator_id
 
-    def _grids_and_interp(self, Emin, Emax, Estep, Lmin, Lmax, Lstep,
-                          project, irrep):
-        return interpolable_utils._grids_and_interp(
-            self, Emin, Emax, Estep, Lmin, Lmax, Lstep, project, irrep)
-
-    def _get_dim_with_shell_index_all_scs(self, irrep):
-        return interpolable_utils._get_dim_with_shell_index_all_scs(
-            self, irrep)
-
-    def _get_final_set_for_change_of_basis(self, dim_with_shell_index_all_scs):
-        return interpolable_utils._get_final_set_for_change_of_basis(
-            self, dim_with_shell_index_all_scs)
-
-    def _get_cob_matrix_list(self, final_set_for_change_of_basis):
-        return interpolable_utils._get_cob_matrix_list(
-            self, final_set_for_change_of_basis)
-
-    def _update_mins_and_maxes(self, interpolator_matrix, energy_vol_dat_index,
-                               i, j, interpolator_entry):
-        return interpolable_utils._update_mins_and_maxes(
-            self, interpolator_matrix, energy_vol_dat_index, i, j,
-            interpolator_entry)
-
-    def _get_all_nvecSQs_by_shell(self, E=5.0, L=5.0, project=False,
-                                  irrep=None):
-        return interpolable_utils._get_all_nvecSQs_by_shell(self, E, L,
-                                                            project, irrep)
-
-    def _get_shell_nvecSQs_projs(self, E=5.0, L=5.0,
-                                 cindex_row=None, cindex_col=None,
-                                 # only for non-zero nP
-                                 sc_index_row=None, sc_index_col=None,
-                                 tbks_entry=None,
-                                 row_shell_index=None,
-                                 col_shell_index=None,
-                                 project=False, irrep=None,
-                                 col_tbks_entry=None):
-        return interpolable_utils._get_shell_nvecSQs_projs(
-            self, E, L, cindex_row, cindex_col, sc_index_row, sc_index_col,
-            tbks_entry, row_shell_index, col_shell_index, project, irrep,
-            col_tbks_entry)
-
     def _get_all_nvecSQs_for_pole_detection(self, nvecSQs_by_shell):
         return []
 
     def extract_masses(self):
         return interpolable_utils.extract_masses(self)
-
-    def _get_all_relevant_nvecSQs_list_bad_loop(self, Emax, project, irrep,
-                                                max_interp_dim,
-                                                interp_data_list,
-                                                cob_matrix_list, all_nvecSQs,
-                                                m1, m2, m3):
-        return interpolable_utils._get_all_relevant_nvecSQs_list_bad_loop(
-            self, Emax, project, irrep, max_interp_dim, interp_data_list,
-            cob_matrix_list, all_nvecSQs, m1, m2, m3)
-
-    def _get_all_relevant_nvecSQs_list_good_loop(self, Emax, project, irrep,
-                                                 max_interp_dim,
-                                                 interp_data_list,
-                                                 cob_matrix_list, all_nvecSQs,
-                                                 m1, m2, m3):
-        return interpolable_utils._get_all_relevant_nvecSQs_list_good_loop(
-            self, Emax, project, irrep, max_interp_dim, interp_data_list,
-            cob_matrix_list, all_nvecSQs, m1, m2, m3)
-
-    def _get_all_relevant_nvecSQs_list(self, Emax, project, irrep,
-                                       max_interp_dim, interp_data_list,
-                                       cob_matrix_list, all_nvecSQs,
-                                       m1, m2, m3):
-        return interpolable_utils._get_all_relevant_nvecSQs_list(
-            self, Emax, project, irrep, max_interp_dim, interp_data_list,
-            cob_matrix_list, all_nvecSQs, m1, m2, m3)
-
-    def _get_pole_candidate_eps(self, L, n1vecSQ, n2vecSQ, n3vecSQ,
-                                m1, m2, m3):
-        return interpolable_utils._get_pole_candidate_eps(
-            self, L, n1vecSQ, n2vecSQ, n3vecSQ, m1, m2, m3)
-
-    def _get_polefree_interp_data_list(self, max_interp_dim,
-                                       interp_data_list,
-                                       interp_data_index, m1, m2, m3,
-                                       all_relevant_nvecSQs_list):
-        return interpolable_utils._get_polefree_interp_data_list(
-            self, max_interp_dim, interp_data_list, interp_data_index, m1, m2,
-            m3, all_relevant_nvecSQs_list)
-
-    def _get_smart_poles(self, matrix_dim_list, polefree_interp_data_list):
-        return interpolable_utils._get_smart_poles(
-            self, matrix_dim_list, polefree_interp_data_list)
 
     def get_value(self, E=5.0, L=5.0, project=False, irrep=None,
                   short_string='g', interpolate=None, smart_interpolate=None,
@@ -646,20 +557,15 @@ class Interpolable:
             self._load_interpolator(interpolator_id=interpolator_id,
                                     interpolator_name=interpolator_name)
         if smart_interpolate:
-            final_value = self._get_value_smart_interpolated(E, L, irrep)
+            final_value = interpolable_utils._get_value_smart_interpolated(
+                self, E, L, irrep)
             return final_value
         if interpolate:
-            final_value = self._get_value_interpolated(E, L, irrep)
+            final_value = interpolable_utils._get_value_interpolated(
+                self, E, L, irrep)
             return final_value
         final_value = self._get_value_not_interpolated(E, L, project, irrep)
         return final_value
-
-    def _get_value_smart_interpolated(self, E, L, irrep):
-        return interpolable_utils._get_value_smart_interpolated(
-            self, E, L, irrep)
-
-    def _get_value_interpolated(self, E, L, irrep):
-        return interpolable_utils._get_value_interpolated(self, E, L, irrep)
 
     def get_pole_candidate(self, L, n1vecSQ, n2vecSQ, n3vecSQ, m1, m2, m3):
         return interpolable_utils.get_pole_candidate(
