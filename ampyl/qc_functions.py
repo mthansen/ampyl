@@ -677,7 +677,8 @@ def getG_array_prep_mat(E, nP, L, m1, m2, m3,
                         ell1, ell2,
                         alpha, beta,
                         qc_impl, three_scheme,
-                        g_rescale):
+                        g_rescale,
+                        alpha2=None, beta2=None):
     """Return a prepared-shell, NumPy-accelerated block of ``G``.
 
     Parameters
@@ -710,6 +711,10 @@ def getG_array_prep_mat(E, nP, L, m1, m2, m3,
     numpy.ndarray
         Matrix block for the requested prepared shell pair.
     """
+    if alpha2 is None:
+        alpha2 = alpha
+    if beta2 is None:
+        beta2 = beta
     J_slow = False
     [vecstar_for1, vecstar_for2, E2CMSQ_for1,
      E2CMSQ_for2, q_for1, q_for2, q_for1_mat, q_for2_mat,
@@ -774,7 +779,7 @@ def getG_array_prep_mat(E, nP, L, m1, m2, m3,
     H1 = H(E2CMSQ_for1.reshape(E2CMSQ_for1.size), m1+m2,
                        alpha, beta, J_slow)
     H2 = H(E2CMSQ_for2.reshape(E2CMSQ_for2.size), m2+m3,
-                       alpha, beta, J_slow)
+                       alpha2, beta2, J_slow)
 
     omega1_mat = omegap2spec_mat_shell
     omega2_mat = np.sqrt(m2**2+FOURPI2*n3vecSQ_mat_shell/L**2)
