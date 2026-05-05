@@ -287,8 +287,9 @@ class ThreeBodyInteractionScheme:
         Three-body interaction scheme. Currently ``'relativistic pole'`` and
         related alpha-beta pole schemes are supported by the surrounding code.
     scheme_data : list, optional
-        Cutoff-scheme data. A single ``[alpha, beta]`` pair is broadcast to all
-        channels; otherwise provide one pair per spectator channel.
+        Cutoff-scheme data as one ``[alpha, beta]`` pair per spectator
+        channel. If provided, these values override the defaults inferred from
+        the flavor-channel space.
     kdf_functions : list of callable, optional
         Functions defining the three-body interaction for each flavor channel.
         Defaults to ``kdf_iso_constant`` for every channel.
@@ -338,7 +339,7 @@ class ThreeBodyInteractionScheme:
         three_scheme : str, optional
             Name of the three-body interaction scheme.
         scheme_data : list, optional
-            Either a single ``[alpha, beta]`` pair or a list of such pairs.
+            One ``[alpha, beta]`` pair per spectator channel.
         kdf_functions : list of callable, optional
             Three-body interaction functions by flavor channel.
         use_pv_shift_prescription : list of bool, optional
@@ -358,8 +359,10 @@ class ThreeBodyInteractionScheme:
             scheme_data_by_channel = [
                 list(sc.scheme_data) for sc in fcs.sc_list_sorted]
         else:
-            scheme_data_by_channel = self._scheme_data_by_channel(
-                scheme_data, len(self.threshSQs))
+            scheme_data_by_channel = scheme_data
+            if len(scheme_data_by_channel) != len(self.threshSQs):
+                raise ValueError("scheme_data must have length equal to the "
+                                 "number of spectator channels")
             ESQmins_by_channel = []
             for i, scheme in enumerate(scheme_data_by_channel):
                 if not isinstance(scheme, list) or len(scheme) != 2:
@@ -411,11 +414,6 @@ class ThreeBodyInteractionScheme:
             print(f"{bcolors.OKGREEN}")
             print(self)
             print(f"{bcolors.ENDC}")
-
-    def _scheme_data_by_channel(self, scheme_data, n_channels):
-        if len(scheme_data) == 2 and not isinstance(scheme_data[0], list):
-            return [scheme_data]*n_channels
-        return scheme_data
 
     def _set_flavor_ellm_dim(self):
         self.flavor_ell_dim = sum(len(sc.ell_set) for sc in self.fcs.sc_list)
