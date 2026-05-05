@@ -579,7 +579,6 @@ class F(Interpolable):
         """Build the un-interpolated F matrix shell by shell."""
         Lmax = self.qcis.Lmax
         Emax = self.qcis.Emax
-        three_slice_index = 0
         if E > Emax:
             raise ValueError("get_value called with E > Emax")
         if L > Lmax:
@@ -589,21 +588,17 @@ class F(Interpolable):
             print('evaluating F')
             print('E = ', E, ', nP = ', nP, ', L = ', L)
 
-        if self.qcis.fcs.n_three_slices != 1:
-            raise ValueError("only n_three_slices = 1 is supported")
-
-        cindex = 0
-        m1, m2, m3 = self.extract_masses()
         if nP@nP == 0:
             tbks_sub_indices = self.qcis.get_tbks_sub_indices(E=E, L=L)
-            if len(self.qcis.tbks_list) > 1:
-                raise ValueError("get_value within F assumes tbks_list is "
-                                 "length one.")
-            tbks_entry = self.qcis.tbks_list[0][
-                tbks_sub_indices[0]]
-            slices = tbks_entry.shells
             mask = None
         else:
+            if self.qcis.fcs.n_three_slices != 1:
+                raise NotImplementedError(
+                    "multi-slice F is implemented only for zero total "
+                    "momentum")
+            three_slice_index = 0
+            cindex = 0
+            m1, m2, m3 = self.extract_masses()
             # ibest = self.qcis._get_ibest(E, L)
             ibest = 0
             warnings.warn(f"\n{bcolors.WARNING}"
