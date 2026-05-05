@@ -38,7 +38,7 @@ import numpy as np
 from scipy.interpolate import RegularGridInterpolator
 from copy import deepcopy
 from . import shell_utils
-from . import checks_util
+from . import check_utils
 from .constants import QC_IMPL_DEFAULTS
 from .constants import TWOPI
 from .constants import FOURPI2
@@ -1132,7 +1132,7 @@ class Interpolable:
         TypeError
             If the requested interpolator ID has an unsupported type.
         """
-        checks_util.check_value_within_qcis_bounds(self, E, L)
+        check_utils.check_value_within_qcis_bounds(self, E, L)
         interpolate_string = f'{short_string}_interpolate'
         smart_interpolate_string = f'{short_string}_smart_interpolate'
         if interpolate is None:

@@ -37,7 +37,7 @@ Created July 2022.
 import numpy as np
 from scipy.linalg import block_diag
 from . import shell_utils
-from . import checks_util
+from . import check_utils
 from .constants import QC_IMPL_DEFAULTS
 from .constants import TWOPI
 from .constants import FOURPI2
@@ -582,7 +582,7 @@ class F(Interpolable):
 
     def _get_value_not_interpolated(self, E, L, project, irrep):
         """Build the un-interpolated F matrix shell by shell."""
-        checks_util.check_value_within_qcis_bounds(self, E, L)
+        check_utils.check_value_within_qcis_bounds(self, E, L)
         nP = self.qcis.fvs.nP
         if self.qcis.verbosity >= 2:
             print('evaluating F')

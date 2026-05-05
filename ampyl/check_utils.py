@@ -9,7 +9,7 @@ Created May 2026.
 
 ###############################################################################
 #
-# checks_util.py
+# check_utils.py
 #
 # MIT License
 # Copyright (c) 2026 Maxwell T. Hansen
