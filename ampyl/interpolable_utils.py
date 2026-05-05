@@ -257,7 +257,11 @@ def _get_all_nvecSQs_by_shell(interpolable, E=5.0, L=5.0, project=False,
                 "only for zero total momentum")
         if interpolable.qcis.verbosity >= 2:
             print('nP != [0 0 0] indexing')
-        mspec, m2, m3 = _extract_masses(interpolable)
+        sc_index = interpolable.qcis.fcs.slices_by_three_masses[0][0]
+        sc = interpolable.qcis.fcs.sc_list_sorted[sc_index]
+        mspec = sc.spectator.mass
+        m2 = sc.first_dimer.mass
+        m3 = sc.second_dimer.mass
         # ibest = interpolable.qcis._get_ibest(E, L)
         ibest = 0
         warnings.warn(f"\n{bcolors.WARNING}"
@@ -390,26 +394,6 @@ def _get_shell_nvecSQs_projs(interpolable, E=5.0, L=5.0,
     nvecSQ_mat_shells = qc_functions\
         .get_nvecSQ_mat_shells(tbks_entry, row_shell, col_shell)
     return [nvecSQ_mat_shells, proj_tmp_left, proj_tmp_right]
-
-
-def _extract_masses(interpolable):
-    """
-    Extract masses for the first three-particle mass slice.
-
-    Returns
-    -------
-    m1, m2, m3 : float
-        Masses ordered according to the first spectator channel in the
-        first three-particle mass slice.
-    """
-    sc_list_sorted = interpolable.qcis.fcs.sc_list_sorted
-    slices_by_three_masses = interpolable.qcis.fcs.slices_by_three_masses
-    three_slice_index = 0
-    inslice_index = 0
-    sc_index = slices_by_three_masses[three_slice_index][inslice_index]
-    masses = sc_list_sorted[sc_index].masses_indexed
-    [m1, m2, m3] = masses
-    return m1, m2, m3
 
 
 def _get_all_relevant_nvecSQs_list_bad_loop(interpolable, Emax, project, irrep,
@@ -681,7 +665,11 @@ def _get_value_smart_interpolated(interpolable, E, L, irrep):
         cob_list_len = interpolable.cob_list_lens[irrep]
     else:
         cob_list_len = 0
-    m1, m2, m3 = _extract_masses(interpolable)
+    sc_index = interpolable.qcis.fcs.slices_by_three_masses[0][0]
+    sc = interpolable.qcis.fcs.sc_list_sorted[sc_index]
+    m1 = sc.spectator.mass
+    m2 = sc.first_dimer.mass
+    m3 = sc.second_dimer.mass
     if len(interpolable.smart_poles_lists[irrep]) == 0:
         pole_parts_smooth_basis = 1.
     else:
@@ -751,7 +739,11 @@ def _get_value_interpolated(interpolable, E, L, irrep):
         matrix_dimension = interpolable.\
             matrix_dim_lists[irrep][cob_list_len-interpolable.
                                     qcis.get_tbks_sub_indices(E, L)[0]-1]
-    m1, m2, m3 = _extract_masses(interpolable)
+    sc_index = interpolable.qcis.fcs.slices_by_three_masses[0][0]
+    sc = interpolable.qcis.fcs.sc_list_sorted[sc_index]
+    m1 = sc.spectator.mass
+    m2 = sc.first_dimer.mass
+    m3 = sc.second_dimer.mass
     for i in range(matrix_dimension):
         row_tmp = []
         for j in range(matrix_dimension):
