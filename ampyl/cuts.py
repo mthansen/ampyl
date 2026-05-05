@@ -136,7 +136,11 @@ class G(Interpolable):
                 )
             if self.qcis.verbosity >= 2:
                 print('nP != [0 0 0] indexing')
-            mspec, m2, m3 = interpolable_utils._extract_masses(self)
+            sc_index = self.qcis.fcs.slices_by_three_masses[0][0]
+            sc = self.qcis.fcs.sc_list_sorted[sc_index]
+            mspec = sc.spectator.mass
+            m2 = sc.first_dimer.mass
+            m3 = sc.second_dimer.mass
             ibest = self.qcis._get_ibest(E, L)
             ibest = 0
             warnings.warn(f"\n{bcolors.WARNING}"
@@ -241,8 +245,8 @@ class G(Interpolable):
         col_sc = self.qcis.fcs.sc_list_sorted[sc_col_ind]
         row_spec_flavor = row_sc.flavors_indexed[0]
         col_spec_flavor = col_sc.flavors_indexed[0]
-        row_pair = list(zip(row_sc.flavors_indexed[1:],
-                            row_sc.masses_indexed[1:]))
+        row_pair = [(row_sc.first_dimer.flavor, row_sc.first_dimer.mass),
+                    (row_sc.second_dimer.flavor, row_sc.second_dimer.mass)]
         exchange_mass = None
         for pair_index, (flavor, mass) in enumerate(row_pair):
             if flavor == col_spec_flavor:
@@ -251,10 +255,10 @@ class G(Interpolable):
         if row_pair:
             exchange_mass = row_pair[0][1]
         else:
-            exchange_mass = row_sc.masses_indexed[1]
-        m1 = col_sc.masses_indexed[0]
+            exchange_mass = row_sc.first_dimer.mass
+        m1 = col_sc.spectator.mass
         m2 = exchange_mass
-        m3 = row_sc.masses_indexed[0]
+        m3 = row_sc.spectator.mass
         if row_spec_flavor not in col_sc.flavors_indexed[1:]:
             raise ValueError("row spectator is not in the column dimer")
         return m1, m2, m3
@@ -599,7 +603,11 @@ class F(Interpolable):
                     "momentum")
             three_slice_index = 0
             cindex = 0
-            m1, m2, m3 = interpolable_utils._extract_masses(self)
+            sc_index = self.qcis.fcs.slices_by_three_masses[0][0]
+            sc = self.qcis.fcs.sc_list_sorted[sc_index]
+            m1 = sc.spectator.mass
+            m2 = sc.first_dimer.mass
+            m3 = sc.second_dimer.mass
             # ibest = self.qcis._get_ibest(E, L)
             ibest = 0
             warnings.warn(f"\n{bcolors.WARNING}"
@@ -659,7 +667,9 @@ class F(Interpolable):
                 tbks_entry = self.qcis.tbks_list[three_slice_index][
                     tbks_sub_indices[three_slice_index]]
                 slices = tbks_entry.shells
-                m1, m2, m3 = sc.masses_indexed
+                m1 = sc.spectator.mass
+                m2 = sc.first_dimer.mass
+                m3 = sc.second_dimer.mass
                 cindex = sc_ind
             for slice_index in range(len(slices)):
                 if self.qcis.verbosity >= 2:
