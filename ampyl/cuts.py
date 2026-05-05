@@ -392,21 +392,23 @@ class G(Interpolable):
 
     def _clean_shape(self, g_collection):
         """Pad empty blocks so a nested G collection can be assembled."""
-        rowsizes = [0]*len(g_collection)
-        colsizes = [0]*len(g_collection)
-        for i in range(len(g_collection)):
-            for j in range(len(g_collection)):
+        nrows = len(g_collection)
+        ncols = max((len(row) for row in g_collection), default=0)
+        rowsizes = [0]*nrows
+        colsizes = [0]*ncols
+        for i in range(nrows):
+            for j in range(len(g_collection[i])):
                 shtmp = g_collection[i][j].shape
                 if shtmp != (0,):
                     if shtmp[0] > rowsizes[i]:
                         rowsizes[i] = shtmp[0]
                     if shtmp[1] > colsizes[j]:
                         colsizes[j] = shtmp[1]
-        for i in range(len(g_collection)):
-            for j in range(len(g_collection)):
+        for i in range(nrows):
+            for j in range(len(g_collection[i])):
                 shtmp = g_collection[i][j].shape
                 if shtmp == (0,) or shtmp == (0, 0):
-                    g_collection[i][j].shape = (rowsizes[i], colsizes[j])
+                    g_collection[i][j] = np.zeros((rowsizes[i], colsizes[j]))
         return g_collection
 
 
