@@ -763,13 +763,18 @@ class Interpolable:
                                  tbks_entry=None,
                                  row_shell_index=None,
                                  col_shell_index=None,
-                                 project=False, irrep=None):
+                                 project=False, irrep=None,
+                                 col_tbks_entry=None):
         nP = self.qcis.fvs.nP
+        if col_tbks_entry is None:
+            col_tbks_entry = tbks_entry
 
         mask_row_shells, mask_col_shells, row_shell, col_shell\
             = shell_utils._get_masks_and_shells_for_nondiagonal(
                 self, E, L, tbks_entry, cindex_row, cindex_col,
-                row_shell_index, col_shell_index)
+                row_shell_index, col_shell_index, col_tbks_entry)
+        if col_tbks_entry is not tbks_entry:
+            return []
         if project:
             try:
                 if nP@nP != 0:
