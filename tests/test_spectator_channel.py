@@ -85,6 +85,22 @@ class TestSpectatorChannel(unittest.TestCase):
         sc = SpectatorChannel()
         self.assertEqual(sc.indexing, [0, 1, 2])
 
+    def test_three_body_particle_handles_follow_indexing(self):
+        """Test particle handles for a three-body spectator channel."""
+        pion = Particle(1., flavor="pi")
+        kaon = Particle(2., flavor="K")
+        eta = Particle(3., flavor="eta")
+        fc = FlavorChannel(3, particles=[pion, kaon, eta])
+        sc = SpectatorChannel(fc=fc, indexing=[2, 0, 1])
+
+        self.assertIs(sc.spectator, eta)
+        self.assertIs(sc.first_dimer, pion)
+        self.assertIs(sc.second_dimer, kaon)
+        self.assertEqual(sc.masses_indexed,
+                         [sc.spectator.mass,
+                          sc.first_dimer.mass,
+                          sc.second_dimer.mass])
+
     def test_sub_twoisospin_property(self):
         """Test the sub_twoisospin property."""
         sc = SpectatorChannel()

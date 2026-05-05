@@ -386,6 +386,9 @@ class SpectatorChannel:
             self.flavors_indexed = self.fc.flavors
             self.isospins_indexed = self.fc.isospins
         elif self.fc.n_particles == 3:
+            self.spectator = self.fc.particles[indexing[0]]
+            self.first_dimer = self.fc.particles[indexing[1]]
+            self.second_dimer = self.fc.particles[indexing[2]]
             self.masses_indexed = list(np.array(self.fc.masses)[indexing])
             self.spins_indexed = list(np.array(self.fc.spins)[indexing])
             self.flavors_indexed = list(np.array(self.fc.flavors)[indexing])
@@ -560,9 +563,9 @@ class SpectatorChannel:
             self.beta = None
             self.scheme_data = None
             return
-        mspec = self.masses_indexed[0]
-        m1 = self.masses_indexed[1]
-        m2 = self.masses_indexed[2]
+        mspec = self.spectator.mass
+        m1 = self.first_dimer.mass
+        m2 = self.second_dimer.mass
         m_max = max(m1, m2)
         m_min = min(m1, m2)
         self.thresholdSQ = (m1+m2)**2
