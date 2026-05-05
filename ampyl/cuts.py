@@ -646,12 +646,20 @@ class F(Interpolable):
                 mask = [True]*len(tbks_entry.nvecSQ_arr)
         f_final_list = []
         for sc_ind in range(len(self.qcis.fcs.sc_list_sorted)):
-            ell_set = self.qcis.fcs.sc_list_sorted[sc_ind].ell_set
+            sc = self.qcis.fcs.sc_list_sorted[sc_ind]
+            ell_set = sc.ell_set
             if len(ell_set) != 1:
                 raise ValueError("only length-one ell_set currently "
                                  "supported in F")
             ell1 = ell_set[0]
             ell2 = ell1
+            if nP@nP == 0:
+                three_slice_index = self.qcis.sc_to_three_slice[sc_ind]
+                tbks_entry = self.qcis.tbks_list[three_slice_index][
+                    tbks_sub_indices[three_slice_index]]
+                slices = tbks_entry.shells
+                m1, m2, m3 = sc.masses_indexed
+                cindex = sc_ind
             for slice_index in range(len(slices)):
                 if self.qcis.verbosity >= 2:
                     print('get_shell is receiving:')
