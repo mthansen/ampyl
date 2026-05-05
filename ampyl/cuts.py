@@ -112,23 +112,26 @@ class G(Interpolable):
             sf = sf+'\n    * 1./(2.0*w3)'
         print('G = YY*H1*H2\n    * '+sf+'\n    * 1./(E-w1-w2-w3)\n')
 
-    def _get_entry_and_slices(self, E, L, nP):
-        """Return the relevant TBKS entry and shell slices for G."""
+    def _get_entries_and_slices(self, E, L, nP):
+        """Return the relevant TBKS entries and shell slices for G."""
         if nP@nP == 0:
             if self.qcis.verbosity >= 2:
                 print('nP = [0 0 0] indexing')
             tbks_sub_indices = self.qcis.get_tbks_sub_indices(E=E, L=L)
-            if len(self.qcis.tbks_list) > 1:
-                raise ValueError("get_value within G assumes tbks_list is "
-                                 + "length one.")
-            tbks_entry = self.qcis.tbks_list[0][
-                tbks_sub_indices[0]]
-            slices = tbks_entry.shells
+            tbks_entries = []
+            slices_by_three_slice = []
+            for three_slice_index in range(self.qcis.fcs.n_three_slices):
+                tbks_entry = self.qcis.tbks_list[three_slice_index][
+                    tbks_sub_indices[three_slice_index]]
+                tbks_entries.append(tbks_entry)
+                slices_by_three_slice.append(tbks_entry.shells)
             if self.qcis.verbosity >= 2:
                 print('tbks_sub_indices =', tbks_sub_indices)
-                print('tbks_entry =', tbks_entry)
-                print('slices =', slices)
         else:
+            if self.qcis.fcs.n_three_slices != 1:
+                raise NotImplementedError(
+                    "multi-slice G is implemented only for zero total momentum"
+                )
             if self.qcis.verbosity >= 2:
                 print('nP != [0 0 0] indexing')
             mspec, m2, m3 = self.extract_masses()
@@ -163,12 +166,13 @@ class G(Interpolable):
                     mask_slices = mask_slices\
                         + [mask[slice_entry[0]:slice_entry[1]].all()]
                 slices = list((np.array(slices))[mask_slices])
-        return tbks_entry, slices
+            tbks_entries = [tbks_entry]
+            slices_by_three_slice = [slices]
+        return tbks_entries, slices_by_three_slice
 
-    def _get_value_from_tbks(self, E, L, project, irrep, cindex_col,
-                             cindex_row, tbks_entry, slices):
+    def _get_value_from_tbks(self, E, L, project, irrep, tbks_entries,
+                             slices_by_three_slice):
         """Assemble the full G matrix from a TBKS entry."""
-        m1, m2, m3 = self.extract_masses()
         g_final = []
         if self.qcis.verbosity >= 2:
             print('iterating over spectator channels, slices')
