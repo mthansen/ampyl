@@ -263,7 +263,8 @@ class G(Interpolable):
                   g_rescale=1.0, tbks_entry=None,
                   row_shell_index=None,
                   col_shell_index=None,
-                  project=False, irrep=None):
+                  project=False, irrep=None,
+                  col_tbks_entry=None):
         """Build the G matrix block for a single pair of shells.
 
         Parameters
@@ -304,8 +305,10 @@ class G(Interpolable):
 
         mask_row_shells, mask_col_shells, row_shell, col_shell\
             = shell_utils._get_masks_and_shells_for_nondiagonal(
-                self, E, L, tbks_entry, cindex_row, cindex_col,
-                row_shell_index, col_shell_index)
+                self, E, L, tbks_entry, sc_index_row, sc_index_col,
+                row_shell_index, col_shell_index, col_tbks_entry)
+        if col_tbks_entry is None:
+            col_tbks_entry = tbks_entry
         if project:
             try:
                 if nP@nP != 0:
@@ -329,6 +332,9 @@ class G(Interpolable):
         if 'g_uses_prep_mat' in self.qcis.fvs.qc_impl:
             g_uses_prep_mat = self.qcis.fvs.qc_impl['g_uses_prep_mat']
         if g_uses_prep_mat and (nP@nP == 0):
+            if col_tbks_entry is not tbks_entry:
+                raise ValueError("g_uses_prep_mat does not support "
+                                 "different row and column TBKS entries")
             Gshell = qc_functions.getG_array_prep_mat(E, nP, L, m1, m2, m3,
                                                       tbks_entry,
                                                       row_shell_index,
@@ -338,13 +344,19 @@ class G(Interpolable):
                                                       qc_impl, three_scheme,
                                                       g_rescale)
         else:
-            Gshell = qc_functions.getG_array(E, nP, L, m1, m2, m3,
-                                             tbks_entry,
-                                             row_shell, col_shell,
-                                             ell1, ell2,
-                                             alpha, beta,
-                                             qc_impl, three_scheme,
-                                             g_rescale)
+            if col_tbks_entry is tbks_entry:
+                Gshell = qc_functions.getG_array(E, nP, L, m1, m2, m3,
+                                                 tbks_entry,
+                                                 row_shell, col_shell,
+                                                 ell1, ell2,
+                                                 alpha, beta,
+                                                 qc_impl, three_scheme,
+                                                 g_rescale)
+            else:
+                Gshell = qc_functions.getG_array_two_tbks(
+                    E, nP, L, m1, m2, m3, tbks_entry, col_tbks_entry,
+                    row_shell, col_shell, ell1, ell2, alpha, beta,
+                    qc_impl, three_scheme, g_rescale)
         if project:
             Gshell = proj_tmp_left@Gshell@proj_tmp_right
         return Gshell
