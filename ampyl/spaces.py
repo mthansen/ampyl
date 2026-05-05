@@ -1370,9 +1370,7 @@ class QCIndexSpace:
 
     def _get_ESQmin(self, three_slice_index):
         sc_index = self.fcs.slices_by_three_masses[three_slice_index][0]
-        if hasattr(self.tbis, 'ESQmins'):
-            return self.tbis.ESQmins[sc_index]
-        return self.tbis.ESQmin
+        return self.tbis.ESQmins[sc_index]
 
     def _get_nPspecmax(self, three_slice_index):
         sc = self.fcs.sc_list_sorted[
