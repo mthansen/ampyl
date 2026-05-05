@@ -535,21 +535,9 @@ class Interpolable:
             If the requested interpolator ID has an unsupported type.
         """
         check_utils.check_value_within_qcis_bounds(self, E, L)
-        interpolate_string = f'{short_string}_interpolate'
-        smart_interpolate_string = f'{short_string}_smart_interpolate'
-        if interpolate is None:
-            interpolate = QC_IMPL_DEFAULTS[interpolate_string]
-            if interpolate_string in self.qcis.fvs.qc_impl:
-                interpolate = self.qcis.fvs.qc_impl[interpolate_string]
-        if smart_interpolate is None:
-            smart_interpolate = QC_IMPL_DEFAULTS[smart_interpolate_string]
-            if smart_interpolate_string in self.qcis.fvs.qc_impl:
-                smart_interpolate = self.qcis.fvs.qc_impl[
-                    smart_interpolate_string]
-        if interpolate and smart_interpolate:
-            raise ValueError(f"{interpolate_string} and "
-                             f"{smart_interpolate_string} "
-                             "cannot both be True")
+        interpolate, smart_interpolate =\
+            interpolable_utils._get_interpolation_flags(
+                self, short_string, interpolate, smart_interpolate)
         if interpolate or smart_interpolate:
             self._load_interpolator(interpolator_id=interpolator_id,
                                     interpolator_name=interpolator_name)

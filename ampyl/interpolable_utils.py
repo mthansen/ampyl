@@ -69,6 +69,26 @@ def _interpolator_data_attrs(interpolable):
     )
 
 
+def _get_interpolation_flags(interpolable, short_string,
+                             interpolate, smart_interpolate):
+    interpolate_string = f'{short_string}_interpolate'
+    smart_interpolate_string = f'{short_string}_smart_interpolate'
+    if interpolate is None:
+        interpolate = QC_IMPL_DEFAULTS[interpolate_string]
+        if interpolate_string in interpolable.qcis.fvs.qc_impl:
+            interpolate = interpolable.qcis.fvs.qc_impl[interpolate_string]
+    if smart_interpolate is None:
+        smart_interpolate = QC_IMPL_DEFAULTS[smart_interpolate_string]
+        if smart_interpolate_string in interpolable.qcis.fvs.qc_impl:
+            smart_interpolate = interpolable.qcis.fvs.qc_impl[
+                smart_interpolate_string]
+    if interpolate and smart_interpolate:
+        raise ValueError(f"{interpolate_string} and "
+                         f"{smart_interpolate_string} "
+                         "cannot both be True")
+    return interpolate, smart_interpolate
+
+
 def _grids_and_interp(interpolable, Emin, Emax, Estep, Lmin, Lmax, Lstep,
                       project, irrep):
     L_grid = np.arange(Lmin, Lmax+EPSILON4, Lstep)
