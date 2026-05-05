@@ -69,6 +69,7 @@ def _interpolator_data_attrs(interpolable):
         'complement_textures_lists',
     )
 
+
 def _grids_and_interp(interpolable, Emin, Emax, Estep, Lmin, Lmax, Lstep,
                       project, irrep):
     L_grid = np.arange(Lmin, Lmax+EPSILON4, Lstep)
@@ -92,8 +93,8 @@ def _grids_and_interp(interpolable, Emin, Emax, Estep, Lmin, Lmax, Lstep,
                     continue
     else:
         max_interp_matrix_shape = (interpolable.get_value(E=Emax, L=Lmax,
-                                                  project=project,
-                                                  irrep=irrep)).shape
+                                                          project=project,
+                                                          irrep=irrep)).shape
         max_interp_dim = max_interp_matrix_shape[0]
     interp_data_list = []
     for _ in range(max_interp_dim):
@@ -104,17 +105,19 @@ def _grids_and_interp(interpolable, Emin, Emax, Estep, Lmin, Lmax, Lstep,
         interp_data_list.append(interp_mat_row)
     return L_grid, E_grid, max_interp_dim, interp_data_list
 
+
 def _get_dim_with_shell_index_all_scs(interpolable, irrep):
     dim_with_shell_index_all_scs = []
     for spectator_channel_index in range(
-         len(interpolable.qcis.fcs.sc_list_sorted)):
+            len(interpolable.qcis.fcs.sc_list_sorted)):
         dim_with_shell_index_single_sc = []
         ell_set = interpolable\
             .qcis.fcs.sc_list_sorted[spectator_channel_index].ell_set
         ang_mom_dim = 0
         for ell in ell_set:
             ang_mom_dim = ang_mom_dim+(2*ell+1)
-        for shell_index in range(len(interpolable.qcis.tbks_list[0][0].shells)):
+        shells = interpolable.qcis.tbks_list[0][0].shells
+        for shell_index in range(len(shells)):
             shell = interpolable.qcis.tbks_list[0][0].shells[shell_index]
             try:
                 transposed_proj_dict = interpolable.qcis.proj_dicts_by_sc[
@@ -138,7 +141,9 @@ def _get_dim_with_shell_index_all_scs(interpolable, irrep):
             append(dim_with_shell_index_single_sc)
     return dim_with_shell_index_all_scs
 
-def _get_final_set_for_change_of_basis(interpolable, dim_with_shell_index_all_scs):
+
+def _get_final_set_for_change_of_basis(
+        interpolable, dim_with_shell_index_all_scs):
     final_set_for_change_of_basis = [[]]
     for shell_index in range(len(interpolable.qcis.tbks_list[0][0].shells)):
         dim_shell_counter_all = [[]]
@@ -160,6 +165,7 @@ def _get_final_set_for_change_of_basis(interpolable, dim_with_shell_index_all_sc
     final_set_for_change_of_basis = final_set_for_change_of_basis[1:]
     return final_set_for_change_of_basis
 
+
 def _get_cob_matrix_list(interpolable, final_set_for_change_of_basis):
     all_restacks = []
     for dim_shell_counter_all in final_set_for_change_of_basis:
@@ -180,26 +186,29 @@ def _get_cob_matrix_list(interpolable, final_set_for_change_of_basis):
         cob_matrix_list.append((np.identity(len(restack))[restack]).T)
     return cob_matrix_list
 
-def _update_mins_and_maxes(interpolable, interpolator_matrix, energy_vol_dat_index,
-                           i, j, interpolator_entry):
+
+def _update_mins_and_maxes(
+        interpolable, interpolator_matrix, energy_vol_dat_index,
+        i, j, interpolator_entry):
     [E, L, _] = interpolator_entry
     if E < interpolator_matrix[i][j][
-                            energy_vol_dat_index][0]:
+            energy_vol_dat_index][0]:
         interpolator_matrix[i][j][
-                            energy_vol_dat_index][0] = E
+            energy_vol_dat_index][0] = E
     if E > interpolator_matrix[i][j][
-                            energy_vol_dat_index][1]:
+            energy_vol_dat_index][1]:
         interpolator_matrix[i][j][
-                            energy_vol_dat_index][1] = E
+            energy_vol_dat_index][1] = E
     if L < interpolator_matrix[i][j][
-                            energy_vol_dat_index][2]:
+            energy_vol_dat_index][2]:
         interpolator_matrix[i][j][
-                            energy_vol_dat_index][2] = L
+            energy_vol_dat_index][2] = L
     if L > interpolator_matrix[i][j][
-                            energy_vol_dat_index][3]:
+            energy_vol_dat_index][3]:
         interpolator_matrix[i][j][
-                            energy_vol_dat_index][3] = L
+            energy_vol_dat_index][3] = L
     return interpolator_matrix
+
 
 def _get_all_nvecSQs_by_shell(interpolable, E=5.0, L=5.0, project=False,
                               irrep=None):
@@ -280,7 +289,8 @@ def _get_all_nvecSQs_by_shell(interpolable, E=5.0, L=5.0, project=False,
         for sc_col_ind in range(len(interpolable.qcis.fcs.sc_list_sorted)):
             if interpolable.qcis.verbosity >= 2:
                 print('sc_row_ind, sc_col_ind =', sc_row_ind, sc_col_ind)
-            col_ell_set = interpolable.qcis.fcs.sc_list_sorted[sc_col_ind].ell_set
+            col_ell_set =\
+                interpolable.qcis.fcs.sc_list_sorted[sc_col_ind].ell_set
             if len(col_ell_set) != 1:
                 raise ValueError("only length-one ell_set currently "
                                  + "supported in G")
@@ -312,6 +322,7 @@ def _get_all_nvecSQs_by_shell(interpolable, E=5.0, L=5.0, project=False,
         nvecSQs_final = nvecSQs_final+[nvecSQs_outer_row]
     nvecSQs_final = nvecSQs_final[1:]
     return nvecSQs_final
+
 
 def _get_shell_nvecSQs_projs(interpolable, E=5.0, L=5.0,
                              cindex_row=None, cindex_col=None,
@@ -352,17 +363,19 @@ def _get_shell_nvecSQs_projs(interpolable, E=5.0, L=5.0,
                              )[mask_row_shells][row_shell_index][irrep]
                 ).T)
             else:
-                proj_tmp_right = interpolable.qcis.proj_dicts_by_sc_and_shellset[
-                    sc_index_col][0][col_shell_index][irrep]
+                proj_tmp_right =\
+                    interpolable.qcis.proj_dicts_by_sc_and_shellset[
+                        sc_index_col][0][col_shell_index][irrep]
                 proj_tmp_left = np.conjugate((
                     interpolable.qcis.proj_dicts_by_sc_and_shellset[
                         sc_index_row][0][row_shell_index][irrep]
-                    ).T)
+                ).T)
         except KeyError:
             return np.array([])
     nvecSQ_mat_shells = qc_functions\
         .get_nvecSQ_mat_shells(tbks_entry, row_shell, col_shell)
     return [nvecSQ_mat_shells, proj_tmp_left, proj_tmp_right]
+
 
 def extract_masses(interpolable):
     """
@@ -382,6 +395,7 @@ def extract_masses(interpolable):
     masses = sc_list_sorted[sc_index].masses_indexed
     [m1, m2, m3] = masses
     return m1, m2, m3
+
 
 def _get_all_relevant_nvecSQs_list_bad_loop(interpolable, Emax, project, irrep,
                                             max_interp_dim,
@@ -461,11 +475,10 @@ def _get_all_relevant_nvecSQs_list_bad_loop(interpolable, Emax, project, irrep,
                                 pass
     return all_relevant_nvecSQs
 
-def _get_all_relevant_nvecSQs_list_good_loop(interpolable, Emax, project, irrep,
-                                             max_interp_dim,
-                                             interp_data_list,
-                                             cob_matrix_list, all_nvecSQs,
-                                             m1, m2, m3):
+
+def _get_all_relevant_nvecSQs_list_good_loop(
+        interpolable, Emax, project, irrep, max_interp_dim,
+        interp_data_list, cob_matrix_list, all_nvecSQs, m1, m2, m3):
     interp_data_index = 1
     all_relevant_nvecSQs = []
     for i in [0]:
@@ -517,8 +530,8 @@ def _get_all_relevant_nvecSQs_list_good_loop(interpolable, Emax, project, irrep,
             if Etmp < Emax:
                 try:
                     matrix_tmp = interpolable.get_value(E=Etmp, L=Ltmp,
-                                                project=project,
-                                                irrep=irrep)
+                                                        project=project,
+                                                        irrep=irrep)
                     for cob_matrix in cob_matrix_list:
                         try:
                             matrix_tmp =\
@@ -540,6 +553,7 @@ def _get_all_relevant_nvecSQs_list_good_loop(interpolable, Emax, project, irrep,
                     pass
     return all_relevant_nvecSQs
 
+
 def _get_all_relevant_nvecSQs_list(interpolable, Emax, project, irrep,
                                    max_interp_dim, interp_data_list,
                                    cob_matrix_list, all_nvecSQs,
@@ -555,12 +569,14 @@ def _get_all_relevant_nvecSQs_list(interpolable, Emax, project, irrep,
     else:
         return interpolable._get_all_relevant_nvecSQs_list_bad_loop(*args)
 
+
 def _get_pole_candidate_eps(interpolable, L, n1vecSQ, n2vecSQ, n3vecSQ,
                             m1, m2, m3):
     pole_candidate_eps = np.sqrt(m1**2+(FOURPI2/L**2)*n1vecSQ)\
-                       + np.sqrt(m2**2+(FOURPI2/L**2)*n2vecSQ)\
-                       + np.sqrt(m3**2+(FOURPI2/L**2)*n3vecSQ)+EPSILON10
+        + np.sqrt(m2**2+(FOURPI2/L**2)*n2vecSQ)\
+        + np.sqrt(m3**2+(FOURPI2/L**2)*n3vecSQ)+EPSILON10
     return pole_candidate_eps
+
 
 def _get_polefree_interp_data_list(interpolable, max_interp_dim,
                                    interp_data_list,
@@ -601,6 +617,7 @@ def _get_polefree_interp_data_list(interpolable, max_interp_dim,
         polefree_interp_data_list.append(polefree_interp_data_row)
     return polefree_interp_data_list
 
+
 def _get_smart_poles(interpolable, matrix_dim_list, polefree_interp_data_list):
     smart_poles_list = []
     smart_textures_list = []
@@ -634,7 +651,7 @@ def _get_smart_poles(interpolable, matrix_dim_list, polefree_interp_data_list):
         for smart_texture in smart_textures:
             complement_texture = np.ones((matrix_dimension,
                                           matrix_dimension))\
-                                - smart_texture
+                - smart_texture
             complement_textures.append(complement_texture)
         smart_poles = np.array(smart_poles)
         smart_textures = np.array(smart_textures)
@@ -643,6 +660,7 @@ def _get_smart_poles(interpolable, matrix_dim_list, polefree_interp_data_list):
         smart_textures_list.append(smart_textures)
         complement_textures_list.append(complement_textures)
     return smart_poles_list, smart_textures_list, complement_textures_list
+
 
 def _get_value_smart_interpolated(interpolable, E, L, irrep):
     if 'use_cob_matrices' in interpolable.qcis.fvs.qc_impl:
@@ -660,8 +678,9 @@ def _get_value_smart_interpolated(interpolable, E, L, irrep):
         if cob_list_len == 0:
             smart_poles = interpolable.smart_poles_lists[irrep][0]
         else:
-            smart_poles = interpolable.smart_poles_lists[irrep][
-                cob_list_len-interpolable.qcis.get_tbks_sub_indices(E, L)[0]-1]
+            tmp_sub_index = interpolable.qcis.get_tbks_sub_indices(E, L)[0]
+            smart_poles = interpolable.smart_poles_lists[
+                irrep][cob_list_len-tmp_sub_index-1]
         if len(smart_poles) == 0:
             pole_parts_smooth_basis = 1.
         else:
@@ -670,8 +689,10 @@ def _get_value_smart_interpolated(interpolable, E, L, irrep):
                 complement_textures = interpolable.complement_textures_lists[
                     irrep][0]
             else:
-                smart_textures = interpolable.smart_textures_lists[irrep][
-                    cob_list_len-interpolable.qcis.get_tbks_sub_indices(E, L)[0]-1]
+                tmp_sub_index =\
+                    interpolable.qcis.get_tbks_sub_indices(E, L)[0]
+                smart_textures = interpolable.smart_textures_lists[
+                    irrep][cob_list_len-tmp_sub_index-1]
                 tmp_sub_index = interpolable.qcis.get_tbks_sub_indices(E, L)[0]
                 complement_textures =\
                     interpolable.complement_textures_lists[
@@ -684,13 +705,16 @@ def _get_value_smart_interpolated(interpolable, E, L, irrep):
                 np.multiply(smart_textures, pole_values[:, None, None])\
                 + complement_textures
             pole_parts_smooth_basis = pole_matrices.prod(0)
-    if interpolable.cob_list_lens != {} and len(interpolable.cob_matrix_lists[irrep]) != 0:
+    if (interpolable.cob_list_lens != {}
+       and len(interpolable.cob_matrix_lists[irrep]) != 0):
         cob_matrix =\
             interpolable.cob_matrix_lists[irrep][cob_list_len
-                                         - interpolable.qcis.
-                                         get_tbks_sub_indices(E, L)[0]-1]
+                                                 - interpolable.qcis.
+                                                 get_tbks_sub_indices(
+                                                     E, L)[0]-1]
     smooth_value = interpolable.smart_interps[irrep]((E, L))
-    if interpolable.cob_list_lens != {} and len(interpolable.cob_matrix_lists[irrep]) != 0:
+    if (interpolable.cob_list_lens != {}
+       and len(interpolable.cob_matrix_lists[irrep]) != 0):
         if ((len(cob_matrix) != len(smooth_value))
            or (len(cob_matrix) != len(smooth_value.T))):
             smooth_value = smooth_value[:len(cob_matrix)]
@@ -702,6 +726,7 @@ def _get_value_smart_interpolated(interpolable, E, L, irrep):
     else:
         final_value = smooth_value*pole_parts_smooth_basis
     return final_value
+
 
 def _get_value_interpolated(interpolable, E, L, irrep):
     final_value_smooth_basis = []
@@ -732,7 +757,7 @@ def _get_value_interpolated(interpolable, E, L, irrep):
                                   "Setting value to zero."
                                   f"{bcolors.ENDC}")
                 for pole_data in (interpolable.polefree_interp_data_lists[
-                   irrep][i][j][2]):
+                        irrep][i][j][2]):
                     factor_tmp = E-interpolable.\
                         get_pole_candidate(L, *pole_data[2], m1, m2, m3)
                     value_tmp = value_tmp/factor_tmp
@@ -751,13 +776,15 @@ def _get_value_interpolated(interpolable, E, L, irrep):
     if cob_list_len != 0:
         cob_matrix =\
             interpolable.cob_matrix_lists[irrep][cob_list_len
-                                         - interpolable.qcis.
-                                         get_tbks_sub_indices(E, L)[0]-1]
+                                                 - interpolable.qcis.
+                                                 get_tbks_sub_indices(
+                                                     E, L)[0]-1]
         final_value =\
             (cob_matrix)@final_value_smooth_basis@(cob_matrix.T)
     else:
         final_value = final_value_smooth_basis
     return final_value
+
 
 def get_pole_candidate(interpolable, L, n1vecSQ, n2vecSQ, n3vecSQ, m1, m2, m3):
     """
