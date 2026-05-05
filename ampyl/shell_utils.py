@@ -75,20 +75,25 @@ def _get_masks_and_shells_for_k(k, E, L, tbks_entry, cindex, slice_index):
 
 def _get_masks_and_shells_for_nondiagonal(nondiagonal, E, L, tbks_entry,
                                           cindex_row, cindex_col,
-                                          row_shell_index, col_shell_index):
+                                          row_shell_index, col_shell_index,
+                                          col_tbks_entry=None):
+    if col_tbks_entry is None:
+        col_tbks_entry = tbks_entry
     nP = nondiagonal.qcis.fvs.nP
     three_slice_index_row =\
         nondiagonal.qcis.sc_to_three_slice[cindex_row]
     three_slice_index_col =\
         nondiagonal.qcis.sc_to_three_slice[cindex_col]
-    if not (three_slice_index_row == three_slice_index_col == 0):
-        raise ValueError("only one mass slice is supported")
     three_slice_index = three_slice_index_row
     if nP@nP == 0:
         mask_row_shells, mask_col_shells, row_shell, col_shell =\
             _mask_and_shell_helper_nPzero(
-                nondiagonal, tbks_entry, row_shell_index, col_shell_index)
+                nondiagonal, tbks_entry, row_shell_index, col_shell_index,
+                col_tbks_entry)
     else:
+        if three_slice_index_row != three_slice_index_col:
+            raise NotImplementedError(
+                "multi-slice nonzero-momentum G blocks are not supported")
         mask_row_shells, mask_col_shells, row_shell, col_shell =\
             _mask_and_shell_helper_nPnonzero(
                 nondiagonal, E, nP, L, tbks_entry,
