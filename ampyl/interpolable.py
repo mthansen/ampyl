@@ -37,19 +37,12 @@ Created July 2022.
 import numpy as np
 from scipy.interpolate import RegularGridInterpolator
 from copy import deepcopy
-from . import shell_utils
 from . import check_utils
 from . import interpolable_utils
 from .constants import QC_IMPL_DEFAULTS
-from .constants import TWOPI
-from .constants import FOURPI2
 from .constants import EPSILON4
 from .constants import EPSILON10
-from .constants import BAD_MIN_GUESS
-from .constants import BAD_MAX_GUESS
-from .constants import POLE_CUT
 from .constants import bcolors
-from . import qc_functions
 from .spaces import QCIndexSpace
 import warnings
 warnings.simplefilter("once")
@@ -521,7 +514,8 @@ class Interpolable:
 
     def _get_all_nvecSQs_by_shell(self, E=5.0, L=5.0, project=False,
                                   irrep=None):
-        return interpolable_utils._get_all_nvecSQs_by_shell(self, E, L, project, irrep)
+        return interpolable_utils._get_all_nvecSQs_by_shell(self, E, L,
+                                                            project, irrep)
 
     def _get_shell_nvecSQs_projs(self, E=5.0, L=5.0,
                                  cindex_row=None, cindex_col=None,
@@ -585,6 +579,7 @@ class Interpolable:
     def _get_smart_poles(self, matrix_dim_list, polefree_interp_data_list):
         return interpolable_utils._get_smart_poles(
             self, matrix_dim_list, polefree_interp_data_list)
+
     def get_value(self, E=5.0, L=5.0, project=False, irrep=None,
                   short_string='g', interpolate=None, smart_interpolate=None,
                   interpolator_id=None, interpolator_name=None):
