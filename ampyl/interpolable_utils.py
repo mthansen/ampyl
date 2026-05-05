@@ -237,7 +237,7 @@ def _get_all_nvecSQs_by_shell(interpolable, E=5.0, L=5.0, project=False,
                 "only for zero total momentum")
         if interpolable.qcis.verbosity >= 2:
             print('nP != [0 0 0] indexing')
-        mspec, m2, m3 = extract_masses(interpolable)
+        mspec, m2, m3 = _extract_masses(interpolable)
         # ibest = interpolable.qcis._get_ibest(E, L)
         ibest = 0
         warnings.warn(f"\n{bcolors.WARNING}"
@@ -372,7 +372,7 @@ def _get_shell_nvecSQs_projs(interpolable, E=5.0, L=5.0,
     return [nvecSQ_mat_shells, proj_tmp_left, proj_tmp_right]
 
 
-def extract_masses(interpolable):
+def _extract_masses(interpolable):
     """
     Extract masses for the first three-particle mass slice.
 
@@ -661,7 +661,7 @@ def _get_value_smart_interpolated(interpolable, E, L, irrep):
         cob_list_len = interpolable.cob_list_lens[irrep]
     else:
         cob_list_len = 0
-    m1, m2, m3 = extract_masses(interpolable)
+    m1, m2, m3 = _extract_masses(interpolable)
     if len(interpolable.smart_poles_lists[irrep]) == 0:
         pole_parts_smooth_basis = 1.
     else:
@@ -731,7 +731,7 @@ def _get_value_interpolated(interpolable, E, L, irrep):
         matrix_dimension = interpolable.\
             matrix_dim_lists[irrep][cob_list_len-interpolable.
                                     qcis.get_tbks_sub_indices(E, L)[0]-1]
-    m1, m2, m3 = extract_masses(interpolable)
+    m1, m2, m3 = _extract_masses(interpolable)
     for i in range(matrix_dimension):
         row_tmp = []
         for j in range(matrix_dimension):

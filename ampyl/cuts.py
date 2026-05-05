@@ -38,6 +38,7 @@ import numpy as np
 from scipy.linalg import block_diag
 from . import shell_utils
 from . import check_utils
+from . import interpolable_utils
 from .constants import QC_IMPL_DEFAULTS
 from .constants import TWOPI
 from .constants import FOURPI2
@@ -135,7 +136,7 @@ class G(Interpolable):
                 )
             if self.qcis.verbosity >= 2:
                 print('nP != [0 0 0] indexing')
-            mspec, m2, m3 = self.extract_masses()
+            mspec, m2, m3 = interpolable_utils._extract_masses(self)
             ibest = self.qcis._get_ibest(E, L)
             ibest = 0
             warnings.warn(f"\n{bcolors.WARNING}"
@@ -598,7 +599,7 @@ class F(Interpolable):
                     "momentum")
             three_slice_index = 0
             cindex = 0
-            m1, m2, m3 = self.extract_masses()
+            m1, m2, m3 = interpolable_utils._extract_masses(self)
             # ibest = self.qcis._get_ibest(E, L)
             ibest = 0
             warnings.warn(f"\n{bcolors.WARNING}"

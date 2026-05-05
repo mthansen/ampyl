@@ -243,7 +243,7 @@ class Interpolable:
         all_nvecSQs = self._get_all_nvecSQs_for_pole_detection(
             nvecSQs_by_shell
         )
-        m1, m2, m3 = self.extract_masses()
+        m1, m2, m3 = interpolable_utils._extract_masses(self)
         all_relevant_nvecSQs_list =\
             interpolable_utils._get_all_relevant_nvecSQs_list(
                 self, Emax, project, irrep, max_interp_dim, interp_data_list,
@@ -487,9 +487,6 @@ class Interpolable:
 
     def _get_all_nvecSQs_for_pole_detection(self, nvecSQs_by_shell):
         return []
-
-    def extract_masses(self):
-        return interpolable_utils.extract_masses(self)
 
     def get_value(self, E=5.0, L=5.0, project=False, irrep=None,
                   short_string='g', interpolate=None, smart_interpolate=None,
