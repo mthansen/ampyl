@@ -648,9 +648,6 @@ class Interpolable:
         if L > Lmax:
             raise ValueError("get_value called with L > Lmax")
         nP = self.qcis.fvs.nP
-        if self.qcis.fcs.n_three_slices != 1:
-            raise ValueError("only n_three_slices = 1 is supported")
-        cindex_row = cindex_col = 0
         if (not ((irrep is None) and (project is False))
            and (not (irrep in self.qcis.proj_dict.keys()))):
             raise ValueError("irrep "+str(irrep)+" not in "
@@ -659,16 +656,15 @@ class Interpolable:
             if self.qcis.verbosity >= 2:
                 print('nP = [0 0 0] indexing')
             tbks_sub_indices = self.qcis.get_tbks_sub_indices(E=E, L=L)
-            if len(self.qcis.tbks_list) > 1:
-                raise ValueError("get_value within G assumes tbks_list is "
-                                 + "length one.")
-            tbks_entry = self.qcis.tbks_list[0][
-                tbks_sub_indices[0]]
-            slices = tbks_entry.shells
+            tbks_entries = []
+            slices_by_three_slice = []
+            for three_slice_index in range(self.qcis.fcs.n_three_slices):
+                tbks_entry = self.qcis.tbks_list[three_slice_index][
+                    tbks_sub_indices[three_slice_index]]
+                tbks_entries.append(tbks_entry)
+                slices_by_three_slice.append(tbks_entry.shells)
             if self.qcis.verbosity >= 2:
                 print('tbks_sub_indices =', tbks_sub_indices)
-                print('tbks_entry =', tbks_entry)
-                print('slices =', slices)
         else:
             if self.qcis.verbosity >= 2:
                 print('nP != [0 0 0] indexing')
