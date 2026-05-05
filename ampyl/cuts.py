@@ -191,23 +191,39 @@ class G(Interpolable):
                     raise ValueError("only length-one ell_set currently "
                                      + "supported in G")
                 ell2 = col_ell_set[0]
-                g_rescale = self.qcis.fcs.g_templates[0][0][
-                    sc_row_ind][sc_col_ind]
+                row_three_slice = self.qcis.sc_to_three_slice[sc_row_ind]
+                col_three_slice = self.qcis.sc_to_three_slice[sc_col_ind]
+                row_inslice = sc_row_ind - self.qcis.fcs\
+                    .slices_by_three_masses[row_three_slice][0]
+                col_inslice = sc_col_ind - self.qcis.fcs\
+                    .slices_by_three_masses[col_three_slice][0]
+                g_rescale = self.qcis.fcs.g_templates[
+                    row_three_slice][col_three_slice][
+                    row_inslice][col_inslice]
+                if g_rescale == 0.0:
+                    g_outer_row.append(np.array([]))
+                    continue
+                m1, m2, m3 = self._extract_g_masses(
+                    sc_row_ind, sc_col_ind)
+                row_tbks_entry = tbks_entries[row_three_slice]
+                col_tbks_entry = tbks_entries[col_three_slice]
+                row_slices = slices_by_three_slice[row_three_slice]
+                col_slices = slices_by_three_slice[col_three_slice]
                 g_inner = []
-                for row_shell_index in range(len(slices)):
+                for row_shell_index in range(len(row_slices)):
                     g_inner_row = []
-                    for col_shell_index in range(len(slices)):
+                    for col_shell_index in range(len(col_slices)):
                         g_tmp = self.get_shell(E, L,
                                                m1, m2, m3,
-                                               cindex_row, cindex_col,
                                                # only for non-zero nP
                                                sc_row_ind, sc_col_ind,
                                                ell1, ell2,
                                                g_rescale,
-                                               tbks_entry,
+                                               row_tbks_entry,
                                                row_shell_index,
                                                col_shell_index,
-                                               project, irrep)
+                                               project, irrep,
+                                               col_tbks_entry=col_tbks_entry)
                         g_inner_row.append(g_tmp)
                     g_inner.append(g_inner_row)
                 g_inner = self._clean_shape(g_inner)
