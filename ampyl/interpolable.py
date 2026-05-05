@@ -175,6 +175,14 @@ class Interpolable:
         use_cob_matrices = QC_IMPL_DEFAULTS['use_cob_matrices']
         if 'use_cob_matrices' in self.qcis.fvs.qc_impl:
             use_cob_matrices = self.qcis.fvs.qc_impl['use_cob_matrices']
+        if use_cob_matrices and self.qcis.fcs.n_three_slices > 1:
+            warnings.warn(f"\n{bcolors.WARNING}"
+                          "Change-of-basis interpolation matrices are not "
+                          "supported for multiple three-body mass slices yet. "
+                          "This needs to be added. Proceeding without COB "
+                          "matrices."
+                          f"{bcolors.ENDC}", stacklevel=2)
+            use_cob_matrices = False
         if use_cob_matrices:
             dim_with_shell_index_all_scs = self\
                 ._get_dim_with_shell_index_all_scs(irrep)
