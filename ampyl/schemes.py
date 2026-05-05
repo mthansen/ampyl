@@ -352,43 +352,24 @@ class ThreeBodyInteractionScheme:
             fcs = FlavorChannelSpace(fc_list=[FlavorChannel(3)])
         self.fcs = fcs
 
-        threshSQs = []
-        for sc in fcs.sc_list_sorted:
-            m1 = sc.fc.masses[sc.indexing[1]]
-            m2 = sc.fc.masses[sc.indexing[2]]
-            threshSQs.append((m1+m2)**2)
-        self.threshSQs = threshSQs
-
-        ESQmins = []
+        self.threshSQs = [sc.thresholdSQ for sc in fcs.sc_list_sorted]
+        ESQmins = [sc.ESQmin for sc in fcs.sc_list_sorted]
         if scheme_data is None:
-            scheme_data_by_channel = []
-            for sc in fcs.sc_list_sorted:
-                mspec = sc.fc.masses[sc.indexing[0]]
-                m1 = sc.fc.masses[sc.indexing[1]]
-                m2 = sc.fc.masses[sc.indexing[2]]
-                m_max = max(m1, m2)
-                m_min = min(m1, m2)
-                if np.isclose(m1, m2) and mspec < m1:
-                    ESQmin_tmp = 4.0*(m1**2-mspec**2)
-                    alpha = 3.0-4.0*mspec**2/m1**2
-                else:
-                    ESQmin_tmp = m_max**2 - m_min**2
-                    alpha = (3.*m_max - 5.*m_min) / (m_max + m_min)
-                beta = 0.
-                ESQmins.append(ESQmin_tmp)
-                scheme_data_by_channel.append([alpha, beta])
+            scheme_data_by_channel = [
+                list(sc.scheme_data) for sc in fcs.sc_list_sorted]
         else:
             scheme_data_by_channel = self._scheme_data_by_channel(
-                scheme_data, len(threshSQs))
+                scheme_data, len(self.threshSQs))
+            ESQmins = []
             for i, scheme in enumerate(scheme_data_by_channel):
                 if not isinstance(scheme, list) or len(scheme) != 2:
                     raise ValueError("scheme_data must be a list of lists "
                                      "with length 2")
                 alpha, beta = scheme
-                ESQmin_tmp = 0.25*(1.0+alpha)*threshSQs[i]
+                ESQmin_tmp = 0.25*(1.0+alpha)*self.threshSQs[i]
                 ESQmins.append(ESQmin_tmp)
         if ESQmin_input is not None:
-            ESQmins = [ESQmin_input]*len(threshSQs)
+            ESQmins = [ESQmin_input]*len(self.threshSQs)
         self.ESQmin = ESQmins[0]
         self.ESQMIN = self.ESQmin
         self.ESQmins = ESQmins
