@@ -56,23 +56,16 @@ class G(Interpolable):
         nP = self.qcis.fvs.nP
         if self.qcis.verbosity >= 2:
             self._g_verbose_a(E, L, nP)
-        if self.qcis.fcs.n_three_slices != 1:
-            raise ValueError("only n_three_slices = 1 is supported")
-        cindex_row = cindex_col = 0
-        if self.qcis.verbosity >= 2:
-            print('representatives of three_slice:')
-            print('    cindex_row =', cindex_row,
-                  ', cindex_col =', cindex_col)
         not_projecting = (irrep is None) and (project is False)
         projecting = not not_projecting
         irrep_not_in_keys = irrep not in self.qcis.proj_dict.keys()
         if projecting and irrep_not_in_keys:
             raise ValueError("irrep "+str(irrep)+" not in "
                              "qcis.proj_dict.keys()")
-        tbks_entry, slices = self._get_entry_and_slices(E, L, nP)
-        g_final = self._get_value_from_tbks(E, L, project, irrep,
-                                            cindex_col, cindex_row,
-                                            tbks_entry, slices)
+        tbks_entries, slices_by_three_slice = self._get_entries_and_slices(
+            E, L, nP)
+        g_final = self._get_value_from_tbks(
+            E, L, project, irrep, tbks_entries, slices_by_three_slice)
         return g_final
 
     def _get_all_nvecSQs_for_pole_detection(self, nvecSQs_by_shell):
