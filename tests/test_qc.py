@@ -58,7 +58,8 @@ class TestQC(unittest.TestCase):
             = ampyl.qc_functions.pcotdelta_breit_wigner
         fvs = ampyl.spaces.FiniteVolumeSetup()
         tbis = ampyl.spaces.ThreeBodyInteractionScheme(
-            fcs=fcs, ESQmin=0.3, scheme_data=[-0.7, 0.0],
+            fcs=fcs, ESQmins=[0.3]*len(fcs.sc_list_sorted),
+            scheme_data=[-0.7, 0.0],
             use_pv_shift_prescription=[True, False],
             pv_shift_parameters=[[-20.], [0.]])
         qcis = ampyl.spaces.QCIndexSpace(fcs=fcs, fvs=fvs, tbis=tbis,
