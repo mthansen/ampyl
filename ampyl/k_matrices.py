@@ -37,6 +37,7 @@ Created July 2022.
 import numpy as np
 from scipy.linalg import block_diag
 from . import shell_utils
+from . import checks_util
 from .constants import TWOPI
 from .constants import FOURPI2
 from .constants import QC_IMPL_DEFAULTS
@@ -123,12 +124,7 @@ class K:
     def get_value(self, E=5.0, L=5.0, pcotdelta_parameter_lists=None,
                   project=False, irrep=None):
         """Build the K matrix in a shell-based way."""
-        Lmax = self.qcis.Lmax
-        Emax = self.qcis.Emax
-        if E > Emax:
-            raise ValueError("get_value called with E > Emax")
-        if L > Lmax:
-            raise ValueError("get_value called with L > Lmax")
+        checks_util.check_value_within_qcis_bounds(self, E, L)
         nP = self.qcis.fvs.nP
         if self.qcis.verbosity >= 2:
             print('evaluating F')

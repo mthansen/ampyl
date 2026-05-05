@@ -38,6 +38,7 @@ import numpy as np
 from scipy.interpolate import RegularGridInterpolator
 from copy import deepcopy
 from . import shell_utils
+from . import checks_util
 from .constants import QC_IMPL_DEFAULTS
 from .constants import TWOPI
 from .constants import FOURPI2
@@ -641,12 +642,7 @@ class Interpolable:
 
     def _get_all_nvecSQs_by_shell(self, E=5.0, L=5.0, project=False,
                                   irrep=None):
-        Lmax = self.qcis.Lmax
-        Emax = self.qcis.Emax
-        if E > Emax:
-            raise ValueError("get_value called with E > Emax")
-        if L > Lmax:
-            raise ValueError("get_value called with L > Lmax")
+        checks_util.check_value_within_qcis_bounds(self, E, L)
         nP = self.qcis.fvs.nP
         if (not ((irrep is None) and (project is False))
            and (not (irrep in self.qcis.proj_dict.keys()))):
@@ -1136,12 +1132,7 @@ class Interpolable:
         TypeError
             If the requested interpolator ID has an unsupported type.
         """
-        Emax = self.qcis.Emax
-        Lmax = self.qcis.Lmax
-        if E > Emax:
-            raise ValueError("get_value called with E > Emax")
-        if L > Lmax:
-            raise ValueError("get_value called with L > Lmax")
+        checks_util.check_value_within_qcis_bounds(self, E, L)
         interpolate_string = f'{short_string}_interpolate'
         smart_interpolate_string = f'{short_string}_smart_interpolate'
         if interpolate is None:
