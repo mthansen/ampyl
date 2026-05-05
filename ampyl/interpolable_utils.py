@@ -35,7 +35,6 @@ Created May 2026.
 ###############################################################################
 
 import numpy as np
-from scipy.interpolate import RegularGridInterpolator
 from copy import deepcopy
 from . import shell_utils
 from . import check_utils
