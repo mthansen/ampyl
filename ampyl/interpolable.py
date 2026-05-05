@@ -708,6 +708,8 @@ class Interpolable:
             else:
                 slices = tbks_entry.shells
                 mask_slices = [True]*len(slices)
+            tbks_entries = [tbks_entry]
+            slices_by_three_slice = [slices]
 
         nvecSQs_final = [[]]
         if self.qcis.verbosity >= 2:
@@ -726,19 +728,26 @@ class Interpolable:
                     raise ValueError("only length-one ell_set currently "
                                      + "supported in G")
 
+                row_three_slice = self.qcis.sc_to_three_slice[sc_row_ind]
+                col_three_slice = self.qcis.sc_to_three_slice[sc_col_ind]
+                row_slices = slices_by_three_slice[row_three_slice]
+                col_slices = slices_by_three_slice[col_three_slice]
+                row_tbks_entry = tbks_entries[row_three_slice]
+                col_tbks_entry = tbks_entries[col_three_slice]
                 nvecSQs_inner = [[]]
-                for row_shell_index in range(len(slices)):
+                for row_shell_index in range(len(row_slices)):
                     nvecSQs_inner_row = []
-                    for col_shell_index in range(len(slices)):
+                    for col_shell_index in range(len(col_slices)):
                         nvecSQs_tmp = self\
                             ._get_shell_nvecSQs_projs(E, L,
-                                                      cindex_row, cindex_col,
+                                                      sc_row_ind, sc_col_ind,
                                                       # only for non-zero nP
                                                       sc_row_ind, sc_col_ind,
-                                                      tbks_entry,
+                                                      row_tbks_entry,
                                                       row_shell_index,
                                                       col_shell_index,
-                                                      project, irrep)
+                                                      project, irrep,
+                                                      col_tbks_entry)
                         nvecSQs_inner_row = nvecSQs_inner_row+[nvecSQs_tmp]
                     nvecSQs_inner = nvecSQs_inner+[nvecSQs_inner_row]
                 nvecSQs_block_tmp = nvecSQs_inner[1:]
