@@ -48,30 +48,59 @@ PRINT_THRESHOLD_DEFAULT = np.get_printoptions()['threshold']
 
 class FiniteVolumeSetup:
     """
-    Class used to represent a finite-volume setup.
+    Represent the finite-volume kinematic and QC setup.
 
-    :param formalism: formalism used (Currently, only ``'RFT'`` is supported.)
-    :type formalism: str
-    :param nP: total momentum in the finite-volume frame
-    :type nP: numpy.ndarray of ints with shape (3,)
-    :param qc_impl: implementation details of the quantization condition
-    :type qc_impl: dict with keys from QC_IMPL_DEFAULTS
+    Parameters
+    ----------
+    formalism : str, optional
+        Formalism used to define the quantization condition. Currently only
+        ``'RFT'`` is supported.
+    nP : numpy.ndarray of int, shape (3,), optional
+        Total momentum in finite-volume units.
+    qc_impl : dict, optional
+        Quantization-condition implementation options. Keys must be drawn from
+        :data:`ampyl.constants.QC_IMPL_DEFAULTS`, and values must have the same
+        type as the corresponding default.
+    spin_half : bool, optional
+        Whether to use the spin-half irrep set where supported.
+    verbosity : int, optional
+        Verbosity level for setup diagnostics.
 
-    :ivar irrep_set: set of irreps relevant for the finite-volume setup
-    :vartype irrep_set: list
-    :ivar nPSQ: squared magnitude of the total momentum
-    :vartype nPSQ: int
-    :ivar nPmag: magnitude of the total momentum
-    :vartype nPmag: float
+    Attributes
+    ----------
+    irrep_set : list of str
+        Irreps supported by the little group for ``nP``.
+    nPSQ : int
+        Squared total momentum, ``nP @ nP``.
+    nPmag : float
+        Magnitude of the total momentum.
 
-    :raises ValueError: If `nP` is not a numpy.ndarray of shape (3,) or if it
-        is not populated with integers. If `qc_impl` is not a dictionary or if
-        its keys are not from QC_IMPL_DEFAULTS. If `qc_impl` values are not of
-        the correct type.
+    Raises
+    ------
+    ValueError
+        If ``nP`` is not an integer array with shape ``(3,)``, if ``qc_impl``
+        has unsupported keys or value types, or if the requested momentum and
+        spin combination is not supported.
     """
 
     def __init__(self, formalism='RFT', nP=np.array([0, 0, 0]), qc_impl={},
                  spin_half=False, verbosity=0):
+        """
+        Initialize a finite-volume setup.
+
+        Parameters
+        ----------
+        formalism : str, optional
+            Formalism used to define the quantization condition.
+        nP : numpy.ndarray of int, shape (3,), optional
+            Total finite-volume momentum.
+        qc_impl : dict, optional
+            Implementation flags overriding ``QC_IMPL_DEFAULTS`` entries.
+        spin_half : bool, optional
+            Whether to initialize spin-half irreps.
+        verbosity : int, optional
+            Verbosity level.
+        """
         self.formalism = formalism
         self.spin_half = spin_half
         self.qc_impl = qc_impl
@@ -145,7 +174,15 @@ class FiniteVolumeSetup:
         self._qc_impl = qc_impl
 
     def set_irreps(self):
-        """Set the irreps relevant for the finite-volume setup."""
+        """
+        Set the irreps relevant for the finite-volume setup.
+
+        Raises
+        ------
+        ValueError
+            If ``nP`` or the ``spin_half``/``nP`` combination is not currently
+            supported.
+        """
         nP_is_zero = (self._nP == np.array([0, 0, 0])).all()
         nP_is_00z = self._nP[0] == 0 and self._nP[1] == 0
         nP_is_0zz = self._nP[0] == 0 and self._nP[1] == self._nP[2]
@@ -235,29 +272,52 @@ class FiniteVolumeSetup:
 
 class ThreeBodyInteractionScheme:
     """
-    Class used to represent all details of the three-body interaction.
+    Represent the three-body interaction and pole-removal scheme.
 
-    :param fcs: flavor-channel space needed to define the domain of Kdf
-    :type fcs: :class:`FlavorChannelSpace` object
-    :param flavor_ellm_dim: dimension of the flavor-ellm space
-    :type flavor_ellm_dim: int
-    :param use_pv_shift_prescription: whether to use the IPV prescription for
-        removing K-matrix poles
-    :type use_pv_shift_prescription: bool
-    :param pv_shift_parameters: parameters needed to define the IPV
-        prescription
-    :type pv_shift_parameters: list, length equal to flavor_ellm_dim
-    :param three_scheme: three-body interaction scheme (Currently only
-        ``'relativistic pole'`` is supported.)
-    :type three_scheme: str
-    :param scheme_data: data needed to define the three-body interaction
-        (Currently only ``[alpha, beta]`` is supported, where alpha dictates
-        the width of the smooth cutoff function and beta dictates the
-        position.)
-    :type scheme_data: list
-    :param kdf_functions: list of functions used to define the three-body
-        interaction for each pair of FlavorChannels
-    :type kdf_functions: list of callables
+    Parameters
+    ----------
+    fcs : FlavorChannelSpace, optional
+        Flavor-channel space that defines the domain of ``Kdf``. If omitted,
+        a default three-particle flavor channel is used.
+    ESQmin : float, optional
+        Minimum two-body invariant mass squared used when constructing
+        spectator-momentum spaces. If provided, the same value is used for all
+        channels.
+    three_scheme : str, optional
+        Three-body interaction scheme. Currently ``'relativistic pole'`` and
+        related alpha-beta pole schemes are supported by the surrounding code.
+    scheme_data : list, optional
+        Cutoff-scheme data. A single ``[alpha, beta]`` pair is broadcast to all
+        channels; otherwise provide one pair per spectator channel.
+    kdf_functions : list of callable, optional
+        Functions defining the three-body interaction for each flavor channel.
+        Defaults to ``kdf_iso_constant`` for every channel.
+    use_pv_shift_prescription : list of bool, optional
+        Flags selecting whether to use the IPV prescription for removing
+        K-matrix poles in each flavor-ell-m component.
+    pv_shift_parameters : list, optional
+        Parameters for the IPV prescription. Required when any
+        ``use_pv_shift_prescription`` entry is true.
+    verbosity : int, optional
+        Verbosity level for setup diagnostics.
+
+    Attributes
+    ----------
+    threshSQs : list of float
+        Two-particle threshold squared for each spectator channel.
+    ESQmins : list of float
+        Minimum two-body invariant mass squared for each spectator channel.
+    flavor_ell_dim : int
+        Number of flavor-angular-momentum entries before expanding magnetic
+        components.
+    flavor_ellm_dim : int
+        Number of flavor-angular-momentum-magnetic entries.
+
+    Raises
+    ------
+    ValueError
+        If ``scheme_data`` has the wrong shape, or if PV-shift options and
+        parameters are inconsistent.
     """
 
     def __init__(self, fcs=None, ESQmin=None, three_scheme='relativistic pole',
@@ -265,6 +325,28 @@ class ThreeBodyInteractionScheme:
                  use_pv_shift_prescription=None,
                  pv_shift_parameters=None,
                  verbosity=0):
+        """
+        Initialize a three-body interaction scheme.
+
+        Parameters
+        ----------
+        fcs : FlavorChannelSpace, optional
+            Flavor-channel space defining the spectator channels.
+        ESQmin : float, optional
+            Override for the minimum two-body invariant mass squared.
+        three_scheme : str, optional
+            Name of the three-body interaction scheme.
+        scheme_data : list, optional
+            Either a single ``[alpha, beta]`` pair or a list of such pairs.
+        kdf_functions : list of callable, optional
+            Three-body interaction functions by flavor channel.
+        use_pv_shift_prescription : list of bool, optional
+            IPV prescription flags by flavor-ell-m component.
+        pv_shift_parameters : list, optional
+            IPV prescription parameters.
+        verbosity : int, optional
+            Verbosity level.
+        """
         ESQmin_input = ESQmin
         if fcs is None:
             fcs = FlavorChannelSpace(fc_list=[FlavorChannel(3)])
@@ -368,13 +450,31 @@ class ThreeBodyInteractionScheme:
         self._verbosity = verbosity
 
     def with_str(str_func):
-        """Change print behavior of a function."""
+        """
+        Decorate a function with custom string behavior.
+
+        Parameters
+        ----------
+        str_func : callable
+            Zero-argument function returning the desired string
+            representation.
+
+        Returns
+        -------
+        callable
+            Decorator that wraps the target function in an object preserving
+            calls while overriding ``str()``.
+        """
         def wrapper(f):
+            """Wrap ``f`` in an object with custom string behavior."""
             class FuncType:
+                """Callable wrapper that delegates calls and string output."""
+
                 def __call__(self, *args, **kwargs):
                     return f(*args, **kwargs)
 
                 def __str__(self):
+                    """Return the custom string representation."""
                     return str_func()
             return functools.wraps(f)(FuncType())
         return wrapper
@@ -385,7 +485,19 @@ class ThreeBodyInteractionScheme:
 
     @with_str(kdf_iso_constant_str)
     def kdf_iso_constant(beta_0):
-        """Kdf: constant form."""
+        """
+        Evaluate a constant isotropic ``Kdf``.
+
+        Parameters
+        ----------
+        beta_0 : float
+            Constant interaction strength.
+
+        Returns
+        -------
+        float
+            The unchanged input value ``beta_0``.
+        """
         return beta_0
 
     def __str__(self):
