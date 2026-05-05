@@ -300,8 +300,8 @@ class G(Interpolable):
         three_scheme = self.qcis.tbis.three_scheme
         nP = self.qcis.fvs.nP
         qc_impl = self.qcis.fvs.qc_impl
-        alpha = self.alpha
-        beta = self.beta
+        alpha, beta = self.qcis.tbis.scheme_data_by_channel[sc_index_col]
+        alpha2, beta2 = self.qcis.tbis.scheme_data_by_channel[sc_index_row]
 
         mask_row_shells, mask_col_shells, row_shell, col_shell\
             = shell_utils._get_masks_and_shells_for_nondiagonal(
@@ -342,7 +342,9 @@ class G(Interpolable):
                                                       ell1, ell2,
                                                       alpha, beta,
                                                       qc_impl, three_scheme,
-                                                      g_rescale)
+                                                      g_rescale,
+                                                      alpha2=alpha2,
+                                                      beta2=beta2)
         else:
             if col_tbks_entry is tbks_entry:
                 Gshell = qc_functions.getG_array(E, nP, L, m1, m2, m3,
@@ -351,12 +353,15 @@ class G(Interpolable):
                                                  ell1, ell2,
                                                  alpha, beta,
                                                  qc_impl, three_scheme,
-                                                 g_rescale)
+                                                 g_rescale,
+                                                 alpha2=alpha2,
+                                                 beta2=beta2)
             else:
                 Gshell = qc_functions.getG_array_two_tbks(
                     E, nP, L, m1, m2, m3, tbks_entry, col_tbks_entry,
                     row_shell, col_shell, ell1, ell2, alpha, beta,
-                    qc_impl, three_scheme, g_rescale)
+                    qc_impl, three_scheme, g_rescale, alpha2=alpha2,
+                    beta2=beta2)
         if project:
             Gshell = proj_tmp_left@Gshell@proj_tmp_right
         return Gshell
