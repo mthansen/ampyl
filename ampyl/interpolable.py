@@ -54,9 +54,48 @@ warnings.simplefilter("once")
 
 
 class Interpolable:
-    """Class for preparing objects that can be interpolated."""
+    """
+    Base class for matrix objects that can be interpolated.
+
+    Subclasses provide ``_get_value_not_interpolated`` and pole-detection
+    details, while this base class handles grid construction, pole removal,
+    change-of-basis bookkeeping, and storage of one or more interpolators.
+
+    Parameters
+    ----------
+    qcis : QCIndexSpace, optional
+        Quantization-condition index space defining channels, finite-volume
+        setup, and three-body interaction data.
+
+    Attributes
+    ----------
+    all_relevant_nvecSQ_lists : dict
+        Pole-candidate momentum-squared data by irrep.
+    interp_data_lists, polefree_interp_data_lists : dict
+        Raw and pole-removed interpolation data by irrep.
+    cob_matrix_lists : dict
+        Change-of-basis matrices by irrep.
+    interp_arrays : dict
+        Entrywise ``RegularGridInterpolator`` arrays by irrep.
+    smart_interps : dict
+        Matrix-valued interpolators by irrep.
+    interpolators : list of dict
+        Snapshots of interpolation data built by ``build_interpolator``.
+    interpolator_names : dict
+        Mapping from user-provided names to stored interpolator IDs.
+    active_interpolator_id : int or None
+        ID of the interpolation data currently loaded on the object.
+    """
 
     def __init__(self, qcis=QCIndexSpace()):
+        """
+        Initialize interpolation storage for a QC index space.
+
+        Parameters
+        ----------
+        qcis : QCIndexSpace, optional
+            Quantization-condition index space used by matrix evaluations.
+        """
         self.qcis = qcis
         three_scheme = self.qcis.tbis.three_scheme
         alpha_beta_scheme = (three_scheme == 'original pole')\
@@ -82,29 +121,38 @@ class Interpolable:
     def build_interpolator(self, Emin, Emax, Estep, Lmin, Lmax, Lstep,
                            project, irrep, name=None):
         """
-        Builds an interpolator.
+        Build and store interpolation data over an energy-volume grid.
 
         Constructs an interpolator by generating grids and matrices based on
         specified energy and volume ranges. The method determines the smooth
         basis, removes poles, and builds the interpolator functions. Relevant
         data is stored in the class for future use.
 
-        :param Emin: minimum energy value
-        :type Emin: float
-        :param Emax: maximum energy value
-        :type Emax: float
-        :param Estep: energy step size
-        :type Estep: float
-        :param Lmin: minimum volume value
-        :type Lmin: float
-        :param Lmax: Maximum volume value
-        :type Lmax: float
-        :param Lstep: volume step size
-        :type Lstep: float
-        :param project: flag indicating whether to an irrep
-        :type project: bool
-        :param irrep: irrep identifier
-        :type irrep: tuple
+        Parameters
+        ----------
+        Emin, Emax : float
+            Minimum and maximum energies in the interpolation grid.
+        Estep : float
+            Energy grid spacing.
+        Lmin, Lmax : float
+            Minimum and maximum volumes in the interpolation grid.
+        Lstep : float
+            Volume grid spacing.
+        project : bool
+            Whether to project onto an irrep. This method currently requires
+            ``True``.
+        irrep : tuple
+            Irrep key used by the projection dictionaries.
+        name : str, optional
+            Human-readable name for the stored interpolator.
+
+        Raises
+        ------
+        AssertionError
+            If projection is disabled, or if nonzero-momentum interpolation is
+            requested with unsupported QC implementation options.
+        ValueError
+            If ``name`` duplicates an existing interpolator name.
         """
         assert project
         nP = self.qcis.fvs.nP
@@ -741,6 +789,15 @@ class Interpolable:
         return []
 
     def extract_masses(self):
+        """
+        Extract masses for the first three-particle mass slice.
+
+        Returns
+        -------
+        m1, m2, m3 : float
+            Masses ordered according to the first spectator channel in the
+            first three-particle mass slice.
+        """
         sc_list_sorted = self.qcis.fcs.sc_list_sorted
         slices_by_three_masses = self.qcis.fcs.slices_by_three_masses
         three_slice_index = 0
@@ -1014,7 +1071,49 @@ class Interpolable:
     def get_value(self, E=5.0, L=5.0, project=False, irrep=None,
                   short_string='g', interpolate=None, smart_interpolate=None,
                   interpolator_id=None, interpolator_name=None):
-        """Build the interpolable matrix in a shell-based way."""
+        """
+        Evaluate the matrix directly or from stored interpolation data.
+
+        Parameters
+        ----------
+        E : float, optional
+            Energy at which to evaluate the matrix.
+        L : float, optional
+            Volume at which to evaluate the matrix.
+        project : bool, optional
+            Whether direct evaluation should project onto ``irrep``.
+        irrep : tuple, optional
+            Irrep key for projected or interpolated evaluations.
+        short_string : str, optional
+            Prefix used to look up QC implementation flags such as
+            ``'<short_string>_interpolate'``.
+        interpolate : bool, optional
+            Force entrywise interpolation. If ``None``, the corresponding
+            ``QC_IMPL_DEFAULTS`` or ``qcis.fvs.qc_impl`` flag is used.
+        smart_interpolate : bool, optional
+            Force matrix-valued smart interpolation. If ``None``, the
+            corresponding implementation flag is used.
+        interpolator_id : int or str, optional
+            Stored interpolator ID, or name, to activate before evaluation.
+        interpolator_name : str, optional
+            Stored interpolator name to activate before evaluation.
+
+        Returns
+        -------
+        numpy.ndarray or None
+            Evaluated matrix. The base class returns ``None`` for direct
+            non-interpolated evaluation; subclasses override that path.
+
+        Raises
+        ------
+        ValueError
+            If ``E`` exceeds ``qcis.Emax``, if ``L`` exceeds ``qcis.Lmax``, or
+            if both interpolation modes are enabled.
+        KeyError
+            If the requested stored interpolator name is unknown.
+        TypeError
+            If the requested interpolator ID has an unsupported type.
+        """
         Emax = self.qcis.Emax
         Lmax = self.qcis.Lmax
         if E > Emax:
@@ -1164,6 +1263,23 @@ class Interpolable:
         return final_value
 
     def get_pole_candidate(self, L, n1vecSQ, n2vecSQ, n3vecSQ, m1, m2, m3):
+        """
+        Evaluate the three-particle pole energy for fixed volume.
+
+        Parameters
+        ----------
+        L : float
+            Finite-volume length.
+        n1vecSQ, n2vecSQ, n3vecSQ : int or float
+            Squared finite-volume momenta for the three particles.
+        m1, m2, m3 : float
+            Particle masses.
+
+        Returns
+        -------
+        float
+            Sum of the three finite-volume single-particle energies.
+        """
         pole_candidate = np.sqrt(m1**2+(FOURPI2/L**2)*n1vecSQ)\
                        + np.sqrt(m2**2+(FOURPI2/L**2)*n2vecSQ)\
                        + np.sqrt(m3**2+(FOURPI2/L**2)*n3vecSQ)
