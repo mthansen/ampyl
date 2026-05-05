@@ -1368,6 +1368,12 @@ class QCIndexSpace:
             return omega1+omega2
         return nonint_function
 
+    def _get_ESQmin(self, three_slice_index):
+        sc_index = self.fcs.slices_by_three_masses[three_slice_index][0]
+        if hasattr(self.tbis, 'ESQmins'):
+            return self.tbis.ESQmins[sc_index]
+        return self.tbis.ESQmin
+
     def _get_nPspecmax(self, three_slice_index):
         sc = self.fcs.sc_list_sorted[
             self.fcs.slices_by_three_masses[three_slice_index][0]]
@@ -1376,7 +1382,7 @@ class QCIndexSpace:
         EmaxSQ = Emax**2
         nPSQ = self.nPSQ
         Lmax = self.Lmax
-        ESQmin = self.tbis.ESQmin
+        ESQmin = self._get_ESQmin(three_slice_index)
         if (ESQmin != 0.0):
             if nPSQ == 0:
                 nPspecmax = (Lmax*np.sqrt(
@@ -1464,12 +1470,12 @@ class QCIndexSpace:
         tbks_sub_indices = [0]*len(self.tbks_list)
         for slice_index in range(self.fcs.n_three_slices):
             sc_index = self.fcs.slices_by_three_masses[slice_index][0]
-            nPspecmax = self._get_nPspecmax(sc_index)
+            nPspecmax = self._get_nPspecmax(slice_index)
             sc = self.fcs.sc_list_sorted[sc_index]
             m_spec = sc.fc.masses[sc.indexing[0]]
             ESQ = E**2
             nPSQ = self.nPSQ
-            ESQmin = self.tbis.ESQmin
+            ESQmin = self._get_ESQmin(slice_index)
             if (ESQmin != 0.0):
                 if nPSQ == 0:
                     nPspecnew = (L*np.sqrt(
