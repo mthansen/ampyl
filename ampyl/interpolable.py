@@ -243,7 +243,11 @@ class Interpolable:
         all_nvecSQs = self._get_all_nvecSQs_for_pole_detection(
             nvecSQs_by_shell
         )
-        m1, m2, m3 = interpolable_utils._extract_masses(self)
+        sc_index = self.qcis.fcs.slices_by_three_masses[0][0]
+        sc = self.qcis.fcs.sc_list_sorted[sc_index]
+        m1 = sc.spectator.mass
+        m2 = sc.first_dimer.mass
+        m3 = sc.second_dimer.mass
         all_relevant_nvecSQs_list =\
             interpolable_utils._get_all_relevant_nvecSQs_list(
                 self, Emax, project, irrep, max_interp_dim, interp_data_list,
