@@ -61,74 +61,64 @@ PRINT_THRESHOLD_DEFAULT = np.get_printoptions()['threshold']
 
 class ThreeBodyKinematicSpace:
     """
-    Class encoding the spectator-momentum kinematics.
+    Encode spectator-momentum kinematics for a three-body channel.
 
-    :param nP: total momentum in the finite-volume frame
-    :type nP: numpy.ndarray of ints with shape (3,)
-    :param nvec_arr: array of nvecs
-    :type nvec_arr: numpy.ndarray
-    :param build_shell_acc: whether to build the data to accelerate the
-        evaluations by shell
-    :type build_shell_acc: bool
-    :param verbosity: verbosity level
-    :type verbosity: int
-    :ivar nPSQ: total momentum squared in the finite-volume frame
-    :vartype nPSQ: int
-    :ivar nPmag: magnitude of the total momentum in the finite-volume frame
-    :vartype nPmag: float
-    :ivar shells: list of shells
-    :vartype shells: list
-    :ivar nvecSQ_arr: array of nvec^2
-    :vartype nvecSQ_arr: numpy.ndarray
-    :ivar nP_minus_nvec_arr: array of nP - nvecs
-    :vartype nP_minus_nvec_arr: numpy.ndarray
-    :ivar nP_minus_nvec_SQ_arr: array of (nP - nvecs)^2
-    :vartype nP_minus_nvec_SQ_arr: numpy.ndarray
-    :ivar nvecmag_arr: array of |nvec|
-    :vartype nvecmag_arr: numpy.ndarray
-    :ivar nP_minus_nvec_mag_arr: array of |nP - nvec|
-    :vartype nP_minus_nvec_mag_arr: numpy.ndarray
+    Parameters
+    ----------
+    nP : numpy.ndarray of int, shape (3,), optional
+        Total momentum in finite-volume units.
+    nvec_arr : numpy.ndarray, optional
+        Spectator momentum vectors. Each row is a three-component integer
+        vector.
+    build_shell_acc : bool, optional
+        Whether to sort vectors into little-group shells and build shell-level
+        arrays used to accelerate matrix construction.
+    verbosity : int, optional
+        Verbosity level for diagnostic output.
 
-    :ivar n1vec_mat: matrix of n1vecs
-    :vartype n1vec_mat: numpy.ndarray
-    :ivar n2vec_mat: matrix of n2vecs
-    :vartype n2vec_mat: numpy.ndarray
-    :ivar n3vec_mat: matrix of n3vecs
-    :vartype n3vec_mat: numpy.ndarray
-    :ivar n1vecSQ_mat: matrix of n1vec^2
-    :vartype n1vecSQ_mat: numpy.ndarray
-    :ivar n2vecSQ_mat: matrix of n2vec^2
-    :vartype n2vecSQ_mat: numpy.ndarray
-    :ivar n3vecSQ_mat: matrix of n3vec^2
-    :vartype n3vecSQ_mat: numpy.ndarray
-    :ivar nP_minus_n1vec_mat: matrix of nP - n1vecs
-    :vartype nP_minus_n1vec_mat: numpy.ndarray
-    :ivar nP_minus_n2vec_mat: matrix of nP - n2vecs
-    :vartype nP_minus_n2vec_mat: numpy.ndarray
-    :ivar n1vec_arr_all_shells: array of n1vecs for all shells
-    :vartype n1vec_arr_all_shells: numpy.ndarray
-    :ivar n1vecSQ_arr_all_shells: array of n1vec^2 for all shells
-    :vartype n1vecSQ_arr_all_shells: numpy.ndarray
-    :ivar n2vec_arr_all_shells: array of n2vecs for all shells
-    :vartype n2vec_arr_all_shells: numpy.ndarray
-    :ivar n2vecSQ_arr_all_shells: array of n2vec^2 for all shells
-    :vartype n2vecSQ_arr_all_shells: numpy.ndarray
-    :ivar n1vec_mat_all_shells: matrix of n1vecs for all shells
-    :vartype n1vec_mat_all_shells: numpy.ndarray
-    :ivar n1vecSQ_mat_all_shells: matrix of n1vec^2 for all shells
-    :vartype n1vecSQ_mat_all_shells: numpy.ndarray
-    :ivar n2vec_mat_all_shells: matrix of n2vecs for all shells
-    :vartype n2vec_mat_all_shells: numpy.ndarray
-    :ivar n2vecSQ_mat_all_shells: matrix of n2vec^2 for all shells
-    :vartype n2vecSQ_mat_all_shells: numpy.ndarray
-    :ivar n3vec_mat_all_shells: matrix of n3vecs for all shells
-    :vartype n3vec_mat_all_shells: numpy.ndarray
-    :ivar n3vecSQ_mat_all_shells: matrix of n3vec^2 for all shells
-    :vartype n3vecSQ_mat_all_shells: numpy.ndarray
+    Attributes
+    ----------
+    nPSQ : int
+        Squared total momentum, ``nP @ nP``.
+    nPmag : float
+        Magnitude of the total momentum.
+    shells : list of list of int
+        Start and stop indices for shell blocks in the sorted ``nvec_arr``.
+        Present when ``build_shell_acc`` is true and ``nvec_arr`` is nonempty.
+    nvecSQ_arr, nP_minus_nvec_SQ_arr : numpy.ndarray
+        Squared norms of spectator vectors and complementary pair momenta.
+    n1vec_mat, n2vec_mat, n3vec_mat : numpy.ndarray
+        Pairwise matrices of spectator, second-particle, and third-particle
+        momentum vectors.
+    n1vecSQ_mat, n2vecSQ_mat, n3vecSQ_mat : numpy.ndarray
+        Squared norms corresponding to ``n1vec_mat``, ``n2vec_mat``, and
+        ``n3vec_mat``.
+    *_all_shells : list
+        Shell-sliced versions of the vector and squared-vector arrays used by
+        shell-resolved matrix builders.
+
+    Raises
+    ------
+    ValueError
+        If ``nP`` is not an integer ``numpy.ndarray`` with shape ``(3,)``.
     """
 
     def __init__(self, nP=np.array([0, 0, 0]), nvec_arr=np.array([]),
                  build_shell_acc=True, verbosity=0):
+        """
+        Initialize a spectator-momentum space.
+
+        Parameters
+        ----------
+        nP : numpy.ndarray of int, shape (3,), optional
+            Total finite-volume momentum.
+        nvec_arr : numpy.ndarray, optional
+            Initial spectator momentum vectors.
+        build_shell_acc : bool, optional
+            Whether to precompute shell-accelerated arrays.
+        verbosity : int, optional
+            Verbosity level.
+        """
         self.build_shell_acc = build_shell_acc
         self.nP = nP
         self.nvec_arr = nvec_arr
@@ -431,97 +421,93 @@ class ThreeBodyKinematicSpace:
 
 class QCIndexSpace:
     """
-    Class representing the quantization condition index space.
+    Represent the full quantization-condition index space.
 
-    :param fcs: flavor-channel space
-    :type fcs: :class:`FlavorChannelSpace` object
-    :param fvs: finite-volume setup
-    :type fvs: :class:`FiniteVolumeSetup` object
-    :param tbis: three-body interaction scheme
-    :type tbis: :class:`ThreeBodyInteractionScheme` object
-    :param Emax: maximum energy, used to build the spectator index space
-    :type Emax: float
-    :param Lmax: maximum volume, used to build the spectator index space
-    :type Lmax: float
-    :param verbosity: verbosity level
-    :type verbosity: int
+    ``QCIndexSpace`` combines flavor channels, finite-volume symmetry data,
+    three-body interaction choices, spectator momentum spaces, projection
+    dictionaries, and non-interacting reference levels into one object consumed
+    by the matrix builders.
 
-    :ivar nP: total momentum in the finite-volume frame
-    :vartype nP: numpy.ndarray of ints with shape (3,)
-    :ivar nPSQ: squared total momentum in the finite-volume frame
-    :vartype nPSQ: int
-    :ivar nPmag: magnitude of the total momentum in the finite-volume frame
-    :vartype nPmag: float
-    :ivar group: relevant symmetry group
-    :vartype group: Group
-    :ivar Evals: energy values used to build the grid for non-zero nP
-    :vartype Evals: numpy.ndarray
-    :ivar Lvals: volume values used to build the grid for non-zero nP
-    :vartype Lvals: numpy.ndarray
-    :ivar param_structure: structure of the list used to input the quantization
-        condition parameters
-    :vartype param_structure: list
-    :ivar ell_sets: list of sets of angular momenta
-    :vartype ell_sets: list
-    :ivar ellm_sets: list of sets of angular momenta and their m components
-    :vartype ellm_sets: list
-    :ivar proj_dict: dictionary of projection matrices
-    :vartype proj_dict: dict
-    :ivar non_int_proj_dict: dictionary of projection matrices for the
-        non-interacting states
-    :vartype non_int_proj_dict: dict
-    :ivar n_channels: number of channels
-    :vartype n_channels: int
-    :ivar n_two_channels: number of two-particle channels
-    :vartype n_two_channels: int
-    :ivar n_three_channels: number of three-particle channels
-    :vartype n_three_channels: int
-    :ivar tbks_list: list of three-body kinematic spaces
-    :vartype tbks_list: list of ThreeBodyKinematicSpace
-    :ivar kellm_spaces: list of spectator + angular-momentum spaces
-    :vartype kellm_spaces: list
-    :ivar kellm_shells: list of spectator + angular-momentum spaces,
-        organized by shell
-    :vartype kellm_shells: list
-    :ivar sc_proj_dicts: list of projection dictionaries by spectator channel
-    :vartype sc_proj_dicts: list
-    :ivar sc_proj_dicts_by_shell: list of projection dictionaries by spectator
-        channel, organized by momentum shell
-    :vartype sc_proj_dicts_by_shell: list
-    :ivar nvecset_arr: nvecs
-    :vartype nvecset_arr: numpy.ndarray
-    :ivar nvecset_SQs: nvecs^2
-    :vartype nvecset_SQs: numpy.ndarray
-    :ivar nvecset_reps: nvec representatives
-    :vartype nvecset_reps: numpy.ndarray
-    :ivar nvecset_SQreps: nvec^2 representatives
-    :vartype nvecset_SQreps: numpy.ndarray
-    :ivar nvecset_inds: indices for the nvecs
-    :vartype nvecset_inds: numpy.ndarray
-    :ivar nvecset_counts: counts for the nvecs
-    :vartype nvecset_counts: numpy.ndarray
-    :ivar nvecset_batched: nvecs organized by batch
-    :vartype nvecset_batched: numpy.ndarray
-    :ivar nvecset_ident: nvecs for identical particles
-    :vartype nvecset_ident: numpy.ndarray
-    :ivar nvecset_ident_SQs: nvecs^2 for identical particles
-    :vartype nvecset_ident_SQs: numpy.ndarray
-    :ivar nvecset_ident_reps: nvec representatives for identical particles
-    :vartype nvecset_ident_reps: numpy.ndarray
-    :ivar nvecset_ident_SQreps: nvec^2 representatives for identical particles
-    :vartype nvecset_ident_SQreps: numpy.ndarray
-    :ivar nvecset_ident_inds: indices for the nvecs for identical particles
-    :vartype nvecset_ident_inds: numpy.ndarray
-    :ivar nvecset_ident_counts: counts for the nvecs for identical particles
-    :vartype nvecset_ident_counts: numpy.ndarray
-    :ivar nvecset_ident_batched: nvecs organized by batch for identical
-        particles
-    :vartype nvecset_ident_batched: numpy.ndarray
+    Parameters
+    ----------
+    fcs : FlavorChannelSpace, optional
+        Flavor-channel space. If omitted, a default three-particle channel
+        space is created.
+    fvs : FiniteVolumeSetup, optional
+        Finite-volume setup. If omitted, the default setup is used.
+    tbis : ThreeBodyInteractionScheme, optional
+        Three-body interaction scheme. If omitted, the default scheme is used.
+    Emax : float, optional
+        Maximum energy used when building spectator and non-interacting index
+        spaces.
+    Lmax : float, optional
+        Maximum volume used when building spectator and non-interacting index
+        spaces.
+    deltaE_nPnz, deltaL_nPnz : float, optional
+        Grid spacings used for nonzero total momentum.
+    verbosity : int, optional
+        Verbosity level for diagnostic output.
+
+    Attributes
+    ----------
+    nP : numpy.ndarray of int, shape (3,)
+        Total finite-volume momentum inherited from ``fvs``.
+    nPSQ : int
+        Squared total momentum.
+    group : Groups
+        Symmetry-group helper for the selected maximum angular momentum and
+        spin sector.
+    Evals, Lvals : numpy.ndarray or None
+        Energy and volume grids used for nonzero total momentum.
+    param_structure : list
+        Nested structure describing the expected QC parameter input.
+    ell_sets, ellm_sets : list
+        Angular-momentum sets and expanded ``(ell, m)`` sets by spectator
+        channel.
+    proj_dict : dict
+        Projection matrices for the full QC space.
+    nonint_proj_dict : list
+        Projection dictionaries for non-interacting channels.
+    tbks_list : list of ThreeBodyKinematicSpace
+        Spectator-momentum spaces by two-body/three-body mass slice.
+    kellm_spaces, kellm_shells : list
+        Spectator-momentum plus angular-momentum spaces, and their shell
+        block boundaries.
+    nvecset_* : list
+        Non-interacting momentum sets, representatives, counts, and batched
+        group orbits. ``nvecset_ident_*`` variants apply identical-particle
+        symmetrization.
+
+    Raises
+    ------
+    ValueError
+        If a channel threshold exceeds ``Emax``, if unsupported particle
+        counts are present, or if momentum/spin combinations are unsupported.
     """
 
     def __init__(self, fcs=None, fvs=None, tbis=None, Emax=5., Lmax=5.,
                  deltaE_nPnz=DELTA_E_NPNZ_GRID, deltaL_nPnz=DELTA_L_NPNZ_GRID,
                  verbosity=0):
+        """
+        Initialize a quantization-condition index space.
+
+        Parameters
+        ----------
+        fcs : FlavorChannelSpace, optional
+            Flavor-channel space to index.
+        fvs : FiniteVolumeSetup, optional
+            Finite-volume setup.
+        tbis : ThreeBodyInteractionScheme, optional
+            Three-body interaction scheme.
+        Emax : float, optional
+            Maximum energy for index construction.
+        Lmax : float, optional
+            Maximum volume for index construction.
+        deltaE_nPnz, deltaL_nPnz : float, optional
+            Nonzero-momentum grid spacings.
+        verbosity : int, optional
+            Verbosity level.
+        """
         self._verbosity = verbosity
         self.verbosity = verbosity
         self.Emax = Emax
@@ -662,7 +648,13 @@ class QCIndexSpace:
         self.ellm_sets = ellm_sets
 
     def populate(self):
-        """Populate the index space."""
+        """
+        Populate all derived index-space data.
+
+        This builds symmetry groups, nonzero-momentum grids, parameter
+        structures, spectator-momentum spaces, angular-momentum spaces,
+        projection dictionaries, and non-interacting reference data.
+        """
         ell_max, spin_half = self.get_ell_and_spin()
         self.group = Groups(ell_max=ell_max, spin_half=spin_half)
         self.spin_half = spin_half
@@ -681,6 +673,22 @@ class QCIndexSpace:
         self.populate_nonint_functions()
 
     def get_ell_and_spin(self):
+        """
+        Determine the maximum angular momentum and spin sector.
+
+        Returns
+        -------
+        ell_max : int
+            Maximum angular momentum needed by interacting and
+            non-interacting channels.
+        spin_half : bool
+            Whether a spin-half channel is present.
+
+        Raises
+        ------
+        ValueError
+            If a non-integer spin other than one-half is encountered.
+        """
         ell_max = 4
         spin_half = False
         for sc in self.fcs.sc_list_sorted:
@@ -706,6 +714,16 @@ class QCIndexSpace:
         return ell_max, spin_half
 
     def get_grid_nPnonzero(self):
+        """
+        Return the interpolation grid used for nonzero total momentum.
+
+        Returns
+        -------
+        Evals : numpy.ndarray or None
+            Energy grid, or ``None`` when ``nP`` is zero.
+        Lvals : numpy.ndarray or None
+            Volume grid, or ``None`` when ``nP`` is zero.
+        """
         if self.nPSQ != 0:
             if self.verbosity >= 2:
                 print(f"{bcolors.OKGREEN}"
@@ -738,6 +756,15 @@ class QCIndexSpace:
         return [Evals, Lvals]
 
     def get_param_structure(self):
+        """
+        Build the nested parameter structure expected by QC evaluators.
+
+        Returns
+        -------
+        list
+            Two-entry list containing two-body p-cot-delta parameter blocks
+            followed by three-body ``Kdf`` parameters.
+        """
         param_structure = []
         two_param_structure = []
         for sc in self.fcs.sc_list_sorted:
@@ -751,7 +778,12 @@ class QCIndexSpace:
         return param_structure
 
     def populate_all_nvec_arr(self):
-        """Populate all nvec_arr slots."""
+        """
+        Populate spectator-momentum arrays for every kinematic slice.
+
+        The first slot is reserved for two-particle channels when present.
+        Remaining slots correspond to three-particle mass slices.
+        """
         if self.n_two_channels > 0:
             slot_index = 0
             self.populate_nvec_arr_slot(slot_index,
@@ -764,7 +796,22 @@ class QCIndexSpace:
             self.populate_nvec_arr_slot(slot_index)
 
     def populate_nvec_arr_slot(self, slot_index, three_particle_channel=True):
-        """Populate a given nvec_arr slot."""
+        """
+        Populate a single spectator-momentum slot.
+
+        Parameters
+        ----------
+        slot_index : int
+            Index into ``tbks_list`` to populate.
+        three_particle_channel : bool, optional
+            Whether the slot corresponds to a three-particle channel. If
+            false, the slot is treated as a two-particle channel.
+
+        Raises
+        ------
+        ValueError
+            If an unsupported spin or momentum configuration is requested.
+        """
         if three_particle_channel:
             if self.n_two_channels > 0:
                 three_slice_index = slot_index-1
@@ -932,7 +979,12 @@ class QCIndexSpace:
         return sc_to_three_slice
 
     def populate_all_kellm_spaces(self):
-        """Populate all kellm spaces."""
+        """
+        Populate spectator-momentum plus angular-momentum spaces.
+
+        Creates ``kellm_spaces`` and shell boundaries ``kellm_shells`` for each
+        spectator channel and each precomputed kinematic space.
+        """
         if self.verbosity >= 2:
             print(f"{bcolors.OKGREEN}"
                   f"Populating kellm spaces\n"
@@ -977,7 +1029,12 @@ class QCIndexSpace:
             np.set_printoptions(threshold=PRINT_THRESHOLD_DEFAULT)
 
     def populate_all_proj_dicts(self):
-        """Populate all projector dictionaries."""
+        """
+        Populate interacting-channel projection dictionaries.
+
+        The resulting dictionaries are organized by spectator channel and, for
+        shell-resolved projections, by kinematic shell set.
+        """
         group = self.group
         proj_dicts_by_sc = []
         proj_dicts_by_sc_and_shellset = []
@@ -1009,7 +1066,13 @@ class QCIndexSpace:
         self.proj_dicts_by_sc_and_shellset = proj_dicts_by_sc_and_shellset
 
     def populate_all_nonint_data(self):
-        """Populate all non-interacting data."""
+        """
+        Populate non-interacting momentum sets and group-orbit data.
+
+        Builds complete and identical-particle-reduced momentum sets for every
+        non-interacting channel, along with representatives, counts, indices,
+        and batched orbit data.
+        """
         nvecset_arr_all = []
         nvecset_SQs_all = []
         nvecset_reps_all = []
@@ -1111,7 +1174,15 @@ class QCIndexSpace:
         self.nvecset_ident_batched = nvecset_ident_batched_all
 
     def populate_nonint_proj_dict(self):
-        """Populate the non-interacting projection dictionary."""
+        """
+        Populate projection dictionaries for non-interacting levels.
+
+        Raises
+        ------
+        ValueError
+            If a non-interacting channel has an unsupported particle count or
+            spin combination.
+        """
         nonint_proj_dict = []
         for nic_index in range(len(self.fcs.ni_list)):
             n_particles = self.fcs.ni_list[nic_index].n_particles
@@ -1144,7 +1215,12 @@ class QCIndexSpace:
         self.nonint_proj_dict = nonint_proj_dict
 
     def populate_nonint_multiplicities(self):
-        """Populate the non-interacting multiplicities."""
+        """
+        Populate non-interacting irrep multiplicity summaries.
+
+        The generated entries collect shell quantum numbers, total momentum
+        squared, and multiplicities for each best-irrep key.
+        """
         if len(self.fcs.fc_list) == 0:
             self.nonint_multiplicities = None
             return
@@ -1213,6 +1289,17 @@ class QCIndexSpace:
         self.nonint_multiplicities = nonint_multiplicities
 
     def populate_nonint_functions(self):
+        """
+        Build non-interacting energy functions by channel and irrep.
+
+        The resulting ``nonint_functions`` entries are callables of ``L`` that
+        return the corresponding non-interacting energy level.
+
+        Raises
+        ------
+        ValueError
+            If a multiplicity entry has an unsupported shape.
+        """
         nonint_functions = []
         for nonint_channel_mult_dict in self.nonint_multiplicities:
             nonint_channel_functions_dict = {}
@@ -1238,6 +1325,19 @@ class QCIndexSpace:
         mSQ3 = 1.
 
         def nonint_function(L):
+            """
+            Evaluate the three-particle non-interacting energy.
+
+            Parameters
+            ----------
+            L : float
+                Finite-volume length.
+
+            Returns
+            -------
+            float
+                Sum of the three single-particle finite-volume energies.
+            """
             omega1 = np.sqrt(mSQ1+FOURPI2*nSQ1/L**2)
             omega2 = np.sqrt(mSQ2+FOURPI2*nSQ2/L**2)
             omega3 = np.sqrt(mSQ3+FOURPI2*nSQ3/L**2)
@@ -1250,6 +1350,19 @@ class QCIndexSpace:
         mSQ2 = 1.
 
         def nonint_function(L):
+            """
+            Evaluate the two-particle non-interacting energy.
+
+            Parameters
+            ----------
+            L : float
+                Finite-volume length.
+
+            Returns
+            -------
+            float
+                Sum of the two single-particle finite-volume energies.
+            """
             omega1 = np.sqrt(mSQ1+FOURPI2*nSQ1/L**2)
             omega2 = np.sqrt(mSQ2+FOURPI2*nSQ2/L**2)
             return omega1+omega2
@@ -1315,7 +1428,27 @@ class QCIndexSpace:
         return nPspec
 
     def get_tbks_sub_indices(self, E, L):
-        """Get the indices of the relevant three-body kinematics spaces."""
+        """
+        Get kinematic-space indices relevant at a given energy and volume.
+
+        Parameters
+        ----------
+        E : float
+            Energy at which the QC matrix will be evaluated.
+        L : float
+            Volume at which the QC matrix will be evaluated.
+
+        Returns
+        -------
+        list of int
+            Indices into each ``tbks_list`` entry selecting the precomputed
+            kinematic space appropriate for ``E`` and ``L``.
+
+        Raises
+        ------
+        ValueError
+            If ``E`` exceeds ``Emax`` or ``L`` exceeds ``Lmax``.
+        """
         if E > self.Emax:
             raise ValueError("get_tbks_sub_indices called with E > Emax")
         if L > self.Lmax:
@@ -1857,7 +1990,21 @@ class QCIndexSpace:
 
     @staticmethod
     def count_by_isospin(flavor_basis):
-        """Count by isospin."""
+        """
+        Count independent flavor-basis vectors by isospin projector.
+
+        Parameters
+        ----------
+        flavor_basis : numpy.ndarray
+            Flavor basis vectors to decompose into isospin sectors.
+
+        Returns
+        -------
+        counts : list of int
+            Number of independent vectors in each isospin sector.
+        iso_basis_broken_collapsed : list of numpy.ndarray
+            Reduced basis vectors after applying each isospin projector.
+        """
         iso_basis = CAL_C_ISO@flavor_basis
 
         iso_basis_normalized = []
@@ -1927,7 +2074,15 @@ class QCIndexSpace:
         return ibest
 
     def default_k_params(self):
-        """Get the default k-matrix parameters."""
+        """
+        Get default two- and three-body K-matrix parameters.
+
+        Returns
+        -------
+        list
+            ``[pcotdelta_parameter_list, k3_params]`` with zeros matching the
+            current channel parameter structure.
+        """
         pcotdelta_parameter_list = [[]]
         for sc in self.fcs.sc_list_sorted:
             for n_params in sc.n_params_set:
