@@ -102,11 +102,14 @@ def _get_masks_and_shells_for_nondiagonal(nondiagonal, E, L, tbks_entry,
 
 
 def _mask_and_shell_helper_nPzero(nondiagonal, tbks_entry,
-                                  row_shell_index, col_shell_index):
+                                  row_shell_index, col_shell_index,
+                                  col_tbks_entry=None):
+    if col_tbks_entry is None:
+        col_tbks_entry = tbks_entry
     mask_row_shells = None
     mask_col_shells = None
     row_shell = tbks_entry.shells[row_shell_index]
-    col_shell = tbks_entry.shells[col_shell_index]
+    col_shell = col_tbks_entry.shells[col_shell_index]
     return mask_row_shells, mask_col_shells, row_shell, col_shell
 
 
