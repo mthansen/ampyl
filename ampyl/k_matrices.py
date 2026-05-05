@@ -142,7 +142,9 @@ class K:
                           "ibest is set to 0. This is a temporary fix."
                           f"{bcolors.ENDC}")
             sc = self.qcis.fcs.sc_list_sorted[0]
-            [mspec, m2, m3] = sc.masses_indexed
+            mspec = sc.spectator.mass
+            m2 = sc.first_dimer.mass
+            m3 = sc.second_dimer.mass
             tbks_entry = self.qcis.tbks_list[0][ibest]
             kvecSQ_arr = FOURPI2*tbks_entry.nvecSQ_arr/L**2
             kvec_arr = TWOPI*tbks_entry.nvec_arr/L
@@ -179,7 +181,9 @@ class K:
                 tbks_entry = self.qcis.tbks_list[three_slice_index][
                     tbks_sub_indices[three_slice_index]]
                 slices = tbks_entry.shells
-                [mspec, m2, m3] = sc.masses_indexed
+                mspec = sc.spectator.mass
+                m2 = sc.first_dimer.mass
+                m3 = sc.second_dimer.mass
             cindex = sc_ind
             for slice_index in range(len(slices)):
                 k_tmp = self.get_shell(
