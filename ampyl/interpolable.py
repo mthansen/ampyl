@@ -666,6 +666,10 @@ class Interpolable:
             if self.qcis.verbosity >= 2:
                 print('tbks_sub_indices =', tbks_sub_indices)
         else:
+            if self.qcis.fcs.n_three_slices != 1:
+                raise NotImplementedError(
+                    "multi-slice interpolation pole detection is implemented "
+                    "only for zero total momentum")
             if self.qcis.verbosity >= 2:
                 print('nP != [0 0 0] indexing')
             mspec, m2, m3 = self.extract_masses()
