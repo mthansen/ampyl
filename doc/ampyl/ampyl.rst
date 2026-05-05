@@ -1,11 +1,41 @@
-API reference
-=============
-
-This page is generated from the NumPy-style docstrings in the ``ampyl``
-package.
-
 Core classes
-------------
+============
+
+.. autoclass:: ampyl.ampyl.IdentifiedObjectList
+   :members:
+   :show-inheritance:
+
+.. autoclass:: ampyl.ampyl.EvaluationPolicy
+   :members:
+   :show-inheritance:
+
+.. autoclass:: ampyl.ampyl.QCMatrixBuilder
+   :members:
+   :show-inheritance:
+
+.. autoclass:: ampyl.ampyl.QCVersionEvaluator
+   :members:
+   :show-inheritance:
+
+.. autoclass:: ampyl.ampyl.QC
+   :members:
+   :show-inheritance:
+
+.. autoclass:: ampyl.ampyl.FVSpectrum
+   :members:
+   :show-inheritance:
+
+.. autoclass:: ampyl.cuts.G
+   :members:
+   :show-inheritance:
+
+.. autoclass:: ampyl.cuts.F
+   :members:
+   :show-inheritance:
+
+.. autoclass:: ampyl.cuts.FplusG
+   :members:
+   :show-inheritance:
 
 .. autoclass:: ampyl.flavor.Particle
    :members:
@@ -20,6 +50,22 @@ Core classes
    :show-inheritance:
 
 .. autoclass:: ampyl.flavor.FlavorChannelSpace
+   :members:
+   :show-inheritance:
+
+.. autoclass:: ampyl.groups.Groups
+   :members:
+   :show-inheritance:
+
+.. autoclass:: ampyl.interpolable.Interpolable
+   :members:
+   :show-inheritance:
+
+.. autoclass:: ampyl.k_matrices.K
+   :members:
+   :show-inheritance:
+
+.. autoclass:: ampyl.k_matrices.Kdf
    :members:
    :show-inheritance:
 
@@ -39,36 +85,8 @@ Core classes
    :members:
    :show-inheritance:
 
-.. autoclass:: ampyl.cuts.G
-   :members:
-   :show-inheritance:
-
-.. autoclass:: ampyl.cuts.F
-   :members:
-   :show-inheritance:
-
-.. autoclass:: ampyl.cuts.FplusG
-   :members:
-   :show-inheritance:
-
-.. autoclass:: ampyl.k_matrices.K
-   :members:
-   :show-inheritance:
-
-.. autoclass:: ampyl.k_matrices.Kdf
-   :members:
-   :show-inheritance:
-
-.. autoclass:: ampyl.ampyl.QC
-   :members:
-   :show-inheritance:
-
-.. autoclass:: ampyl.ampyl.FVSpectrum
-   :members:
-   :show-inheritance:
-
 Function modules
-----------------
+================
 
 .. automodule:: ampyl.kinematic_functions
    :members:
