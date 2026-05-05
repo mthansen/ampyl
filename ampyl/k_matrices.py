@@ -133,32 +133,20 @@ class K:
         if self.qcis.verbosity >= 2:
             print('evaluating F')
             print('E = ', E, ', nP = ', nP, ', L = ', L)
-        if self.qcis.fcs.n_three_slices != 1:
-            raise ValueError("only n_three_slices = 1 is supported")
-        cindex = 0
-        sc_list_sorted = self.qcis.fcs.sc_list_sorted
-        slices_by_three_masses = self.qcis.fcs.slices_by_three_masses
-        three_slice_index = 0
-        inslice_index = 0
-        sc_index = slices_by_three_masses[three_slice_index][inslice_index]
-        masses = sc_list_sorted[sc_index].masses_indexed
-        [mspec, m2, m3] = masses
         if nP@nP == 0:
             tbks_sub_indices = self.qcis.get_tbks_sub_indices(E=E, L=L)
-            if len(self.qcis.tbks_list) > 1:
-                raise ValueError("get_value within K assumes tbks_list is "
-                                 + "length one.")
-            tbks_entry = self.qcis.tbks_list[0][tbks_sub_indices[0]]
-            slices = tbks_entry.shells
         else:
+            if self.qcis.fcs.n_three_slices != 1:
+                raise NotImplementedError(
+                    "multi-slice K is implemented only for zero total "
+                    "momentum")
             # ibest = self.qcis._get_ibest(E, L)
             ibest = 0
             warnings.warn(f"\n{bcolors.WARNING}"
                           "ibest is set to 0. This is a temporary fix."
                           f"{bcolors.ENDC}")
-            if len(self.qcis.tbks_list) > 1:
-                raise ValueError("get_value within K assumes tbks_list is "
-                                 + "length one.")
+            sc = self.qcis.fcs.sc_list_sorted[0]
+            [mspec, m2, m3] = sc.masses_indexed
             tbks_entry = self.qcis.tbks_list[0][ibest]
             kvecSQ_arr = FOURPI2*tbks_entry.nvecSQ_arr/L**2
             kvec_arr = TWOPI*tbks_entry.nvec_arr/L
@@ -182,14 +170,21 @@ class K:
 
         k_final_list = []
         for sc_ind in range(len(self.qcis.fcs.sc_list_sorted)):
-            ell_set = self.qcis.fcs.sc_list[sc_ind].ell_set
+            sc = self.qcis.fcs.sc_list_sorted[sc_ind]
+            ell_set = sc.ell_set
             if len(ell_set) != 1:
                 raise ValueError("only length-one ell_set currently "
                                  + "supported in K")
             ell = ell_set[0]
             pcotdelta_parameter_list = pcotdelta_parameter_lists[sc_ind]
-            pcotdelta_function = self.qcis.fcs.sc_list[
-                sc_ind].p_cot_deltas[0]
+            pcotdelta_function = sc.p_cot_deltas[0]
+            if nP@nP == 0:
+                three_slice_index = self.qcis.sc_to_three_slice[sc_ind]
+                tbks_entry = self.qcis.tbks_list[three_slice_index][
+                    tbks_sub_indices[three_slice_index]]
+                slices = tbks_entry.shells
+                [mspec, m2, m3] = sc.masses_indexed
+            cindex = sc_ind
             for slice_index in range(len(slices)):
                 k_tmp = self.get_shell(
                     E, L, mspec, m2, m3, cindex, sc_ind, ell,
