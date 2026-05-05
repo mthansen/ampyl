@@ -234,8 +234,30 @@ class G(Interpolable):
         g_final = np.block(g_final)
         return g_final
 
+    def _extract_g_masses(self, sc_row_ind, sc_col_ind):
+        row_sc = self.qcis.fcs.sc_list_sorted[sc_row_ind]
+        col_sc = self.qcis.fcs.sc_list_sorted[sc_col_ind]
+        row_spec_flavor = row_sc.flavors_indexed[0]
+        col_spec_flavor = col_sc.flavors_indexed[0]
+        row_pair = list(zip(row_sc.flavors_indexed[1:],
+                            row_sc.masses_indexed[1:]))
+        exchange_mass = None
+        for pair_index, (flavor, mass) in enumerate(row_pair):
+            if flavor == col_spec_flavor:
+                row_pair.pop(pair_index)
+                break
+        if row_pair:
+            exchange_mass = row_pair[0][1]
+        else:
+            exchange_mass = row_sc.masses_indexed[1]
+        m1 = col_sc.masses_indexed[0]
+        m2 = exchange_mass
+        m3 = row_sc.masses_indexed[0]
+        if row_spec_flavor not in col_sc.flavors_indexed[1:]:
+            raise ValueError("row spectator is not in the column dimer")
+        return m1, m2, m3
+
     def get_shell(self, E=5.0, L=5.0, m1=1.0, m2=1.0, m3=1.0,
-                  cindex_row=None, cindex_col=None,  # only for non-zero nP
                   sc_index_row=None, sc_index_col=None,
                   ell1=0, ell2=0,
                   g_rescale=1.0, tbks_entry=None,
