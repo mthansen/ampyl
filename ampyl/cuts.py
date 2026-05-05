@@ -538,8 +538,7 @@ class F(Interpolable):
         three_scheme = self.qcis.tbis.three_scheme
         nP = self.qcis.fvs.nP
         qc_impl = self.qcis.fvs.qc_impl
-        alpha = self.alpha
-        beta = self.beta
+        alpha, beta = self.qcis.tbis.scheme_data_by_channel[sc_ind]
         C1cut = self.C1cut
         alphaKSS = self.alphaKSS
         use_pv_shift_prescription\
