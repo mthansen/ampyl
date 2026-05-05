@@ -50,17 +50,14 @@ def _get_masks_and_shells_for_k(k, E, L, tbks_entry, cindex, slice_index):
         slices_by_three_masses = k.qcis.fcs.slices_by_three_masses
         inslice_index = 0
         sc_index = slices_by_three_masses[three_slice_index][inslice_index]
-        masses = sc_list_sorted[sc_index].masses_indexed
-        spec_index = 0
-        mspec = masses[spec_index]
+        sc = sc_list_sorted[sc_index]
+        mspec = sc.spectator.mass
         kvecSQ_arr = FOURPI2*tbks_entry.nvecSQ_arr/L**2
         kvec_arr = TWOPI*tbks_entry.nvec_arr/L
         omk_arr = np.sqrt(mspec**2+kvecSQ_arr)
         Pvec = TWOPI*nP/L
         PmkSQ_arr = ((Pvec-kvec_arr)**2).sum(axis=1)
-        scatterer_a_index = 1
-        scatterer_b_index = 2
-        threshold = masses[scatterer_a_index] + masses[scatterer_b_index]
+        threshold = sc.first_dimer.mass + sc.second_dimer.mass
         zero_support_point = _get_zero_support_point(k, threshold)
         mask = (E-omk_arr)**2-PmkSQ_arr > zero_support_point
         slices = tbks_entry.shells
@@ -120,8 +117,11 @@ def _mask_and_shell_helper_nPnonzero(nondiagonal, E, nP, L, tbks_entry,
     if 'reduce_size' in nondiagonal.qcis.fvs.qc_impl:
         reduce_size = nondiagonal.qcis.fvs.qc_impl['reduce_size']
     if reduce_size:
-        from . import interpolable_utils
-        mspec, m2, m3 = interpolable_utils._extract_masses(nondiagonal)
+        sc_index = nondiagonal.qcis.fcs.slices_by_three_masses[0][0]
+        sc = nondiagonal.qcis.fcs.sc_list_sorted[sc_index]
+        mspec = sc.spectator.mass
+        m2 = sc.first_dimer.mass
+        m3 = sc.second_dimer.mass
         kvecSQ_arr = FOURPI2*tbks_entry.nvecSQ_arr/L**2
         kvec_arr = TWOPI*tbks_entry.nvec_arr/L
         omk_arr = np.sqrt(mspec**2+kvecSQ_arr)
@@ -170,8 +170,11 @@ def _get_masks_and_shells_for_f(f, E, L, tbks_entry, cindex, slice_index):
         if 'reduce_size' in f.qcis.fvs.qc_impl:
             reduce_size = f.qcis.fvs.qc_impl['reduce_size']
         if reduce_size:
-            from . import interpolable_utils
-            mspec, m2, m3 = interpolable_utils._extract_masses(f)
+            sc_index = f.qcis.fcs.slices_by_three_masses[0][0]
+            sc = f.qcis.fcs.sc_list_sorted[sc_index]
+            mspec = sc.spectator.mass
+            m2 = sc.first_dimer.mass
+            m3 = sc.second_dimer.mass
             kvecSQ_arr = FOURPI2*tbks_entry.nvecSQ_arr/L**2
             kvec_arr = TWOPI*tbks_entry.nvec_arr/L
             omk_arr = np.sqrt(mspec**2+kvecSQ_arr)
