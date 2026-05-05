@@ -279,10 +279,10 @@ class ThreeBodyInteractionScheme:
     fcs : FlavorChannelSpace, optional
         Flavor-channel space that defines the domain of ``Kdf``. If omitted,
         a default three-particle flavor channel is used.
-    ESQmin : float, optional
-        Minimum two-body invariant mass squared used when constructing
-        spectator-momentum spaces. If provided, the same value is used for all
-        channels.
+    ESQmins : list of float, optional
+        Minimum two-body invariant mass squared for each spectator channel.
+        If provided, these values override the defaults inferred from the
+        flavor-channel space or scheme data.
     three_scheme : str, optional
         Three-body interaction scheme. Currently ``'relativistic pole'`` and
         related alpha-beta pole schemes are supported by the surrounding code.
@@ -320,7 +320,7 @@ class ThreeBodyInteractionScheme:
         parameters are inconsistent.
     """
 
-    def __init__(self, fcs=None, ESQmin=None, three_scheme='relativistic pole',
+    def __init__(self, fcs=None, ESQmins=None, three_scheme='relativistic pole',
                  scheme_data=None, kdf_functions=None,
                  use_pv_shift_prescription=None,
                  pv_shift_parameters=None,
@@ -332,8 +332,9 @@ class ThreeBodyInteractionScheme:
         ----------
         fcs : FlavorChannelSpace, optional
             Flavor-channel space defining the spectator channels.
-        ESQmin : float, optional
-            Override for the minimum two-body invariant mass squared.
+        ESQmins : list of float, optional
+            Override for the minimum two-body invariant mass squared in each
+            spectator channel.
         three_scheme : str, optional
             Name of the three-body interaction scheme.
         scheme_data : list, optional
@@ -347,32 +348,30 @@ class ThreeBodyInteractionScheme:
         verbosity : int, optional
             Verbosity level.
         """
-        ESQmin_input = ESQmin
         if fcs is None:
             fcs = FlavorChannelSpace(fc_list=[FlavorChannel(3)])
         self.fcs = fcs
 
         self.threshSQs = [sc.thresholdSQ for sc in fcs.sc_list_sorted]
-        ESQmins = [sc.ESQmin for sc in fcs.sc_list_sorted]
+        ESQmins_by_channel = [sc.ESQmin for sc in fcs.sc_list_sorted]
         if scheme_data is None:
             scheme_data_by_channel = [
                 list(sc.scheme_data) for sc in fcs.sc_list_sorted]
         else:
             scheme_data_by_channel = self._scheme_data_by_channel(
                 scheme_data, len(self.threshSQs))
-            ESQmins = []
+            ESQmins_by_channel = []
             for i, scheme in enumerate(scheme_data_by_channel):
                 if not isinstance(scheme, list) or len(scheme) != 2:
                     raise ValueError("scheme_data must be a list of lists "
                                      "with length 2")
                 alpha, beta = scheme
                 ESQmin_tmp = 0.25*(1.0+alpha)*self.threshSQs[i]
-                ESQmins.append(ESQmin_tmp)
-        if ESQmin_input is not None:
-            ESQmins = [ESQmin_input]*len(self.threshSQs)
-        self.ESQmin = ESQmins[0]
-        self.ESQMIN = self.ESQmin
-        self.ESQmins = ESQmins
+                ESQmins_by_channel.append(ESQmin_tmp)
+        if ESQmins is not None:
+            self.ESQmins = ESQmins
+        else:
+            self.ESQmins = ESQmins_by_channel
 
         self._set_flavor_ellm_dim()
         if use_pv_shift_prescription is None:
