@@ -1080,11 +1080,11 @@ class QCIndexSpace:
             self._get_nonint_channel_data(fc)
             for fc in self.fcs.ni_list
         ]
-        self._populate_nonident_nonint_data(nonint_channel_data)
-        self._populate_ident_nonint_data(nonint_channel_data)
-
-    def _populate_nonident_nonint_data(self, nonint_channel_data):
-        """Populate non-interacting data without identical-particle labels."""
+        self._populate_ab_nonint_data(nonint_channel_data)
+        self._populate_aa_nonint_data(nonint_channel_data)
+        self._populate_abc_nonint_data(nonint_channel_data)
+        self._populate_aab_nonint_data(nonint_channel_data)
+        self._populate_aaa_nonint_data(nonint_channel_data)
         self._populate_nonint_data_fields(
             nonint_channel_data,
             ['nvecset_arr', 'nvecset_SQs', 'nvecset_reps',
