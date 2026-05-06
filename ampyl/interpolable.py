@@ -297,10 +297,8 @@ class Interpolable:
                         = polefree_interp_data_entry_complete
 
         # Build interpolator functions
-        interp_array = []
         interp_tuple_array = []
         for i in range(max_interp_dim):
-            interp_row = []
             interp_tuple_row = []
             for j in range(max_interp_dim):
                 if len(interp_data_list[i][j][energy_volume_index]) == 4:
@@ -318,25 +316,11 @@ class Interpolable:
                         = (np.array(polefree_interp_data_list[i][j][
                             interp_data_index]).T)[data_index].\
                         reshape(L_mesh_grid.shape).T
-                    try:
-                        interp_entry =\
-                            RegularGridInterpolator((E_grid_tmp, L_grid_tmp),
-                                                    pole_free_mesh_grid,
-                                                    method='cubic')
-                    except ValueError:
-                        interp_entry =\
-                            RegularGridInterpolator((E_grid_tmp, L_grid_tmp),
-                                                    pole_free_mesh_grid,
-                                                    method='linear')
-                    interp_row.append(interp_entry)
                     interp_tuple_row.append([E_grid_tmp, L_grid_tmp,
                                              pole_free_mesh_grid])
                 else:
-                    interp_row.append(None)
                     interp_tuple_row.append(None)
-            interp_array.append(interp_row)
             interp_tuple_array.append(interp_tuple_row)
-        interp_array = np.array(interp_array)
         try:
             interp_tuple_array = np.array(interp_tuple_array, dtype=object)
         except ValueError:
