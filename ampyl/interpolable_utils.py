@@ -189,7 +189,8 @@ def _get_final_set_for_change_of_basis(
     return dim_shell_counter_all
 
 
-def _get_cob_matrix_list(interpolable, final_set_for_change_of_basis):
+def _get_cob_matrix_list(interpolable, final_set_for_change_of_basis,
+                         cob_matrix_key_list=None):
     all_restacks = []
     for dim_shell_counter_all in final_set_for_change_of_basis:
         restack = []
@@ -204,9 +205,38 @@ def _get_cob_matrix_list(interpolable, final_set_for_change_of_basis):
         for entry in restack:
             second_restack = second_restack+entry[1]
         all_restacks_second.append(second_restack)
+    fixed_max_basis = (
+        interpolable.qcis.fcs.n_three_slices > 1
+        and cob_matrix_key_list is not None
+        and len(cob_matrix_key_list) != 0
+    )
+    if not fixed_max_basis:
+        cob_matrix_list = []
+        for restack in all_restacks_second:
+            cob_matrix_list.append((np.identity(len(restack))[restack]).T)
+        return cob_matrix_list
+
+    max_key = tuple([0]*interpolable.qcis.fcs.n_three_slices)
+    max_basis_index = cob_matrix_key_list.index(max_key)
+    max_restack = all_restacks[max_basis_index]
+    max_basis_map = {}
+    max_basis_dim = 0
+    for label, counter_set in max_restack:
+        for offset in range(len(counter_set)):
+            max_basis_map[tuple(label+[offset])] = max_basis_dim
+            max_basis_dim += 1
+
     cob_matrix_list = []
     for restack in all_restacks_second:
-        cob_matrix_list.append((np.identity(len(restack))[restack]).T)
+        cob_matrix_list.append(np.zeros((len(restack), max_basis_dim)))
+    for matrix_index in range(len(cob_matrix_list)):
+        active_restack = all_restacks[matrix_index]
+        for label, counter_set in active_restack:
+            for offset in range(len(counter_set)):
+                max_basis_index = max_basis_map[tuple(label+[offset])]
+                active_basis_index = counter_set[offset]
+                cob_matrix_list[matrix_index][
+                    active_basis_index, max_basis_index] = 1.
     return cob_matrix_list
 
 
