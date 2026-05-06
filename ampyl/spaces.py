@@ -1118,6 +1118,15 @@ class QCIndexSpace:
              'nvecset_aab_reps', 'nvecset_aab_SQreps',
              'nvecset_aab_inds', 'nvecset_aab_counts',
              'nvecset_aab_batched'])
+
+    def _populate_aaa_nonint_data(self, nonint_channel_data):
+        """Populate fully identical non-interacting data."""
+        self._populate_nonint_data_fields(
+            nonint_channel_data,
+            ['nvecset_aaa', 'nvecset_aaa_SQs',
+             'nvecset_aaa_reps', 'nvecset_aaa_SQreps',
+             'nvecset_aaa_inds', 'nvecset_aaa_counts',
+             'nvecset_aaa_batched'])
     def _populate_nonint_data_fields(self, nonint_channel_data, field_names):
         for field_name in field_names:
             setattr(self, field_name, [
