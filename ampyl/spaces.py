@@ -1349,12 +1349,7 @@ class QCIndexSpace:
                     for key in nonint_proj_dict_entry[(shell_index,
                                                        isospin_int)]:
                         if key == key_best_irreps:
-                            if cindex == 0:
-                                nSQs = self.nvecset_ident_SQreps[
-                                    cindex][shell_index]
-                            else:
-                                nSQs = self.nvecset_SQreps[
-                                    cindex][shell_index]
+                            nSQs = nvecset_label_SQreps[cindex][shell_index]
                             multi = int(
                                 nonint_proj_dict_entry[
                                     (shell_index, isospin_int)][key].shape[1]
