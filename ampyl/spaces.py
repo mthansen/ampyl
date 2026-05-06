@@ -1721,32 +1721,21 @@ class QCIndexSpace:
         nvecset_abc_SQs = nvecset_abc_SQs[re_indexing]
         return [nvecset_abc, nvecset_abc_SQs]
 
-    def _get_nvecset_ident_three(self, nvecset_arr, nvecset_SQs):
-        nvecset_ident = []
-        nvecset_ident_SQs = deepcopy([])
-        for i in range(len(nvecset_arr)):
-            [n1, n2, n3] = nvecset_arr[i]
-            candidates = [np.array([n1, n2, n3]),
-                          np.array([n2, n3, n1]),
-                          np.array([n3, n1, n2]),
-                          np.array([n3, n2, n1]),
-                          np.array([n2, n1, n3]),
-                          np.array([n1, n3, n2])]
-
-            include_entry = True
-
-            for candidate in candidates:
-                for nvecset_tmp_entry in nvecset_ident:
-                    nvecset_tmp_entry = np.array(nvecset_tmp_entry)
-                    include_entry = include_entry\
-                        and (not ((candidate == nvecset_tmp_entry)
-                                  .all()))
+    def _get_nvecset_aaa_three(self, nvecset_abc, nvecset_abc_SQs):
+        nvecset_aaa = []
+        nvecset_aaa_SQs = deepcopy([])
+        for i in range(len(nvecset_abc)):
+            [n1, n2, n3] = nvecset_abc[i]
+            candidates = self._permuted_three_candidates(
+                n1, n2, n3, self._aaa_three_permutations())
+            include_entry = self._include_symmetrized_entry(
+                candidates, nvecset_aaa)
             if include_entry:
-                nvecset_ident = nvecset_ident+[[n1, n2, n3]]
-                nvecset_ident_SQs = nvecset_ident_SQs+[nvecset_SQs[i]]
-        nvecset_ident = np.array(nvecset_ident)
-        nvecset_ident_SQs = np.array(nvecset_ident_SQs)
-        return [nvecset_ident, nvecset_ident_SQs]
+                nvecset_aaa = nvecset_aaa+[[n1, n2, n3]]
+                nvecset_aaa_SQs = nvecset_aaa_SQs+[nvecset_abc_SQs[i]]
+        nvecset_aaa = np.array(nvecset_aaa)
+        nvecset_aaa_SQs = np.array(nvecset_aaa_SQs)
+        return [nvecset_aaa, nvecset_aaa_SQs]
 
     def _reps_and_batches_three(self, nvecset_arr, nvecset_SQs,
                                 nvecset_ident, nvecset_ident_SQs,
