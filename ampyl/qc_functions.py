@@ -1190,7 +1190,8 @@ def getF_single_entry_IPV(IPV_function=None, IPV_parameters=[1.0],
 def getF_array(E, nP, L, m1, m2, m3, tbks_entry, slice_entry,
                ell1, ell2, alpha, beta, C1cut, alphaKSS, qc_impl,
                three_scheme, use_pv_shift_prescription=False,
-               IPV_function=None, pv_shift_parameters=[0.0]):
+               IPV_function=None, pv_shift_parameters=[0.0],
+               dimer_symmetry_factor=1.0):
     """Return the block-diagonal finite-volume ``F`` matrix.
 
     Parameters
@@ -1225,6 +1226,8 @@ def getF_array(E, nP, L, m1, m2, m3, tbks_entry, slice_entry,
         Principal-value shift function.
     pv_shift_parameters : list[float], optional
         Parameters passed to ``IPV_function``.
+    dimer_symmetry_factor : float, optional
+        Multiplicative factor accounting for distinguishable dimer particles.
 
     Returns
     -------
@@ -1255,6 +1258,7 @@ def getF_array(E, nP, L, m1, m2, m3, tbks_entry, slice_entry,
                         alpha=alpha, beta=beta, ell1=ell1, mazi1=mazi1,
                         ell2=ell2, mazi2=mazi2, three_scheme=three_scheme,
                         qc_impl=qc_impl)
+                f_entry = dimer_symmetry_factor*f_entry
                 if np.abs(f_entry.imag) < EPSILON15:
                     f_entry = f_entry.real
                 if np.abs(f_entry) < EPSILON15:
