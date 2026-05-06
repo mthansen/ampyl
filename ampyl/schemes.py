@@ -356,26 +356,30 @@ class ThreeBodyInteractionScheme:
 
         self.thresholdSQs = [sc.thresholdSQ for sc in fcs.sc_list_sorted]
         n_spectator_channels = len(self.thresholdSQs)
+        scheme_data_input = scheme_data
 
-        if scheme_data is None:
-            scheme_data_by_channel = [
-                list(sc.scheme_data) for sc in fcs.sc_list_sorted]
+        if scheme_data_input is None:
+            scheme_data = [list(sc.scheme_data) for sc in fcs.sc_list_sorted]
         else:
-            scheme_data_by_channel = scheme_data
-            if len(scheme_data_by_channel) != len(self.threshSQs):
+            if len(scheme_data) != n_spectator_channels:
                 raise ValueError("scheme_data must have length equal to the "
                                  "number of spectator channels")
-            ESQmins_by_channel = []
-            for i, scheme in enumerate(scheme_data_by_channel):
+            for i, scheme in enumerate(scheme_data):
                 if not isinstance(scheme, list) or len(scheme) != 2:
                     raise ValueError("scheme_data must be a list of lists "
                                      "with length 2")
-                alpha, beta = scheme
-                ESQmin_tmp = 0.25*(1.0+alpha)*self.threshSQs[i]
-                ESQmins_by_channel.append(ESQmin_tmp)
+        self.scheme_data = scheme_data
+
         if ESQmins is not None:
             self.ESQmins = ESQmins
+        elif scheme_data_input is None:
+            self.ESQmins = [sc.ESQmin for sc in fcs.sc_list_sorted]
         else:
+            ESQmins_by_channel = []
+            for i, scheme in enumerate(scheme_data):
+                alpha, beta = scheme
+                ESQmin_tmp = 0.25*(1.0+alpha)*self.thresholdSQs[i]
+                ESQmins_by_channel.append(ESQmin_tmp)
             self.ESQmins = ESQmins_by_channel
 
         self._set_flavor_ellm_dim()
@@ -402,8 +406,6 @@ class ThreeBodyInteractionScheme:
             raise ValueError("pv_shift_parameters must have length equal "
                              "to flavor_ellm_dim")
         self.three_scheme = three_scheme
-        self.scheme_data_by_channel = scheme_data_by_channel
-        self.scheme_data = scheme_data_by_channel[0]
         if kdf_functions is None:
             self.kdf_functions = []
             for fc in self.fcs.fc_list:
@@ -494,7 +496,7 @@ class ThreeBodyInteractionScheme:
         three_body_interaction_scheme_str +=\
             f"    three_scheme = {self.three_scheme},\n"
         three_body_interaction_scheme_str +=\
-            f"    [alpha, beta] = {self.scheme_data},\n"
+            f"    scheme_data = {self.scheme_data},\n"
         three_body_interaction_scheme_str +=\
             "    kdf_functions as follows:\n"
         for i in range(len(self.fcs.fc_list)):
