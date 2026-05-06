@@ -1663,7 +1663,7 @@ class QCIndexSpace:
         nvecs = np.delete(nvecs, np.where(carr), axis=0)
         return [m1, m2, m3, Emax, nP, Lmax, nvec_int_cutoff, nvecs]
 
-    def _get_nvecset_arr_three(self, nvecset_arr, nmin, nmax,
+    def _get_nvecset_abc_three(self, nvecset_abc, nmin, nmax,
                                m1, m2, m3, Emax, nP, Lmax, n1, n2):
         n3 = nP-n1-n2
         n1SQ = n1@n1
@@ -1680,8 +1680,8 @@ class QCIndexSpace:
             max_candidate = np.max(comp_set)
             if max_candidate > nmax:
                 nmax = max_candidate
-            nvecset_arr = nvecset_arr+[[n1, n2, n3]]
-        return [nvecset_arr, nmin, nmax]
+            nvecset_abc = nvecset_abc+[[n1, n2, n3]]
+        return [nvecset_abc, nmin, nmax]
 
     def _square_and_sort_three(self, nvecset_arr, nmin, nmax,
                                m1, m2, m3, Lmax):
