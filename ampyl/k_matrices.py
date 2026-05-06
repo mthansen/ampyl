@@ -75,6 +75,10 @@ class K:
             pv_shift_parameters = self.qcis.tbis.pv_shift_parameters[sc_ind]
         else:
             pv_shift_parameters = None
+        sc = self.qcis.fcs.sc_list_sorted[sc_ind]
+        dimer_symmetry_factor = 1.0
+        if sc.first_dimer != sc.second_dimer:
+            dimer_symmetry_factor = 2.0
 
         mask_slices, slice_entry\
             = shell_utils._get_masks_and_shells_for_k(
@@ -84,7 +88,8 @@ class K:
             pcotdelta_function, pcotdelta_parameter_list, alpha, beta,
             qc_impl, three_scheme,
             use_pv_shift_prescription=use_pv_shift_prescription,
-            pv_shift_parameters=pv_shift_parameters)
+            pv_shift_parameters=pv_shift_parameters,
+            dimer_symmetry_factor=dimer_symmetry_factor)
 
         if project:
             try:
