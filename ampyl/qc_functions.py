@@ -1510,7 +1510,8 @@ def getK_array(E, nP, L, m1, m2, m3, tbks_entry, slice_entry, ell,
                pcotdelta_function, pcotdelta_parameter_list, alpha, beta,
                qc_impl, three_scheme, use_pv_shift_prescription=False,
                IPV_function=None,
-               pv_shift_parameters=[0.]):
+               pv_shift_parameters=[0.],
+               dimer_symmetry_factor=1.0):
     """Return the block-diagonal two-body ``K`` matrix.
 
     Parameters
@@ -1545,6 +1546,8 @@ def getK_array(E, nP, L, m1, m2, m3, tbks_entry, slice_entry, ell,
         Principal-value shift function.
     pv_shift_parameters : list[float], optional
         Parameters passed to ``IPV_function``.
+    dimer_symmetry_factor : float, optional
+        Multiplicative factor accounting for distinguishable dimer particles.
 
     Returns
     -------
@@ -1568,6 +1571,7 @@ def getK_array(E, nP, L, m1, m2, m3, tbks_entry, slice_entry, ell,
                 pcotdelta_parameter_list=pcotdelta_parameter_list,
                 E=E, nP=nP, L=L, npspec=nvec, m1=m2, m2=m3, mspec=m1,
                 alpha=alpha, beta=beta, ell=ell, qc_impl=qc_impl)
+        k_entry = dimer_symmetry_factor*k_entry
         if np.abs(k_entry.imag) < EPSILON15:
             k_entry = k_entry.real
         if np.abs(k_entry) < EPSILON15:
