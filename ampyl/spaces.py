@@ -1109,6 +1109,15 @@ class QCIndexSpace:
             ['nvecset_abc', 'nvecset_abc_SQs', 'nvecset_abc_reps',
              'nvecset_abc_SQreps', 'nvecset_abc_inds', 'nvecset_abc_counts',
              'nvecset_abc_batched'])
+
+    def _populate_aab_nonint_data(self, nonint_channel_data):
+        """Populate data with particles 0 and 1 treated as identical."""
+        self._populate_nonint_data_fields(
+            nonint_channel_data,
+            ['nvecset_aab', 'nvecset_aab_SQs',
+             'nvecset_aab_reps', 'nvecset_aab_SQreps',
+             'nvecset_aab_inds', 'nvecset_aab_counts',
+             'nvecset_aab_batched'])
     def _populate_nonint_data_fields(self, nonint_channel_data, field_names):
         for field_name in field_names:
             setattr(self, field_name, [
