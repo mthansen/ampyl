@@ -595,6 +595,9 @@ def _get_all_relevant_nvecSQs_list_good_loop(
                         for j in range(max_interp_dim):
                             interpolable_value = matrix_tmp[i][j]
                             near_pole_mag = np.abs(interpolable_value)
+                            if near_pole_mag > 1.0:
+                                print('i, j, nvecSQs_keep, near_pole_mag =',
+                                       i, j, nvecSQs_keep, near_pole_mag)
                             pole_found = (near_pole_mag > POLE_CUT)
                             if (pole_found and
                                 ([i, j, nvecSQs_keep] not in
@@ -765,11 +768,16 @@ def _get_value_interpolated(interpolable, E, L, irrep):
         cob_matrix = interpolable.cob_matrix_lists[irrep][cob_matrix_index]
     smooth_value = interpolable.interps[irrep]((E, L))
     if cob_matrix_index is not None:
-        if ((len(cob_matrix) != len(smooth_value))
-           or (len(cob_matrix) != len(smooth_value.T))):
-            smooth_value = smooth_value[:len(cob_matrix)]
-            smooth_value_T = (smooth_value.T)[:len(cob_matrix)]
-            smooth_value = smooth_value_T.T
+        smooth_dim = cob_matrix.shape[1]
+        if ((smooth_dim != len(smooth_value))
+           or (smooth_dim != len(smooth_value.T))):
+            smooth_value_tmp = np.zeros((smooth_dim, smooth_dim),
+                                        dtype=smooth_value.dtype)
+            row_dim = min(smooth_dim, len(smooth_value))
+            col_dim = min(smooth_dim, len(smooth_value.T))
+            smooth_value_tmp[:row_dim, :col_dim] =\
+                smooth_value[:row_dim, :col_dim]
+            smooth_value = smooth_value_tmp
         final_value_smooth_basis = smooth_value*pole_parts_smooth_basis
         final_value =\
             (cob_matrix)@final_value_smooth_basis@(cob_matrix.T)
