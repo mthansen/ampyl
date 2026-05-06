@@ -515,7 +515,6 @@ class Interpolable:
         if interpolate:
             self._load_interpolator(interpolator_id=interpolator_id,
                                     interpolator_name=interpolator_name)
-        if interpolate:
             final_value = interpolable_utils._get_value_interpolated(
                 self, E, L, irrep)
             return final_value
