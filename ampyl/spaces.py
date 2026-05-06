@@ -2060,41 +2060,41 @@ class QCIndexSpace:
         nvecset_aa_SQs = np.array(nvecset_aa_SQs)
         return [nvecset_aa, nvecset_aa_SQs]
 
-    def _reps_and_batches_two(self, nvecset_arr, nvecset_SQs, nvecset_ident,
-                              nvecset_ident_SQs, nP):
-        nvecset_reps = [nvecset_arr[0]]
-        nvecset_ident_reps = deepcopy([nvecset_ident[0]])
-        nvecset_SQreps = [nvecset_SQs[0]]
-        nvecset_ident_SQreps = deepcopy([nvecset_ident_SQs[0]])
-        nvecset_inds = [0]
-        nvecset_ident_inds = deepcopy([0])
-        nvecset_counts = deepcopy([0])
-        nvecset_ident_counts = deepcopy([0])
+    def _reps_and_batches_two(self, nvecset_ab, nvecset_ab_SQs, nvecset_aa,
+                              nvecset_aa_SQs, nP):
+        nvecset_ab_reps = [nvecset_ab[0]]
+        nvecset_aa_reps = deepcopy([nvecset_aa[0]])
+        nvecset_ab_SQreps = [nvecset_ab_SQs[0]]
+        nvecset_aa_SQreps = deepcopy([nvecset_aa_SQs[0]])
+        nvecset_ab_inds = [0]
+        nvecset_aa_inds = deepcopy([0])
+        nvecset_ab_counts = deepcopy([0])
+        nvecset_aa_counts = deepcopy([0])
 
         G = self.group.get_little_group(nP)
-        for j in range(len(nvecset_arr)):
+        for j in range(len(nvecset_ab)):
             already_included = False
             for g_elem in G:
                 if not already_included:
-                    for k in range(len(nvecset_reps)):
-                        n_included = nvecset_reps[k]
-                        if (nvecset_arr[j]@g_elem == n_included).all():
+                    for k in range(len(nvecset_ab_reps)):
+                        n_included = nvecset_ab_reps[k]
+                        if (nvecset_ab[j]@g_elem == n_included).all():
                             already_included = True
-                            nvecset_counts[k] = nvecset_counts[k]+1
+                            nvecset_ab_counts[k] = nvecset_ab_counts[k]+1
             if not already_included:
-                nvecset_reps = nvecset_reps+[nvecset_arr[j]]
-                nvecset_SQreps = nvecset_SQreps+[nvecset_SQs[j]]
-                nvecset_inds = nvecset_inds+[j]
-                nvecset_counts = nvecset_counts+[1]
+                nvecset_ab_reps = nvecset_ab_reps+[nvecset_ab[j]]
+                nvecset_ab_SQreps = nvecset_ab_SQreps+[nvecset_ab_SQs[j]]
+                nvecset_ab_inds = nvecset_ab_inds+[j]
+                nvecset_ab_counts = nvecset_ab_counts+[1]
 
-        for j in range(len(nvecset_ident)):
+        for j in range(len(nvecset_aa)):
             already_included = False
             for g_elem in G:
                 if not already_included:
-                    for k in range(len(nvecset_ident_reps)):
-                        n_included = nvecset_ident_reps[k]
+                    for k in range(len(nvecset_aa_reps)):
+                        n_included = nvecset_aa_reps[k]
                         n_included = np.array(n_included)
-                        [n1, n2] = nvecset_ident[j]@g_elem
+                        [n1, n2] = nvecset_aa[j]@g_elem
                         candidates = [np.array([n1, n2]),
                                       np.array([n2, n1])]
                         include_entry = True
@@ -2104,68 +2104,68 @@ class QCIndexSpace:
                                           .all()))
                         if not include_entry:
                             already_included = True
-                            nvecset_ident_counts[k]\
-                                = nvecset_ident_counts[k]+1
+                            nvecset_aa_counts[k]\
+                                = nvecset_aa_counts[k]+1
             if not already_included:
-                nvecset_ident_reps = nvecset_ident_reps\
-                    + [nvecset_ident[j]]
-                nvecset_ident_SQreps = nvecset_ident_SQreps\
-                    + [nvecset_ident_SQs[j]]
-                nvecset_ident_inds = nvecset_ident_inds+[j]
-                nvecset_ident_counts = nvecset_ident_counts+[1]
+                nvecset_aa_reps = nvecset_aa_reps\
+                    + [nvecset_aa[j]]
+                nvecset_aa_SQreps = nvecset_aa_SQreps\
+                    + [nvecset_aa_SQs[j]]
+                nvecset_aa_inds = nvecset_aa_inds+[j]
+                nvecset_aa_counts = nvecset_aa_counts+[1]
 
-        nvecset_batched = list(np.arange(len(nvecset_reps)))
-        for j in range(len(nvecset_arr)):
-            for k in range(len(nvecset_reps)):
+        nvecset_ab_batched = list(np.arange(len(nvecset_ab_reps)))
+        for j in range(len(nvecset_ab)):
+            for k in range(len(nvecset_ab_reps)):
                 include_entry = False
-                n_rep = nvecset_reps[k]
+                n_rep = nvecset_ab_reps[k]
                 n_rep = np.array(n_rep)
                 for g_elem in G:
-                    [n1, n2] = nvecset_arr[j]@g_elem
+                    [n1, n2] = nvecset_ab[j]@g_elem
                     candidates = [np.array([n1, n2])]
                     for candidate in candidates:
                         include_entry = include_entry\
                             or (((candidate == n_rep).all()))
                 if include_entry:
-                    if isinstance(nvecset_batched[k], np.int64):
-                        nvecset_batched[k] = [nvecset_arr[j]]
+                    if isinstance(nvecset_ab_batched[k], np.int64):
+                        nvecset_ab_batched[k] = [nvecset_ab[j]]
                     else:
-                        nvecset_batched[k] = nvecset_batched[k]\
-                            + [nvecset_arr[j]]
+                        nvecset_ab_batched[k] = nvecset_ab_batched[k]\
+                            + [nvecset_ab[j]]
 
-        nvecset_ident_batched\
-            = list(np.arange(len(nvecset_ident_reps)))
-        for j in range(len(nvecset_ident)):
-            for k in range(len(nvecset_ident_reps)):
+        nvecset_aa_batched\
+            = list(np.arange(len(nvecset_aa_reps)))
+        for j in range(len(nvecset_aa)):
+            for k in range(len(nvecset_aa_reps)):
                 include_entry = False
-                n_rep = nvecset_ident_reps[k]
+                n_rep = nvecset_aa_reps[k]
                 n_rep = np.array(n_rep)
                 for g_elem in G:
-                    [n1, n2] = nvecset_ident[j]@g_elem
+                    [n1, n2] = nvecset_aa[j]@g_elem
                     candidates = [np.array([n1, n2]),
                                   np.array([n2, n1])]
                     for candidate in candidates:
                         include_entry = include_entry\
                             or (((candidate == n_rep).all()))
                 if include_entry:
-                    if isinstance(nvecset_ident_batched[k], np.int64):
-                        nvecset_ident_batched[k] = [nvecset_ident[j]]
+                    if isinstance(nvecset_aa_batched[k], np.int64):
+                        nvecset_aa_batched[k] = [nvecset_aa[j]]
                     else:
-                        nvecset_ident_batched[k]\
-                            = nvecset_ident_batched[k]\
-                            + [nvecset_ident[j]]
+                        nvecset_aa_batched[k]\
+                            = nvecset_aa_batched[k]\
+                            + [nvecset_aa[j]]
 
-        for j in range(len(nvecset_batched)):
-            nvecset_batched[j] = np.array(nvecset_batched[j])
+        for j in range(len(nvecset_ab_batched)):
+            nvecset_ab_batched[j] = np.array(nvecset_ab_batched[j])
 
-        for j in range(len(nvecset_ident_batched)):
-            nvecset_ident_batched[j]\
-                = np.array(nvecset_ident_batched[j])
-        return [nvecset_reps, nvecset_ident_reps,
-                nvecset_SQreps, nvecset_ident_SQreps,
-                nvecset_inds, nvecset_ident_inds,
-                nvecset_counts, nvecset_ident_counts,
-                nvecset_batched, nvecset_ident_batched]
+        for j in range(len(nvecset_aa_batched)):
+            nvecset_aa_batched[j]\
+                = np.array(nvecset_aa_batched[j])
+        return [nvecset_ab_reps, nvecset_aa_reps,
+                nvecset_ab_SQreps, nvecset_aa_SQreps,
+                nvecset_ab_inds, nvecset_aa_inds,
+                nvecset_ab_counts, nvecset_aa_counts,
+                nvecset_ab_batched, nvecset_aa_batched]
 
     @staticmethod
     def count_by_isospin(flavor_basis):
