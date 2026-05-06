@@ -714,6 +714,7 @@ def _get_value_interpolated(interpolable, E, L, irrep):
         final_value = smooth_value*pole_parts_smooth_basis
     return final_value
 
+
 def get_pole_candidate(interpolable, L, n1vecSQ, n2vecSQ, n3vecSQ, m1, m2, m3):
     """
     Evaluate the three-particle pole energy for fixed volume.
