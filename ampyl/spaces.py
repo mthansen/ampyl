@@ -1160,21 +1160,50 @@ class QCIndexSpace:
         raise ValueError("only two- and three-particle non-interacting "
                          "channels are supported")
 
+    def _get_nonint_channel_data_three(self, fc):
+        nvecset_abc, nvecset_abc_SQs, nP = self._get_nonint_nvecsets_three(fc)
+        nvecset_aab, nvecset_aab_SQs = self._get_nvecset_aab_three(
+            nvecset_abc, nvecset_abc_SQs)
+        [nvecset_aab_reps, nvecset_aab_SQreps,
+         nvecset_aab_inds, nvecset_aab_counts,
+         nvecset_aab_batched] = self._reps_and_batches_permutations(
+             nvecset_aab, nvecset_aab_SQs, nP,
+             self._aab_three_permutations())
+
+        nvecset_aaa, nvecset_aaa_SQs = self._get_nvecset_aaa_three(
+            nvecset_abc, nvecset_abc_SQs)
+        [nvecset_abc_reps, nvecset_aaa_reps,
+         nvecset_abc_SQreps, nvecset_aaa_SQreps,
+         nvecset_abc_inds, nvecset_aaa_inds,
+         nvecset_abc_counts, nvecset_aaa_counts,
+         nvecset_abc_batched, nvecset_aaa_batched] =\
+            self._reps_and_batches_three(
+                nvecset_abc, nvecset_abc_SQs, nvecset_aaa,
+                nvecset_aaa_SQs, nP)
+
         return {
-            'nvecset_arr': nvecset_arr,
-            'nvecset_SQs': nvecset_SQs,
-            'nvecset_reps': nvecset_reps,
-            'nvecset_SQreps': nvecset_SQreps,
-            'nvecset_inds': nvecset_inds,
-            'nvecset_counts': nvecset_counts,
-            'nvecset_batched': nvecset_batched,
-            'nvecset_ident': nvecset_ident,
-            'nvecset_ident_SQs': nvecset_ident_SQs,
-            'nvecset_ident_reps': nvecset_ident_reps,
-            'nvecset_ident_SQreps': nvecset_ident_SQreps,
-            'nvecset_ident_inds': nvecset_ident_inds,
-            'nvecset_ident_counts': nvecset_ident_counts,
-            'nvecset_ident_batched': nvecset_ident_batched,
+            'nvecset_abc': nvecset_abc,
+            'nvecset_abc_SQs': nvecset_abc_SQs,
+            'nvecset_abc_reps': nvecset_abc_reps,
+            'nvecset_abc_SQreps': nvecset_abc_SQreps,
+            'nvecset_abc_inds': nvecset_abc_inds,
+            'nvecset_abc_counts': nvecset_abc_counts,
+            'nvecset_abc_batched': nvecset_abc_batched,
+            'nvecset_aab': nvecset_aab,
+            'nvecset_aab_SQs': nvecset_aab_SQs,
+            'nvecset_aab_reps': nvecset_aab_reps,
+            'nvecset_aab_SQreps': nvecset_aab_SQreps,
+            'nvecset_aab_inds': nvecset_aab_inds,
+            'nvecset_aab_counts': nvecset_aab_counts,
+            'nvecset_aab_batched': nvecset_aab_batched,
+            'nvecset_aaa': nvecset_aaa,
+            'nvecset_aaa_SQs': nvecset_aaa_SQs,
+            'nvecset_aaa_reps': nvecset_aaa_reps,
+            'nvecset_aaa_SQreps': nvecset_aaa_SQreps,
+            'nvecset_aaa_inds': nvecset_aaa_inds,
+            'nvecset_aaa_counts': nvecset_aaa_counts,
+            'nvecset_aaa_batched': nvecset_aaa_batched,
+        }
         }
 
     def _get_nonint_nvecsets_three(self, fc):
