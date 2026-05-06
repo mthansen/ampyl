@@ -360,7 +360,7 @@ class Interpolable:
         L_grid_unique = np.unique(np.sort(L_grid_unique).round(decimals=10))
 
         # Build the rank 4 tensor
-        smart_interp_tensor = []
+        interp_tensor = []
         for E in E_grid_unique:
             vol_rank = []
             for L in L_grid_unique:
@@ -387,29 +387,29 @@ class Interpolable:
                                         en_loc][vol_loc])
                     xi_rank.append(xj_rank)
                 vol_rank.append(xi_rank)
-            smart_interp_tensor.append(vol_rank)
-        smart_interp_tensor = np.array(smart_interp_tensor)
+            interp_tensor.append(vol_rank)
+        interp_tensor = np.array(interp_tensor)
         try:
-            smart_interp = RegularGridInterpolator((E_grid_unique,
-                                                    L_grid_unique),
-                                                   smart_interp_tensor,
-                                                   method='cubic')
+            interp = RegularGridInterpolator((E_grid_unique,
+                                              L_grid_unique),
+                                             interp_tensor,
+                                             method='cubic')
         except ValueError:
-            smart_interp = RegularGridInterpolator((E_grid_unique,
-                                                    L_grid_unique),
-                                                   smart_interp_tensor,
-                                                   method='linear')
+            interp = RegularGridInterpolator((E_grid_unique,
+                                              L_grid_unique),
+                                             interp_tensor,
+                                             method='linear')
 
         if len(cob_matrix_list) == 0:
             matrix_dim_index = 2
-            matrix_dim_list = [smart_interp_tensor.shape[matrix_dim_index]]
+            matrix_dim_list = [interp_tensor.shape[matrix_dim_index]]
         else:
             matrix_dim_list = []
             for cob_matrix in cob_matrix_list:
                 matrix_dim_list.append(len(cob_matrix))
 
-        smart_poles_list, smart_textures_list, complement_textures_list =\
-            interpolable_utils._get_smart_poles(
+        pole_list, pole_textures_list, complement_textures_list =\
+            interpolable_utils._get_pole_textures(
                 self, matrix_dim_list, polefree_interp_data_list)
 
         # Add relevant data to self
