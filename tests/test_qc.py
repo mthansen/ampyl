@@ -34,6 +34,7 @@ Created July 2022.
 ###############################################################################
 
 import unittest
+import warnings
 import numpy as np
 from scipy.optimize import root_scalar
 import ampyl
@@ -109,6 +110,40 @@ class TestQC(unittest.TestCase):
 
         self.assertEqual(qcis.sc_to_three_slice, [0, 1])
         self.assertTrue(all(len(tbks_set) > 0 for tbks_set in qcis.tbks_list))
+
+    def test_multislice_interpolator_builds_cob_matrices(self):
+        pion = ampyl.flavor.Particle(mass=1.0, spin=0.0, flavor='pi',
+                                     isospin_multiplet=True, isospin=1.0)
+        kaon = ampyl.flavor.Particle(mass=2.5, spin=0.0, flavor='K',
+                                     isospin_multiplet=True, isospin=0.5)
+        fc_kkpi = ampyl.flavor.FlavorChannel(
+            3, particles=[kaon, kaon, pion], isospin=2.0)
+        fcs = ampyl.flavor.FlavorChannelSpace(fc_list=[fc_kkpi], ni_list=[])
+        fvs = ampyl.spaces.FiniteVolumeSetup(
+            qc_impl={'discard_non_interacting': False,
+                     'populate_interp_zeros': True})
+        tbis = ampyl.spaces.ThreeBodyInteractionScheme(fcs=fcs)
+        qcis = ampyl.spaces.QCIndexSpace(
+            fcs=fcs, fvs=fvs, tbis=tbis, Emax=7.0, Lmax=4.0)
+        qcis.populate()
+        f = ampyl.F(qcis=qcis)
+        irrep = ('A1PLUS', 0)
+
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter('always')
+            f.build_interpolator(6.1, 6.2, 0.1, 3.0, 3.1, 0.1,
+                                 True, irrep)
+
+        cob_warning_found = any(
+            'Change-of-basis interpolation matrices are not supported'
+            in str(warning.message) for warning in caught)
+        expected_cob_count = 1
+        for tbks_set in qcis.tbks_list:
+            expected_cob_count *= len(tbks_set)
+        self.assertFalse(cob_warning_found)
+        self.assertEqual(len(f.cob_matrix_lists[irrep]), expected_cob_count)
+        self.assertEqual(len(f.cob_matrix_key_lists[irrep]),
+                         expected_cob_count)
 
     def test_qcis_populates_kkpi_aab_nonint_functions(self):
         pion = ampyl.flavor.Particle(mass=1.0, spin=0.0, flavor='pi',
