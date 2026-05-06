@@ -129,6 +129,10 @@ class TestQC(unittest.TestCase):
         self.assertEqual(qcis._nonint_channel_particle_label(0), 'aab')
         self.assertEqual(len(qcis.nonint_functions), 1)
         self.assertGreater(len(qcis.nonint_functions[0][irrep]), 0)
+        self.assertAlmostEqual(
+            qcis.nonint_functions[0][irrep][0](4.0),
+            2.0*kaon.mass+pion.mass,
+        )
 
     def test_qc_energy_solver_is_explicit(self):
         qc = self.build_qc()
