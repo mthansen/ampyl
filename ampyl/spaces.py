@@ -1135,6 +1135,23 @@ class QCIndexSpace:
                 for channel_data in nonint_channel_data
             ])
 
+    def _nonint_channel_particle_label(self, cindex):
+        fc = self.fcs.ni_list[cindex]
+        flavors = fc.flavors
+        if fc.n_particles == 2:
+            if flavors[0] == flavors[1]:
+                return 'aa'
+            return 'ab'
+        if fc.n_particles != 3:
+            raise ValueError("only two- and three-particle non-interacting "
+                             "channels are supported")
+        flavors = self.fcs.ni_list[cindex].flavors
+        if len(set(flavors)) == 1:
+            return 'aaa'
+        if len(set(flavors)) == 2:
+            return 'aab'
+        return 'abc'
+
     def _get_nonint_channel_data(self, fc):
         if fc.n_particles == 3:
             nvecset_arr, nvecset_SQs, nP = self._get_nonint_nvecsets_three(fc)
