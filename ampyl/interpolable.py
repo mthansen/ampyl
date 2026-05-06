@@ -168,11 +168,11 @@ class Interpolable:
                 interpolable_utils._get_cob_matrix_key_list(self)
             final_set_for_change_of_basis = []
             for cob_matrix_key in cob_matrix_key_list:
-            dim_with_shell_index_all_scs =\
-                interpolable_utils._get_dim_with_shell_index_all_scs(
+                dim_with_shell_index_all_scs =\
+                    interpolable_utils._get_dim_with_shell_index_all_scs(
                         self, irrep, cob_matrix_key)
                 final_set_for_change_of_basis.append(
-                interpolable_utils._get_final_set_for_change_of_basis(
+                    interpolable_utils._get_final_set_for_change_of_basis(
                         self, dim_with_shell_index_all_scs))
             cob_matrix_list = interpolable_utils._get_cob_matrix_list(
                 self, final_set_for_change_of_basis)
@@ -191,7 +191,7 @@ class Interpolable:
                 cob_matrix = interpolable_utils._get_cob_matrix_for_value(
                     self, E, L, cob_matrix_list, cob_matrix_key_list)
                 if cob_matrix is not None:
-                        matrix_tmp = (cob_matrix.T)@matrix_tmp@cob_matrix
+                    matrix_tmp = (cob_matrix.T)@matrix_tmp@cob_matrix
                 for i in range(len(matrix_tmp)):
                     for j in range(len(matrix_tmp)):
                         interpolable_value = matrix_tmp[i][j]
@@ -416,6 +416,7 @@ class Interpolable:
             = polefree_interp_data_list
         self.interp_data_lists[irrep] = interp_data_list
         self.cob_matrix_lists[irrep] = cob_matrix_list
+        self.cob_matrix_key_lists[irrep] = cob_matrix_key_list
         self.cob_list_lens[irrep] = len(cob_matrix_list)
         self.matrix_dim_lists[irrep] = matrix_dim_list
         self.interp_tensors[irrep] = interp_tensor
