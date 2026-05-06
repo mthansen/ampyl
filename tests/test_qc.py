@@ -110,6 +110,26 @@ class TestQC(unittest.TestCase):
         self.assertEqual(qcis.sc_to_three_slice, [0, 1])
         self.assertTrue(all(len(tbks_set) > 0 for tbks_set in qcis.tbks_list))
 
+    def test_qcis_populates_kkpi_aab_nonint_functions(self):
+        pion = ampyl.flavor.Particle(mass=1.0, spin=0.0, flavor='pi',
+                                     isospin_multiplet=True, isospin=1.0)
+        kaon = ampyl.flavor.Particle(mass=2.5, spin=0.0, flavor='K',
+                                     isospin_multiplet=True, isospin=0.5)
+        fc_kkpi = ampyl.flavor.FlavorChannel(
+            3, particles=[kaon, kaon, pion], isospin=2.0)
+        fcs = ampyl.flavor.FlavorChannelSpace(
+            fc_list=[fc_kkpi], ni_list=[fc_kkpi])
+        tbis = ampyl.spaces.ThreeBodyInteractionScheme(fcs=fcs)
+        qcis = ampyl.spaces.QCIndexSpace(
+            fcs=fcs, tbis=tbis, Emax=7.0, Lmax=4.0)
+
+        qcis.populate()
+
+        irrep = ('A1PLUS', 0)
+        self.assertEqual(qcis._nonint_channel_particle_label(0), 'aab')
+        self.assertEqual(len(qcis.nonint_functions), 1)
+        self.assertGreater(len(qcis.nonint_functions[0][irrep]), 0)
+
     def test_qc_energy_solver_is_explicit(self):
         qc = self.build_qc()
         L, qc_dict = self.build_qc_case()
