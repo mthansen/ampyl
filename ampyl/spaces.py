@@ -1127,10 +1127,11 @@ class QCIndexSpace:
              'nvecset_aaa_reps', 'nvecset_aaa_SQreps',
              'nvecset_aaa_inds', 'nvecset_aaa_counts',
              'nvecset_aaa_batched'])
+
     def _populate_nonint_data_fields(self, nonint_channel_data, field_names):
         for field_name in field_names:
             setattr(self, field_name, [
-                channel_data[field_name]
+                channel_data.get(field_name)
                 for channel_data in nonint_channel_data
             ])
 
