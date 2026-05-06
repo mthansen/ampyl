@@ -155,16 +155,16 @@ def _get_cob_matrix_key_list(interpolable):
 def _get_final_set_for_change_of_basis(
         interpolable, dim_with_shell_index_all_scs):
     dim_shell_counter_all = []
-        dim_counter = 0
-        for dim_with_shell_index_for_sc in dim_with_shell_index_all_scs:
+    dim_counter = 0
+    for dim_with_shell_index_for_sc in dim_with_shell_index_all_scs:
         dim_shell_counter = []
-            for dim_with_shell_index in dim_with_shell_index_for_sc:
-                    counter_set = []
-                    for _ in range(dim_with_shell_index[0]):
-                        counter_set = counter_set+[dim_counter]
-                        dim_counter = dim_counter+1
-                    dim_shell_counter = dim_shell_counter\
-                        + [[dim_with_shell_index, counter_set]]
+        for dim_with_shell_index in dim_with_shell_index_for_sc:
+            counter_set = []
+            for _ in range(dim_with_shell_index[0]):
+                counter_set = counter_set+[dim_counter]
+                dim_counter = dim_counter+1
+            dim_shell_counter = dim_shell_counter\
+                + [[dim_with_shell_index, counter_set]]
         dim_shell_counter_all = dim_shell_counter_all+[dim_shell_counter]
     return dim_shell_counter_all
 
@@ -465,7 +465,7 @@ def _get_all_relevant_nvecSQs_list_bad_loop(interpolable, Emax, project, irrep,
                                     interpolable, Etmp, Ltmp, cob_matrix_list,
                                     cob_matrix_key_list)
                                 if cob_matrix is not None:
-                                        matrix_tmp =\
+                                    matrix_tmp =\
                                         (cob_matrix.T)@matrix_tmp@cob_matrix
                                 interpolable_value = matrix_tmp[i][j]
                                 near_pole_mag = np.abs(interpolable_value)
@@ -670,10 +670,14 @@ def _get_value_interpolated(interpolable, E, L, irrep):
         use_cob_matrices = interpolable.qcis.fvs.qc_impl['use_cob_matrices']
     else:
         use_cob_matrices = QC_IMPL_DEFAULTS['use_cob_matrices']
-    if interpolable.cob_list_lens != {} and use_cob_matrices:
-        cob_list_len = interpolable.cob_list_lens[irrep]
-    else:
-        cob_list_len = 0
+    cob_matrix_index = None
+    if (interpolable.cob_list_lens != {} and use_cob_matrices
+       and len(interpolable.cob_matrix_lists[irrep]) != 0):
+        tbks_sub_indices = interpolable.qcis.get_tbks_sub_indices(E, L)
+        tbks_sub_indices = tuple(
+            tbks_sub_indices[:interpolable.qcis.fcs.n_three_slices])
+        cob_matrix_index = _get_cob_matrix_index(
+            interpolable.cob_matrix_key_lists[irrep], tbks_sub_indices)
     sc_index = interpolable.qcis.fcs.slices_by_three_masses[0][0]
     sc = interpolable.qcis.fcs.sc_list_sorted[sc_index]
     m1 = sc.spectator.mass
@@ -682,28 +686,23 @@ def _get_value_interpolated(interpolable, E, L, irrep):
     if len(interpolable.pole_lists[irrep]) == 0:
         pole_parts_smooth_basis = 1.
     else:
-        if cob_list_len == 0:
+        if cob_matrix_index is None:
             poles = interpolable.pole_lists[irrep][0]
         else:
-            tmp_sub_index = interpolable.qcis.get_tbks_sub_indices(E, L)[0]
-            poles = interpolable.pole_lists[
-                irrep][cob_list_len-tmp_sub_index-1]
+            poles = interpolable.pole_lists[irrep][cob_matrix_index]
         if len(poles) == 0:
             pole_parts_smooth_basis = 1.
         else:
-            if cob_list_len == 0:
+            if cob_matrix_index is None:
                 pole_textures = interpolable.pole_textures_lists[irrep][0]
                 complement_textures = interpolable.complement_textures_lists[
                     irrep][0]
             else:
-                tmp_sub_index =\
-                    interpolable.qcis.get_tbks_sub_indices(E, L)[0]
                 pole_textures = interpolable.pole_textures_lists[
-                    irrep][cob_list_len-tmp_sub_index-1]
-                tmp_sub_index = interpolable.qcis.get_tbks_sub_indices(E, L)[0]
+                    irrep][cob_matrix_index]
                 complement_textures =\
                     interpolable.complement_textures_lists[
-                        irrep][cob_list_len-tmp_sub_index-1]
+                        irrep][cob_matrix_index]
             omegas =\
                 np.sqrt(poles*FOURPI2/L**2
                         + np.array([m1**2, m2**2, m3**2]))
@@ -712,16 +711,10 @@ def _get_value_interpolated(interpolable, E, L, irrep):
                 np.multiply(pole_textures, pole_values[:, None, None])\
                 + complement_textures
             pole_parts_smooth_basis = pole_matrices.prod(0)
-    if (interpolable.cob_list_lens != {}
-       and len(interpolable.cob_matrix_lists[irrep]) != 0):
-        cob_matrix =\
-            interpolable.cob_matrix_lists[irrep][cob_list_len
-                                                 - interpolable.qcis.
-                                                 get_tbks_sub_indices(
-                                                     E, L)[0]-1]
+    if cob_matrix_index is not None:
+        cob_matrix = interpolable.cob_matrix_lists[irrep][cob_matrix_index]
     smooth_value = interpolable.interps[irrep]((E, L))
-    if (interpolable.cob_list_lens != {}
-       and len(interpolable.cob_matrix_lists[irrep]) != 0):
+    if cob_matrix_index is not None:
         if ((len(cob_matrix) != len(smooth_value))
            or (len(cob_matrix) != len(smooth_value.T))):
             smooth_value = smooth_value[:len(cob_matrix)]
