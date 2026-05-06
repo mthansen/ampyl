@@ -552,6 +552,10 @@ class F(Interpolable):
             pv_shift_parameters = self.qcis.tbis.pv_shift_parameters[sc_ind]
         else:
             pv_shift_parameters = None
+        sc = self.qcis.fcs.sc_list_sorted[sc_ind]
+        dimer_symmetry_factor = 1.0
+        if sc.first_dimer != sc.second_dimer:
+            dimer_symmetry_factor = 2.0
 
         mask_slices, slice_entry\
             = shell_utils._get_masks_and_shells_for_f(
@@ -560,7 +564,8 @@ class F(Interpolable):
             E, nP, L, m1, m2, m3, tbks_entry, slice_entry, ell1, ell2,
             alpha, beta, C1cut, alphaKSS, qc_impl, three_scheme,
             use_pv_shift_prescription=use_pv_shift_prescription,
-            pv_shift_parameters=pv_shift_parameters)
+            pv_shift_parameters=pv_shift_parameters,
+            dimer_symmetry_factor=dimer_symmetry_factor)
 
         if project:
             try:
