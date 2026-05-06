@@ -534,13 +534,13 @@ def _get_all_relevant_nvecSQs_list_good_loop(
                     matrix_tmp = interpolable.get_value(E=Etmp, L=Ltmp,
                                                         project=project,
                                                         irrep=irrep)
-                    for cob_matrix in cob_matrix_list:
-                        try:
-                            matrix_tmp =\
-                                (cob_matrix.T)@matrix_tmp\
-                                @ cob_matrix
-                        except ValueError:
-                            pass
+                    cob_matrix_key_list =\
+                        interpolable.cob_matrix_key_lists.get(irrep, [])
+                    cob_matrix = _get_cob_matrix_for_value(
+                        interpolable, Etmp, Ltmp, cob_matrix_list,
+                        cob_matrix_key_list)
+                    if cob_matrix is not None:
+                        matrix_tmp = (cob_matrix.T)@matrix_tmp@cob_matrix
                     for i in range(max_interp_dim):
                         for j in range(max_interp_dim):
                             interpolable_value = matrix_tmp[i][j]
