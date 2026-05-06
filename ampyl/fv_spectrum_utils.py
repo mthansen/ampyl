@@ -91,7 +91,7 @@ def _refine_interpolated_energy(spectrum, band_index, point_index,
     interp_E_vals[band_index][point_index] = Etmp
     Eupdate = _find_updated_energy(spectrum, Etmp, Ltmp, qc_dict, ni_functions)
     interp_E_vals[band_index][point_index] = Eupdate
-    spectrum.qc.qcis.fvs.qc_impl['fplusg_smart_interpolate'] = True
+    spectrum.qc.qcis.fvs.qc_impl['fplusg_interpolate'] = True
 
 
 def _get_interpolated_energy_guess(band_index, point_index,
@@ -194,7 +194,7 @@ def _append_energy_level_at_volume(spectrum, band_index, L, Emin, Emax,
         interp_L_vals[band_index].append(L)
         warnings.warn(f'Multiple solutions found for L = {L}.\n'
                       f'Differences are {np.abs(E_val - E_guess)}')
-        spectrum.qc.qcis.fvs.qc_impl['fplusg_smart_interpolate'] = True
+        spectrum.qc.qcis.fvs.qc_impl['fplusg_interpolate'] = True
 
 
 def _fit_energy_guess(L_vals, E_vals, L):
@@ -253,7 +253,7 @@ def _extract_EL_set(spectrum, version, irrep, dL):
     if (version in ['kdf_zero_1+_fgcombo',
                     'kdf_zero_detf3inv_asym_fgcombo',
                     'kdf+f3inv_asym_fgcombo']
-       and spectrum.qc.qcis.fvs.qc_impl['fplusg_smart_interpolate']):
+       and spectrum.qc.qcis.fvs.qc_impl['fplusg_interpolate']):
 
         Emin_interp, Emax_interp, Lmin_interp, Lmax_interp = \
             spectrum.qc.fplusg.interp_data_lists[irrep][0][0][0]
@@ -387,11 +387,8 @@ def _refine_root_without_interpolation(spectrum, root, L, qc_dict,
     default_interpolation_keys = (
         'zeta_interp',
         'g_interpolate',
-        'g_smart_interpolate',
         'f_interpolate',
-        'f_smart_interpolate',
         'fplusg_interpolate',
-        'fplusg_smart_interpolate',
         'populate_interp_zeros',
     )
     interpolation_keys = sorted(
