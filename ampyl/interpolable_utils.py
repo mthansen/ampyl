@@ -600,14 +600,15 @@ def _get_polefree_interp_data_list(interpolable, max_interp_dim,
     return polefree_interp_data_list
 
 
-def _get_smart_poles(interpolable, matrix_dim_list, polefree_interp_data_list):
-    smart_poles_list = []
-    smart_textures_list = []
+def _get_pole_textures(interpolable, matrix_dim_list,
+                       polefree_interp_data_list):
+    pole_list = []
+    pole_textures_list = []
     complement_textures_list = []
     for index_tmp in range(len(matrix_dim_list)):
-        smart_pole_dict = {}
-        smart_poles = []
-        smart_textures = []
+        pole_dict = {}
+        poles = []
+        pole_textures = []
         matrix_dimension = matrix_dim_list[index_tmp]
         for i in range(matrix_dimension):
             for j in range(matrix_dimension):
@@ -615,33 +616,33 @@ def _get_smart_poles(interpolable, matrix_dim_list, polefree_interp_data_list):
                    or j >= len(polefree_interp_data_list[i])):
                     break
                 for pole_data in (polefree_interp_data_list[i][j][2]):
-                    if tuple(pole_data[2]) not in smart_pole_dict:
+                    if tuple(pole_data[2]) not in pole_dict:
                         texture = np.zeros((matrix_dimension,
                                             matrix_dimension))
                         texture[i][j] = 1.
-                        smart_pole_dict[tuple(pole_data[2])] = texture
-                        smart_poles.append(pole_data[2])
-                        smart_textures.append(deepcopy(texture))
+                        pole_dict[tuple(pole_data[2])] = texture
+                        poles.append(pole_data[2])
+                        pole_textures.append(deepcopy(texture))
                     else:
                         texture = np.zeros((matrix_dimension,
                                             matrix_dimension))
                         texture[i][j] = 1.
-                        smart_pole_dict[tuple(pole_data[2])] += texture
-                        smart_textures[smart_poles.index(pole_data[2])] +=\
+                        pole_dict[tuple(pole_data[2])] += texture
+                        pole_textures[poles.index(pole_data[2])] +=\
                             texture
         complement_textures = []
-        for smart_texture in smart_textures:
+        for pole_texture in pole_textures:
             complement_texture = np.ones((matrix_dimension,
                                           matrix_dimension))\
-                - smart_texture
+                - pole_texture
             complement_textures.append(complement_texture)
-        smart_poles = np.array(smart_poles)
-        smart_textures = np.array(smart_textures)
+        poles = np.array(poles)
+        pole_textures = np.array(pole_textures)
         complement_textures = np.array(complement_textures)
-        smart_poles_list.append(smart_poles)
-        smart_textures_list.append(smart_textures)
+        pole_list.append(poles)
+        pole_textures_list.append(pole_textures)
         complement_textures_list.append(complement_textures)
-    return smart_poles_list, smart_textures_list, complement_textures_list
+    return pole_list, pole_textures_list, complement_textures_list
 
 
 def _get_value_smart_interpolated(interpolable, E, L, irrep):
