@@ -419,12 +419,11 @@ class Interpolable:
         self.interp_data_lists[irrep] = interp_data_list
         self.cob_matrix_lists[irrep] = cob_matrix_list
         self.cob_list_lens[irrep] = len(cob_matrix_list)
-        self.interp_arrays[irrep] = interp_array
         self.matrix_dim_lists[irrep] = matrix_dim_list
-        self.smart_interp_tensors[irrep] = smart_interp_tensor
-        self.smart_interps[irrep] = smart_interp
-        self.smart_poles_lists[irrep] = smart_poles_list
-        self.smart_textures_lists[irrep] = smart_textures_list
+        self.interp_tensors[irrep] = interp_tensor
+        self.interps[irrep] = interp
+        self.pole_lists[irrep] = pole_list
+        self.pole_textures_lists[irrep] = pole_textures_list
         self.complement_textures_lists[irrep] = complement_textures_list
         self._store_interpolator(name=name)
 
