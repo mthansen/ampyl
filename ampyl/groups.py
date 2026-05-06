@@ -889,6 +889,39 @@ class Groups:
         nonint_rot_matrix = np.array(nonint_rot_matrix[1:])
         return nonint_rot_matrix
 
+    def generate_induced_rep_nonint_three_scalars_labeled(
+            self, nvecset_batched=np.zeros((1, 3, 3)),
+            permutations=None, g_elem=np.identity(3)):
+        """Generate a scalar three-particle induced representation."""
+        if permutations is None:
+            permutations = [[0, 1, 2]]
+        loc_inds = []
+        nvecset_rot = np.moveaxis(
+            g_elem@np.moveaxis(nvecset_batched, 0, 2), 2, 0)
+        for i in range(len(nvecset_batched)):
+            nvecset_rot_entry = nvecset_rot[i]
+            loc_ind = []
+            for permutation in permutations:
+                loc_ind_tmp = np.where(
+                    np.all(
+                        nvecset_batched
+                        == nvecset_rot_entry[permutation],
+                        axis=(1, 2),
+                    )
+                )[0]
+                loc_ind = loc_ind+list(loc_ind_tmp)
+            loc_ind = np.unique(loc_ind)
+            assert len(loc_ind) == 1
+            loc_inds = loc_inds+[loc_ind[0]]
+
+        nonint_rot_matrix = [[]]
+        for loc_ind in loc_inds:
+            nonint_rot_row = np.zeros(len(loc_inds))
+            nonint_rot_row[loc_ind] = 1.0
+            nonint_rot_matrix = nonint_rot_matrix+[nonint_rot_row]
+        nonint_rot_matrix = np.array(nonint_rot_matrix[1:])
+        return nonint_rot_matrix
+
     def generate_induced_rep_nonint_three_particles_spin(
             self, aaa_arr=np.zeros((1, 3, 3)),
             abc_arr=np.zeros((1, 3, 3)),
@@ -1012,6 +1045,36 @@ class Groups:
             g_elem = group[g_ind]
             induced_rep = self.generate_induced_rep_nonint_three_scalars(
                 aaa_arr, abc_arr, g_elem, definite_iso)
+            proj = proj+induced_rep*bT[g_ind]
+        return proj
+
+    def get_proj_nonint_three_scalars_labeled(
+            self, nP=np.array([0, 0, 0]), irrep='A1PLUS', irow=0,
+            nvecset_batched=np.zeros((1, 3, 3)), permutations=None):
+        """Get a scalar three-particle projector for a particle label."""
+        if permutations is None:
+            permutations = [[0, 1, 2]]
+        if (nP == np.array([0, 0, 0])).all():
+            group_str = 'OhP'
+            group = self.OhP
+            bT = self.chardict[group_str+'_'+irrep][irow]
+        elif (nP == np.array([0, 0, 1])).all():
+            group_str = 'Dic4'
+            group = self.Dic4
+            bT = self.chardict[group_str+'_'+irrep][irow]
+        elif (nP == np.array([0, 1, 1])).all():
+            group_str = 'Dic2'
+            group = self.Dic2
+            bT = self.chardict[group_str+'_'+irrep][irow]
+        else:
+            return ValueError("group not yet supported by get_large_proj")
+        dim = len(nvecset_batched)
+        proj = np.zeros((dim, dim))
+        for g_ind in range(len(group)):
+            g_elem = group[g_ind]
+            induced_rep =\
+                self.generate_induced_rep_nonint_three_scalars_labeled(
+                    nvecset_batched, permutations, g_elem)
             proj = proj+induced_rep*bT[g_ind]
         return proj
 
@@ -1369,6 +1432,66 @@ class Groups:
                         non_proj_dict[keytmp] = proj_tmp.real
         return non_proj_dict
 
+    def get_proj_nonint_three_scalars_labeled_shell(
+            self, qcis=None, cindex=0, shell_index=None):
+        """Get scalar projectors for a three-particle label shell."""
+        if qcis is None:
+            raise ValueError("qcis cannot be None")
+        nP = qcis.nP
+        irrep_set = qcis.fvs.irrep_set
+        particle_label = qcis._nonint_channel_particle_label(cindex)
+        nvecset_batched = getattr(
+            qcis, f'nvecset_{particle_label}_batched')[cindex][shell_index]
+        permutations = self._three_particle_label_permutations(particle_label)
+
+        if (nP@nP != 0) and (nP@nP != 1) and (nP@nP != 2):
+            raise ValueError("momentum = ", nP, " is not yet supported")
+        non_proj_dict = {}
+        if (nP@nP == 0):
+            group_str = 'OhP'
+        if (nP@nP == 1):
+            group_str = 'Dic4'
+        if (nP@nP == 2):
+            group_str = 'Dic2'
+
+        for i in range(len(irrep_set)):
+            irrep = irrep_set[i]
+            for irow in range(len(self.chardict[group_str+'_'+irrep])):
+                proj = self.get_proj_nonint_three_scalars_labeled(
+                    nP, irrep, irow, nvecset_batched, permutations)
+                eigvals, eigvecs = np.linalg.eig(proj)
+                eigvalsround = (np.round(np.abs(eigvals), 10))
+                example_eigval = 0.0
+                for i in range(len(eigvalsround)):
+                    eigval = eigvalsround[i]
+                    if np.abs(eigval) > 1.0e-10:
+                        if example_eigval == 0.0:
+                            example_eigval = eigval
+                        else:
+                            assert np.abs(
+                                example_eigval-eigval
+                                ) < 1.0e-10
+                if np.abs(example_eigval) > 1.0e-10:
+                    proj = proj/example_eigval
+                finalproj = self._clean_projector(proj)
+                if len(finalproj) != 0:
+                    non_proj_dict[(irrep, irow)] = finalproj
+                for keytmp in non_proj_dict:
+                    proj_tmp = non_proj_dict[keytmp]
+                    if (proj_tmp.imag == np.zeros(proj_tmp.shape)).all():
+                        non_proj_dict[keytmp] = proj_tmp.real
+        return non_proj_dict
+
+    @staticmethod
+    def _three_particle_label_permutations(particle_label):
+        if particle_label == 'aaa':
+            return PION_ORDERS
+        if particle_label == 'aab':
+            return [[0, 1, 2], [1, 0, 2]]
+        if particle_label == 'abc':
+            return [[0, 1, 2]]
+        raise ValueError(f"unsupported three-particle label {particle_label}")
+
     def get_proj_nonint_two_particles_shell(
             self, qcis=None, cindex=0, definite_iso=False,
             isovalue=None, shell_index=None):
@@ -1461,15 +1584,13 @@ class Groups:
 
     def get_proj_nonint_three_pions_dict(self, qcis=None, nic_index=0):
         """Get it."""
-        master_dict = {}
         if qcis is None:
             raise ValueError("qcis cannot be None")
-        definite_iso = qcis.fcs.fc_list[nic_index].isospin_channel
-        if not (qcis.fcs.fc_list[nic_index].flavors[0]
-                == qcis.fcs.fc_list[nic_index].flavors[1]
-                == qcis.fcs.fc_list[nic_index].flavors[2]):
-            raise ValueError("get_nonint_proj_dict currently only supports "
-                             + "identical flavors")
+        if qcis._nonint_channel_particle_label(nic_index) != 'aaa':
+            return self.get_proj_nonint_three_scalars_labeled_dict(
+                qcis=qcis, nic_index=nic_index)
+        master_dict = {}
+        definite_iso = qcis.fcs.ni_list[nic_index].isospin_channel
         row_zero_value = 0
         summary_str = ""
         nshells = len(qcis.nvecset_aaa_reps[nic_index])
@@ -1548,6 +1669,72 @@ class Groups:
                                 (f"       {irrep} "
                                  f"(appears {n_embedded} time{s}), "
                                  f"covered {shell_covered}/{nstates}\n")
+            assert shell_total == nstates
+        summary_str = summary_str[:-1]
+        master_dict['summary'] = summary_str
+        return master_dict
+
+    def get_proj_nonint_three_scalars_labeled_dict(
+            self, qcis=None, nic_index=0):
+        """Get scalar three-particle projectors for non-aaa labels."""
+        master_dict = {}
+        if qcis is None:
+            raise ValueError("qcis cannot be None")
+        particle_label = qcis._nonint_channel_particle_label(nic_index)
+        nvecset_reps_cindex = getattr(
+            qcis, f'nvecset_{particle_label}_reps')[nic_index]
+        nvecset_batched_cindex = getattr(
+            qcis, f'nvecset_{particle_label}_batched')[nic_index]
+        row_zero_value = 0
+        summary_str = ""
+        nshells = len(nvecset_reps_cindex)
+        if qcis.fcs.ni_list[nic_index].isospin_channel:
+            isoset = [int(qcis.fcs.ni_list[nic_index].isospin)]
+        else:
+            isoset = range(1)
+        for shell_index in range(nshells):
+            shell_total = 0
+            nstates = len(nvecset_batched_cindex[shell_index])
+            summary_str +=\
+                f"shell_index = {shell_index} ({nstates} states):\n"
+            rep_mom = str(nvecset_reps_cindex[shell_index])
+            rep_mom = rep_mom.replace(' [', (' '*30)+'[')
+            summary_str += "    representative momenta = "+rep_mom+"\n"
+            for isovalue in isoset:
+                non_proj_dict =\
+                    self.get_proj_nonint_three_scalars_labeled_shell(
+                        qcis, nic_index, shell_index)
+                master_dict[(shell_index, isovalue)] = non_proj_dict
+                if len(non_proj_dict) == 0:
+                    summary_str += "    Channel does not contain this shell\n"
+                else:
+                    summary_str += "    Channel contains...\n"
+                for dict_ent in non_proj_dict:
+                    irrep, row = dict_ent
+                    dim = 1
+                    if irrep[0] == 'E':
+                        dim = 2
+                    if irrep[0] == 'T':
+                        dim = 3
+                    n_embedded = int(len(non_proj_dict[dict_ent].T)/dim)
+                    if row == 0:
+                        row_zero_value = n_embedded
+                    else:
+                        if row_zero_value != n_embedded:
+                            print(f'Warning: row_zero_value = '
+                                  f'{row_zero_value}, n_embedded = '
+                                  f'{n_embedded}')
+                    shell_total = shell_total+n_embedded
+                    if row == 0:
+                        if n_embedded == 1:
+                            s = ''
+                        else:
+                            s = 's'
+                        shell_covered = shell_total+n_embedded*(dim-1)
+                        summary_str +=\
+                            (f"       {irrep} "
+                             f"(appears {n_embedded} time{s}), "
+                             f"covered {shell_covered}/{nstates}\n")
             assert shell_total == nstates
         summary_str = summary_str[:-1]
         master_dict['summary'] = summary_str
