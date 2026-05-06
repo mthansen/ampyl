@@ -144,6 +144,13 @@ class TestQC(unittest.TestCase):
         self.assertEqual(len(f.cob_matrix_lists[irrep]), expected_cob_count)
         self.assertEqual(len(f.cob_matrix_key_lists[irrep]),
                          expected_cob_count)
+        max_dim = f.cob_matrix_lists[irrep][0].shape[1]
+        self.assertTrue(
+            all(cob_matrix.shape[1] == max_dim
+                for cob_matrix in f.cob_matrix_lists[irrep]))
+        self.assertTrue(
+            any(cob_matrix.shape[0] < cob_matrix.shape[1]
+                for cob_matrix in f.cob_matrix_lists[irrep]))
 
     def test_qcis_populates_kkpi_aab_nonint_functions(self):
         pion = ampyl.flavor.Particle(mass=1.0, spin=0.0, flavor='pi',
