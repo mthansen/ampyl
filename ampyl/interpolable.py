@@ -175,7 +175,14 @@ class Interpolable:
                     interpolable_utils._get_final_set_for_change_of_basis(
                         self, dim_with_shell_index_all_scs))
             cob_matrix_list = interpolable_utils._get_cob_matrix_list(
-                self, final_set_for_change_of_basis)
+                self, final_set_for_change_of_basis, cob_matrix_key_list)
+            if len(cob_matrix_list) != 0:
+                max_interp_dim = max(
+                    max_interp_dim,
+                    max(cob_matrix.shape[1]
+                        for cob_matrix in cob_matrix_list))
+                interp_data_list = interpolable_utils._resize_interp_data_list(
+                    interp_data_list, max_interp_dim)
         else:
             cob_matrix_list = []
             cob_matrix_key_list = []
@@ -404,7 +411,7 @@ class Interpolable:
         else:
             matrix_dim_list = []
             for cob_matrix in cob_matrix_list:
-                matrix_dim_list.append(len(cob_matrix))
+                matrix_dim_list.append(cob_matrix.shape[1])
 
         pole_list, pole_textures_list, complement_textures_list =\
             interpolable_utils._get_pole_textures(
