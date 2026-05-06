@@ -1238,34 +1238,34 @@ class QCIndexSpace:
     def _get_nonint_nvecsets_three(self, fc):
         [m1, m2, m3, Emax, nP, Lmax, nvec_cutoff, nvecs]\
             = self._load_ni_data_three(fc)
-        nvecset_arr = []
+        nvecset_abc = []
         nmin = nvec_cutoff
         nmax = nvec_cutoff
         for n1 in nvecs:
             for n2 in nvecs:
-                [nvecset_arr, nmin, nmax]\
-                    = self._get_nvecset_arr_three(nvecset_arr, nmin, nmax,
+                [nvecset_abc, nmin, nmax]\
+                    = self._get_nvecset_abc_three(nvecset_abc, nmin, nmax,
                                                   m1, m2, m3, Emax, nP,
                                                   Lmax, n1, n2)
-        nvecset_arr = np.array(nvecset_arr)
-        [nvecset_arr, nvecset_SQs] = self._square_and_sort_three(
-            nvecset_arr, nmin, nmax, m1, m2, m3, Lmax)
-        return nvecset_arr, nvecset_SQs, nP
+        nvecset_abc = np.array(nvecset_abc)
+        [nvecset_abc, nvecset_abc_SQs] = self._square_and_sort_three(
+            nvecset_abc, nmin, nmax, m1, m2, m3, Lmax)
+        return nvecset_abc, nvecset_abc_SQs, nP
 
     def _get_nonint_nvecsets_two(self, fc):
         [m1, m2, Emax, nP, Lmax, nvec_cutoff, nvecs]\
             = self._load_ni_data_two(fc)
-        nvecset_arr = []
+        nvecset_ab = []
         nmin = nvec_cutoff
         nmax = nvec_cutoff
         for n1 in nvecs:
-            [nvecset_arr, nmin, nmax]\
-                = self._get_nvecset_arr_two(nvecset_arr, nmin, nmax,
+            [nvecset_ab, nmin, nmax]\
+                = self._get_nvecset_ab_two(nvecset_ab, nmin, nmax,
                                             m1, m2, Emax, nP, Lmax, n1)
-        nvecset_arr = np.array(nvecset_arr)
-        [nvecset_arr, nvecset_SQs] = self._square_and_sort_two(
-            nvecset_arr, nmin, nmax, m1, m2, Lmax)
-        return nvecset_arr, nvecset_SQs, nP
+        nvecset_ab = np.array(nvecset_ab)
+        [nvecset_ab, nvecset_ab_SQs] = self._square_and_sort_two(
+            nvecset_ab, nmin, nmax, m1, m2, Lmax)
+        return nvecset_ab, nvecset_ab_SQs, nP
 
     def populate_nonint_proj_dict(self):
         """
