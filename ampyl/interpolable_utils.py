@@ -115,6 +115,26 @@ def _grids_and_interp(interpolable, Emin, Emax, Estep, Lmin, Lmax, Lstep,
     return L_grid, E_grid, max_interp_dim, interp_data_list
 
 
+def _new_interp_data_entry():
+    return [[BAD_MIN_GUESS, BAD_MAX_GUESS,
+             BAD_MIN_GUESS, BAD_MAX_GUESS], [[]]]
+
+
+def _resize_interp_data_list(interp_data_list, target_dim):
+    current_dim = len(interp_data_list)
+    if current_dim >= target_dim:
+        return interp_data_list
+    for row in interp_data_list:
+        for _ in range(target_dim-current_dim):
+            row.append(_new_interp_data_entry())
+    for _ in range(target_dim-current_dim):
+        interp_data_row = []
+        for _ in range(target_dim):
+            interp_data_row.append(_new_interp_data_entry())
+        interp_data_list.append(interp_data_row)
+    return interp_data_list
+
+
 def _get_dim_with_shell_index_all_scs(interpolable, irrep,
                                       tbks_sub_indices=None):
     dim_with_shell_index_all_scs = []
