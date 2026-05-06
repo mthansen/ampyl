@@ -1102,6 +1102,13 @@ class QCIndexSpace:
              'nvecset_aa_SQreps', 'nvecset_aa_inds', 'nvecset_aa_counts',
              'nvecset_aa_batched'])
 
+    def _populate_abc_nonint_data(self, nonint_channel_data):
+        """Populate fully distinguishable three-particle data."""
+        self._populate_nonint_data_fields(
+            nonint_channel_data,
+            ['nvecset_abc', 'nvecset_abc_SQs', 'nvecset_abc_reps',
+             'nvecset_abc_SQreps', 'nvecset_abc_inds', 'nvecset_abc_counts',
+             'nvecset_abc_batched'])
     def _populate_nonint_data_fields(self, nonint_channel_data, field_names):
         for field_name in field_names:
             setattr(self, field_name, [
