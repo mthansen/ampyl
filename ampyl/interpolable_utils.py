@@ -595,9 +595,6 @@ def _get_all_relevant_nvecSQs_list_good_loop(
                         for j in range(max_interp_dim):
                             interpolable_value = matrix_tmp[i][j]
                             near_pole_mag = np.abs(interpolable_value)
-                            if near_pole_mag > 1.0:
-                                print('i, j, nvecSQs_keep, near_pole_mag =',
-                                       i, j, nvecSQs_keep, near_pole_mag)
                             pole_found = (near_pole_mag > POLE_CUT)
                             if (pole_found and
                                 ([i, j, nvecSQs_keep] not in
