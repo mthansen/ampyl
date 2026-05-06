@@ -190,6 +190,28 @@ def _get_cob_matrix_list(interpolable, final_set_for_change_of_basis):
     return cob_matrix_list
 
 
+def _get_cob_matrix_index(cob_matrix_key_list, tbks_sub_indices):
+    tbks_sub_indices = tuple(tbks_sub_indices)
+    try:
+        return cob_matrix_key_list.index(tbks_sub_indices)
+    except ValueError:
+        return None
+
+
+def _get_cob_matrix_for_value(interpolable, E, L, cob_matrix_list,
+                              cob_matrix_key_list):
+    if len(cob_matrix_list) == 0:
+        return None
+    tbks_sub_indices = interpolable.qcis.get_tbks_sub_indices(E, L)
+    tbks_sub_indices = tuple(
+        tbks_sub_indices[:interpolable.qcis.fcs.n_three_slices])
+    cob_matrix_index = _get_cob_matrix_index(
+        cob_matrix_key_list, tbks_sub_indices)
+    if cob_matrix_index is None:
+        return None
+    return cob_matrix_list[cob_matrix_index]
+
+
 def _update_mins_and_maxes(
         interpolable, interpolator_matrix, energy_vol_dat_index,
         i, j, interpolator_entry):
