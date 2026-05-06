@@ -1836,13 +1836,48 @@ class QCIndexSpace:
             nvecset_batched[j] = np.array(nvecset_batched[j])
         return [nvecset_reps, nvecset_SQreps, nvecset_inds,
                 nvecset_counts, nvecset_batched]
+
+    @staticmethod
+    def _permuted_candidates(nvecset_entry, permutations):
+        return [np.array([nvecset_entry[index] for index in permutation])
+                for permutation in permutations]
+
+    def _reps_and_batches_three(self, nvecset_abc, nvecset_abc_SQs,
+                                nvecset_aaa, nvecset_aaa_SQs,
+                                nP):
+        nvecset_abc_reps = [nvecset_abc[0]]
+        nvecset_aaa_reps = deepcopy([nvecset_aaa[0]])
+        nvecset_abc_SQreps = [nvecset_abc_SQs[0]]
+        nvecset_aaa_SQreps = deepcopy([nvecset_aaa_SQs[0]])
+        nvecset_abc_inds = [0]
+        nvecset_aaa_inds = deepcopy([0])
+        nvecset_abc_counts = deepcopy([0])
+        nvecset_aaa_counts = deepcopy([0])
+
+        G = self.group.get_little_group(nP)
+        for j in range(len(nvecset_abc)):
             already_included = False
             for g_elem in G:
                 if not already_included:
-                    for k in range(len(nvecset_ident_reps)):
-                        n_included = nvecset_ident_reps[k]
+                    for k in range(len(nvecset_abc_reps)):
+                        n_included = nvecset_abc_reps[k]
+                        if (nvecset_abc[j]@g_elem == n_included).all():
+                            already_included = True
+                            nvecset_abc_counts[k] = nvecset_abc_counts[k]+1
+            if not already_included:
+                nvecset_abc_reps = nvecset_abc_reps+[nvecset_abc[j]]
+                nvecset_abc_SQreps = nvecset_abc_SQreps+[nvecset_abc_SQs[j]]
+                nvecset_abc_inds = nvecset_abc_inds+[j]
+                nvecset_abc_counts = nvecset_abc_counts+[1]
+
+        for j in range(len(nvecset_aaa)):
+            already_included = False
+            for g_elem in G:
+                if not already_included:
+                    for k in range(len(nvecset_aaa_reps)):
+                        n_included = nvecset_aaa_reps[k]
                         n_included = np.array(n_included)
-                        [n1, n2, n3] = nvecset_ident[j]@g_elem
+                        [n1, n2, n3] = nvecset_aaa[j]@g_elem
                         candidates = [np.array([n1, n2, n3]),
                                       np.array([n2, n3, n1]),
                                       np.array([n3, n1, n2]),
@@ -1856,24 +1891,24 @@ class QCIndexSpace:
                                           .all()))
                         if not include_entry:
                             already_included = True
-                            nvecset_ident_counts[k]\
-                                = nvecset_ident_counts[k]+1
+                            nvecset_aaa_counts[k]\
+                                = nvecset_aaa_counts[k]+1
             if not already_included:
-                nvecset_ident_reps = nvecset_ident_reps\
-                    + [nvecset_ident[j]]
-                nvecset_ident_SQreps = nvecset_ident_SQreps\
-                    + [nvecset_ident_SQs[j]]
-                nvecset_ident_inds = nvecset_ident_inds+[j]
-                nvecset_ident_counts = nvecset_ident_counts+[1]
+                nvecset_aaa_reps = nvecset_aaa_reps\
+                    + [nvecset_aaa[j]]
+                nvecset_aaa_SQreps = nvecset_aaa_SQreps\
+                    + [nvecset_aaa_SQs[j]]
+                nvecset_aaa_inds = nvecset_aaa_inds+[j]
+                nvecset_aaa_counts = nvecset_aaa_counts+[1]
 
-        nvecset_batched = list(np.arange(len(nvecset_ident_reps)))
-        for j in range(len(nvecset_arr)):
-            for k in range(len(nvecset_ident_reps)):
+        nvecset_abc_batched = list(np.arange(len(nvecset_aaa_reps)))
+        for j in range(len(nvecset_abc)):
+            for k in range(len(nvecset_aaa_reps)):
                 include_entry = False
-                n_rep = nvecset_ident_reps[k]
+                n_rep = nvecset_aaa_reps[k]
                 n_rep = np.array(n_rep)
                 for g_elem in G:
-                    [n1, n2, n3] = nvecset_arr[j]@g_elem
+                    [n1, n2, n3] = nvecset_abc[j]@g_elem
                     candidates = [np.array([n1, n2, n3]),
                                   np.array([n2, n3, n1]),
                                   np.array([n3, n1, n2]),
@@ -1884,21 +1919,21 @@ class QCIndexSpace:
                         include_entry = include_entry\
                             or (((candidate == n_rep).all()))
                 if include_entry:
-                    if isinstance(nvecset_batched[k], np.int64):
-                        nvecset_batched[k] = [nvecset_arr[j]]
+                    if isinstance(nvecset_abc_batched[k], np.int64):
+                        nvecset_abc_batched[k] = [nvecset_abc[j]]
                     else:
-                        nvecset_batched[k] = nvecset_batched[k]\
-                            + [nvecset_arr[j]]
+                        nvecset_abc_batched[k] = nvecset_abc_batched[k]\
+                            + [nvecset_abc[j]]
 
-        nvecset_ident_batched\
-            = list(np.arange(len(nvecset_ident_reps)))
-        for j in range(len(nvecset_ident)):
-            for k in range(len(nvecset_ident_reps)):
+        nvecset_aaa_batched\
+            = list(np.arange(len(nvecset_aaa_reps)))
+        for j in range(len(nvecset_aaa)):
+            for k in range(len(nvecset_aaa_reps)):
                 include_entry = False
-                n_rep = nvecset_ident_reps[k]
+                n_rep = nvecset_aaa_reps[k]
                 n_rep = np.array(n_rep)
                 for g_elem in G:
-                    [n1, n2, n3] = nvecset_ident[j]@g_elem
+                    [n1, n2, n3] = nvecset_aaa[j]@g_elem
                     candidates = [np.array([n1, n2, n3]),
                                   np.array([n2, n3, n1]),
                                   np.array([n3, n1, n2]),
@@ -1909,24 +1944,24 @@ class QCIndexSpace:
                         include_entry = include_entry\
                             or (((candidate == n_rep).all()))
                 if include_entry:
-                    if isinstance(nvecset_ident_batched[k], np.int64):
-                        nvecset_ident_batched[k] = [nvecset_ident[j]]
+                    if isinstance(nvecset_aaa_batched[k], np.int64):
+                        nvecset_aaa_batched[k] = [nvecset_aaa[j]]
                     else:
-                        nvecset_ident_batched[k]\
-                            = nvecset_ident_batched[k]\
-                            + [nvecset_ident[j]]
+                        nvecset_aaa_batched[k]\
+                            = nvecset_aaa_batched[k]\
+                            + [nvecset_aaa[j]]
 
-        for j in range(len(nvecset_batched)):
-            nvecset_batched[j] = np.array(nvecset_batched[j])
+        for j in range(len(nvecset_abc_batched)):
+            nvecset_abc_batched[j] = np.array(nvecset_abc_batched[j])
 
-        for j in range(len(nvecset_ident_batched)):
-            nvecset_ident_batched[j]\
-                = np.array(nvecset_ident_batched[j])
-        return [nvecset_reps, nvecset_ident_reps,
-                nvecset_SQreps, nvecset_ident_SQreps,
-                nvecset_inds, nvecset_ident_inds,
-                nvecset_counts, nvecset_ident_counts,
-                nvecset_batched, nvecset_ident_batched]
+        for j in range(len(nvecset_aaa_batched)):
+            nvecset_aaa_batched[j]\
+                = np.array(nvecset_aaa_batched[j])
+        return [nvecset_abc_reps, nvecset_aaa_reps,
+                nvecset_abc_SQreps, nvecset_aaa_SQreps,
+                nvecset_abc_inds, nvecset_aaa_inds,
+                nvecset_abc_counts, nvecset_aaa_counts,
+                nvecset_abc_batched, nvecset_aaa_batched]
 
     def _load_ni_data_two(self, fc):
         Emax = self.Emax
