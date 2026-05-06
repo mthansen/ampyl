@@ -224,13 +224,12 @@ class QCMatrixBuilder:
         if kwargs:
             return f.get_value(E, L, project, irrep,
                                short_string='f', **kwargs)/rescale
-        f_smart_interpolate = QC_IMPL_DEFAULTS['f_smart_interpolate']
-        if 'f_smart_interpolate' in f.qcis.fvs.qc_impl:
-            f_smart_interpolate = f.qcis.fvs.qc_impl[
-                'f_smart_interpolate']
-        if f_smart_interpolate:
+        f_interpolate = QC_IMPL_DEFAULTS['f_interpolate']
+        if 'f_interpolate' in f.qcis.fvs.qc_impl:
+            f_interpolate = f.qcis.fvs.qc_impl['f_interpolate']
+        if f_interpolate:
             warnings.warn(f"\n{bcolors.WARNING}"
-                          "f_smart_interpolate is not yet supported. "
+                          "f_interpolate is not yet supported. "
                           "Using f instead."
                           f"{bcolors.ENDC}")
         return f.get_value(E, L, project, irrep, short_string='f')/rescale
@@ -262,8 +261,8 @@ class QCMatrixBuilder:
         if type(selected_interpolator) in (int, str):
             use_interpolator = True
         if not use_interpolator:
-            return {'interpolate': False, 'smart_interpolate': False}
-        kwargs = {'smart_interpolate': True, 'interpolate': False}
+            return {'interpolate': False}
+        kwargs = {'interpolate': True}
         if type(selected_interpolator) is int:
             kwargs['interpolator_id'] = selected_interpolator
         elif type(selected_interpolator) is str:
