@@ -1154,23 +1154,11 @@ class QCIndexSpace:
 
     def _get_nonint_channel_data(self, fc):
         if fc.n_particles == 3:
-            nvecset_arr, nvecset_SQs, nP = self._get_nonint_nvecsets_three(fc)
-            reps_and_batches = self._reps_and_batches_three
-            get_ident = self._get_nvecset_ident_three
-        else:
-            nvecset_arr, nvecset_SQs, nP = self._get_nonint_nvecsets_two(fc)
-            reps_and_batches = self._reps_and_batches_two
-            get_ident = self._get_nvecset_ident_two
-
-        nvecset_ident, nvecset_ident_SQs = get_ident(nvecset_arr,
-                                                     nvecset_SQs)
-        [nvecset_reps, nvecset_ident_reps,
-         nvecset_SQreps, nvecset_ident_SQreps,
-         nvecset_inds, nvecset_ident_inds,
-         nvecset_counts, nvecset_ident_counts,
-         nvecset_batched, nvecset_ident_batched] = reps_and_batches(
-             nvecset_arr, nvecset_SQs, nvecset_ident,
-             nvecset_ident_SQs, nP)
+            return self._get_nonint_channel_data_three(fc)
+        if fc.n_particles == 2:
+            return self._get_nonint_channel_data_two(fc)
+        raise ValueError("only two- and three-particle non-interacting "
+                         "channels are supported")
 
         return {
             'nvecset_arr': nvecset_arr,
