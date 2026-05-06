@@ -151,15 +151,12 @@ def getG_single_entry(E=4.0, nP=np.array([0, 0, 0]), L=5.0,
     See ``FiniteVolumeSetup`` for the supported entries in ``qc_impl``.
     """
     [vecstar_for1, vecstar_for2, E2CMSQ_for1, E2CMSQ_for2, q_for1, q_for2]\
-        = __helperG_single_entry(E, nP, L,
-                                             np1spec, np2spec, m1, m2, m3)
+        = __helperG_single_entry(E, nP, L, np1spec, np2spec, m1, m2, m3)
 
-    calY1, _ = calY(ell1, mazi1,
-                                vecstar_for1.reshape((1, 3)),
-                                q_for1, qc_impl)[0]
-    _, calY2conj = calY(ell2, mazi2,
-                                    vecstar_for2.reshape((1, 3)),
-                                    q_for2, qc_impl)[0]
+    calY1, _ = calY(ell1, mazi1, vecstar_for1.reshape((1, 3)),
+                    q_for1, qc_impl)[0]
+    _, calY2conj = calY(ell2, mazi2, vecstar_for2.reshape((1, 3)),
+                        q_for2, qc_impl)[0]
 
     HH = H(E2CMSQ_for1, m1+m2, alpha, beta, J_slow)\
         * H(E2CMSQ_for2, m2+m3, alpha, beta, J_slow)
@@ -266,8 +263,7 @@ def __helperG_array(E, nP, L, m1, m2, m3,
      n2vec_arr_shell, n2vecSQ_arr_shell,
      n1vec_mat_shell, n2vec_mat_shell, n3vec_mat_shell,
      n1vecSQ_mat_shell, n2vecSQ_mat_shell, n3vecSQ_mat_shell]\
-        = get_nvec_data(tbks_entry,
-                                    row_shell, col_shell)
+        = get_nvec_data(tbks_entry, row_shell, col_shell)
     Pvec = TWOPI*nP/L
     p1specvec_arr_slice\
         = TWOPI*n1vec_arr_shell/L  # called \vec p in 1408.5933
@@ -304,8 +300,7 @@ def __helperG_array(E, nP, L, m1, m2, m3,
         axis=2)
 
     # Following is called \vec k^* in 1408.5933
-    vecstar_for1 = standard_boost_array(beta_for1,
-                                                    fourmom_for1)[:, :, 1:]
+    vecstar_for1 = standard_boost_array(beta_for1, fourmom_for1)[:, :, 1:]
 
     # Following is called p^\mu in 1408.5933
     fourmom_for2 = np.concatenate(
@@ -314,8 +309,7 @@ def __helperG_array(E, nP, L, m1, m2, m3,
         axis=2)
 
     # Following is called \vec p^* in 1408.5933
-    vecstar_for2 = standard_boost_array(beta_for2,
-                                                    fourmom_for2)[:, :, 1:]
+    vecstar_for2 = standard_boost_array(beta_for2, fourmom_for2)[:, :, 1:]
 
     E2CMSQ_for1 = (E-omegap1spec_arr_slice)**2\
         - ((Pvec-p1specvec_arr_slice)*(Pvec-p1specvec_arr_slice)).sum(1)
@@ -350,12 +344,9 @@ def __helperG_array(E, nP, L, m1, m2, m3,
             n3vecSQ_mat_shell]
 
 
-def get_nvecSQ_mat_shells(tbks_entry,
-                          row_shell,
-                          col_shell):
+def get_nvecSQ_mat_shells(tbks_entry, row_shell, col_shell):
     """Get n1vecSQ_mat_shell, n2vecSQ_mat_shell, n3vecSQ_mat_shell."""
-    return get_nvec_data(tbks_entry,
-                                     row_shell, col_shell)[-3:]
+    return get_nvec_data(tbks_entry, row_shell, col_shell)[-3:]
 
 
 def __helperG_array_prep_mat(E, nP, L, m1, m2, m3,
@@ -429,8 +420,7 @@ def __helperG_array_prep_mat(E, nP, L, m1, m2, m3,
         axis=2)
 
     # Following is called \vec k^* in 1408.5933
-    vecstar_for1 = standard_boost_array(beta_for1,
-                                                    fourmom_for1)[:, :, 1:]
+    vecstar_for1 = standard_boost_array(beta_for1, fourmom_for1)[:, :, 1:]
 
     # Following is called p^\mu in 1408.5933
     fourmom_for2 = np.concatenate(
@@ -439,8 +429,7 @@ def __helperG_array_prep_mat(E, nP, L, m1, m2, m3,
         axis=2)
 
     # Following is called \vec p^* in 1408.5933
-    vecstar_for2 = standard_boost_array(beta_for2,
-                                                    fourmom_for2)[:, :, 1:]
+    vecstar_for2 = standard_boost_array(beta_for2, fourmom_for2)[:, :, 1:]
 
     E2CMSQ_for1 = (E-omegap1spec_arr_slice)**2\
         - ((Pvec-p1specvec_arr_slice)*(Pvec-p1specvec_arr_slice)).sum(1)
@@ -525,10 +514,8 @@ def getG_array(E, nP, L, m1, m2, m3,
      omegap1spec_mat_shell, omegap2spec_mat_shell,
      omegap1spec_arr_slice, omegap2spec_arr_slice,
      n3vecSQ_mat_shell]\
-        = __helperG_array(E, nP, L, m1, m2, m3,
-                                      tbks_entry,
-                                      row_shell,
-                                      col_shell)
+        = __helperG_array(E, nP, L, m1, m2, m3, tbks_entry,
+                          row_shell, col_shell)
 
     shape1_tmp = vecstar_for1.shape
     r2_shape = shape1_tmp[:-1]
@@ -580,10 +567,8 @@ def getG_array(E, nP, L, m1, m2, m3,
     calY2conjmat = np.transpose(calY2conjmat)
     YY = calY1mat*calY2conjmat
 
-    H1 = H(E2CMSQ_for1.reshape(E2CMSQ_for1.size), m1+m2,
-                       alpha, beta, J_slow)
-    H2 = H(E2CMSQ_for2.reshape(E2CMSQ_for2.size), m2+m3,
-                       alpha2, beta2, J_slow)
+    H1 = H(E2CMSQ_for1.reshape(E2CMSQ_for1.size), m1+m2, alpha, beta, J_slow)
+    H2 = H(E2CMSQ_for2.reshape(E2CMSQ_for2.size), m2+m3, alpha2, beta2, J_slow)
 
     omega1_mat = omegap2spec_mat_shell
     omega2_mat = np.sqrt(m2**2+FOURPI2*n3vecSQ_mat_shell/L**2)
@@ -727,10 +712,8 @@ def getG_array_prep_mat(E, nP, L, m1, m2, m3,
      omegap1spec_mat_shell, omegap2spec_mat_shell,
      omegap1spec_arr_slice, omegap2spec_arr_slice,
      n3vecSQ_mat_shell]\
-        = __helperG_array_prep_mat(E, nP, L, m1, m2, m3,
-                                               tbks_entry,
-                                               row_shell_index,
-                                               col_shell_index)
+        = __helperG_array_prep_mat(E, nP, L, m1, m2, m3, tbks_entry,
+                                   row_shell_index, col_shell_index)
 
     shape1_tmp = vecstar_for1.shape
     r2_shape = shape1_tmp[:-1]
@@ -782,10 +765,8 @@ def getG_array_prep_mat(E, nP, L, m1, m2, m3,
     calY2conjmat = np.transpose(calY2conjmat)
     YY = calY1mat*calY2conjmat
 
-    H1 = H(E2CMSQ_for1.reshape(E2CMSQ_for1.size), m1+m2,
-                       alpha, beta, J_slow)
-    H2 = H(E2CMSQ_for2.reshape(E2CMSQ_for2.size), m2+m3,
-                       alpha2, beta2, J_slow)
+    H1 = H(E2CMSQ_for1.reshape(E2CMSQ_for1.size), m1+m2, alpha, beta, J_slow)
+    H2 = H(E2CMSQ_for2.reshape(E2CMSQ_for2.size), m2+m3, alpha2, beta2, J_slow)
 
     omega1_mat = omegap2spec_mat_shell
     omega2_mat = np.sqrt(m2**2+FOURPI2*n3vecSQ_mat_shell/L**2)
@@ -856,13 +837,11 @@ def summand(nP2=np.array([0, 0, 0]), qSQ=1.5, gamSQ=1.0, alpha_mass=0.5,
     if nP2SQ == 0.0:
         rSQ_arr = (nvec_arr**2).sum(1)
         if ell1 != 0:
-            calY1, _ = calY(ell1, mazi1, nvec_arr,
-                                        q, qc_impl)
+            calY1, _ = calY(ell1, mazi1, nvec_arr, q, qc_impl)
             sph_harm_value = sph_harm_value*calY1
 
         if ell2 != 0:
-            _, calY2conj = calY(ell2, mazi2, nvec_arr,
-                                            q, qc_impl)
+            _, calY2conj = calY(ell2, mazi2, nvec_arr, q, qc_impl)
             sph_harm_value = sph_harm_value*calY2conj
 
         if ((ell1 == ell2) and (mazi1 == mazi2)):
@@ -897,12 +876,10 @@ def summand(nP2=np.array([0, 0, 0]), qSQ=1.5, gamSQ=1.0, alpha_mass=0.5,
             rvec_arr = rpar_vec_arr + rperp_vec_arr
             rSQ_arr = (rvec_arr**2).sum(1)
             if ell1 != 0:
-                calY1, _ = calY(ell1, mazi1, rvec_arr,
-                                            q, qc_impl)
+                calY1, _ = calY(ell1, mazi1, rvec_arr, q, qc_impl)
                 sph_harm_value = sph_harm_value*calY1
             if ell2 != 0:
-                _, calY2conj = calY(ell2, mazi2, rvec_arr,
-                                                q, qc_impl)
+                _, calY2conj = calY(ell2, mazi2, rvec_arr, q, qc_impl)
                 sph_harm_value = sph_harm_value*calY2conj
             if ((ell1 == ell2) and (mazi1 == mazi2)):
                 smarter_q_rescale = QC_IMPL_DEFAULTS['smarter_q_rescale']
@@ -925,10 +902,8 @@ def __T1(nP2=np.array([0, 0, 0]), qSQ=1.5, gamSQ=1.0, alpha_mass=0.5,
     rng = range(-C1cut, C1cut+1)
     mesh = np.meshgrid(*([rng]*3))
     nvec_arr = np.vstack([y.flat for y in mesh]).T
-    return np.sum(summand(nP2, qSQ, gamSQ, alpha_mass,
-                                      nvec_arr, alphaKSS,
-                                      ell1, mazi1, ell2, mazi2,
-                                      qc_impl))/R4PI
+    return np.sum(summand(nP2, qSQ, gamSQ, alpha_mass, nvec_arr, alphaKSS,
+                          ell1, mazi1, ell2, mazi2, qc_impl))/R4PI
 
 
 def __T2(qSQ=1.5, gamSQ=1.0, alphaKSS=1.0,
@@ -961,9 +936,8 @@ def getZ_single_entry(nP2=np.array([0, 0, 0]), qSQ=1.5, gamSQ=1.0,
                       qc_impl={}):
     r"""Evaluate a single entry of ``Z``."""
     return __T1(nP2, qSQ, gamSQ, alpha_mass, C1cut, alphaKSS,
-                            ell1, mazi1, ell2, mazi2, qc_impl)\
-        + __T2(qSQ, gamSQ, alphaKSS, ell1, mazi1, ell2, mazi2,
-                           qc_impl)
+                ell1, mazi1, ell2, mazi2, qc_impl)\
+        + __T2(qSQ, gamSQ, alphaKSS, ell1, mazi1, ell2, mazi2, qc_impl)
 
 
 def getFtwo_single_entry(E2=3.0, nP2=np.array([0, 0, 0]), L=5.0,
@@ -991,9 +965,8 @@ def getFtwo_single_entry(E2=3.0, nP2=np.array([0, 0, 0]), L=5.0,
     alpha_mass = 0.5*(1.+(m1**2-m2**2)/E2CMSQ)
     pre = -2.0/(L*np.sqrt(PI)*16.0*PI*E2CM*gamma)
     return pre*(getZ_single_entry(nP2, qSQ_dimless, gamSQ,
-                                              alpha_mass, C1cut, alphaKSS,
-                                              ell1, mazi1, ell2, mazi2,
-                                              qc_impl))
+                                  alpha_mass, C1cut, alphaKSS,
+                                  ell1, mazi1, ell2, mazi2, qc_impl))
 
 
 def getF_single_entry(E=4.0, nP=np.array([0, 0, 0]), L=5.0,
@@ -1072,9 +1045,8 @@ def getF_single_entry(E=4.0, nP=np.array([0, 0, 0]), L=5.0,
     if smarter_q_rescale:
         pre = pre*(FOURPI2/L**2)**ell1
     return pre*(getZ_single_entry(nP2, qSQ_dimless, gamSQ,
-                                              alpha_mass, C1cut, alphaKSS,
-                                              ell1, mazi1,
-                                              ell2, mazi2, qc_impl))
+                                  alpha_mass, C1cut, alphaKSS,
+                                  ell1, mazi1, ell2, mazi2, qc_impl))
 
 
 def getF_single_entry_IPV(IPV_function=None, IPV_parameters=[1.0],
@@ -1181,9 +1153,8 @@ def getF_single_entry_IPV(IPV_function=None, IPV_parameters=[1.0],
     if smarter_q_rescale:
         pre = pre*(FOURPI2/L**2)**ell1
     return pre*(getZ_single_entry(nP2, qSQ_dimless, gamSQ,
-                                              alpha_mass, C1cut, alphaKSS,
-                                              ell1, mazi1,
-                                              ell2, mazi2, qc_impl)
+                                  alpha_mass, C1cut, alphaKSS,
+                                  ell1, mazi1, ell2, mazi2, qc_impl)
                 - pv_shift_value)
 
 
@@ -1414,10 +1385,8 @@ def getK_single_entry(pcotdelta_function=None,
     pcotdelta = pcotdelta_function(pSQ, *pcotdelta_parameter_list)
     # print pcotdelta with label
     # print("pcotdelta: ", pcotdelta)
-    q_one_minus_H_tmp = q_one_minus_H(E2CMSQ=E2CMSQ,
-                                                  m1=m1, m2=m2,
-                                                  alpha=alpha,
-                                                  beta=beta)
+    q_one_minus_H_tmp = q_one_minus_H(E2CMSQ=E2CMSQ, m1=m1, m2=m2,
+                                      alpha=alpha, beta=beta)
     pre = 1.0
     hermitian = QC_IMPL_DEFAULTS['hermitian']
     if 'hermitian' in qc_impl:
