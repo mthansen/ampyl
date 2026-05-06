@@ -1340,18 +1340,10 @@ class QCIndexSpace:
                 irrep = key_best_irreps[0]
                 irrep_dim = group.chardict[group_str+irrep].shape[0]
                 nonint_proj_dict_entry = self.nonint_proj_dict[cindex]
-                if cindex == 0:
-                    n_shells = len(self.nvecset_ident_SQreps[cindex])
-                    warnings.warn(f"\n{bcolors.WARNING}"
-                                  "Assuming that particles are "
-                                  "indistinguishable."
-                                  f"{bcolors.ENDC}", stacklevel=2)
-                else:
-                    n_shells = len(self.nvecset_SQreps[cindex])
-                    warnings.warn(f"\n{bcolors.WARNING}"
-                                  "Assuming that particles are "
-                                  "distinguishable."
-                                  f"{bcolors.ENDC}", stacklevel=2)
+                particle_label = self._nonint_channel_particle_label(cindex)
+                nvecset_label_SQreps = getattr(
+                    self, f'nvecset_{particle_label}_SQreps')
+                n_shells = len(nvecset_label_SQreps[cindex])
                 channel_multis_summary_list = []
                 for shell_index in range(n_shells):
                     for key in nonint_proj_dict_entry[(shell_index,
