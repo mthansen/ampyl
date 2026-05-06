@@ -70,9 +70,7 @@ class Interpolable:
         Raw and pole-removed interpolation data by irrep.
     cob_matrix_lists : dict
         Change-of-basis matrices by irrep.
-    interp_arrays : dict
-        Entrywise ``RegularGridInterpolator`` arrays by irrep.
-    smart_interps : dict
+    interps : dict
         Matrix-valued interpolators by irrep.
     interpolators : list of dict
         Snapshots of interpolation data built by ``build_interpolator``.
@@ -96,13 +94,12 @@ class Interpolable:
         self.interp_data_lists = {}
         self.polefree_interp_data_lists = {}
         self.cob_matrix_lists = {}
-        self.interp_arrays = {}
         self.matrix_dim_lists = {}
         self.cob_list_lens = {}
-        self.smart_interp_tensors = {}
-        self.smart_interps = {}
-        self.smart_poles_lists = {}
-        self.smart_textures_lists = {}
+        self.interp_tensors = {}
+        self.interps = {}
+        self.pole_lists = {}
+        self.pole_textures_lists = {}
         self.complement_textures_lists = {}
         self.interpolators = []
         self.interpolator_names = {}
