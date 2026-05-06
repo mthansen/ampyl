@@ -1073,105 +1073,105 @@ class QCIndexSpace:
         non-interacting channel, along with representatives, counts, indices,
         and batched orbit data.
         """
-        nvecset_arr_all = []
-        nvecset_SQs_all = []
-        nvecset_reps_all = []
-        nvecset_SQreps_all = []
-        nvecset_inds_all = []
-        nvecset_counts_all = []
-        nvecset_batched_all = []
-        nvecset_ident_all = []
-        nvecset_ident_SQs_all = []
-        nvecset_ident_reps_all = []
-        nvecset_ident_SQreps_all = []
-        nvecset_ident_inds_all = []
-        nvecset_ident_counts_all = []
-        nvecset_ident_batched_all = []
-        ni_list = self.fcs.ni_list
-        for fc in ni_list:
-            if fc.n_particles == 3:
-                [m1, m2, m3, Emax, nP, Lmax, nvec_cutoff, nvecs]\
-                    = self._load_ni_data_three(fc)
-                nvecset_arr = []
-                nmin = nvec_cutoff
-                nmax = nvec_cutoff
-                for n1 in nvecs:
-                    for n2 in nvecs:
-                        [nvecset_arr, nmin, nmax]\
-                            = self._get_nvecset_arr_three(nvecset_arr,
-                                                          nmin, nmax,
-                                                          m1, m2, m3,
-                                                          Emax, nP, Lmax,
-                                                          n1, n2)
-                nvecset_arr = np.array(nvecset_arr)
-                [nvecset_arr, nvecset_SQs]\
-                    = self._square_and_sort_three(nvecset_arr, nmin, nmax,
-                                                  m1, m2, m3, Lmax)
-                [nvecset_ident, nvecset_ident_SQs]\
-                    = self._get_nvecset_ident_three(nvecset_arr, nvecset_SQs)
-                [nvecset_reps, nvecset_ident_reps,
-                 nvecset_SQreps, nvecset_ident_SQreps,
-                 nvecset_inds, nvecset_ident_inds,
-                 nvecset_counts, nvecset_ident_counts,
-                 nvecset_batched, nvecset_ident_batched]\
-                    = self._reps_and_batches_three(nvecset_arr, nvecset_SQs,
-                                                   nvecset_ident,
-                                                   nvecset_ident_SQs, nP)
-            else:
-                [m1, m2, Emax, nP, Lmax, nvec_cutoff, nvecs]\
-                    = self._load_ni_data_two(fc)
-                nvecset_arr = []
-                nmin = nvec_cutoff
-                nmax = nvec_cutoff
-                for n1 in nvecs:
-                    [nvecset_arr, nmin, nmax]\
-                        = self._get_nvecset_arr_two(nvecset_arr, nmin, nmax,
-                                                    m1, m2, Emax, nP, Lmax, n1)
-                nvecset_arr = np.array(nvecset_arr)
-                [nvecset_arr, nvecset_SQs]\
-                    = self._square_and_sort_two(nvecset_arr, nmin, nmax,
-                                                m1, m2, Lmax)
-                [nvecset_ident, nvecset_ident_SQs]\
-                    = self._get_nvecset_ident_two(nvecset_arr, nvecset_SQs)
-                [nvecset_reps, nvecset_ident_reps,
-                 nvecset_SQreps, nvecset_ident_SQreps,
-                 nvecset_inds, nvecset_ident_inds,
-                 nvecset_counts, nvecset_ident_counts,
-                 nvecset_batched, nvecset_ident_batched]\
-                    = self._reps_and_batches_two(nvecset_arr, nvecset_SQs,
-                                                 nvecset_ident,
-                                                 nvecset_ident_SQs, nP)
+        nonint_channel_data = [
+            self._get_nonint_channel_data(fc)
+            for fc in self.fcs.ni_list
+        ]
+        self._populate_nonident_nonint_data(nonint_channel_data)
+        self._populate_ident_nonint_data(nonint_channel_data)
 
-            nvecset_arr_all.append(nvecset_arr)
-            nvecset_SQs_all.append(nvecset_SQs)
-            nvecset_reps_all.append(nvecset_reps)
-            nvecset_SQreps_all.append(nvecset_SQreps)
-            nvecset_inds_all.append(nvecset_inds)
-            nvecset_counts_all.append(nvecset_counts)
-            nvecset_batched_all.append(nvecset_batched)
+    def _populate_nonident_nonint_data(self, nonint_channel_data):
+        """Populate non-interacting data without identical-particle labels."""
+        self._populate_nonint_data_fields(
+            nonint_channel_data,
+            ['nvecset_arr', 'nvecset_SQs', 'nvecset_reps',
+             'nvecset_SQreps', 'nvecset_inds', 'nvecset_counts',
+             'nvecset_batched'])
 
-            nvecset_ident_all.append(nvecset_ident)
-            nvecset_ident_SQs_all.append(nvecset_ident_SQs)
-            nvecset_ident_reps_all.append(nvecset_ident_reps)
-            nvecset_ident_SQreps_all.append(nvecset_ident_SQreps)
-            nvecset_ident_inds_all.append(nvecset_ident_inds)
-            nvecset_ident_counts_all.append(nvecset_ident_counts)
-            nvecset_ident_batched_all.append(nvecset_ident_batched)
-        self.nvecset_arr = nvecset_arr_all
-        self.nvecset_SQs = nvecset_SQs_all
-        self.nvecset_reps = nvecset_reps_all
-        self.nvecset_SQreps = nvecset_SQreps_all
-        self.nvecset_inds = nvecset_inds_all
-        self.nvecset_counts = nvecset_counts_all
-        self.nvecset_batched = nvecset_batched_all
+    def _populate_ident_nonint_data(self, nonint_channel_data):
+        """Populate identical-particle-reduced non-interacting data."""
+        self._populate_nonint_data_fields(
+            nonint_channel_data,
+            ['nvecset_ident', 'nvecset_ident_SQs',
+             'nvecset_ident_reps', 'nvecset_ident_SQreps',
+             'nvecset_ident_inds', 'nvecset_ident_counts',
+             'nvecset_ident_batched'])
 
-        self.nvecset_ident = nvecset_ident_all
-        self.nvecset_ident_SQs = nvecset_ident_SQs_all
-        self.nvecset_ident_reps = nvecset_ident_reps_all
-        self.nvecset_ident_SQreps = nvecset_ident_SQreps_all
-        self.nvecset_ident_inds = nvecset_ident_inds_all
-        self.nvecset_ident_counts = nvecset_ident_counts_all
-        self.nvecset_ident_batched = nvecset_ident_batched_all
+    def _populate_nonint_data_fields(self, nonint_channel_data, field_names):
+        for field_name in field_names:
+            setattr(self, field_name, [
+                channel_data[field_name]
+                for channel_data in nonint_channel_data
+            ])
+
+    def _get_nonint_channel_data(self, fc):
+        if fc.n_particles == 3:
+            nvecset_arr, nvecset_SQs, nP = self._get_nonint_nvecsets_three(fc)
+            reps_and_batches = self._reps_and_batches_three
+            get_ident = self._get_nvecset_ident_three
+        else:
+            nvecset_arr, nvecset_SQs, nP = self._get_nonint_nvecsets_two(fc)
+            reps_and_batches = self._reps_and_batches_two
+            get_ident = self._get_nvecset_ident_two
+
+        nvecset_ident, nvecset_ident_SQs = get_ident(nvecset_arr,
+                                                     nvecset_SQs)
+        [nvecset_reps, nvecset_ident_reps,
+         nvecset_SQreps, nvecset_ident_SQreps,
+         nvecset_inds, nvecset_ident_inds,
+         nvecset_counts, nvecset_ident_counts,
+         nvecset_batched, nvecset_ident_batched] = reps_and_batches(
+             nvecset_arr, nvecset_SQs, nvecset_ident,
+             nvecset_ident_SQs, nP)
+
+        return {
+            'nvecset_arr': nvecset_arr,
+            'nvecset_SQs': nvecset_SQs,
+            'nvecset_reps': nvecset_reps,
+            'nvecset_SQreps': nvecset_SQreps,
+            'nvecset_inds': nvecset_inds,
+            'nvecset_counts': nvecset_counts,
+            'nvecset_batched': nvecset_batched,
+            'nvecset_ident': nvecset_ident,
+            'nvecset_ident_SQs': nvecset_ident_SQs,
+            'nvecset_ident_reps': nvecset_ident_reps,
+            'nvecset_ident_SQreps': nvecset_ident_SQreps,
+            'nvecset_ident_inds': nvecset_ident_inds,
+            'nvecset_ident_counts': nvecset_ident_counts,
+            'nvecset_ident_batched': nvecset_ident_batched,
+        }
+
+    def _get_nonint_nvecsets_three(self, fc):
+        [m1, m2, m3, Emax, nP, Lmax, nvec_cutoff, nvecs]\
+            = self._load_ni_data_three(fc)
+        nvecset_arr = []
+        nmin = nvec_cutoff
+        nmax = nvec_cutoff
+        for n1 in nvecs:
+            for n2 in nvecs:
+                [nvecset_arr, nmin, nmax]\
+                    = self._get_nvecset_arr_three(nvecset_arr, nmin, nmax,
+                                                  m1, m2, m3, Emax, nP,
+                                                  Lmax, n1, n2)
+        nvecset_arr = np.array(nvecset_arr)
+        [nvecset_arr, nvecset_SQs] = self._square_and_sort_three(
+            nvecset_arr, nmin, nmax, m1, m2, m3, Lmax)
+        return nvecset_arr, nvecset_SQs, nP
+
+    def _get_nonint_nvecsets_two(self, fc):
+        [m1, m2, Emax, nP, Lmax, nvec_cutoff, nvecs]\
+            = self._load_ni_data_two(fc)
+        nvecset_arr = []
+        nmin = nvec_cutoff
+        nmax = nvec_cutoff
+        for n1 in nvecs:
+            [nvecset_arr, nmin, nmax]\
+                = self._get_nvecset_arr_two(nvecset_arr, nmin, nmax,
+                                            m1, m2, Emax, nP, Lmax, n1)
+        nvecset_arr = np.array(nvecset_arr)
+        [nvecset_arr, nvecset_SQs] = self._square_and_sort_two(
+            nvecset_arr, nmin, nmax, m1, m2, Lmax)
+        return nvecset_arr, nvecset_SQs, nP
 
     def populate_nonint_proj_dict(self):
         """
