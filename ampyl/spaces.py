@@ -1683,15 +1683,15 @@ class QCIndexSpace:
             nvecset_abc = nvecset_abc+[[n1, n2, n3]]
         return [nvecset_abc, nmin, nmax]
 
-    def _square_and_sort_three(self, nvecset_arr, nmin, nmax,
+    def _square_and_sort_three(self, nvecset_abc, nmin, nmax,
                                m1, m2, m3, Lmax):
         numsys = nmax-nmin+1
         E_nvecset_compact = []
-        nvecset_SQs = deepcopy([])
-        for i in range(len(nvecset_arr)):
-            n1 = nvecset_arr[i][0]
-            n2 = nvecset_arr[i][1]
-            n3 = nvecset_arr[i][2]
+        nvecset_abc_SQs = deepcopy([])
+        for i in range(len(nvecset_abc)):
+            n1 = nvecset_abc[i][0]
+            n2 = nvecset_abc[i][1]
+            n3 = nvecset_abc[i][2]
             n1SQ = n1@n1
             n2SQ = n2@n2
             n3SQ = n3@n3
@@ -1707,9 +1707,9 @@ class QCIndexSpace:
             E_nvecset_compact = E_nvecset_compact+[[E, n1_as_num,
                                                     n2_as_num,
                                                     n3_as_num]]
-            nvecset_SQs = nvecset_SQs+[[n1SQ, n2SQ, n3SQ]]
+            nvecset_abc_SQs = nvecset_abc_SQs+[[n1SQ, n2SQ, n3SQ]]
         E_nvecset_compact = np.array(E_nvecset_compact)
-        nvecset_SQs = np.array(nvecset_SQs)
+        nvecset_abc_SQs = np.array(nvecset_abc_SQs)
 
         re_indexing = np.arange(len(E_nvecset_compact))
         for i in range(4):
@@ -1717,9 +1717,9 @@ class QCIndexSpace:
                 E_nvecset_compact[:, 3-i].argsort(kind='mergesort')]
             E_nvecset_compact = E_nvecset_compact[
                 E_nvecset_compact[:, 3-i].argsort(kind='mergesort')]
-        nvecset_arr = nvecset_arr[re_indexing]
-        nvecset_SQs = nvecset_SQs[re_indexing]
-        return [nvecset_arr, nvecset_SQs]
+        nvecset_abc = nvecset_abc[re_indexing]
+        nvecset_abc_SQs = nvecset_abc_SQs[re_indexing]
+        return [nvecset_abc, nvecset_abc_SQs]
 
     def _get_nvecset_ident_three(self, nvecset_arr, nvecset_SQs):
         nvecset_ident = []
