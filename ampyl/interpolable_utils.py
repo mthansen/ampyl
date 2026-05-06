@@ -645,7 +645,7 @@ def _get_pole_textures(interpolable, matrix_dim_list,
     return pole_list, pole_textures_list, complement_textures_list
 
 
-def _get_value_smart_interpolated(interpolable, E, L, irrep):
+def _get_value_interpolated(interpolable, E, L, irrep):
     if 'use_cob_matrices' in interpolable.qcis.fvs.qc_impl:
         use_cob_matrices = interpolable.qcis.fvs.qc_impl['use_cob_matrices']
     else:
@@ -659,37 +659,37 @@ def _get_value_smart_interpolated(interpolable, E, L, irrep):
     m1 = sc.spectator.mass
     m2 = sc.first_dimer.mass
     m3 = sc.second_dimer.mass
-    if len(interpolable.smart_poles_lists[irrep]) == 0:
+    if len(interpolable.pole_lists[irrep]) == 0:
         pole_parts_smooth_basis = 1.
     else:
         if cob_list_len == 0:
-            smart_poles = interpolable.smart_poles_lists[irrep][0]
+            poles = interpolable.pole_lists[irrep][0]
         else:
             tmp_sub_index = interpolable.qcis.get_tbks_sub_indices(E, L)[0]
-            smart_poles = interpolable.smart_poles_lists[
+            poles = interpolable.pole_lists[
                 irrep][cob_list_len-tmp_sub_index-1]
-        if len(smart_poles) == 0:
+        if len(poles) == 0:
             pole_parts_smooth_basis = 1.
         else:
             if cob_list_len == 0:
-                smart_textures = interpolable.smart_textures_lists[irrep][0]
+                pole_textures = interpolable.pole_textures_lists[irrep][0]
                 complement_textures = interpolable.complement_textures_lists[
                     irrep][0]
             else:
                 tmp_sub_index =\
                     interpolable.qcis.get_tbks_sub_indices(E, L)[0]
-                smart_textures = interpolable.smart_textures_lists[
+                pole_textures = interpolable.pole_textures_lists[
                     irrep][cob_list_len-tmp_sub_index-1]
                 tmp_sub_index = interpolable.qcis.get_tbks_sub_indices(E, L)[0]
                 complement_textures =\
                     interpolable.complement_textures_lists[
                         irrep][cob_list_len-tmp_sub_index-1]
             omegas =\
-                np.sqrt(smart_poles*FOURPI2/L**2
+                np.sqrt(poles*FOURPI2/L**2
                         + np.array([m1**2, m2**2, m3**2]))
             pole_values = 1./(E-omegas.sum(1))
             pole_matrices =\
-                np.multiply(smart_textures, pole_values[:, None, None])\
+                np.multiply(pole_textures, pole_values[:, None, None])\
                 + complement_textures
             pole_parts_smooth_basis = pole_matrices.prod(0)
     if (interpolable.cob_list_lens != {}
@@ -699,7 +699,7 @@ def _get_value_smart_interpolated(interpolable, E, L, irrep):
                                                  - interpolable.qcis.
                                                  get_tbks_sub_indices(
                                                      E, L)[0]-1]
-    smooth_value = interpolable.smart_interps[irrep]((E, L))
+    smooth_value = interpolable.interps[irrep]((E, L))
     if (interpolable.cob_list_lens != {}
        and len(interpolable.cob_matrix_lists[irrep]) != 0):
         if ((len(cob_matrix) != len(smooth_value))
@@ -713,69 +713,6 @@ def _get_value_smart_interpolated(interpolable, E, L, irrep):
     else:
         final_value = smooth_value*pole_parts_smooth_basis
     return final_value
-
-
-def _get_value_interpolated(interpolable, E, L, irrep):
-    final_value_smooth_basis = []
-    cob_list_len = interpolable.cob_list_lens[irrep]
-    if cob_list_len == 0:
-        warnings.warn(f"\n{bcolors.WARNING}"
-                      "No cob_matrices for this irrep. "
-                      "Using mat_dim_lists instead."
-                      f"{bcolors.ENDC}")
-        matrix_dimension = interpolable.interp_arrays[irrep].shape[0]
-    else:
-        matrix_dimension = interpolable.\
-            matrix_dim_lists[irrep][cob_list_len-interpolable.
-                                    qcis.get_tbks_sub_indices(E, L)[0]-1]
-    sc_index = interpolable.qcis.fcs.slices_by_three_masses[0][0]
-    sc = interpolable.qcis.fcs.sc_list_sorted[sc_index]
-    m1 = sc.spectator.mass
-    m2 = sc.first_dimer.mass
-    m3 = sc.second_dimer.mass
-    for i in range(matrix_dimension):
-        row_tmp = []
-        for j in range(matrix_dimension):
-            interp_tmp = interpolable.interp_arrays[irrep][i][j]
-            if (interp_tmp is not None and len(interp_tmp.grid[0]) > 1
-               and len(interp_tmp.grid[1]) > 1):
-                try:
-                    value_tmp = float(interp_tmp((E, L)))
-                except ValueError:
-                    value_tmp = 0.
-                    warnings.warn(f"\n{bcolors.WARNING}"
-                                  "Interpolation failed. "
-                                  "Setting value to zero."
-                                  f"{bcolors.ENDC}")
-                for pole_data in (interpolable.polefree_interp_data_lists[
-                        irrep][i][j][2]):
-                    factor_tmp = E-get_pole_candidate(
-                        interpolable, L, *pole_data[2], m1, m2, m3)
-                    value_tmp = value_tmp/factor_tmp
-                row_tmp = row_tmp+[value_tmp]
-            else:
-                warnings.warn(f"\n{bcolors.WARNING}"
-                              "Interpolation failed, either because "
-                              "entry is None or because "
-                              "length of entry's grid <= 1 in at least "
-                              "one dimension. "
-                              "Setting value to zero."
-                              f"{bcolors.ENDC}")
-                row_tmp = row_tmp+[0.]
-        final_value_smooth_basis.append(row_tmp)
-    final_value_smooth_basis = np.array(final_value_smooth_basis)
-    if cob_list_len != 0:
-        cob_matrix =\
-            interpolable.cob_matrix_lists[irrep][cob_list_len
-                                                 - interpolable.qcis.
-                                                 get_tbks_sub_indices(
-                                                     E, L)[0]-1]
-        final_value =\
-            (cob_matrix)@final_value_smooth_basis@(cob_matrix.T)
-    else:
-        final_value = final_value_smooth_basis
-    return final_value
-
 
 def get_pole_candidate(interpolable, L, n1vecSQ, n2vecSQ, n3vecSQ, m1, m2, m3):
     """
