@@ -1753,6 +1753,40 @@ class QCIndexSpace:
         nvecset_aab_SQs = np.array(nvecset_aab_SQs)
         return [nvecset_aab, nvecset_aab_SQs]
 
+    @staticmethod
+    def _aaa_three_permutations():
+        return [(0, 1, 2), (1, 2, 0), (2, 0, 1),
+                (2, 1, 0), (1, 0, 2), (0, 2, 1)]
+
+    @staticmethod
+    def _aab_three_permutations():
+        return [(0, 1, 2), (1, 0, 2)]
+
+    @staticmethod
+    def _aaa_two_permutations():
+        return [(0, 1), (1, 0)]
+
+    @staticmethod
+    def _permuted_three_candidates(n1, n2, n3, permutations):
+        nvecs = [n1, n2, n3]
+        return [np.array([nvecs[index] for index in permutation])
+                for permutation in permutations]
+
+    @staticmethod
+    def _permuted_two_candidates(n1, n2, permutations):
+        nvecs = [n1, n2]
+        return [np.array([nvecs[index] for index in permutation])
+                for permutation in permutations]
+
+    @staticmethod
+    def _include_symmetrized_entry(candidates, nvecset):
+        include_entry = True
+        for candidate in candidates:
+            for nvecset_tmp_entry in nvecset:
+                nvecset_tmp_entry = np.array(nvecset_tmp_entry)
+                include_entry = include_entry\
+                    and (not ((candidate == nvecset_tmp_entry).all()))
+        return include_entry
         nvecset_SQreps = [nvecset_SQs[0]]
         nvecset_ident_SQreps = deepcopy([nvecset_ident_SQs[0]])
         nvecset_inds = [0]
