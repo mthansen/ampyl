@@ -1382,14 +1382,15 @@ class QCIndexSpace:
             If a multiplicity entry has an unsupported shape.
         """
         nonint_functions = []
-        for nonint_channel_mult_dict in self.nonint_multiplicities:
+        for cindex, nonint_channel_mult_dict in enumerate(
+                self.nonint_multiplicities):
             nonint_channel_functions_dict = {}
             for key in nonint_channel_mult_dict:
                 nonint_channel_functions_dict[key] = []
                 for nonint_channel_mult in nonint_channel_mult_dict[key]:
                     if len(nonint_channel_mult) == 5:
                         nonint_function = self._get_nonint_function_three(
-                            nonint_channel_mult)
+                            nonint_channel_mult, cindex)
                     elif len(nonint_channel_mult) == 4:
                         nonint_function = self._get_nonint_function_two(
                             nonint_channel_mult)
@@ -1399,11 +1400,12 @@ class QCIndexSpace:
             nonint_functions.append(nonint_channel_functions_dict)
         self.nonint_functions = nonint_functions
 
-    def _get_nonint_function_three(self, nonint_channel_mult):
+    def _get_nonint_function_three(self, nonint_channel_mult, cindex):
         nSQ1, nSQ2, nSQ3, _, _ = nonint_channel_mult
-        mSQ1 = 1.
-        mSQ2 = 1.
-        mSQ3 = 1.
+        m1, m2, m3 = self.fcs.ni_list[cindex].masses
+        mSQ1 = m1**2
+        mSQ2 = m2**2
+        mSQ3 = m3**2
 
         def nonint_function(L):
             """
