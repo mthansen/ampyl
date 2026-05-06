@@ -58,11 +58,6 @@ class K:
 
     def __init__(self, qcis=None):
         self.qcis = qcis
-        three_scheme = self.qcis.tbis.three_scheme
-        alpha_beta_scheme = (three_scheme == 'original pole')\
-            or (three_scheme == 'relativistic pole')
-        if alpha_beta_scheme:
-            [self.alpha, self.beta] = self.qcis.tbis.scheme_data
 
     def get_shell(self, E=5.0, L=5.0, m1=1.0, m2=1.0, m3=1.0,
                   cindex=None, sc_ind=None, ell=0,
@@ -73,8 +68,7 @@ class K:
         nP = self.qcis.fvs.nP
         three_scheme = self.qcis.tbis.three_scheme
         qc_impl = self.qcis.fvs.qc_impl
-        alpha = self.alpha
-        beta = self.beta
+        alpha, beta = self.qcis.tbis.scheme_data[sc_ind]
         use_pv_shift_prescription\
             = self.qcis.tbis.use_pv_shift_prescription[sc_ind]
         if use_pv_shift_prescription:
