@@ -188,11 +188,10 @@ class Interpolable:
             for E in E_grid:
                 matrix_tmp = self.get_value(E=E, L=L,
                                             project=project, irrep=irrep)
-                for cob_matrix in cob_matrix_list:
-                    try:
+                cob_matrix = interpolable_utils._get_cob_matrix_for_value(
+                    self, E, L, cob_matrix_list, cob_matrix_key_list)
+                if cob_matrix is not None:
                         matrix_tmp = (cob_matrix.T)@matrix_tmp@cob_matrix
-                    except ValueError:
-                        pass
                 for i in range(len(matrix_tmp)):
                     for j in range(len(matrix_tmp)):
                         interpolable_value = matrix_tmp[i][j]
