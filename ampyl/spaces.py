@@ -2039,26 +2039,26 @@ class QCIndexSpace:
         nvecset_ab_SQs = nvecset_ab_SQs[re_indexing]
         return [nvecset_ab, nvecset_ab_SQs]
 
-    def _get_nvecset_ident_two(self, nvecset_arr, nvecset_SQs):
-        nvecset_ident = []
-        nvecset_ident_SQs = deepcopy([])
-        for i in range(len(nvecset_arr)):
-            [n1, n2] = nvecset_arr[i]
+    def _get_nvecset_aa_two(self, nvecset_ab, nvecset_ab_SQs):
+        nvecset_aa = []
+        nvecset_aa_SQs = deepcopy([])
+        for i in range(len(nvecset_ab)):
+            [n1, n2] = nvecset_ab[i]
             candidates = [np.array([n1, n2]),
                           np.array([n2, n1])]
             include_entry = True
             for candidate in candidates:
-                for nvecset_tmp_entry in nvecset_ident:
+                for nvecset_tmp_entry in nvecset_aa:
                     nvecset_tmp_entry = np.array(nvecset_tmp_entry)
                     include_entry = include_entry\
                         and (not ((candidate == nvecset_tmp_entry)
                                   .all()))
             if include_entry:
-                nvecset_ident = nvecset_ident+[[n1, n2]]
-                nvecset_ident_SQs = nvecset_ident_SQs+[nvecset_SQs[i]]
-        nvecset_ident = np.array(nvecset_ident)
-        nvecset_ident_SQs = np.array(nvecset_ident_SQs)
-        return [nvecset_ident, nvecset_ident_SQs]
+                nvecset_aa = nvecset_aa+[[n1, n2]]
+                nvecset_aa_SQs = nvecset_aa_SQs+[nvecset_ab_SQs[i]]
+        nvecset_aa = np.array(nvecset_aa)
+        nvecset_aa_SQs = np.array(nvecset_aa_SQs)
+        return [nvecset_aa, nvecset_aa_SQs]
 
     def _reps_and_batches_two(self, nvecset_arr, nvecset_SQs, nvecset_ident,
                               nvecset_ident_SQs, nP):
