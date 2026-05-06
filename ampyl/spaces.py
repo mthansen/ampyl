@@ -1204,6 +1204,35 @@ class QCIndexSpace:
             'nvecset_aaa_counts': nvecset_aaa_counts,
             'nvecset_aaa_batched': nvecset_aaa_batched,
         }
+
+    def _get_nonint_channel_data_two(self, fc):
+        nvecset_ab, nvecset_ab_SQs, nP = self._get_nonint_nvecsets_two(fc)
+        nvecset_aa, nvecset_aa_SQs = self._get_nvecset_aa_two(
+            nvecset_ab, nvecset_ab_SQs)
+        [nvecset_ab_reps, nvecset_aa_reps,
+         nvecset_ab_SQreps, nvecset_aa_SQreps,
+         nvecset_ab_inds, nvecset_aa_inds,
+         nvecset_ab_counts, nvecset_aa_counts,
+         nvecset_ab_batched, nvecset_aa_batched] =\
+            self._reps_and_batches_two(
+                nvecset_ab, nvecset_ab_SQs, nvecset_aa,
+                nvecset_aa_SQs, nP)
+
+        return {
+            'nvecset_ab': nvecset_ab,
+            'nvecset_ab_SQs': nvecset_ab_SQs,
+            'nvecset_ab_reps': nvecset_ab_reps,
+            'nvecset_ab_SQreps': nvecset_ab_SQreps,
+            'nvecset_ab_inds': nvecset_ab_inds,
+            'nvecset_ab_counts': nvecset_ab_counts,
+            'nvecset_ab_batched': nvecset_ab_batched,
+            'nvecset_aa': nvecset_aa,
+            'nvecset_aa_SQs': nvecset_aa_SQs,
+            'nvecset_aa_reps': nvecset_aa_reps,
+            'nvecset_aa_SQreps': nvecset_aa_SQreps,
+            'nvecset_aa_inds': nvecset_aa_inds,
+            'nvecset_aa_counts': nvecset_aa_counts,
+            'nvecset_aa_batched': nvecset_aa_batched,
         }
 
     def _get_nonint_nvecsets_three(self, fc):
