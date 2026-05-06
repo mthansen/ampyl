@@ -305,8 +305,8 @@ class G(Interpolable):
         three_scheme = self.qcis.tbis.three_scheme
         nP = self.qcis.fvs.nP
         qc_impl = self.qcis.fvs.qc_impl
-        alpha, beta = self.qcis.tbis.scheme_data_by_channel[sc_index_col]
-        alpha2, beta2 = self.qcis.tbis.scheme_data_by_channel[sc_index_row]
+        alpha, beta = self.qcis.tbis.scheme_data[sc_index_col]
+        alpha2, beta2 = self.qcis.tbis.scheme_data[sc_index_row]
 
         mask_row_shells, mask_col_shells, row_shell, col_shell\
             = shell_utils._get_masks_and_shells_for_nondiagonal(
@@ -543,7 +543,7 @@ class F(Interpolable):
         three_scheme = self.qcis.tbis.three_scheme
         nP = self.qcis.fvs.nP
         qc_impl = self.qcis.fvs.qc_impl
-        alpha, beta = self.qcis.tbis.scheme_data_by_channel[sc_ind]
+        alpha, beta = self.qcis.tbis.scheme_data[sc_ind]
         C1cut = self.C1cut
         alphaKSS = self.alphaKSS
         use_pv_shift_prescription\
