@@ -36,6 +36,7 @@ Created May 2026.
 
 import numpy as np
 from copy import deepcopy
+from itertools import product
 from . import shell_utils
 from . import check_utils
 from .constants import QC_IMPL_DEFAULTS
@@ -58,6 +59,7 @@ def _interpolator_data_attrs(interpolable):
         'interp_data_lists',
         'polefree_interp_data_lists',
         'cob_matrix_lists',
+        'cob_matrix_key_lists',
         'matrix_dim_lists',
         'cob_list_lens',
         'interp_tensors',
@@ -113,33 +115,25 @@ def _grids_and_interp(interpolable, Emin, Emax, Estep, Lmin, Lmax, Lstep,
     return L_grid, E_grid, max_interp_dim, interp_data_list
 
 
-def _get_dim_with_shell_index_all_scs(interpolable, irrep):
+def _get_dim_with_shell_index_all_scs(interpolable, irrep,
+                                      tbks_sub_indices=None):
     dim_with_shell_index_all_scs = []
+    if tbks_sub_indices is None:
+        tbks_sub_indices = [0]*interpolable.qcis.fcs.n_three_slices
     for spectator_channel_index in range(
             len(interpolable.qcis.fcs.sc_list_sorted)):
         dim_with_shell_index_single_sc = []
-        ell_set = interpolable\
-            .qcis.fcs.sc_list_sorted[spectator_channel_index].ell_set
-        ang_mom_dim = 0
-        for ell in ell_set:
-            ang_mom_dim = ang_mom_dim+(2*ell+1)
-        shells = interpolable.qcis.tbks_list[0][0].shells
+        three_slice_index = interpolable.qcis.sc_to_three_slice[
+            spectator_channel_index]
+        tbks_sub_index = tbks_sub_indices[three_slice_index]
+        shells = interpolable.qcis.tbks_list[three_slice_index][
+            tbks_sub_index].shells
         for shell_index in range(len(shells)):
-            shell = interpolable.qcis.tbks_list[0][0].shells[shell_index]
             try:
-                transposed_proj_dict = interpolable.qcis.proj_dicts_by_sc[
-                    spectator_channel_index][irrep][
-                    ang_mom_dim*shell[0]:ang_mom_dim*shell[1]].T
-                support_rows = []
-                for row_index in range(len(transposed_proj_dict)):
-                    row = transposed_proj_dict[row_index]
-                    if (not (row@row < EPSILON10)):
-                        support_rows = support_rows\
-                            + [row_index]
-                proj_candidate = transposed_proj_dict[support_rows].T
-                # only purpose of the following is to trigger KeyError
-                interpolable.qcis.proj_dicts_by_sc_and_shellset[
-                    spectator_channel_index][0][shell_index][irrep]
+                proj_candidate = interpolable.qcis.\
+                    proj_dicts_by_sc_and_shellset[
+                        spectator_channel_index][tbks_sub_index][
+                            shell_index][irrep]
                 dim_with_shell_index_single_sc.\
                     append([(proj_candidate.shape)[1], shell_index])
             except KeyError:
