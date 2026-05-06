@@ -92,11 +92,6 @@ class Interpolable:
             Quantization-condition index space used by matrix evaluations.
         """
         self.qcis = qcis
-        three_scheme = self.qcis.tbis.three_scheme
-        alpha_beta_scheme = (three_scheme == 'original pole')\
-            or (three_scheme == 'relativistic pole')
-        if alpha_beta_scheme:
-            [self.alpha, self.beta] = self.qcis.tbis.scheme_data
         self.all_relevant_nvecSQ_lists = {}
         self.interp_data_lists = {}
         self.polefree_interp_data_lists = {}
