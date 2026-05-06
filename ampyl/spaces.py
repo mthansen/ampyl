@@ -1787,30 +1787,55 @@ class QCIndexSpace:
                 include_entry = include_entry\
                     and (not ((candidate == nvecset_tmp_entry).all()))
         return include_entry
+
+    def _reps_and_batches_permutations(self, nvecset, nvecset_SQs, nP,
+                                       permutations):
+        nvecset_reps = [nvecset[0]]
         nvecset_SQreps = [nvecset_SQs[0]]
-        nvecset_ident_SQreps = deepcopy([nvecset_ident_SQs[0]])
         nvecset_inds = [0]
-        nvecset_ident_inds = deepcopy([0])
         nvecset_counts = deepcopy([0])
-        nvecset_ident_counts = deepcopy([0])
 
         G = self.group.get_little_group(nP)
-        for j in range(len(nvecset_arr)):
+        for j in range(len(nvecset)):
             already_included = False
             for g_elem in G:
                 if not already_included:
                     for k in range(len(nvecset_reps)):
-                        n_included = nvecset_reps[k]
-                        if (nvecset_arr[j]@g_elem == n_included).all():
+                        n_included = np.array(nvecset_reps[k])
+                        candidates = self._permuted_candidates(
+                            nvecset[j]@g_elem, permutations)
+                        if not self._include_symmetrized_entry(
+                                candidates, [n_included]):
                             already_included = True
                             nvecset_counts[k] = nvecset_counts[k]+1
             if not already_included:
-                nvecset_reps = nvecset_reps+[nvecset_arr[j]]
+                nvecset_reps = nvecset_reps+[nvecset[j]]
                 nvecset_SQreps = nvecset_SQreps+[nvecset_SQs[j]]
                 nvecset_inds = nvecset_inds+[j]
                 nvecset_counts = nvecset_counts+[1]
 
-        for j in range(len(nvecset_ident)):
+        nvecset_batched = list(np.arange(len(nvecset_reps)))
+        for j in range(len(nvecset)):
+            for k in range(len(nvecset_reps)):
+                include_entry = False
+                n_rep = np.array(nvecset_reps[k])
+                for g_elem in G:
+                    candidates = self._permuted_candidates(
+                        nvecset[j]@g_elem, permutations)
+                    for candidate in candidates:
+                        include_entry = include_entry\
+                            or (((candidate == n_rep).all()))
+                if include_entry:
+                    if isinstance(nvecset_batched[k], np.int64):
+                        nvecset_batched[k] = [nvecset[j]]
+                    else:
+                        nvecset_batched[k] = nvecset_batched[k]\
+                            + [nvecset[j]]
+
+        for j in range(len(nvecset_batched)):
+            nvecset_batched[j] = np.array(nvecset_batched[j])
+        return [nvecset_reps, nvecset_SQreps, nvecset_inds,
+                nvecset_counts, nvecset_batched]
             already_included = False
             for g_elem in G:
                 if not already_included:
