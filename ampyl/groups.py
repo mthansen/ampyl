@@ -800,26 +800,26 @@ class Groups:
         return induced_rep
 
     def generate_induced_rep_nonint_two_particles(
-            self, nvecset_batched=np.zeros((1, 2, 3)),
+            self, nvecset_ab_batched=np.zeros((1, 2, 3)),
             first_spin=0.0, second_spin=0.0, g_elem=np.identity(3),
-            particles_are_identical=False):
+            particles_are_aa=False):
         """Generate the non-interacting induced representation matrix."""
         loc_inds = []
-        nonidentical_arr_rot = np.moveaxis(
-            g_elem@np.moveaxis(nvecset_batched, 0, 2), 2, 0)
-        for i in range(len(nvecset_batched)):
-            nonidentical_arr_rot_entry = nonidentical_arr_rot[i]
+        ab_arr_rot = np.moveaxis(
+            g_elem@np.moveaxis(nvecset_ab_batched, 0, 2), 2, 0)
+        for i in range(len(nvecset_ab_batched)):
+            ab_arr_rot_entry = ab_arr_rot[i]
             loc_ind = np.where(
-                np.all(nvecset_batched
-                       == nonidentical_arr_rot_entry, axis=(1, 2))
+                np.all(nvecset_ab_batched
+                       == ab_arr_rot_entry, axis=(1, 2))
                 )[0]
-            if particles_are_identical:
-                nonidentical_arr_rot_entry_swap =\
-                    np.array([nonidentical_arr_rot_entry[1],
-                              nonidentical_arr_rot_entry[0]])
+            if particles_are_aa:
+                ab_arr_rot_entry_swap =\
+                    np.array([ab_arr_rot_entry[1],
+                              ab_arr_rot_entry[0]])
                 loc_ind = np.append(loc_ind, np.where(
-                    np.all(nvecset_batched
-                           == nonidentical_arr_rot_entry_swap, axis=(1, 2))
+                    np.all(nvecset_ab_batched
+                           == ab_arr_rot_entry_swap, axis=(1, 2))
                     )[0])
             if len(loc_ind) == 2:
                 assert loc_ind[0] == loc_ind[1]
@@ -848,20 +848,20 @@ class Groups:
         return induced_rep
 
     def generate_induced_rep_nonint_three_scalars(
-            self, identical_arr=np.zeros((1, 3, 3)),
-            nonidentical_arr=np.zeros((1, 3, 3)), g_elem=np.identity(3),
+            self, aaa_arr=np.zeros((1, 3, 3)),
+            abc_arr=np.zeros((1, 3, 3)), g_elem=np.identity(3),
             definite_iso=True):
         """Generate the non-interacting induced representation matrix."""
         loc_inds = []
-        identical_arr_rot = np.moveaxis(
-            g_elem@np.moveaxis(identical_arr, 0, 2), 2, 0)
-        for i in range(len(identical_arr)):
-            identical_arr_rot_entry = identical_arr_rot[i]
+        aaa_arr_rot = np.moveaxis(
+            g_elem@np.moveaxis(aaa_arr, 0, 2), 2, 0)
+        for i in range(len(aaa_arr)):
+            aaa_arr_rot_entry = aaa_arr_rot[i]
             loc_ind = []
             for pion_order in PION_ORDERS:
                 loc_ind_tmp = np.where(
-                    np.all(identical_arr
-                           == identical_arr_rot_entry[pion_order],
+                    np.all(aaa_arr
+                           == aaa_arr_rot_entry[pion_order],
                            axis=(1, 2))
                     )[0]
                 loc_ind = loc_ind+list(loc_ind_tmp)
@@ -870,16 +870,16 @@ class Groups:
             loc_inds = loc_inds+[loc_ind[0]]
 
         if definite_iso:
-            nonidentical_arr_rot = np.moveaxis(
-                g_elem@np.moveaxis(nonidentical_arr, 0, 2), 2, 0)
-            for i in range(len(nonidentical_arr)):
-                nonidentical_arr_rot_entry = nonidentical_arr_rot[i]
+            abc_arr_rot = np.moveaxis(
+                g_elem@np.moveaxis(abc_arr, 0, 2), 2, 0)
+            for i in range(len(abc_arr)):
+                abc_arr_rot_entry = abc_arr_rot[i]
                 loc_ind = np.where(
-                    np.all(nonidentical_arr
-                           == nonidentical_arr_rot_entry, axis=(1, 2))
+                    np.all(abc_arr
+                           == abc_arr_rot_entry, axis=(1, 2))
                     )[0]
                 assert len(loc_ind) == 1
-                loc_inds = loc_inds+[loc_ind[0]+len(identical_arr)]
+                loc_inds = loc_inds+[loc_ind[0]+len(aaa_arr)]
 
         nonint_rot_matrix = [[]]
         for loc_ind in loc_inds:
@@ -890,8 +890,8 @@ class Groups:
         return nonint_rot_matrix
 
     def generate_induced_rep_nonint_three_particles_spin(
-            self, identical_arr=np.zeros((1, 3, 3)),
-            nonidentical_arr=np.zeros((1, 3, 3)),
+            self, aaa_arr=np.zeros((1, 3, 3)),
+            abc_arr=np.zeros((1, 3, 3)),
             first_spin=0.0, second_spin=0.0, third_spin=0.0,
             g_elem=np.identity(3), definite_iso=True):
         """
@@ -901,18 +901,18 @@ class Groups:
         loc_inds = []
         if self.spin_half:
             [g_elem_intspin, g_elem_halfspin] = g_elem
-            identical_arr_rot = np.moveaxis(
-                g_elem_intspin@np.moveaxis(identical_arr, 0, 2), 2, 0)
+            aaa_arr_rot = np.moveaxis(
+                g_elem_intspin@np.moveaxis(aaa_arr, 0, 2), 2, 0)
         else:
-            identical_arr_rot = np.moveaxis(
-                g_elem@np.moveaxis(identical_arr, 0, 2), 2, 0)
-        for i in range(len(identical_arr)):
-            identical_arr_rot_entry = identical_arr_rot[i]
+            aaa_arr_rot = np.moveaxis(
+                g_elem@np.moveaxis(aaa_arr, 0, 2), 2, 0)
+        for i in range(len(aaa_arr)):
+            aaa_arr_rot_entry = aaa_arr_rot[i]
             loc_ind = []
             for pion_order in PION_ORDERS:
                 loc_ind_tmp = np.where(
-                    np.all(identical_arr
-                           == identical_arr_rot_entry[pion_order],
+                    np.all(aaa_arr
+                           == aaa_arr_rot_entry[pion_order],
                            axis=(1, 2))
                     )[0]
                 loc_ind = loc_ind+list(loc_ind_tmp)
@@ -985,8 +985,8 @@ class Groups:
 
     def get_proj_nonint_three_scalars(
             self, nP=np.array([0, 0, 0]), irrep='A1PLUS', irow=0,
-            identical_arr=np.zeros((1, 3, 3)),
-            nonidentical_arr=np.zeros((1, 3, 3)),
+            aaa_arr=np.zeros((1, 3, 3)),
+            abc_arr=np.zeros((1, 3, 3)),
             definite_iso=True):
         """Get a particular large projector."""
         if (nP == np.array([0, 0, 0])).all():
@@ -1004,21 +1004,21 @@ class Groups:
         else:
             return ValueError("group not yet supported by get_large_proj")
         if definite_iso:
-            dim = len(identical_arr)+len(nonidentical_arr)
+            dim = len(aaa_arr)+len(abc_arr)
         else:
-            dim = len(identical_arr)
+            dim = len(aaa_arr)
         proj = np.zeros((dim, dim))
         for g_ind in range(len(group)):
             g_elem = group[g_ind]
             induced_rep = self.generate_induced_rep_nonint_three_scalars(
-                identical_arr, nonidentical_arr, g_elem, definite_iso)
+                aaa_arr, abc_arr, g_elem, definite_iso)
             proj = proj+induced_rep*bT[g_ind]
         return proj
 
     def get_proj_nonint_three_particles_spin(
             self, nP=np.array([0, 0, 0]), irrep='A1PLUS', irow=0,
-            identical_arr=np.zeros((1, 3, 3)),
-            nonidentical_arr=np.zeros((1, 3, 3)),
+            aaa_arr=np.zeros((1, 3, 3)),
+            abc_arr=np.zeros((1, 3, 3)),
             first_spin=0.0, second_spin=0.0, third_spin=0.0,
             definite_iso=True):
         """Get a particular large projector, including spin."""
@@ -1047,9 +1047,9 @@ class Groups:
                 if len(group_intspin) == 2*len(bT):
                     bT = np.repeat(bT, 2)
         if definite_iso:
-            dim = len(identical_arr)+len(nonidentical_arr)
+            dim = len(aaa_arr)+len(abc_arr)
         else:
-            dim = len(identical_arr)
+            dim = len(aaa_arr)
         total_spin_dimension = int((2.0*first_spin+1.0)*(2.0*second_spin+1.0)
                                    * (2.0*third_spin+1.0))
         dim = dim*total_spin_dimension
@@ -1062,7 +1062,7 @@ class Groups:
                 g_elem = group[g_ind]
                 induced_rep = self.\
                     generate_induced_rep_nonint_three_particles_spin(
-                        identical_arr, nonidentical_arr,
+                        aaa_arr, abc_arr,
                         first_spin, second_spin, third_spin, g_elem,
                         definite_iso)
                 proj = proj+induced_rep*bT[g_ind]
@@ -1073,7 +1073,7 @@ class Groups:
                 g_elem = [g_elem_intspin, g_elem_halfspin]
                 induced_rep = self.\
                     generate_induced_rep_nonint_three_particles_spin(
-                        identical_arr, nonidentical_arr,
+                        aaa_arr, abc_arr,
                         first_spin, second_spin, third_spin, g_elem,
                         definite_iso)
                 proj = proj+induced_rep*bT[g_ind]
@@ -1081,9 +1081,9 @@ class Groups:
 
     def get_proj_nonint_two_particles(
             self, nP=np.array([0, 0, 0]), irrep='A1PLUS', irow=0,
-            nvecset_batched=np.zeros((1, 2, 3)),
+            nvecset_ab_batched=np.zeros((1, 2, 3)),
             first_spin=0.0, second_spin=0.0,
-            particles_are_identical=False):
+            particles_are_aa=False):
         """Get a particular large projector."""
         if (nP == np.array([0, 0, 0])).all():
             group_str = 'OhP'
@@ -1100,14 +1100,14 @@ class Groups:
         else:
             return ValueError("group not yet supported by get_large_proj")
         total_spin_dimension = int((2.0*first_spin+1.0)*(2.0*second_spin+1.0))
-        dim = len(nvecset_batched)*total_spin_dimension
+        dim = len(nvecset_ab_batched)*total_spin_dimension
         proj = np.zeros((dim, dim))
         for g_ind in range(len(group)):
             g_elem = group[g_ind]
             induced_rep = self\
                 .generate_induced_rep_nonint_two_particles(
-                    nvecset_batched, first_spin, second_spin, g_elem,
-                    particles_are_identical)
+                    nvecset_ab_batched, first_spin, second_spin, g_elem,
+                    particles_are_aa)
             proj = proj+induced_rep*bT[g_ind]
         return proj
 
@@ -1208,17 +1208,17 @@ class Groups:
         """Get the iso-projector for non-interacting vectors."""
         if qcis is None:
             raise ValueError("qcis cannot be None")
-        identical_arr = qcis.nvecset_ident_batched[cindex][shell_index]
-        nonidentical_arr = qcis.nvecset_batched[cindex][shell_index]
+        aaa_arr = qcis.nvecset_aaa_batched[cindex][shell_index]
+        abc_arr = qcis.nvecset_abc_batched[cindex][shell_index]
         iso_projector = ISO_PROJECTORS[iso_index]
         iso_prepare_sets = []
-        id_sub_len = len(identical_arr)
+        id_sub_len = len(aaa_arr)
         for ident_subset_index in range(id_sub_len):
-            ident_subset_entry = identical_arr[ident_subset_index]
+            ident_subset_entry = aaa_arr[ident_subset_index]
             iso_prepare_entry = [ident_subset_index-id_sub_len]
             for pion_order in PION_ORDERS:
                 loc_indices = np.where(
-                    (nonidentical_arr
+                    (abc_arr
                      == ident_subset_entry[pion_order]).all(axis=(1, 2))
                     )
                 assert len(loc_indices) == 1
@@ -1257,8 +1257,8 @@ class Groups:
             raise ValueError("qcis cannot be None")
         nP = qcis.nP
         irrep_set = qcis.fvs.irrep_set
-        identical_arr = qcis.nvecset_ident_batched[cindex][shell_index]
-        nonidentical_arr = qcis.nvecset_batched[cindex][shell_index]
+        aaa_arr = qcis.nvecset_aaa_batched[cindex][shell_index]
+        abc_arr = qcis.nvecset_abc_batched[cindex][shell_index]
 
         if (nP@nP != 0) and (nP@nP != 1) and (nP@nP != 2):
             raise ValueError("momentum = ", nP, " is not yet supported")
@@ -1274,7 +1274,7 @@ class Groups:
             irrep = irrep_set[i]
             for irow in range(len(self.bTdict[group_str+'_'+irrep])):
                 proj = self.get_proj_nonint_three_scalars(
-                    nP, irrep, irow, identical_arr, nonidentical_arr,
+                    nP, irrep, irow, aaa_arr, abc_arr,
                     definite_iso)
                 eigvals, eigvecs = np.linalg.eig(proj)
                 eigvalsround = (np.round(np.abs(eigvals), 10))
@@ -1314,8 +1314,8 @@ class Groups:
         nP = qcis.nP
         irrep_set = qcis.fvs.irrep_set
         spin_half = qcis.fvs.spin_half
-        identical_arr = qcis.nvecset_ident_batched[cindex][shell_index]
-        nonidentical_arr = qcis.nvecset_batched[cindex][shell_index]
+        aaa_arr = qcis.nvecset_aaa_batched[cindex][shell_index]
+        abc_arr = qcis.nvecset_abc_batched[cindex][shell_index]
 
         if (nP@nP != 0) and (nP@nP != 1) and (nP@nP != 2):
             raise ValueError("momentum = ", nP, " is not yet supported")
@@ -1338,7 +1338,7 @@ class Groups:
             irrep = irrep_set[i]
             for irow in range(len(self.chardict[group_str+'_'+irrep])):
                 proj = self.get_proj_nonint_three_particles_spin(
-                    nP, irrep, irow, identical_arr, nonidentical_arr,
+                    nP, irrep, irow, aaa_arr, abc_arr,
                     first_spin, second_spin, third_spin, definite_iso)
                 eigvals, eigvecs = np.linalg.eig(proj)
                 eigvalsround = (np.round(np.abs(eigvals), 10))
@@ -1377,12 +1377,10 @@ class Groups:
             raise ValueError("qcis cannot be None")
         nP = qcis.nP
         irrep_set = qcis.fvs.irrep_set
-        flavors = qcis.fcs.ni_list[cindex].flavors
-        particles_are_identical = (flavors[0] == flavors[1])
-        if particles_are_identical:
-            nvecset_batched = qcis.nvecset_ident_batched[cindex][shell_index]
-        else:
-            nvecset_batched = qcis.nvecset_batched[cindex][shell_index]
+        particle_label = qcis._nonint_channel_particle_label(cindex)
+        particles_are_aa = (particle_label == 'aa')
+        nvecset_ab_batched = getattr(
+            qcis, f'nvecset_{particle_label}_batched')[cindex][shell_index]
 
         if (nP@nP != 0) and (nP@nP != 1) and (nP@nP != 2):
             raise ValueError("momentum = ", nP, " is not yet supported")
@@ -1400,10 +1398,10 @@ class Groups:
             irrep = irrep_set[i]
             for irow in range(len(self.chardict[group_str+'_'+irrep])):
                 proj = self.get_proj_nonint_two_particles(
-                    nP, irrep, irow, nvecset_batched,
-                    first_spin, second_spin, particles_are_identical)
+                    nP, irrep, irow, nvecset_ab_batched,
+                    first_spin, second_spin, particles_are_aa)
                 some_zero_vec = False
-                for batch in nvecset_batched:
+                for batch in nvecset_ab_batched:
                     for single_vec in batch:
                         some_zero_vec = some_zero_vec\
                             or (single_vec@single_vec == 0)
@@ -1474,21 +1472,21 @@ class Groups:
                              + "identical flavors")
         row_zero_value = 0
         summary_str = ""
-        nshells = len(qcis.nvecset_ident_reps[nic_index])
+        nshells = len(qcis.nvecset_aaa_reps[nic_index])
         for shell_index in range(nshells):
             shell_total = 0
             if definite_iso:
                 nident =\
-                    len(qcis.nvecset_ident_batched[nic_index][shell_index])
+                    len(qcis.nvecset_aaa_batched[nic_index][shell_index])
                 nrest =\
-                    len(qcis.nvecset_batched[nic_index][shell_index])
+                    len(qcis.nvecset_abc_batched[nic_index][shell_index])
                 nstates = nident+nrest
             else:
                 nstates =\
-                    len(qcis.nvecset_ident_batched[nic_index][shell_index])
+                    len(qcis.nvecset_aaa_batched[nic_index][shell_index])
             summary_str +=\
                 f"shell_index = {shell_index} ({nstates} states):\n"
-            rep_mom = str(qcis.nvecset_ident_reps[nic_index][shell_index])
+            rep_mom = str(qcis.nvecset_aaa_reps[nic_index][shell_index])
             rep_mom = rep_mom.replace(' [', (' '*30)+'[')
             summary_str += "    representative momenta = "+rep_mom+"\n"
             if definite_iso:
@@ -1568,7 +1566,7 @@ class Groups:
                              + "identical flavors")
         row_zero_value = 0
         summary_str = ""
-        nshells = len(qcis.nvecset_ident_reps[nic_index])
+        nshells = len(qcis.nvecset_aaa_reps[nic_index])
         first_spin = qcis.fcs.ni_list[nic_index].spins[0]
         second_spin = qcis.fcs.ni_list[nic_index].spins[1]
         third_spin = qcis.fcs.ni_list[nic_index].spins[2]
@@ -1579,19 +1577,19 @@ class Groups:
             shell_total = 0
             if definite_iso:
                 nident =\
-                    len(qcis.nvecset_ident_batched[nic_index][shell_index])\
+                    len(qcis.nvecset_aaa_batched[nic_index][shell_index])\
                     * total_spin_dimension
                 nrest =\
-                    len(qcis.nvecset_batched[nic_index][shell_index])\
+                    len(qcis.nvecset_abc_batched[nic_index][shell_index])\
                     * total_spin_dimension
                 nstates = nident+nrest
             else:
                 nstates =\
-                    len(qcis.nvecset_ident_batched[nic_index][shell_index])\
+                    len(qcis.nvecset_aaa_batched[nic_index][shell_index])\
                     * total_spin_dimension
             summary_str +=\
                 f"shell_index = {shell_index} ({nstates} states):\n"
-            rep_mom = str(qcis.nvecset_ident_reps[nic_index][shell_index])
+            rep_mom = str(qcis.nvecset_aaa_reps[nic_index][shell_index])
             rep_mom = rep_mom.replace(' [', (' '*30)+'[')
             summary_str += "    representative momenta = "+rep_mom+"\n"
             if definite_iso:
@@ -1669,20 +1667,15 @@ class Groups:
             raise ValueError("qcis cannot be None")
         row_zero_value = 0
         summary_str = ""
-        nshells = len(qcis.nvecset_reps[nic_index])
+        particle_label = qcis._nonint_channel_particle_label(nic_index)
+        nvecset_batched_cindex = getattr(
+            qcis, f'nvecset_{particle_label}_batched')[nic_index]
+        nvecset_reps_cindex = getattr(
+            qcis, f'nvecset_{particle_label}_reps')[nic_index]
+        nshells = len(nvecset_reps_cindex)
         first_spin = qcis.fcs.ni_list[nic_index].spins[0]
         second_spin = qcis.fcs.ni_list[nic_index].spins[1]
         total_spin_dimension = int((2.0*first_spin+1.0)*(2.0*second_spin+1.0))
-        flavors = qcis.fcs.ni_list[nic_index].flavors
-        particles_are_identical = (flavors[0] == flavors[1])
-        if particles_are_identical:
-            nvecset_batched_cindex = qcis.nvecset_ident_batched[nic_index]
-        else:
-            nvecset_batched_cindex = qcis.nvecset_batched[nic_index]
-        if particles_are_identical:
-            nvecset_reps_cindex = qcis.nvecset_ident_reps[nic_index]
-        else:
-            nvecset_reps_cindex = qcis.nvecset_reps[nic_index]
         for shell_index in range(nshells):
             shell_total = 0
             nstates = len(nvecset_batched_cindex[shell_index])\
