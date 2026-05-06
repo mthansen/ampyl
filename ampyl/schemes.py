@@ -304,7 +304,7 @@ class ThreeBodyInteractionScheme:
 
     Attributes
     ----------
-    threshSQs : list of float
+    thresholdSQs : list of float
         Two-particle threshold squared for each spectator channel.
     ESQmins : list of float
         Minimum two-body invariant mass squared for each spectator channel.
@@ -354,8 +354,9 @@ class ThreeBodyInteractionScheme:
             fcs = FlavorChannelSpace(fc_list=[FlavorChannel(3)])
         self.fcs = fcs
 
-        self.threshSQs = [sc.thresholdSQ for sc in fcs.sc_list_sorted]
-        ESQmins_by_channel = [sc.ESQmin for sc in fcs.sc_list_sorted]
+        self.thresholdSQs = [sc.thresholdSQ for sc in fcs.sc_list_sorted]
+        n_spectator_channels = len(self.thresholdSQs)
+
         if scheme_data is None:
             scheme_data_by_channel = [
                 list(sc.scheme_data) for sc in fcs.sc_list_sorted]
