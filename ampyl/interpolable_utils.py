@@ -154,26 +154,19 @@ def _get_cob_matrix_key_list(interpolable):
 
 def _get_final_set_for_change_of_basis(
         interpolable, dim_with_shell_index_all_scs):
-    final_set_for_change_of_basis = [[]]
-    for shell_index in range(len(interpolable.qcis.tbks_list[0][0].shells)):
-        dim_shell_counter_all = [[]]
+    dim_shell_counter_all = []
         dim_counter = 0
         for dim_with_shell_index_for_sc in dim_with_shell_index_all_scs:
-            dim_shell_counter = [[]]
+        dim_shell_counter = []
             for dim_with_shell_index in dim_with_shell_index_for_sc:
-                if dim_with_shell_index[1] <= shell_index:
                     counter_set = []
                     for _ in range(dim_with_shell_index[0]):
                         counter_set = counter_set+[dim_counter]
                         dim_counter = dim_counter+1
                     dim_shell_counter = dim_shell_counter\
                         + [[dim_with_shell_index, counter_set]]
-            dim_shell_counter_all = dim_shell_counter_all\
-                + [dim_shell_counter[1:]]
-        final_set_for_change_of_basis = final_set_for_change_of_basis\
-            + [dim_shell_counter_all[1:]]
-    final_set_for_change_of_basis = final_set_for_change_of_basis[1:]
-    return final_set_for_change_of_basis
+        dim_shell_counter_all = dim_shell_counter_all+[dim_shell_counter]
+    return dim_shell_counter_all
 
 
 def _get_cob_matrix_list(interpolable, final_set_for_change_of_basis):
