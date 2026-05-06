@@ -1071,7 +1071,8 @@ class QCIndexSpace:
         """
         Populate non-interacting momentum sets and group-orbit data.
 
-        Builds complete and identical-particle-reduced momentum sets for every
+        Builds two-particle ``ab``/``aa`` and three-particle
+        ``abc``/``aab``/``aaa`` momentum sets for every
         non-interacting channel, along with representatives, counts, indices,
         and batched orbit data.
         """
