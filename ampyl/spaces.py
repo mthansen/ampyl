@@ -1737,11 +1737,22 @@ class QCIndexSpace:
         nvecset_aaa_SQs = np.array(nvecset_aaa_SQs)
         return [nvecset_aaa, nvecset_aaa_SQs]
 
-    def _reps_and_batches_three(self, nvecset_arr, nvecset_SQs,
-                                nvecset_ident, nvecset_ident_SQs,
-                                nP):
-        nvecset_reps = [nvecset_arr[0]]
-        nvecset_ident_reps = deepcopy([nvecset_ident[0]])
+    def _get_nvecset_aab_three(self, nvecset_abc, nvecset_abc_SQs):
+        nvecset_aab = []
+        nvecset_aab_SQs = deepcopy([])
+        for i in range(len(nvecset_abc)):
+            [n1, n2, n3] = nvecset_abc[i]
+            candidates = self._permuted_three_candidates(
+                n1, n2, n3, self._aab_three_permutations())
+            include_entry = self._include_symmetrized_entry(
+                candidates, nvecset_aab)
+            if include_entry:
+                nvecset_aab = nvecset_aab+[[n1, n2, n3]]
+                nvecset_aab_SQs = nvecset_aab_SQs+[nvecset_abc_SQs[i]]
+        nvecset_aab = np.array(nvecset_aab)
+        nvecset_aab_SQs = np.array(nvecset_aab_SQs)
+        return [nvecset_aab, nvecset_aab_SQs]
+
         nvecset_SQreps = [nvecset_SQs[0]]
         nvecset_ident_SQreps = deepcopy([nvecset_ident_SQs[0]])
         nvecset_inds = [0]
