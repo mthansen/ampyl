@@ -1261,7 +1261,7 @@ class QCIndexSpace:
         for n1 in nvecs:
             [nvecset_ab, nmin, nmax]\
                 = self._get_nvecset_ab_two(nvecset_ab, nmin, nmax,
-                                            m1, m2, Emax, nP, Lmax, n1)
+                                           m1, m2, Emax, nP, Lmax, n1)
         nvecset_ab = np.array(nvecset_ab)
         [nvecset_ab, nvecset_ab_SQs] = self._square_and_sort_two(
             nvecset_ab, nmin, nmax, m1, m2, Lmax)
@@ -1992,7 +1992,7 @@ class QCIndexSpace:
         return [m1, m2, Emax, nP, Lmax, nvec_cutoff, nvecs]
 
     def _get_nvecset_ab_two(self, nvecset_ab, nmin, nmax, m1, m2,
-                             Emax, nP, Lmax, n1):
+                            Emax, nP, Lmax, n1):
         n2 = nP-n1
         n1SQ = n1@n1
         n2SQ = n2@n2
