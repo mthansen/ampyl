@@ -94,6 +94,7 @@ class Interpolable:
         self.interp_data_lists = {}
         self.polefree_interp_data_lists = {}
         self.cob_matrix_lists = {}
+        self.cob_matrix_key_lists = {}
         self.matrix_dim_lists = {}
         self.cob_list_lens = {}
         self.interp_tensors = {}
@@ -162,25 +163,23 @@ class Interpolable:
         use_cob_matrices = QC_IMPL_DEFAULTS['use_cob_matrices']
         if 'use_cob_matrices' in self.qcis.fvs.qc_impl:
             use_cob_matrices = self.qcis.fvs.qc_impl['use_cob_matrices']
-        if use_cob_matrices and self.qcis.fcs.n_three_slices > 1:
-            warnings.warn(f"\n{bcolors.WARNING}"
-                          "Change-of-basis interpolation matrices are not "
-                          "supported for multiple three-body mass slices yet. "
-                          "This needs to be added. Proceeding without COB "
-                          "matrices."
-                          f"{bcolors.ENDC}", stacklevel=2)
-            use_cob_matrices = False
         if use_cob_matrices:
+            cob_matrix_key_list =\
+                interpolable_utils._get_cob_matrix_key_list(self)
+            final_set_for_change_of_basis = []
+            for cob_matrix_key in cob_matrix_key_list:
             dim_with_shell_index_all_scs =\
                 interpolable_utils._get_dim_with_shell_index_all_scs(
-                    self, irrep)
-            final_set_for_change_of_basis =\
+                        self, irrep, cob_matrix_key)
+                final_set_for_change_of_basis.append(
                 interpolable_utils._get_final_set_for_change_of_basis(
-                    self, dim_with_shell_index_all_scs)
+                        self, dim_with_shell_index_all_scs))
             cob_matrix_list = interpolable_utils._get_cob_matrix_list(
                 self, final_set_for_change_of_basis)
         else:
             cob_matrix_list = []
+            cob_matrix_key_list = []
+        self.cob_matrix_key_lists[irrep] = cob_matrix_key_list
 
         # Populate interpolation data
         energy_volume_index = 0
