@@ -1989,7 +1989,7 @@ class QCIndexSpace:
         nvecs = np.vstack([y.flat for y in mesh]).T
         return [m1, m2, Emax, nP, Lmax, nvec_cutoff, nvecs]
 
-    def _get_nvecset_arr_two(self, nvecset_arr, nmin, nmax, m1, m2,
+    def _get_nvecset_ab_two(self, nvecset_ab, nmin, nmax, m1, m2,
                              Emax, nP, Lmax, n1):
         n2 = nP-n1
         n1SQ = n1@n1
@@ -2004,17 +2004,17 @@ class QCIndexSpace:
             max_candidate = np.max(comp_set)
             if max_candidate > nmax:
                 nmax = max_candidate
-            nvecset_arr = nvecset_arr+[[n1, n2]]
-        return [nvecset_arr, nmin, nmax]
+            nvecset_ab = nvecset_ab+[[n1, n2]]
+        return [nvecset_ab, nmin, nmax]
 
-    def _square_and_sort_two(self, nvecset_arr, nmin, nmax,
+    def _square_and_sort_two(self, nvecset_ab, nmin, nmax,
                              m1, m2, Lmax):
         numsys = nmax-nmin+1
         E_nvecset_compact = []
-        nvecset_SQs = deepcopy([])
-        for i in range(len(nvecset_arr)):
-            n1 = nvecset_arr[i][0]
-            n2 = nvecset_arr[i][1]
+        nvecset_ab_SQs = deepcopy([])
+        for i in range(len(nvecset_ab)):
+            n1 = nvecset_ab[i][0]
+            n2 = nvecset_ab[i][1]
             n1SQ = n1@n1
             n2SQ = n2@n2
             E = np.sqrt(m1**2+n1SQ*(TWOPI/Lmax)**2)\
@@ -2025,9 +2025,9 @@ class QCIndexSpace:
                 + (n2[1]-nmin)*numsys+(n2[0]-nmin)*numsys**2
             E_nvecset_compact = E_nvecset_compact+[[E, n1_as_num,
                                                     n2_as_num]]
-            nvecset_SQs = nvecset_SQs+[[n1SQ, n2SQ]]
+            nvecset_ab_SQs = nvecset_ab_SQs+[[n1SQ, n2SQ]]
         E_nvecset_compact = np.array(E_nvecset_compact)
-        nvecset_SQs = np.array(nvecset_SQs)
+        nvecset_ab_SQs = np.array(nvecset_ab_SQs)
 
         re_indexing = np.arange(len(E_nvecset_compact))
         for i in range(3):
@@ -2035,9 +2035,9 @@ class QCIndexSpace:
                 E_nvecset_compact[:, 2-i].argsort(kind='mergesort')]
             E_nvecset_compact = E_nvecset_compact[
                 E_nvecset_compact[:, 2-i].argsort(kind='mergesort')]
-        nvecset_arr = nvecset_arr[re_indexing]
-        nvecset_SQs = nvecset_SQs[re_indexing]
-        return [nvecset_arr, nvecset_SQs]
+        nvecset_ab = nvecset_ab[re_indexing]
+        nvecset_ab_SQs = nvecset_ab_SQs[re_indexing]
+        return [nvecset_ab, nvecset_ab_SQs]
 
     def _get_nvecset_ident_two(self, nvecset_arr, nvecset_SQs):
         nvecset_ident = []
