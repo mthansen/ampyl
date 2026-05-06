@@ -35,6 +35,7 @@ Created July 2022.
 ###############################################################################
 
 import numpy as np
+import warnings
 from .constants import FOURPI2, TWOPI
 from .constants import QC_IMPL_DEFAULTS
 
@@ -197,6 +198,12 @@ def _get_masks_and_shells_for_f(f, E, L, tbks_entry, cindex, slice_index):
 
 
 def _get_zero_support_point(qcmatrix, threshold):
-    alpha = qcmatrix.alpha
-    beta = qcmatrix.beta
+    warnings.warn("The zero support point is currently hardcoded to be "
+                  "the same for all QC implementations. This may not be "
+                  "correct for all implementations.")
+    if hasattr(qcmatrix, 'alpha') and hasattr(qcmatrix, 'beta'):
+        alpha = qcmatrix.alpha
+        beta = qcmatrix.beta
+    else:
+        alpha, beta = qcmatrix.qcis.tbis.scheme_data[0]
     return (1.0+alpha)*threshold**2/4.0-beta*((3.0-alpha)*threshold**2/4.0)
