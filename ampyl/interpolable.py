@@ -468,7 +468,7 @@ class Interpolable:
         return []
 
     def get_value(self, E=5.0, L=5.0, project=False, irrep=None,
-                  short_string='g', interpolate=None, smart_interpolate=None,
+                  short_string='g', interpolate=None,
                   interpolator_id=None, interpolator_name=None):
         """
         Evaluate the matrix directly or from stored interpolation data.
@@ -487,11 +487,8 @@ class Interpolable:
             Prefix used to look up QC implementation flags such as
             ``'<short_string>_interpolate'``.
         interpolate : bool, optional
-            Force entrywise interpolation. If ``None``, the corresponding
+            Force interpolation. If ``None``, the corresponding
             ``QC_IMPL_DEFAULTS`` or ``qcis.fvs.qc_impl`` flag is used.
-        smart_interpolate : bool, optional
-            Force matrix-valued smart interpolation. If ``None``, the
-            corresponding implementation flag is used.
         interpolator_id : int or str, optional
             Stored interpolator ID, or name, to activate before evaluation.
         interpolator_name : str, optional
@@ -506,24 +503,18 @@ class Interpolable:
         Raises
         ------
         ValueError
-            If ``E`` exceeds ``qcis.Emax``, if ``L`` exceeds ``qcis.Lmax``, or
-            if both interpolation modes are enabled.
+            If ``E`` exceeds ``qcis.Emax`` or if ``L`` exceeds ``qcis.Lmax``.
         KeyError
             If the requested stored interpolator name is unknown.
         TypeError
             If the requested interpolator ID has an unsupported type.
         """
         check_utils.check_value_within_qcis_bounds(self, E, L)
-        interpolate, smart_interpolate =\
-            interpolable_utils._get_interpolation_flags(
-                self, short_string, interpolate, smart_interpolate)
-        if interpolate or smart_interpolate:
+        interpolate = interpolable_utils._get_interpolation_flag(
+            self, short_string, interpolate)
+        if interpolate:
             self._load_interpolator(interpolator_id=interpolator_id,
                                     interpolator_name=interpolator_name)
-        if smart_interpolate:
-            final_value = interpolable_utils._get_value_smart_interpolated(
-                self, E, L, irrep)
-            return final_value
         if interpolate:
             final_value = interpolable_utils._get_value_interpolated(
                 self, E, L, irrep)
