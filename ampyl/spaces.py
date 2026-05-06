@@ -1085,11 +1085,14 @@ class QCIndexSpace:
         self._populate_abc_nonint_data(nonint_channel_data)
         self._populate_aab_nonint_data(nonint_channel_data)
         self._populate_aaa_nonint_data(nonint_channel_data)
+
+    def _populate_ab_nonint_data(self, nonint_channel_data):
+        """Populate distinguishable two-particle non-interacting data."""
         self._populate_nonint_data_fields(
             nonint_channel_data,
-            ['nvecset_arr', 'nvecset_SQs', 'nvecset_reps',
-             'nvecset_SQreps', 'nvecset_inds', 'nvecset_counts',
-             'nvecset_batched'])
+            ['nvecset_ab', 'nvecset_ab_SQs', 'nvecset_ab_reps',
+             'nvecset_ab_SQreps', 'nvecset_ab_inds', 'nvecset_ab_counts',
+             'nvecset_ab_batched'])
 
     def _populate_ident_nonint_data(self, nonint_channel_data):
         """Populate identical-particle-reduced non-interacting data."""
