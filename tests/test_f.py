@@ -156,6 +156,43 @@ class TestF(unittest.TestCase):
                                          C1cut, alphaKSS)
         self.assertTrue((F-F_direct < self.epsilon).all())
 
+    def test_f_dimer_symmetry_factor(self):
+        """Test F is doubled only for non-identical dimer particles."""
+        pion = ampyl.flavor.Particle(mass=1.0, flavor='pi')
+        kaon = ampyl.flavor.Particle(mass=2.5, flavor='K')
+        fc = ampyl.flavor.FlavorChannel(
+            3, particles=[kaon, kaon, pion])
+        fcs = ampyl.flavor.FlavorChannelSpace(fc_list=[fc])
+        fvs = ampyl.spaces.FiniteVolumeSetup(
+            qc_impl={'smarter_q_rescale': True})
+        tbis = ampyl.spaces.ThreeBodyInteractionScheme(fcs=fcs)
+        qcis = ampyl.spaces.QCIndexSpace(
+            fcs=fcs, fvs=fvs, tbis=tbis, Emax=7., Lmax=4.)
+        qcis.populate()
+        f = ampyl.F(qcis=qcis)
+        E = 6.5
+        L = 4.0
+
+        for sc_ind, expected_factor in [(0, 1.0), (1, 2.0)]:
+            sc = qcis.fcs.sc_list_sorted[sc_ind]
+            three_slice_index = qcis.sc_to_three_slice[sc_ind]
+            tbks_entry = qcis.tbks_list[three_slice_index][0]
+            slice_entry = tbks_entry.shells[0]
+            m1 = sc.spectator.mass
+            m2 = sc.first_dimer.mass
+            m3 = sc.second_dimer.mass
+            alpha, beta = qcis.tbis.scheme_data[sc_ind]
+            raw_f = ampyl.qc_functions.getF_array(
+                E, f.qcis.fvs.nP, L, m1, m2, m3, tbks_entry, slice_entry,
+                0, 0, alpha, beta, f.C1cut, f.alphaKSS,
+                f.qcis.fvs.qc_impl, f.qcis.tbis.three_scheme)
+            shell_f = f.get_shell(
+                E, L, m1, m2, m3, sc_ind, sc_ind, 0, 0, tbks_entry, 0,
+                False, None, None)
+            self.assertTrue(
+                np.allclose(shell_f, expected_factor*raw_f, rtol=0.0,
+                            atol=self.epsilon))
+
 
 if __name__ == '__main__':
     unittest.main()
