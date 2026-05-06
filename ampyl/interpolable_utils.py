@@ -143,6 +143,15 @@ def _get_dim_with_shell_index_all_scs(interpolable, irrep,
     return dim_with_shell_index_all_scs
 
 
+def _get_cob_matrix_key_list(interpolable):
+    """Return all TBKS sub-index tuples that need COB matrices."""
+    tbks_sub_index_ranges = []
+    for three_slice_index in range(interpolable.qcis.fcs.n_three_slices):
+        tbks_sub_index_ranges.append(
+            range(len(interpolable.qcis.tbks_list[three_slice_index])))
+    return list(product(*tbks_sub_index_ranges))
+
+
 def _get_final_set_for_change_of_basis(
         interpolable, dim_with_shell_index_all_scs):
     final_set_for_change_of_basis = [[]]
