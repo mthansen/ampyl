@@ -473,10 +473,12 @@ class QCIndexSpace:
     kellm_spaces, kellm_shells : list
         Spectator-momentum plus angular-momentum spaces, and their shell
         block boundaries.
-    nvecset_* : list
+    nvecset_ab_*, nvecset_aa_*, nvecset_abc_*, nvecset_aab_*,
+    nvecset_aaa_* : list
         Non-interacting momentum sets, representatives, counts, and batched
-        group orbits. ``nvecset_ident_*`` variants apply identical-particle
-        symmetrization.
+        group orbits for two-particle distinguishable/identical labels and
+        three-particle distinguishable/partially-identical/fully-identical
+        labels respectively.
 
     Raises
     ------
