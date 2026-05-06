@@ -157,7 +157,7 @@ class TestQC(unittest.TestCase):
     def test_root_finder_refinement_defaults_to_false(self):
         class FakeFVS:
             def __init__(self):
-                self.qc_impl = {'fplusg_smart_interpolate': True}
+                self.qc_impl = {'fplusg_interpolate': True}
 
         class FakeQCIS:
             def __init__(self):
@@ -189,7 +189,7 @@ class TestQC(unittest.TestCase):
     def test_root_finder_discards_near_noninteracting_by_default(self):
         class FakeFVS:
             def __init__(self):
-                self.qc_impl = {'fplusg_smart_interpolate': True}
+                self.qc_impl = {'fplusg_interpolate': True}
 
         class FakeQCIS:
             def __init__(self):
@@ -216,7 +216,7 @@ class TestQC(unittest.TestCase):
         class FakeFVS:
             def __init__(self):
                 self.qc_impl = {
-                    'fplusg_smart_interpolate': True,
+                    'fplusg_interpolate': True,
                     'discard_non_interacting': False,
                 }
 
@@ -245,7 +245,7 @@ class TestQC(unittest.TestCase):
         class FakeFVS:
             def __init__(self):
                 self.qc_impl = {
-                    'fplusg_smart_interpolate': True,
+                    'fplusg_interpolate': True,
                     'zeta_interp': True,
                     'refine_roots': True,
                 }
@@ -285,7 +285,7 @@ class TestQC(unittest.TestCase):
         class FakeFVS:
             def __init__(self):
                 self.qc_impl = {
-                    'fplusg_smart_interpolate': True,
+                    'fplusg_interpolate': True,
                     'refine_roots': True,
                 }
 
