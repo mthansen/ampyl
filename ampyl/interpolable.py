@@ -79,8 +79,14 @@ class _SingletonAxisInterpolator:
             raise ValueError("One of the requested xi is out of bounds in "
                              f"dimension {self.singleton_axis}")
         varying_coordinate = point[1-self.singleton_axis]
+        min_axis_value = self.axis_values[0]
+        max_axis_value = self.axis_values[-1]
+        if (varying_coordinate < min_axis_value-self.atol
+           or varying_coordinate > max_axis_value+self.atol):
+            raise ValueError("One of the requested xi is out of bounds in "
+                             f"dimension {1-self.singleton_axis}")
         if self._interp is None:
-            if np.abs(varying_coordinate-self.axis_values[0]) > self.atol:
+            if np.abs(varying_coordinate-min_axis_value) > self.atol:
                 raise ValueError("One of the requested xi is out of bounds in "
                                  f"dimension {1-self.singleton_axis}")
             return np.array(self.tensor_slice[0], copy=True)

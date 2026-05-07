@@ -37,8 +37,27 @@ import unittest
 import warnings
 import numpy as np
 from scipy.optimize import root_scalar
+import importlib.util
+from pathlib import Path
 import ampyl
 from ampyl import fv_spectrum_utils
+from ampyl.ampyl import QCMatrixBuilder
+
+
+_KKPI_DETF3_HELPER_PATH = (
+    Path(__file__).resolve().parents[1]
+    / "examples"
+    / "KKpi_detF3inverse"
+    / "KKpi_detF3inverse_helper.py"
+)
+_KKPI_DETF3_HELPER_SPEC = importlib.util.spec_from_file_location(
+    "kkpi_detf3inverse_helper",
+    _KKPI_DETF3_HELPER_PATH,
+)
+kkpi_detf3inverse_helper = importlib.util.module_from_spec(
+    _KKPI_DETF3_HELPER_SPEC
+)
+_KKPI_DETF3_HELPER_SPEC.loader.exec_module(kkpi_detf3inverse_helper)
 
 
 class TestQC(unittest.TestCase):
@@ -246,6 +265,115 @@ class TestQC(unittest.TestCase):
         self.assertEqual(fplusg.name, 'coarse')
         self.assertIs(qc.fplusg_list[1], fplusg)
         self.assertIs(qc.fplusg_list['coarse'], fplusg)
+
+    def test_matrix_builder_uses_policy_selected_f_and_fplusg_interpolators(self):
+        class FakeComponent:
+            def __init__(self, value):
+                self.value = np.array([[value]], dtype=float)
+                self.calls = []
+
+            def get_value(self, *args, **kwargs):
+                self.calls.append(kwargs)
+                return self.value
+
+        class FakeRegistry:
+            def __init__(self, component):
+                self.component = component
+                self.identifiers = []
+
+            def get(self, identifier):
+                self.identifiers.append(identifier)
+                return self.component
+
+        class FakeOwner:
+            def __init__(self):
+                self.f = FakeComponent(3.0)
+                self.fplusg = FakeComponent(4.0)
+                self.k = FakeComponent(5.0)
+                self.kdf = FakeComponent(6.0)
+                self.g = FakeComponent(7.0)
+                self.f_list = FakeRegistry(self.f)
+                self.fplusg_list = FakeRegistry(self.fplusg)
+                self.k_list = FakeRegistry(self.k)
+                self.kdf_list = FakeRegistry(self.kdf)
+                self.g_list = FakeRegistry(self.g)
+
+        owner = FakeOwner()
+        builder = QCMatrixBuilder(owner=owner)
+        qc_dict = {
+            'k_params': [[[]], []],
+            'project': True,
+            'irrep': ('A1PLUS', 0),
+            'version': 'detF3inverse',
+            'rescale': 1.0,
+            'shift': 0.0,
+        }
+        policy_element = {
+            'version': 'detF3inverse',
+            'f_id': 'f-segment',
+            'f_interpolator': True,
+            'f_interpolator_id': 12,
+            'fplusg_id': 'fg-segment',
+            'fplusg_interpolator': True,
+            'fplusg_interpolator_name': 'L20',
+            'k_id': 'k-segment',
+        }
+
+        matrices = builder.build(4.5, 20.0, qc_dict, policy_element)
+
+        self.assertEqual(owner.f_list.identifiers, ['f-segment'])
+        self.assertEqual(owner.fplusg_list.identifiers, ['fg-segment'])
+        self.assertEqual(owner.k_list.identifiers, ['k-segment'])
+        self.assertEqual(
+            owner.f.calls[0],
+            {'short_string': 'f', 'interpolate': True, 'interpolator_id': 12},
+        )
+        self.assertEqual(
+            owner.fplusg.calls[0],
+            {
+                'short_string': 'fplusg',
+                'interpolate': True,
+                'interpolator_name': 'L20',
+            },
+        )
+        self.assertIn('F', matrices)
+        self.assertIn('FplusG', matrices)
+
+    def test_kkpi_detf3inverse_segment_defaults_to_single_l20_volume(self):
+        segment = kkpi_detf3inverse_helper.make_detf3inverse_segment(0.25)
+
+        self.assertAlmostEqual(segment['Lmin'], 20.0 * 0.25)
+        self.assertAlmostEqual(segment['Lmax'], 20.0 * 0.25)
+
+    def test_kkpi_detf3inverse_policy_enables_f_and_fplusg_interpolators(self):
+        segment = kkpi_detf3inverse_helper.make_detf3inverse_segment(0.25)
+        element = kkpi_detf3inverse_helper.policy_element_for_segment(
+            segment,
+            3,
+        )
+
+        self.assertEqual(element['f_id'], 3)
+        self.assertTrue(element['f_interpolator'])
+        self.assertEqual(element['f_interpolator_id'], 0)
+        self.assertEqual(element['fplusg_id'], 3)
+        self.assertTrue(element['fplusg_interpolator'])
+        self.assertEqual(element['fplusg_interpolator_id'], 0)
+
+    def test_kkpi_detf3inverse_disable_interpolator_fallback_turns_off_f_and_fplusg(self):
+        segment = kkpi_detf3inverse_helper.make_detf3inverse_segment(0.25)
+        qc_dict = {
+            'policy': kkpi_detf3inverse_helper.make_policy([segment]),
+        }
+
+        qc_dict_no_interp = kkpi_detf3inverse_helper._qc_dict_without_interpolator(
+            qc_dict
+        )
+        policy_elements = qc_dict_no_interp['policy']
+
+        self.assertFalse(policy_elements[0]['f_interpolator'])
+        self.assertFalse(policy_elements[0]['fplusg_interpolator'])
+        self.assertFalse(policy_elements[-1]['f_interpolator'])
+        self.assertFalse(policy_elements[-1]['fplusg_interpolator'])
 
     def test_root_finder_refinement_defaults_to_false(self):
         class FakeFVS:
