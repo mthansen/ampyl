@@ -65,6 +65,7 @@ def _interpolator_data_attrs(interpolable):
         'interp_tensors',
         'interps',
         'pole_lists',
+        'pole_mass_lists',
         'pole_textures_lists',
         'complement_textures_lists',
     )
@@ -77,6 +78,14 @@ def _get_interpolation_flag(interpolable, short_string, interpolate):
         if interpolate_string in interpolable.qcis.fvs.qc_impl:
             interpolate = interpolable.qcis.fvs.qc_impl[interpolate_string]
     return interpolate
+
+
+def _canonicalize_pole_candidate(nvecSQs, masses):
+    """Sort a pole candidate and apply the same permutation to its masses."""
+    candidate = np.array(list(zip(nvecSQs, masses)), dtype=float)
+    permuted = candidate[np.argsort(candidate[:, 0], kind='stable')]
+    return tuple(permuted[:, 0].astype(int).tolist()), tuple(
+        permuted[:, 1].tolist())
 
 
 def _grids_and_interp(interpolable, Emin, Emax, Estep, Lmin, Lmax, Lstep,
