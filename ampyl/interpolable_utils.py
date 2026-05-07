@@ -760,18 +760,16 @@ def _get_value_interpolated(interpolable, E, L, irrep):
             tbks_sub_indices[:interpolable.qcis.fcs.n_three_slices])
         cob_matrix_index = _get_cob_matrix_index(
             interpolable.cob_matrix_key_lists[irrep], tbks_sub_indices)
-    sc_index = interpolable.qcis.fcs.slices_by_three_masses[0][0]
-    sc = interpolable.qcis.fcs.sc_list_sorted[sc_index]
-    m1 = sc.spectator.mass
-    m2 = sc.first_dimer.mass
-    m3 = sc.second_dimer.mass
     if len(interpolable.pole_lists[irrep]) == 0:
         pole_parts_smooth_basis = 1.
     else:
         if cob_matrix_index is None:
             poles = interpolable.pole_lists[irrep][0]
+            pole_masses = interpolable.pole_mass_lists[irrep][0]
         else:
             poles = interpolable.pole_lists[irrep][cob_matrix_index]
+            pole_masses = interpolable.pole_mass_lists[
+                irrep][cob_matrix_index]
         if len(poles) == 0:
             pole_parts_smooth_basis = 1.
         else:
@@ -786,8 +784,7 @@ def _get_value_interpolated(interpolable, E, L, irrep):
                     interpolable.complement_textures_lists[
                         irrep][cob_matrix_index]
             omegas =\
-                np.sqrt(poles*FOURPI2/L**2
-                        + np.array([m1**2, m2**2, m3**2]))
+                np.sqrt(poles*FOURPI2/L**2 + pole_masses**2)
             pole_values = 1./(E-omegas.sum(1))
             pole_matrices =\
                 np.multiply(pole_textures, pole_values[:, None, None])\
