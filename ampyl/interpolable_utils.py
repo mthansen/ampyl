@@ -548,7 +548,7 @@ def _get_all_relevant_nvecSQs_list_bad_loop(interpolable, Emax, project, irrep,
 
 def _get_all_relevant_nvecSQs_list_good_loop(
         interpolable, Emax, project, irrep, max_interp_dim,
-        interp_data_list, cob_matrix_list, all_nvecSQs, m1, m2, m3):
+        interp_data_list, cob_matrix_list, all_pole_candidates):
     interp_data_index = 1
     all_relevant_nvecSQs = []
     for i in [0]:
@@ -572,10 +572,11 @@ def _get_all_relevant_nvecSQs_list_good_loop(
                     if L_candidate > Lmax_tmp:
                         Lmax_tmp = L_candidate
                 nvecSQs_all_keeps = [[]]
-                for nvecSQ_entry in all_nvecSQs:
+                for nvecSQ_entry, masses in all_pole_candidates:
                     n1vecSQ = nvecSQ_entry[0]
                     n2vecSQ = nvecSQ_entry[1]
                     n3vecSQ = nvecSQ_entry[2]
+                    m1, m2, m3 = masses
                     removal_at_Lmin = get_pole_candidate(
                         interpolable, Lmin_tmp, n1vecSQ, n2vecSQ, n3vecSQ,
                         m1, m2, m3)
@@ -585,11 +586,13 @@ def _get_all_relevant_nvecSQs_list_good_loop(
                     if ((Emin_tmp < removal_at_Lmin < Emax_tmp)
                        or (Emin_tmp < removal_at_Lmax < Emax_tmp)):
                         nvecSQs_all_keeps = nvecSQs_all_keeps\
-                            + [[n1vecSQ, n2vecSQ, n3vecSQ]]
+                            + [[[n1vecSQ, n2vecSQ, n3vecSQ],
+                                [m1, m2, m3]]]
                 nvecSQs_all_keeps = nvecSQs_all_keeps[1:]
 
     for nvecSQs_keep in nvecSQs_all_keeps:
-        [n1vecSQ, n2vecSQ, n3vecSQ] = nvecSQs_keep
+        [n1vecSQ, n2vecSQ, n3vecSQ] = nvecSQs_keep[0]
+        [m1, m2, m3] = nvecSQs_keep[1]
         print(nvecSQs_keep)
         Lvals_tmp = [Lmin_tmp+EPSILON4, Lmax_tmp-EPSILON4]
         for Ltmp in Lvals_tmp:
@@ -613,10 +616,14 @@ def _get_all_relevant_nvecSQs_list_good_loop(
                             near_pole_mag = np.abs(interpolable_value)
                             pole_found = (near_pole_mag > POLE_CUT)
                             if (pole_found and
-                                ([i, j, nvecSQs_keep] not in
+                                ([i, j,
+                                  nvecSQs_keep[0],
+                                  nvecSQs_keep[1]] not in
                                     all_relevant_nvecSQs)):
                                 all_relevant_nvecSQs.\
-                                    append([i, j, nvecSQs_keep])
+                                    append([i, j,
+                                            nvecSQs_keep[0],
+                                            nvecSQs_keep[1]])
                 except IndexError:
                     pass
     return all_relevant_nvecSQs
