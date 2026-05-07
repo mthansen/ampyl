@@ -631,10 +631,9 @@ def _get_all_relevant_nvecSQs_list_good_loop(
 
 def _get_all_relevant_nvecSQs_list(interpolable, Emax, project, irrep,
                                    max_interp_dim, interp_data_list,
-                                   cob_matrix_list, all_nvecSQs,
-                                   m1, m2, m3):
+                                   cob_matrix_list, all_pole_candidates):
     args = [Emax, project, irrep, max_interp_dim, interp_data_list,
-            cob_matrix_list, all_nvecSQs, m1, m2, m3]
+            cob_matrix_list, all_pole_candidates]
     populate_interp_zeros = QC_IMPL_DEFAULTS['populate_interp_zeros']
     if 'populate_interp_zeros' in interpolable.qcis.fvs.qc_impl:
         populate_interp_zeros =\
@@ -655,7 +654,7 @@ def _get_pole_candidate_eps(interpolable, L, n1vecSQ, n2vecSQ, n3vecSQ,
 
 def _get_polefree_interp_data_list(interpolable, max_interp_dim,
                                    interp_data_list,
-                                   interp_data_index, m1, m2, m3,
+                                   interp_data_index,
                                    all_relevant_nvecSQs_list):
     polefree_interp_data_list = []
     for i in range(max_interp_dim):
@@ -674,9 +673,11 @@ def _get_polefree_interp_data_list(interpolable, max_interp_dim,
                 [E, L, interpolable_value] = dim_with_shell_index
                 for nvecSQs_set in relevant_poles:
                     nvecSQ = nvecSQs_set[2]
+                    masses = nvecSQs_set[3]
                     n1vecSQ = nvecSQ[0]
                     n2vecSQ = nvecSQ[1]
                     n3vecSQ = nvecSQ[2]
+                    m1, m2, m3 = masses
                     three_omega = get_pole_candidate(
                         interpolable, L, n1vecSQ, n2vecSQ, n3vecSQ,
                         m1, m2, m3)
