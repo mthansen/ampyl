@@ -857,7 +857,7 @@ def summand(nP2=np.array([0, 0, 0]), qSQ=1.5, gamSQ=1.0, alpha_mass=0.5,
     else:
         if (ell1 == 0 and ell2 == 0):
             npar_component_arr = ((nvec_arr*nP2).sum(1))/nP2mag
-            rparSQ_arr = (npar_component_arr-nP2mag/2.0)**2/gamSQ
+            rparSQ_arr = (npar_component_arr-nP2mag*alpha_mass)**2/gamSQ
             nP2_hat = nP2/nP2mag
             npar_vec_arr = np.dot(np.transpose([npar_component_arr]),
                                   [nP2_hat])
