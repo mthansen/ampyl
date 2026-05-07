@@ -38,6 +38,7 @@ import numpy as np
 from scipy.linalg import block_diag
 from . import shell_utils
 from . import check_utils
+from . import interpolable_utils
 from .constants import QC_IMPL_DEFAULTS
 from .constants import TWOPI
 from .constants import FOURPI2
@@ -91,6 +92,49 @@ class G(Interpolable):
                                     if nvecSQ_sets not in all_nvecSQs:
                                         all_nvecSQs = all_nvecSQs+[nvecSQ_sets]
         return all_nvecSQs
+
+    def _get_pole_candidates_for_detection(self, nvecSQs_by_shell):
+        """Collect canonicalized G pole candidates with aligned masses."""
+        all_pole_candidates = []
+        seen_pole_candidates = set()
+        for sc_row_ind, outer_nvecSQ_row in enumerate(nvecSQs_by_shell):
+            for sc_col_ind, outer_nvecSQ_entry in enumerate(outer_nvecSQ_row):
+                row_three_slice = self.qcis.sc_to_three_slice[sc_row_ind]
+                col_three_slice = self.qcis.sc_to_three_slice[sc_col_ind]
+                row_inslice = sc_row_ind - self.qcis.fcs\
+                    .slices_by_three_masses[row_three_slice][0]
+                col_inslice = sc_col_ind - self.qcis.fcs\
+                    .slices_by_three_masses[col_three_slice][0]
+                g_rescale = self.qcis.fcs.g_templates[
+                    row_three_slice][col_three_slice][
+                    row_inslice][col_inslice]
+                if g_rescale == 0.0:
+                    continue
+                masses = self._extract_g_masses(sc_row_ind, sc_col_ind)
+                for inner_nvecSQ_row in outer_nvecSQ_entry:
+                    for inner_nvecSQ_entry in inner_nvecSQ_row:
+                        if len(inner_nvecSQ_entry) == 0:
+                            continue
+                        n1vecSQs = inner_nvecSQ_entry[0][0]
+                        n2vecSQs = inner_nvecSQ_entry[0][1]
+                        n3vecSQs = inner_nvecSQ_entry[0][2]
+                        for i in range(len(n1vecSQs)):
+                            for j in range(len(n1vecSQs[i])):
+                                pole_candidate = (
+                                    interpolable_utils
+                                    ._canonicalize_pole_candidate(
+                                        [n1vecSQs[i][j],
+                                         n2vecSQs[i][j],
+                                         n3vecSQs[i][j]],
+                                        masses)
+                                )
+                                if pole_candidate not in seen_pole_candidates:
+                                    seen_pole_candidates.add(pole_candidate)
+                                    all_pole_candidates.append([
+                                        list(pole_candidate[0]),
+                                        list(pole_candidate[1]),
+                                    ])
+        return all_pole_candidates
 
     def _g_verbose_a(self, E, L, nP):
         """Print detailed diagnostic information for G evaluation."""
