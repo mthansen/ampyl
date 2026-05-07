@@ -152,6 +152,33 @@ class TestQC(unittest.TestCase):
             any(cob_matrix.shape[0] < cob_matrix.shape[1]
                 for cob_matrix in f.cob_matrix_lists[irrep]))
 
+    def test_multislice_fplusg_interpolator_skips_zero_g_blocks(self):
+        pion = ampyl.flavor.Particle(mass=1.0, spin=0.0, flavor='pi',
+                                     isospin_multiplet=True, isospin=1.0)
+        kaon = ampyl.flavor.Particle(mass=0.09698/0.06906, spin=0.0,
+                                     flavor='K',
+                                     isospin_multiplet=True, isospin=0.5)
+        fc_kkpi = ampyl.flavor.FlavorChannel(
+            3, particles=[kaon, kaon, pion], isospin=2.0)
+        fcs = ampyl.flavor.FlavorChannelSpace(
+            fc_list=[fc_kkpi], ni_list=[fc_kkpi])
+        fvs = ampyl.spaces.FiniteVolumeSetup(
+            qc_impl={'discard_non_interacting': False,
+                     'populate_interp_zeros': True})
+        tbis = ampyl.spaces.ThreeBodyInteractionScheme(fcs=fcs)
+        qcis = ampyl.spaces.QCIndexSpace(
+            fcs=fcs, fvs=fvs, tbis=tbis, Emax=5.7, Lmax=6.0)
+        qcis.populate()
+        fplusg = ampyl.FplusG(qcis=qcis)
+        irrep = ('A1PLUS', 0)
+
+        with warnings.catch_warnings(record=True):
+            warnings.simplefilter('always')
+            fplusg.build_interpolator(4.6, 4.7, 0.1, 5.5, 5.6, 0.1,
+                                      True, irrep)
+
+        self.assertIn(irrep, fplusg.pole_mass_lists)
+
     def test_qcis_populates_kkpi_aab_nonint_functions(self):
         pion = ampyl.flavor.Particle(mass=1.0, spin=0.0, flavor='pi',
                                      isospin_multiplet=True, isospin=1.0)
