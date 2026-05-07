@@ -548,6 +548,50 @@ class F(Interpolable):
                         )
         return all_nvecSQs
 
+    def _get_pole_candidates_for_detection(self, nvecSQs_by_shell):
+        """Collect canonicalized F pole candidates for every mass slice."""
+        all_pole_candidates = []
+        seen_pole_candidates = set()
+        mass_slices = self.qcis.fcs.slices_by_three_masses
+        mass_assignments = []
+        for slice_bounds in mass_slices:
+            sc = self.qcis.fcs.sc_list_sorted[slice_bounds[0]]
+            masses = tuple(sc.masses_indexed)
+            if masses not in mass_assignments:
+                mass_assignments.append(masses)
+
+        for n1vecSQs, n2vecSQs, n3vecSQs in self._iter_nvecSQ_mats(
+                nvecSQs_by_shell):
+            for i, n1vecSQ_row in enumerate(n1vecSQs):
+                for j, n1vecSQ_entry in enumerate(n1vecSQ_row):
+                    if i != j:
+                        continue
+
+                    nvecSQ_candidates = [[
+                        n1vecSQ_entry,
+                        n2vecSQs[i][j],
+                        n3vecSQs[i][j],
+                    ]]
+                    shell_nvecSQ = int(n1vecSQs[i][0])
+                    nvecSQ_candidates.extend(
+                        self._get_diagonal_nvecSQs(shell_nvecSQ)
+                    )
+                    for masses in mass_assignments:
+                        for nvecSQ_candidate in nvecSQ_candidates:
+                            pole_candidate = (
+                                interpolable_utils
+                                ._canonicalize_pole_candidate(
+                                    nvecSQ_candidate,
+                                    masses)
+                            )
+                            if pole_candidate not in seen_pole_candidates:
+                                seen_pole_candidates.add(pole_candidate)
+                                all_pole_candidates.append([
+                                    list(pole_candidate[0]),
+                                    list(pole_candidate[1]),
+                                ])
+        return all_pole_candidates
+
     def get_shell(self, E=5.0, L=5.0, m1=1.0, m2=1.0, m3=1.0,
                   cindex=None, sc_ind=None, ell1=0, ell2=0, tbks_entry=None,
                   slice_index=None, project=False, irrep=None,
