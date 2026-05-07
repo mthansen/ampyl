@@ -815,3 +815,16 @@ class FplusG(Interpolable):
                ._get_all_nvecSQs_for_pole_detection(nvecSQs_by_shell):
                 self._append_nvecSQs(all_nvecSQs, seen_nvecSQs, nvecSQs)
         return all_nvecSQs
+
+    def _get_pole_candidates_for_detection(self, nvecSQs_by_shell):
+        """Merge F and G pole candidates without collapsing mass variants."""
+        all_pole_candidates = []
+        seen_pole_candidates = set()
+        for candidate_source in (self.g, self.f):
+            for pole_candidate in candidate_source\
+               ._get_pole_candidates_for_detection(nvecSQs_by_shell):
+                pole_key = (tuple(pole_candidate[0]), tuple(pole_candidate[1]))
+                if pole_key not in seen_pole_candidates:
+                    seen_pole_candidates.add(pole_key)
+                    all_pole_candidates.append(pole_candidate)
+        return all_pole_candidates
