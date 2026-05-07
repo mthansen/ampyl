@@ -100,6 +100,7 @@ class Interpolable:
         self.interp_tensors = {}
         self.interps = {}
         self.pole_lists = {}
+        self.pole_mass_lists = {}
         self.pole_textures_lists = {}
         self.complement_textures_lists = {}
         self.interpolators = []
@@ -237,24 +238,19 @@ class Interpolable:
         # Identify all poles in projected entries
         nvecSQs_by_shell = interpolable_utils._get_all_nvecSQs_by_shell(
             self, E=Emax, L=Lmax, project=project, irrep=irrep)
-        all_nvecSQs = self._get_all_nvecSQs_for_pole_detection(
+        all_pole_candidates = self._get_pole_candidates_for_detection(
             nvecSQs_by_shell
         )
-        sc_index = self.qcis.fcs.slices_by_three_masses[0][0]
-        sc = self.qcis.fcs.sc_list_sorted[sc_index]
-        m1 = sc.spectator.mass
-        m2 = sc.first_dimer.mass
-        m3 = sc.second_dimer.mass
         all_relevant_nvecSQs_list =\
             interpolable_utils._get_all_relevant_nvecSQs_list(
                 self, Emax, project, irrep, max_interp_dim, interp_data_list,
-                cob_matrix_list, all_nvecSQs, m1, m2, m3)
+                cob_matrix_list, all_pole_candidates)
 
         # Remove poles
         polefree_interp_data_list =\
             interpolable_utils._get_polefree_interp_data_list(
                 self, max_interp_dim, interp_data_list, interp_data_index,
-                m1, m2, m3, all_relevant_nvecSQs_list)
+                all_relevant_nvecSQs_list)
 
         for i in range(max_interp_dim):
             for j in range(max_interp_dim):
