@@ -697,11 +697,14 @@ def _get_polefree_interp_data_list(interpolable, max_interp_dim,
 def _get_pole_textures(interpolable, matrix_dim_list,
                        polefree_interp_data_list):
     pole_list = []
+    pole_mass_list = []
     pole_textures_list = []
     complement_textures_list = []
     for index_tmp in range(len(matrix_dim_list)):
         pole_dict = {}
+        pole_index_dict = {}
         poles = []
+        pole_masses = []
         pole_textures = []
         matrix_dimension = matrix_dim_list[index_tmp]
         for i in range(matrix_dimension):
@@ -710,20 +713,22 @@ def _get_pole_textures(interpolable, matrix_dim_list,
                    or j >= len(polefree_interp_data_list[i])):
                     break
                 for pole_data in (polefree_interp_data_list[i][j][2]):
-                    if tuple(pole_data[2]) not in pole_dict:
+                    pole_key = (tuple(pole_data[2]), tuple(pole_data[3]))
+                    if pole_key not in pole_dict:
                         texture = np.zeros((matrix_dimension,
                                             matrix_dimension))
                         texture[i][j] = 1.
-                        pole_dict[tuple(pole_data[2])] = texture
+                        pole_dict[pole_key] = texture
+                        pole_index_dict[pole_key] = len(poles)
                         poles.append(pole_data[2])
+                        pole_masses.append(pole_data[3])
                         pole_textures.append(deepcopy(texture))
                     else:
                         texture = np.zeros((matrix_dimension,
                                             matrix_dimension))
                         texture[i][j] = 1.
-                        pole_dict[tuple(pole_data[2])] += texture
-                        pole_textures[poles.index(pole_data[2])] +=\
-                            texture
+                        pole_dict[pole_key] += texture
+                        pole_textures[pole_index_dict[pole_key]] += texture
         complement_textures = []
         for pole_texture in pole_textures:
             complement_texture = np.ones((matrix_dimension,
@@ -731,12 +736,15 @@ def _get_pole_textures(interpolable, matrix_dim_list,
                 - pole_texture
             complement_textures.append(complement_texture)
         poles = np.array(poles)
+        pole_masses = np.array(pole_masses)
         pole_textures = np.array(pole_textures)
         complement_textures = np.array(complement_textures)
         pole_list.append(poles)
+        pole_mass_list.append(pole_masses)
         pole_textures_list.append(pole_textures)
         complement_textures_list.append(complement_textures)
-    return pole_list, pole_textures_list, complement_textures_list
+    return pole_list, pole_mass_list, pole_textures_list, \
+        complement_textures_list
 
 
 def _get_value_interpolated(interpolable, E, L, irrep):
