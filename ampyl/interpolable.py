@@ -36,6 +36,7 @@ Created July 2022.
 
 import numpy as np
 from scipy.interpolate import RegularGridInterpolator
+from scipy.interpolate import interp1d
 from copy import deepcopy
 from . import check_utils
 from . import interpolable_utils
@@ -46,6 +47,77 @@ from .constants import bcolors
 from .spaces import QCIndexSpace
 import warnings
 warnings.simplefilter("once")
+
+
+class _SingletonAxisInterpolator:
+    """Interpolate along one axis while requiring an exact singleton value."""
+
+    def __init__(self, axis_values, fixed_coordinate, tensor_slice,
+                 singleton_axis, method, atol=EPSILON10):
+        self.axis_values = np.asarray(axis_values)
+        self.fixed_coordinate = fixed_coordinate
+        self.tensor_slice = np.asarray(tensor_slice)
+        self.singleton_axis = singleton_axis
+        self.atol = atol
+        self._interp = None
+        if len(self.axis_values) > 1:
+            self._interp = interp1d(self.axis_values, self.tensor_slice,
+                                    axis=0, kind=method,
+                                    assume_sorted=True,
+                                    bounds_error=True)
+
+    def __call__(self, xi):
+        point = np.asarray(xi, dtype=float)
+        if point.shape == (2,):
+            return self._evaluate_point(point)
+        point = np.atleast_2d(point)
+        return np.array([self._evaluate_point(entry) for entry in point])
+
+    def _evaluate_point(self, point):
+        fixed_coordinate = point[self.singleton_axis]
+        if np.abs(fixed_coordinate-self.fixed_coordinate) > self.atol:
+            raise ValueError("One of the requested xi is out of bounds in "
+                             f"dimension {self.singleton_axis}")
+        varying_coordinate = point[1-self.singleton_axis]
+        if self._interp is None:
+            if np.abs(varying_coordinate-self.axis_values[0]) > self.atol:
+                raise ValueError("One of the requested xi is out of bounds in "
+                                 f"dimension {1-self.singleton_axis}")
+            return np.array(self.tensor_slice[0], copy=True)
+        return self._interp(varying_coordinate)
+
+
+def _build_matrix_interpolator(E_grid_unique, L_grid_unique, interp_tensor):
+    """Return the best available interpolator for the E/L tensor grid."""
+    nE = len(E_grid_unique)
+    nL = len(L_grid_unique)
+
+    if nE == 1 and nL > 1:
+        method = 'cubic' if nL >= 4 else 'linear'
+        return _SingletonAxisInterpolator(
+            axis_values=L_grid_unique,
+            fixed_coordinate=E_grid_unique[0],
+            tensor_slice=interp_tensor[0],
+            singleton_axis=0,
+            method=method)
+
+    if nL == 1 and nE > 1:
+        method = 'cubic' if nE >= 4 else 'linear'
+        return _SingletonAxisInterpolator(
+            axis_values=E_grid_unique,
+            fixed_coordinate=L_grid_unique[0],
+            tensor_slice=interp_tensor[:, 0],
+            singleton_axis=1,
+            method=method)
+
+    try:
+        return RegularGridInterpolator((E_grid_unique, L_grid_unique),
+                                       interp_tensor,
+                                       method='cubic')
+    except ValueError:
+        return RegularGridInterpolator((E_grid_unique, L_grid_unique),
+                                       interp_tensor,
+                                       method='linear')
 
 
 class Interpolable:
