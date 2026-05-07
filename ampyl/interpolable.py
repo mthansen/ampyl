@@ -409,7 +409,8 @@ class Interpolable:
             for cob_matrix in cob_matrix_list:
                 matrix_dim_list.append(cob_matrix.shape[1])
 
-        pole_list, pole_textures_list, complement_textures_list =\
+        pole_list, pole_mass_list, pole_textures_list,\
+            complement_textures_list =\
             interpolable_utils._get_pole_textures(
                 self, matrix_dim_list, polefree_interp_data_list)
 
@@ -425,6 +426,7 @@ class Interpolable:
         self.interp_tensors[irrep] = interp_tensor
         self.interps[irrep] = interp
         self.pole_lists[irrep] = pole_list
+        self.pole_mass_lists[irrep] = pole_mass_list
         self.pole_textures_lists[irrep] = pole_textures_list
         self.complement_textures_lists[irrep] = complement_textures_list
         self._store_interpolator(name=name)
@@ -467,6 +469,9 @@ class Interpolable:
         self.active_interpolator_id = interpolator_id
 
     def _get_all_nvecSQs_for_pole_detection(self, nvecSQs_by_shell):
+        return []
+
+    def _get_pole_candidates_for_detection(self, nvecSQs_by_shell):
         return []
 
     def get_value(self, E=5.0, L=5.0, project=False, irrep=None,
