@@ -462,16 +462,8 @@ class Interpolable:
                 vol_rank.append(xi_rank)
             interp_tensor.append(vol_rank)
         interp_tensor = np.array(interp_tensor)
-        try:
-            interp = RegularGridInterpolator((E_grid_unique,
-                                              L_grid_unique),
-                                             interp_tensor,
-                                             method='cubic')
-        except ValueError:
-            interp = RegularGridInterpolator((E_grid_unique,
-                                              L_grid_unique),
-                                             interp_tensor,
-                                             method='linear')
+        interp = _build_matrix_interpolator(E_grid_unique, L_grid_unique,
+                                            interp_tensor)
 
         if len(cob_matrix_list) == 0:
             matrix_dim_index = 2
