@@ -34,15 +34,15 @@ import ampyl
 
 ## Documentation
 
-The documentation is generated from NumPy-style docstrings with Sphinx and
-numpydoc. To build it locally, install the documentation dependencies and run:
+The documentation is generated from the package and docstrings with
+pdoc. To build it locally, install the documentation dependencies and run:
 
 ```bash
 pip install -e ".[docs]"
 make -C doc html
 ```
 
-The generated site is written to `doc/_build/html/index.html`. The same Sphinx
+The generated site is written to `doc/_build/html/index.html`. The same pdoc
 build runs on GitHub Actions for pull requests and publishes from `main` with
 GitHub Pages.
 
