@@ -50,7 +50,7 @@ class TestNonInteracting(unittest.TestCase):
         fc3 = FlavorChannel(3)
         fcs = FlavorChannelSpace(fc_list=[fc2, fc3])
         qcis = QCIndexSpace(fcs=fcs)
-        ni_data_two = qcis._load_ni_data_two(fc2)
+        ni_data_two = qcis.nis._load_ni_data_two(fc2)
         # expected_set = [1., 1., 5., np.array([0, 0, 0]), 5., 1]
         expected_set = [1., 1., 5., np.array([0, 0, 0]), 5., 2]
         for j in range(len(expected_set)):
@@ -63,7 +63,7 @@ class TestNonInteracting(unittest.TestCase):
         # self.assertEqual(ni_data_two[6].shape, (27, 3))
         self.assertEqual(ni_data_two[6].shape, (125, 3))
 
-        ni_data_three = qcis._load_ni_data_three(fc3)
+        ni_data_three = qcis.nis._load_ni_data_three(fc3)
         expected_set = [1., 1., 1., 5., np.array([0, 0, 0]), 5., 2]
         for j in range(len(expected_set)):
             expectation = expected_set[j]
@@ -88,29 +88,31 @@ class TestNonInteracting(unittest.TestCase):
         qcis = QCIndexSpace(fcs=fcs, Emax=4.5, Lmax=4.0)
         qcis.group = Groups(ell_max=4, spin_half=False)
 
-        qcis.populate_all_nonint_data()
+        qcis.nis.populate_all_nonint_data()
 
-        self.assertEqual(qcis._nonint_channel_particle_label(0), 'aaa')
-        self.assertEqual(qcis._nonint_channel_particle_label(1), 'aab')
-        self.assertEqual(qcis._nonint_channel_particle_label(2), 'abc')
-        self.assertEqual(qcis._nonint_channel_particle_label(3), 'aa')
-        self.assertEqual(qcis._nonint_channel_particle_label(4), 'ab')
+        self.assertEqual(qcis.nis._nonint_channel_particle_label(0), 'aaa')
+        self.assertEqual(qcis.nis._nonint_channel_particle_label(1), 'aab')
+        self.assertEqual(qcis.nis._nonint_channel_particle_label(2), 'abc')
+        self.assertEqual(qcis.nis._nonint_channel_particle_label(3), 'aa')
+        self.assertEqual(qcis.nis._nonint_channel_particle_label(4), 'ab')
         for label in ['abc', 'aab', 'aaa']:
-            self.assertEqual(len(getattr(qcis, f'nvecset_{label}')), 5)
-            self.assertEqual(len(getattr(qcis, f'nvecset_{label}_batched')),
+            self.assertEqual(len(getattr(qcis.nis, f'nvecset_{label}')), 5)
+            self.assertEqual(len(getattr(qcis.nis,
+                                         f'nvecset_{label}_batched')),
                              5)
-            self.assertIsNone(getattr(qcis, f'nvecset_{label}')[3])
+            self.assertIsNone(getattr(qcis.nis, f'nvecset_{label}')[3])
         for label in ['ab', 'aa']:
-            self.assertEqual(len(getattr(qcis, f'nvecset_{label}')), 5)
-            self.assertEqual(len(getattr(qcis, f'nvecset_{label}_batched')),
+            self.assertEqual(len(getattr(qcis.nis, f'nvecset_{label}')), 5)
+            self.assertEqual(len(getattr(qcis.nis,
+                                         f'nvecset_{label}_batched')),
                              5)
-            self.assertIsNone(getattr(qcis, f'nvecset_{label}')[0])
-        self.assertGreaterEqual(len(qcis.nvecset_abc[1]),
-                                len(qcis.nvecset_aab[1]))
-        self.assertGreaterEqual(len(qcis.nvecset_aab[1]),
-                                len(qcis.nvecset_aaa[1]))
-        self.assertGreaterEqual(len(qcis.nvecset_ab[3]),
-                                len(qcis.nvecset_aa[3]))
+            self.assertIsNone(getattr(qcis.nis, f'nvecset_{label}')[0])
+        self.assertGreaterEqual(len(qcis.nis.nvecset_abc[1]),
+                                len(qcis.nis.nvecset_aab[1]))
+        self.assertGreaterEqual(len(qcis.nis.nvecset_aab[1]),
+                                len(qcis.nis.nvecset_aaa[1]))
+        self.assertGreaterEqual(len(qcis.nis.nvecset_ab[3]),
+                                len(qcis.nis.nvecset_aa[3]))
 
 
 class Template(unittest.TestCase):
