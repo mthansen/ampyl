@@ -1271,8 +1271,8 @@ class Groups:
         """Get the iso-projector for non-interacting vectors."""
         if qcis is None:
             raise ValueError("qcis cannot be None")
-        aaa_arr = qcis.nvecset_aaa_batched[cindex][shell_index]
-        abc_arr = qcis.nvecset_abc_batched[cindex][shell_index]
+        aaa_arr = qcis.nis.nvecset_aaa_batched[cindex][shell_index]
+        abc_arr = qcis.nis.nvecset_abc_batched[cindex][shell_index]
         iso_projector = ISO_PROJECTORS[iso_index]
         iso_prepare_sets = []
         id_sub_len = len(aaa_arr)
@@ -1320,8 +1320,8 @@ class Groups:
             raise ValueError("qcis cannot be None")
         nP = qcis.nP
         irrep_set = qcis.fvs.irrep_set
-        aaa_arr = qcis.nvecset_aaa_batched[cindex][shell_index]
-        abc_arr = qcis.nvecset_abc_batched[cindex][shell_index]
+        aaa_arr = qcis.nis.nvecset_aaa_batched[cindex][shell_index]
+        abc_arr = qcis.nis.nvecset_abc_batched[cindex][shell_index]
 
         if (nP@nP != 0) and (nP@nP != 1) and (nP@nP != 2):
             raise ValueError("momentum = ", nP, " is not yet supported")
@@ -1377,8 +1377,8 @@ class Groups:
         nP = qcis.nP
         irrep_set = qcis.fvs.irrep_set
         spin_half = qcis.fvs.spin_half
-        aaa_arr = qcis.nvecset_aaa_batched[cindex][shell_index]
-        abc_arr = qcis.nvecset_abc_batched[cindex][shell_index]
+        aaa_arr = qcis.nis.nvecset_aaa_batched[cindex][shell_index]
+        abc_arr = qcis.nis.nvecset_abc_batched[cindex][shell_index]
 
         if (nP@nP != 0) and (nP@nP != 1) and (nP@nP != 2):
             raise ValueError("momentum = ", nP, " is not yet supported")
@@ -1439,9 +1439,11 @@ class Groups:
             raise ValueError("qcis cannot be None")
         nP = qcis.nP
         irrep_set = qcis.fvs.irrep_set
-        particle_label = qcis._nonint_channel_particle_label(cindex)
+        particle_label = qcis.nis._nonint_channel_particle_label(cindex)
         nvecset_batched = getattr(
-            qcis, f'nvecset_{particle_label}_batched')[cindex][shell_index]
+            qcis.nis,
+            f'nvecset_{particle_label}_batched'
+        )[cindex][shell_index]
         permutations = self._three_particle_label_permutations(particle_label)
 
         if (nP@nP != 0) and (nP@nP != 1) and (nP@nP != 2):
@@ -1500,10 +1502,12 @@ class Groups:
             raise ValueError("qcis cannot be None")
         nP = qcis.nP
         irrep_set = qcis.fvs.irrep_set
-        particle_label = qcis._nonint_channel_particle_label(cindex)
+        particle_label = qcis.nis._nonint_channel_particle_label(cindex)
         particles_are_aa = (particle_label == 'aa')
         nvecset_ab_batched = getattr(
-            qcis, f'nvecset_{particle_label}_batched')[cindex][shell_index]
+            qcis.nis,
+            f'nvecset_{particle_label}_batched'
+        )[cindex][shell_index]
 
         if (nP@nP != 0) and (nP@nP != 1) and (nP@nP != 2):
             raise ValueError("momentum = ", nP, " is not yet supported")
@@ -1586,28 +1590,28 @@ class Groups:
         """Get it."""
         if qcis is None:
             raise ValueError("qcis cannot be None")
-        if qcis._nonint_channel_particle_label(nic_index) != 'aaa':
+        if qcis.nis._nonint_channel_particle_label(nic_index) != 'aaa':
             return self.get_proj_nonint_three_scalars_labeled_dict(
                 qcis=qcis, nic_index=nic_index)
         master_dict = {}
         definite_iso = qcis.fcs.ni_list[nic_index].isospin_channel
         row_zero_value = 0
         summary_str = ""
-        nshells = len(qcis.nvecset_aaa_reps[nic_index])
+        nshells = len(qcis.nis.nvecset_aaa_reps[nic_index])
         for shell_index in range(nshells):
             shell_total = 0
             if definite_iso:
                 nident =\
-                    len(qcis.nvecset_aaa_batched[nic_index][shell_index])
+                    len(qcis.nis.nvecset_aaa_batched[nic_index][shell_index])
                 nrest =\
-                    len(qcis.nvecset_abc_batched[nic_index][shell_index])
+                    len(qcis.nis.nvecset_abc_batched[nic_index][shell_index])
                 nstates = nident+nrest
             else:
                 nstates =\
-                    len(qcis.nvecset_aaa_batched[nic_index][shell_index])
+                    len(qcis.nis.nvecset_aaa_batched[nic_index][shell_index])
             summary_str +=\
                 f"shell_index = {shell_index} ({nstates} states):\n"
-            rep_mom = str(qcis.nvecset_aaa_reps[nic_index][shell_index])
+            rep_mom = str(qcis.nis.nvecset_aaa_reps[nic_index][shell_index])
             rep_mom = rep_mom.replace(' [', (' '*30)+'[')
             summary_str += "    representative momenta = "+rep_mom+"\n"
             if definite_iso:
@@ -1680,11 +1684,15 @@ class Groups:
         master_dict = {}
         if qcis is None:
             raise ValueError("qcis cannot be None")
-        particle_label = qcis._nonint_channel_particle_label(nic_index)
+        particle_label = qcis.nis._nonint_channel_particle_label(nic_index)
         nvecset_reps_cindex = getattr(
-            qcis, f'nvecset_{particle_label}_reps')[nic_index]
+            qcis.nis,
+            f'nvecset_{particle_label}_reps'
+        )[nic_index]
         nvecset_batched_cindex = getattr(
-            qcis, f'nvecset_{particle_label}_batched')[nic_index]
+            qcis.nis,
+            f'nvecset_{particle_label}_batched'
+        )[nic_index]
         row_zero_value = 0
         summary_str = ""
         nshells = len(nvecset_reps_cindex)
@@ -1753,7 +1761,7 @@ class Groups:
                              + "identical flavors")
         row_zero_value = 0
         summary_str = ""
-        nshells = len(qcis.nvecset_aaa_reps[nic_index])
+        nshells = len(qcis.nis.nvecset_aaa_reps[nic_index])
         first_spin = qcis.fcs.ni_list[nic_index].spins[0]
         second_spin = qcis.fcs.ni_list[nic_index].spins[1]
         third_spin = qcis.fcs.ni_list[nic_index].spins[2]
@@ -1764,19 +1772,19 @@ class Groups:
             shell_total = 0
             if definite_iso:
                 nident =\
-                    len(qcis.nvecset_aaa_batched[nic_index][shell_index])\
+                    len(qcis.nis.nvecset_aaa_batched[nic_index][shell_index])\
                     * total_spin_dimension
                 nrest =\
-                    len(qcis.nvecset_abc_batched[nic_index][shell_index])\
+                    len(qcis.nis.nvecset_abc_batched[nic_index][shell_index])\
                     * total_spin_dimension
                 nstates = nident+nrest
             else:
                 nstates =\
-                    len(qcis.nvecset_aaa_batched[nic_index][shell_index])\
+                    len(qcis.nis.nvecset_aaa_batched[nic_index][shell_index])\
                     * total_spin_dimension
             summary_str +=\
                 f"shell_index = {shell_index} ({nstates} states):\n"
-            rep_mom = str(qcis.nvecset_aaa_reps[nic_index][shell_index])
+            rep_mom = str(qcis.nis.nvecset_aaa_reps[nic_index][shell_index])
             rep_mom = rep_mom.replace(' [', (' '*30)+'[')
             summary_str += "    representative momenta = "+rep_mom+"\n"
             if definite_iso:
@@ -1854,11 +1862,15 @@ class Groups:
             raise ValueError("qcis cannot be None")
         row_zero_value = 0
         summary_str = ""
-        particle_label = qcis._nonint_channel_particle_label(nic_index)
+        particle_label = qcis.nis._nonint_channel_particle_label(nic_index)
         nvecset_batched_cindex = getattr(
-            qcis, f'nvecset_{particle_label}_batched')[nic_index]
+            qcis.nis,
+            f'nvecset_{particle_label}_batched'
+        )[nic_index]
         nvecset_reps_cindex = getattr(
-            qcis, f'nvecset_{particle_label}_reps')[nic_index]
+            qcis.nis,
+            f'nvecset_{particle_label}_reps'
+        )[nic_index]
         nshells = len(nvecset_reps_cindex)
         first_spin = qcis.fcs.ni_list[nic_index].spins[0]
         second_spin = qcis.fcs.ni_list[nic_index].spins[1]
