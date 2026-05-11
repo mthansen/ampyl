@@ -864,7 +864,6 @@ class NonIntSpace(NonIntSpaceUtils):
         return nonint_function
 
 
-
 class QCIndexSpace:
     """
     Represent the full quantization-condition index space.
