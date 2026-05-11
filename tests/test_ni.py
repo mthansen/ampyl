@@ -39,6 +39,7 @@ from ampyl.flavor import Particle
 from ampyl.flavor import FlavorChannel
 from ampyl.flavor import FlavorChannelSpace
 from ampyl.groups import Groups
+from ampyl import nonint_utils
 from ampyl.spaces import QCIndexSpace
 
 
@@ -50,7 +51,7 @@ class TestNonInteracting(unittest.TestCase):
         fc3 = FlavorChannel(3)
         fcs = FlavorChannelSpace(fc_list=[fc2, fc3])
         qcis = QCIndexSpace(fcs=fcs)
-        ni_data_two = qcis.nis._load_ni_data_two(fc2)
+        ni_data_two = nonint_utils._load_ni_data_two(qcis.nis, fc2)
         # expected_set = [1., 1., 5., np.array([0, 0, 0]), 5., 1]
         expected_set = [1., 1., 5., np.array([0, 0, 0]), 5., 2]
         for j in range(len(expected_set)):
@@ -63,7 +64,7 @@ class TestNonInteracting(unittest.TestCase):
         # self.assertEqual(ni_data_two[6].shape, (27, 3))
         self.assertEqual(ni_data_two[6].shape, (125, 3))
 
-        ni_data_three = qcis.nis._load_ni_data_three(fc3)
+        ni_data_three = nonint_utils._load_ni_data_three(qcis.nis, fc3)
         expected_set = [1., 1., 1., 5., np.array([0, 0, 0]), 5., 2]
         for j in range(len(expected_set)):
             expectation = expected_set[j]
