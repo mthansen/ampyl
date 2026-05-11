@@ -234,11 +234,11 @@ class TestQC(unittest.TestCase):
         qcis.populate()
 
         irrep = ('A1PLUS', 0)
-        self.assertEqual(qcis._nonint_channel_particle_label(0), 'aab')
-        self.assertEqual(len(qcis.nonint_functions), 1)
-        self.assertGreater(len(qcis.nonint_functions[0][irrep]), 0)
+        self.assertEqual(qcis.nis._nonint_channel_particle_label(0), 'aab')
+        self.assertEqual(len(qcis.nis.nonint_functions), 1)
+        self.assertGreater(len(qcis.nis.nonint_functions[0][irrep]), 0)
         self.assertAlmostEqual(
-            qcis.nonint_functions[0][irrep][0](4.0),
+            qcis.nis.nonint_functions[0][irrep][0](4.0),
             2.0*kaon.mass+pion.mass,
         )
 
