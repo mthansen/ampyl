@@ -3,8 +3,11 @@
 
 import unittest
 import numpy as np
+from types import SimpleNamespace
 
+from ampyl.interpolable import Interpolable
 from ampyl.interpolable import _build_matrix_interpolator
+from ampyl import interpolable_utils
 
 
 class TestInterpolable(unittest.TestCase):
@@ -29,6 +32,74 @@ class TestInterpolable(unittest.TestCase):
         self.assertAlmostEqual(interp((1.5, 5.0))[0][0], 1.5**3)
         with self.assertRaises(ValueError):
             interp((1.5, 5.1))
+
+    def test_strict_pole_residue_matrices_restore_other_poles(self):
+        irrep = ('A1', 0)
+
+        def smooth_interp(point):
+            E, L = point
+            return np.array([
+                [E+L, 2.*E],
+                [3.*L, E-L],
+            ])
+
+        interpolable = SimpleNamespace(
+            interps={irrep: smooth_interp},
+            pole_lists={irrep: [np.array([[0, 0, 0], [0, 0, 0]])]},
+            pole_mass_lists={irrep: [np.array([[1., 1., 1.],
+                                               [2., 2., 2.]])]},
+            pole_textures_lists={irrep: [np.array([
+                [[1., 1.],
+                 [0., 0.]],
+                [[0., 1.],
+                 [0., 1.]],
+            ])]},
+        )
+
+        residues = interpolable_utils._get_pole_residue_matrix_list(
+            interpolable, 2., irrep)
+
+        self.assertEqual(len(residues), 1)
+        np.testing.assert_allclose(
+            residues[0][0],
+            [[5., -2.],
+             [0., 0.]])
+        np.testing.assert_allclose(
+            residues[0][1],
+            [[0., 4.],
+             [0., 4.]])
+
+    def test_strict_pole_residue_rejects_overlapping_coincident_poles(self):
+        irrep = ('A1', 0)
+        interpolable = SimpleNamespace(
+            interps={irrep: lambda point: np.ones((1, 1))},
+            pole_lists={irrep: [np.array([[0, 0, 0], [0, 0, 0]])]},
+            pole_mass_lists={irrep: [np.array([[1., 1., 1.],
+                                               [1., 1., 1.]])]},
+            pole_textures_lists={irrep: [np.array([[[1.]], [[1.]]])]},
+        )
+
+        with self.assertRaises(ValueError):
+            interpolable_utils._get_pole_residue_matrix_list(
+                interpolable, 2., irrep)
+
+    def test_public_pole_residue_method_caches_by_volume(self):
+        irrep = ('A1', 0)
+        interpolable = Interpolable()
+        interpolable.interps[irrep] = lambda point: np.ones((1, 1))
+        interpolable.pole_lists[irrep] = [np.array([[0, 0, 0]])]
+        interpolable.pole_mass_lists[irrep] = [np.array([[1., 1., 1.]])]
+        interpolable.pole_textures_lists[irrep] = [np.array([[[1.]]])]
+        interpolable._store_interpolator(name='toy')
+
+        residues = interpolable.get_pole_residue_matrices(
+            L=2., irrep=irrep, interpolator_name='toy')
+
+        np.testing.assert_allclose(residues[0][0], [[1.]])
+        self.assertIn(2., interpolable.pole_residue_matrix_lists[irrep])
+        self.assertIn(
+            2.,
+            interpolable.interpolators[0]['pole_residue_matrix_lists'][irrep])
 
 
 if __name__ == '__main__':
