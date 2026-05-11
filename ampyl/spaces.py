@@ -53,7 +53,7 @@ from .flavor import FlavorChannel
 from .flavor import FlavorChannelSpace
 from .schemes import FiniteVolumeSetup
 from .schemes import ThreeBodyInteractionScheme
-from .nonint_utils import NonIntSpaceUtils
+from . import nonint_utils
 import warnings
 warnings.simplefilter("once")
 
@@ -420,7 +420,7 @@ class ThreeBodyKinematicSpace:
         return three_body_kinematic_space_str[:-2]+"."
 
 
-class NonIntSpace(NonIntSpaceUtils):
+class NonIntSpace:
     """Build and store non-interacting reference data for a QC index space."""
 
     def __init__(self, qcis):
@@ -574,23 +574,23 @@ class NonIntSpace(NonIntSpaceUtils):
 
     def _get_nonint_channel_data_three(self, fc):
         nvecset_abc, nvecset_abc_SQs, nP = self._get_nonint_nvecsets_three(fc)
-        nvecset_aab, nvecset_aab_SQs = self._get_nvecset_aab_three(
+        nvecset_aab, nvecset_aab_SQs = nonint_utils._get_nvecset_aab_three(
             nvecset_abc, nvecset_abc_SQs)
         [nvecset_aab_reps, nvecset_aab_SQreps,
          nvecset_aab_inds, nvecset_aab_counts,
-         nvecset_aab_batched] = self._reps_and_batches_permutations(
-             nvecset_aab, nvecset_aab_SQs, nP,
-             self._aab_three_permutations())
+         nvecset_aab_batched] = nonint_utils._reps_and_batches_permutations(
+             self, nvecset_aab, nvecset_aab_SQs, nP,
+             nonint_utils._aab_three_permutations())
 
-        nvecset_aaa, nvecset_aaa_SQs = self._get_nvecset_aaa_three(
+        nvecset_aaa, nvecset_aaa_SQs = nonint_utils._get_nvecset_aaa_three(
             nvecset_abc, nvecset_abc_SQs)
         [nvecset_abc_reps, nvecset_aaa_reps,
          nvecset_abc_SQreps, nvecset_aaa_SQreps,
          nvecset_abc_inds, nvecset_aaa_inds,
          nvecset_abc_counts, nvecset_aaa_counts,
          nvecset_abc_batched, nvecset_aaa_batched] =\
-            self._reps_and_batches_three(
-                nvecset_abc, nvecset_abc_SQs, nvecset_aaa,
+            nonint_utils._reps_and_batches_three(
+                self, nvecset_abc, nvecset_abc_SQs, nvecset_aaa,
                 nvecset_aaa_SQs, nP)
 
         return {
@@ -619,15 +619,15 @@ class NonIntSpace(NonIntSpaceUtils):
 
     def _get_nonint_channel_data_two(self, fc):
         nvecset_ab, nvecset_ab_SQs, nP = self._get_nonint_nvecsets_two(fc)
-        nvecset_aa, nvecset_aa_SQs = self._get_nvecset_aa_two(
+        nvecset_aa, nvecset_aa_SQs = nonint_utils._get_nvecset_aa_two(
             nvecset_ab, nvecset_ab_SQs)
         [nvecset_ab_reps, nvecset_aa_reps,
          nvecset_ab_SQreps, nvecset_aa_SQreps,
          nvecset_ab_inds, nvecset_aa_inds,
          nvecset_ab_counts, nvecset_aa_counts,
          nvecset_ab_batched, nvecset_aa_batched] =\
-            self._reps_and_batches_two(
-                nvecset_ab, nvecset_ab_SQs, nvecset_aa,
+            nonint_utils._reps_and_batches_two(
+                self, nvecset_ab, nvecset_ab_SQs, nvecset_aa,
                 nvecset_aa_SQs, nP)
 
         return {
@@ -649,33 +649,33 @@ class NonIntSpace(NonIntSpaceUtils):
 
     def _get_nonint_nvecsets_three(self, fc):
         [m1, m2, m3, Emax, nP, Lmax, nvec_cutoff, nvecs]\
-            = self._load_ni_data_three(fc)
+            = nonint_utils._load_ni_data_three(self, fc)
         nvecset_abc = []
         nmin = nvec_cutoff
         nmax = nvec_cutoff
         for n1 in nvecs:
             for n2 in nvecs:
                 [nvecset_abc, nmin, nmax]\
-                    = self._get_nvecset_abc_three(nvecset_abc, nmin, nmax,
-                                                  m1, m2, m3, Emax, nP,
-                                                  Lmax, n1, n2)
+                    = nonint_utils._get_nvecset_abc_three(
+                        nvecset_abc, nmin, nmax, m1, m2, m3, Emax, nP,
+                        Lmax, n1, n2)
         nvecset_abc = np.array(nvecset_abc)
-        [nvecset_abc, nvecset_abc_SQs] = self._square_and_sort_three(
+        [nvecset_abc, nvecset_abc_SQs] = nonint_utils._square_and_sort_three(
             nvecset_abc, nmin, nmax, m1, m2, m3, Lmax)
         return nvecset_abc, nvecset_abc_SQs, nP
 
     def _get_nonint_nvecsets_two(self, fc):
         [m1, m2, Emax, nP, Lmax, nvec_cutoff, nvecs]\
-            = self._load_ni_data_two(fc)
+            = nonint_utils._load_ni_data_two(self, fc)
         nvecset_ab = []
         nmin = nvec_cutoff
         nmax = nvec_cutoff
         for n1 in nvecs:
             [nvecset_ab, nmin, nmax]\
-                = self._get_nvecset_ab_two(nvecset_ab, nmin, nmax,
-                                           m1, m2, Emax, nP, Lmax, n1)
+                = nonint_utils._get_nvecset_ab_two(
+                    nvecset_ab, nmin, nmax, m1, m2, Emax, nP, Lmax, n1)
         nvecset_ab = np.array(nvecset_ab)
-        [nvecset_ab, nvecset_ab_SQs] = self._square_and_sort_two(
+        [nvecset_ab, nvecset_ab_SQs] = nonint_utils._square_and_sort_two(
             nvecset_ab, nmin, nmax, m1, m2, Lmax)
         return nvecset_ab, nvecset_ab_SQs, nP
 
