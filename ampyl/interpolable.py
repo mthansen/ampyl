@@ -181,6 +181,7 @@ class Interpolable:
         self.pole_mass_lists = {}
         self.pole_textures_lists = {}
         self.complement_textures_lists = {}
+        self.pole_residue_matrix_lists = {}
         self.interpolators = []
         self.interpolator_names = {}
         self.active_interpolator_id = None
@@ -601,6 +602,38 @@ class Interpolable:
     def get_pole_candidate(self, L, n1vecSQ, n2vecSQ, n3vecSQ, m1, m2, m3):
         return interpolable_utils.get_pole_candidate(
             self, L, n1vecSQ, n2vecSQ, n3vecSQ, m1, m2, m3)
+
+    def get_pole_residue_matrices(self, L=5.0, irrep=None,
+                                  interpolator_id=None,
+                                  interpolator_name=None):
+        """
+        Evaluate strict pole-residue matrices from stored interpolation data.
+
+        The returned object is a list over smooth-basis sectors. Each sector
+        entry is an array whose leading index labels the saved poles in
+        ``pole_lists[irrep][sector]``. Entries where a pole is absent are zero;
+        entries where other poles are also present include those pole factors
+        evaluated at the target pole.
+        """
+        check_utils.check_value_within_qcis_bounds(self, E=0., L=L)
+        self._load_interpolator(interpolator_id=interpolator_id,
+                                interpolator_name=interpolator_name)
+        L_key = float(np.round(L, decimals=10))
+        if (irrep in self.pole_residue_matrix_lists
+           and L_key in self.pole_residue_matrix_lists[irrep]):
+            return self.pole_residue_matrix_lists[irrep][L_key]
+        pole_residue_matrix_list =\
+            interpolable_utils._get_pole_residue_matrix_list(
+                self, L, irrep)
+        if irrep not in self.pole_residue_matrix_lists:
+            self.pole_residue_matrix_lists[irrep] = {}
+        self.pole_residue_matrix_lists[irrep][L_key]\
+            = pole_residue_matrix_list
+        if self.active_interpolator_id is not None:
+            self.interpolators[self.active_interpolator_id][
+                'pole_residue_matrix_lists'] = deepcopy(
+                    self.pole_residue_matrix_lists)
+        return pole_residue_matrix_list
 
     def _get_value_not_interpolated(self, E, L, project, irrep):
         return None
