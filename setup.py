@@ -46,11 +46,7 @@ setup(
     ],
     extras_require={
         "docs": [
-            "sphinx",
-            "numpydoc",
-            "nbsphinx",
-            "IPython",
-            "pandoc",
+            "pdoc>=13",
         ],
     },
 )
