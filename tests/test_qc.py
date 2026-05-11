@@ -37,47 +37,8 @@ import unittest
 import warnings
 import numpy as np
 from scipy.optimize import root_scalar
-import importlib.util
-import os
-from pathlib import Path
-import tempfile
 import ampyl
 from ampyl import fv_spectrum_utils
-from ampyl.ampyl import QCMatrixBuilder
-import matplotlib.pyplot as plt
-
-
-_KKPI_DETF3_HELPER_PATH = (
-    Path(__file__).resolve().parents[1]
-    / "examples"
-    / "KKpi_detF3inverse"
-    / "KKpi_detF3inverse_helper.py"
-)
-_KKPI_DETF3_HELPER_SPEC = importlib.util.spec_from_file_location(
-    "kkpi_detf3inverse_helper",
-    _KKPI_DETF3_HELPER_PATH,
-)
-kkpi_detf3inverse_helper = importlib.util.module_from_spec(
-    _KKPI_DETF3_HELPER_SPEC
-)
-_KKPI_DETF3_HELPER_SPEC.loader.exec_module(kkpi_detf3inverse_helper)
-
-_KKPI_DETF3_NOINTERP_HELPER_PATH = (
-    Path(__file__).resolve().parents[1]
-    / "examples"
-    / "KKpi_detF3inverse"
-    / "KKpi_detF3inverse_nointerp_helper.py"
-)
-_KKPI_DETF3_NOINTERP_HELPER_SPEC = importlib.util.spec_from_file_location(
-    "kkpi_detf3inverse_nointerp_helper",
-    _KKPI_DETF3_NOINTERP_HELPER_PATH,
-)
-kkpi_detf3inverse_nointerp_helper = importlib.util.module_from_spec(
-    _KKPI_DETF3_NOINTERP_HELPER_SPEC
-)
-_KKPI_DETF3_NOINTERP_HELPER_SPEC.loader.exec_module(
-    kkpi_detf3inverse_nointerp_helper
-)
 
 
 class TestQC(unittest.TestCase):
