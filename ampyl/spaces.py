@@ -1110,7 +1110,6 @@ class QCIndexSpace:
             self.populate_all_kellm_spaces()
             self.populate_all_proj_dicts()
             self.proj_dict = self.group.get_full_proj_dict(qcis=self)
-        self.nis = NonIntSpace(self)
         self.nis.populate()
 
     def get_ell_and_spin(self):
