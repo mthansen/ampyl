@@ -80,6 +80,7 @@ def _load_ni_data_three(self, fc):
     nvecs = np.delete(nvecs, np.where(carr), axis=0)
     return [m1, m2, m3, Emax, nP, Lmax, nvec_int_cutoff, nvecs]
 
+
 def _get_nvecset_abc_three(nvecset_abc, nmin, nmax,
                            m1, m2, m3, Emax, nP, Lmax, n1, n2):
     n3 = nP-n1-n2
@@ -99,6 +100,7 @@ def _get_nvecset_abc_three(nvecset_abc, nmin, nmax,
             nmax = max_candidate
         nvecset_abc = nvecset_abc+[[n1, n2, n3]]
     return [nvecset_abc, nmin, nmax]
+
 
 def _square_and_sort_three(nvecset_abc, nmin, nmax,
                            m1, m2, m3, Lmax):
@@ -138,6 +140,7 @@ def _square_and_sort_three(nvecset_abc, nmin, nmax,
     nvecset_abc_SQs = nvecset_abc_SQs[re_indexing]
     return [nvecset_abc, nvecset_abc_SQs]
 
+
 def _get_nvecset_aaa_three(nvecset_abc, nvecset_abc_SQs):
     nvecset_aaa = []
     nvecset_aaa_SQs = deepcopy([])
@@ -153,6 +156,7 @@ def _get_nvecset_aaa_three(nvecset_abc, nvecset_abc_SQs):
     nvecset_aaa = np.array(nvecset_aaa)
     nvecset_aaa_SQs = np.array(nvecset_aaa_SQs)
     return [nvecset_aaa, nvecset_aaa_SQs]
+
 
 def _get_nvecset_aab_three(nvecset_abc, nvecset_abc_SQs):
     nvecset_aab = []
@@ -170,25 +174,31 @@ def _get_nvecset_aab_three(nvecset_abc, nvecset_abc_SQs):
     nvecset_aab_SQs = np.array(nvecset_aab_SQs)
     return [nvecset_aab, nvecset_aab_SQs]
 
+
 def _aaa_three_permutations():
     return [(0, 1, 2), (1, 2, 0), (2, 0, 1),
             (2, 1, 0), (1, 0, 2), (0, 2, 1)]
 
+
 def _aab_three_permutations():
     return [(0, 1, 2), (1, 0, 2)]
 
+
 def _aaa_two_permutations():
     return [(0, 1), (1, 0)]
+
 
 def _permuted_three_candidates(n1, n2, n3, permutations):
     nvecs = [n1, n2, n3]
     return [np.array([nvecs[index] for index in permutation])
             for permutation in permutations]
 
+
 def _permuted_two_candidates(n1, n2, permutations):
     nvecs = [n1, n2]
     return [np.array([nvecs[index] for index in permutation])
             for permutation in permutations]
+
 
 def _include_symmetrized_entry(candidates, nvecset):
     include_entry = True
@@ -198,6 +208,7 @@ def _include_symmetrized_entry(candidates, nvecset):
             include_entry = include_entry\
                 and (not ((candidate == nvecset_tmp_entry).all()))
     return include_entry
+
 
 def _reps_and_batches_permutations(self, nvecset, nvecset_SQs, nP,
                                    permutations):
@@ -248,9 +259,11 @@ def _reps_and_batches_permutations(self, nvecset, nvecset_SQs, nP,
     return [nvecset_reps, nvecset_SQreps, nvecset_inds,
             nvecset_counts, nvecset_batched]
 
+
 def _permuted_candidates(nvecset_entry, permutations):
     return [np.array([nvecset_entry[index] for index in permutation])
             for permutation in permutations]
+
 
 def _reps_and_batches_three(self, nvecset_abc, nvecset_abc_SQs,
                             nvecset_aaa, nvecset_aaa_SQs,
@@ -373,6 +386,7 @@ def _reps_and_batches_three(self, nvecset_abc, nvecset_abc_SQs,
             nvecset_abc_counts, nvecset_aaa_counts,
             nvecset_abc_batched, nvecset_aaa_batched]
 
+
 def _load_ni_data_two(self, fc):
     Emax = self.Emax
     nP = self.nP
@@ -399,6 +413,7 @@ def _load_ni_data_two(self, fc):
     nvecs = np.vstack([y.flat for y in mesh]).T
     return [m1, m2, Emax, nP, Lmax, nvec_cutoff, nvecs]
 
+
 def _get_nvecset_ab_two(nvecset_ab, nmin, nmax, m1, m2,
                         Emax, nP, Lmax, n1):
     n2 = nP-n1
@@ -416,6 +431,7 @@ def _get_nvecset_ab_two(nvecset_ab, nmin, nmax, m1, m2,
             nmax = max_candidate
         nvecset_ab = nvecset_ab+[[n1, n2]]
     return [nvecset_ab, nmin, nmax]
+
 
 def _square_and_sort_two(nvecset_ab, nmin, nmax,
                          m1, m2, Lmax):
@@ -449,6 +465,7 @@ def _square_and_sort_two(nvecset_ab, nmin, nmax,
     nvecset_ab_SQs = nvecset_ab_SQs[re_indexing]
     return [nvecset_ab, nvecset_ab_SQs]
 
+
 def _get_nvecset_aa_two(nvecset_ab, nvecset_ab_SQs):
     nvecset_aa = []
     nvecset_aa_SQs = deepcopy([])
@@ -469,6 +486,7 @@ def _get_nvecset_aa_two(nvecset_ab, nvecset_ab_SQs):
     nvecset_aa = np.array(nvecset_aa)
     nvecset_aa_SQs = np.array(nvecset_aa_SQs)
     return [nvecset_aa, nvecset_aa_SQs]
+
 
 def _reps_and_batches_two(self, nvecset_ab, nvecset_ab_SQs, nvecset_aa,
                           nvecset_aa_SQs, nP):
