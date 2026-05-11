@@ -278,7 +278,7 @@ def _extract_EL_set(spectrum, version, irrep, dL):
 
 def _get_ni_functions(spectrum, irrep):
     ni_functions = []
-    for ni_function_channel in spectrum.qc.qcis.nonint_functions:
+    for ni_function_channel in spectrum.qc.qcis.nis.nonint_functions:
         ni_functions.extend(ni_function_channel[irrep])
     return ni_functions
 
