@@ -419,653 +419,64 @@ class ThreeBodyKinematicSpace:
         return three_body_kinematic_space_str[:-2]+"."
 
 
-class QCIndexSpace:
-    """
-    Represent the full quantization-condition index space.
+class NonIntSpace:
+    """Build and store non-interacting reference data for a QC index space."""
 
-    ``QCIndexSpace`` combines flavor channels, finite-volume symmetry data,
-    three-body interaction choices, spectator momentum spaces, projection
-    dictionaries, and non-interacting reference levels into one object consumed
-    by the matrix builders.
-
-    Parameters
-    ----------
-    fcs : FlavorChannelSpace, optional
-        Flavor-channel space. If omitted, a default three-particle channel
-        space is created.
-    fvs : FiniteVolumeSetup, optional
-        Finite-volume setup. If omitted, the default setup is used.
-    tbis : ThreeBodyInteractionScheme, optional
-        Three-body interaction scheme. If omitted, the default scheme is used.
-    Emax : float, optional
-        Maximum energy used when building spectator and non-interacting index
-        spaces.
-    Lmax : float, optional
-        Maximum volume used when building spectator and non-interacting index
-        spaces.
-    deltaE_nPnz, deltaL_nPnz : float, optional
-        Grid spacings used for nonzero total momentum.
-    verbosity : int, optional
-        Verbosity level for diagnostic output.
-
-    Attributes
-    ----------
-    nP : numpy.ndarray of int, shape (3,)
-        Total finite-volume momentum inherited from ``fvs``.
-    nPSQ : int
-        Squared total momentum.
-    group : Groups
-        Symmetry-group helper for the selected maximum angular momentum and
-        spin sector.
-    Evals, Lvals : numpy.ndarray or None
-        Energy and volume grids used for nonzero total momentum.
-    param_structure : list
-        Nested structure describing the expected QC parameter input.
-    ell_sets, ellm_sets : list
-        Angular-momentum sets and expanded ``(ell, m)`` sets by spectator
-        channel.
-    proj_dict : dict
-        Projection matrices for the full QC space.
-    nonint_proj_dict : list
-        Projection dictionaries for non-interacting channels.
-    tbks_list : list of ThreeBodyKinematicSpace
-        Spectator-momentum spaces by two-body/three-body mass slice.
-    kellm_spaces, kellm_shells : list
-        Spectator-momentum plus angular-momentum spaces, and their shell
-        block boundaries.
-    nvecset_ab_*, nvecset_aa_*, nvecset_abc_*, nvecset_aab_*,
-    nvecset_aaa_* : list
-        Non-interacting momentum sets, representatives, counts, and batched
-        group orbits for two-particle distinguishable/identical labels and
-        three-particle distinguishable/partially-identical/fully-identical
-        labels respectively.
-
-    Raises
-    ------
-    ValueError
-        If a channel threshold exceeds ``Emax``, if unsupported particle
-        counts are present, or if momentum/spin combinations are unsupported.
-    """
-
-    def __init__(self, fcs=None, fvs=None, tbis=None, Emax=5., Lmax=5.,
-                 deltaE_nPnz=DELTA_E_NPNZ_GRID, deltaL_nPnz=DELTA_L_NPNZ_GRID,
-                 verbosity=0):
-        """
-        Initialize a quantization-condition index space.
-
-        Parameters
-        ----------
-        fcs : FlavorChannelSpace, optional
-            Flavor-channel space to index.
-        fvs : FiniteVolumeSetup, optional
-            Finite-volume setup.
-        tbis : ThreeBodyInteractionScheme, optional
-            Three-body interaction scheme.
-        Emax : float, optional
-            Maximum energy for index construction.
-        Lmax : float, optional
-            Maximum volume for index construction.
-        deltaE_nPnz, deltaL_nPnz : float, optional
-            Nonzero-momentum grid spacings.
-        verbosity : int, optional
-            Verbosity level.
-        """
-        self._verbosity = verbosity
-        self.verbosity = verbosity
-        self.Emax = Emax
-        self.Lmax = Lmax
-        self.deltaE_nPnz = deltaE_nPnz
-        self.deltaL_nPnz = deltaL_nPnz
-
-        if fcs is None:
-            if verbosity >= 2:
-                print(f"{bcolors.OKGREEN}"
-                      "Setting the flavor-channel space, None was passed"
-                      f"{bcolors.ENDC}")
-            self._fcs = FlavorChannelSpace(fc_list=[FlavorChannel(3)])
-        else:
-            if verbosity >= 2:
-                print(f"{bcolors.OKGREEN}"
-                      "Setting the flavor-channel space"
-                      f"{bcolors.ENDC}")
-            self._fcs = fcs
-
-        if fvs is None:
-            if verbosity >= 2:
-                print(f"{bcolors.OKGREEN}"
-                      "Setting the finite-volume setup, None was passed"
-                      f"{bcolors.ENDC}")
-            self.fvs = FiniteVolumeSetup()
-        else:
-            if verbosity >= 2:
-                print(f"{bcolors.OKGREEN}"
-                      "Setting the finite-volume setup"
-                      f"{bcolors.ENDC}")
-            self.fvs = fvs
-
-        if tbis is None:
-            if verbosity >= 2:
-                print(f"{bcolors.OKGREEN}"
-                      "Setting the three-body interaction scheme, None was "
-                      "passed"
-                      f"{bcolors.ENDC}")
-            self.tbis = ThreeBodyInteractionScheme()
-        else:
-            if verbosity >= 2:
-                print(f"{bcolors.OKGREEN}"
-                      "Setting the three-body interaction scheme"
-                      f"{bcolors.ENDC}")
-            self.tbis = tbis
-
-        self._nP = self.fvs.nP
-        self.nP = self.fvs.nP
-        if verbosity >= 2:
-            print(f"{bcolors.OKGREEN}"
-                  f"Setting the total momentum to nP = {self._nP}"
-                  f"{bcolors.ENDC}")
-        self.fcs = self._fcs
-
-    @property
-    def verbosity(self):
-        """Verbosity of the QCIndexSpace."""
-        return self._verbosity
-
-    @verbosity.setter
-    def verbosity(self, verbosity):
-        """Set the verbosity of the QCIndexSpace."""
-        if not isinstance(verbosity, int):
-            raise ValueError("verbosity must be an int")
-        self._verbosity = verbosity
-
-    @property
-    def nP(self):
-        """Total momentum in the finite-volume frame."""
-        return self._nP
-
-    @nP.setter
-    def nP(self, nP):
-        """Set the total momentum in the finite-volume frame."""
-        if not isinstance(nP, np.ndarray):
-            raise ValueError("nP must be a numpy array")
-        elif not np.array(nP).shape == (3,):
-            raise ValueError("nP must have shape (3,)")
-        elif not ((isinstance(nP[0], np.int64))
-                  and (isinstance(nP[1], np.int64))
-                  and (isinstance(nP[2], np.int64))):
-            raise ValueError("nP must be populated with ints")
-        else:
-            self._nP = nP
-            self.nPSQ = (nP)@(nP)
-            self.nPmag = np.sqrt(self.nPSQ)
+    def __init__(self, qcis):
+        """Initialize from the parent ``QCIndexSpace``."""
+        self.qcis = qcis
 
     @property
     def fcs(self):
-        """FlavorChannelSpace object."""
-        return self._fcs
-
-    @fcs.setter
-    def fcs(self, fcs):
-        """Set the FlavorChannelSpace object."""
-        self.n_channels = len(fcs.sc_list_sorted)
-        n_two_channels = 0
-        n_three_channels = 0
-        for sc in fcs.sc_list_sorted:
-            if np.sum([particle.mass for particle in sc.fc.particles])\
-               > self.Emax:
-                raise ValueError("QCIndexSpace includes channel with "
-                                 + "threshold exceeding Emax")
-            if sc.fc.n_particles == 2:
-                n_two_channels += 1
-            elif sc.fc.n_particles == 3:
-                n_three_channels += 1
-            else:
-                raise ValueError("QCIndexSpace currently only supports "
-                                 + "two- and three-particle channels")
-        self.n_two_channels = n_two_channels
-        self.n_three_channels = n_three_channels
-
-        tbks_list = []
-        if self.n_two_channels > 0:
-            tbks_list.append(ThreeBodyKinematicSpace(nP=self.nP))
-        for _ in range(self.fcs.n_three_slices):
-            tbks_list.append(ThreeBodyKinematicSpace(nP=self.nP))
-        self.tbks_list = tbks_list
-        self._fcs = fcs
+        """Flavor-channel space inherited from the parent index space."""
+        return self.qcis.fcs
 
     @property
-    def ell_sets(self):
-        """Angular-momentum value sets."""
-        return self._ell_sets
+    def fvs(self):
+        """Finite-volume setup inherited from the parent index space."""
+        return self.qcis.fvs
 
-    @ell_sets.setter
-    def ell_sets(self, ell_sets):
-        """Set angular-momentum value sets."""
-        self._ell_sets = ell_sets
-        ellm_sets = []
-        for ell_set in ell_sets:
-            ellm_set = []
-            for ell in ell_set:
-                for mazi in range(-ell, ell+1):
-                    ellm_set.append((ell, mazi))
-            ellm_sets.append(ellm_set)
-        self.ellm_sets = ellm_sets
+    @property
+    def group(self):
+        """Symmetry-group helper inherited from the parent index space."""
+        return self.qcis.group
+
+    @property
+    def Emax(self):
+        """Maximum energy inherited from the parent index space."""
+        return self.qcis.Emax
+
+    @property
+    def Lmax(self):
+        """Maximum volume inherited from the parent index space."""
+        return self.qcis.Lmax
+
+    @property
+    def nP(self):
+        """Total momentum inherited from the parent index space."""
+        return self.qcis.nP
+
+    @property
+    def nPSQ(self):
+        """Squared total momentum inherited from the parent index space."""
+        return self.qcis.nPSQ
+
+    @property
+    def proj_dict(self):
+        """Interacting projection dictionary used to pick best irreps."""
+        return self.qcis.proj_dict
+
+    @property
+    def spin_half(self):
+        """Whether the parent index space contains a spin-half channel."""
+        return self.qcis.spin_half
 
     def populate(self):
-        """
-        Populate all derived index-space data.
-
-        This builds symmetry groups, nonzero-momentum grids, parameter
-        structures, spectator-momentum spaces, angular-momentum spaces,
-        projection dictionaries, and non-interacting reference data.
-        """
-        ell_max, spin_half = self.get_ell_and_spin()
-        self.group = Groups(ell_max=ell_max, spin_half=spin_half)
-        self.spin_half = spin_half
-        self.Evals, self.Lvals = self.get_grid_nPnonzero()
-        self.param_structure = self.get_param_structure()
-        self.populate_all_nvec_arr()
-        self.ell_sets = self._get_ell_sets()
-        self.sc_to_three_slice = self._get_sc_to_three_slice()
-        if not self.spin_half:
-            self.populate_all_kellm_spaces()
-            self.populate_all_proj_dicts()
-            self.proj_dict = self.group.get_full_proj_dict(qcis=self)
+        """Populate all non-interacting reference data."""
         self.populate_all_nonint_data()
         self.populate_nonint_proj_dict()
         self.populate_nonint_multiplicities()
         self.populate_nonint_functions()
-
-    def get_ell_and_spin(self):
-        """
-        Determine the maximum angular momentum and spin sector.
-
-        Returns
-        -------
-        ell_max : int
-            Maximum angular momentum needed by interacting and
-            non-interacting channels.
-        spin_half : bool
-            Whether a spin-half channel is present.
-
-        Raises
-        ------
-        ValueError
-            If a non-integer spin other than one-half is encountered.
-        """
-        ell_max = 4
-        spin_half = False
-        for sc in self.fcs.sc_list_sorted:
-            if np.max(sc.ell_set) > ell_max:
-                ell_max = np.max(sc.ell_set)
-        for nic in self.fcs.ni_list:
-            spins = nic.spins
-            for spin in spins:
-                spin_int = int(spin)
-                if (np.abs(spin-spin_int) > EPSILON10
-                   and np.abs(spin-0.5) < EPSILON10):
-                    warnings.warn(f"\n{bcolors.WARNING}"
-                                  "Spin half detected; certain objects may "
-                                  "not be supported"
-                                  f"{bcolors.ENDC}", stacklevel=2)
-                    spin_half = True
-                elif np.abs(spin-spin_int) > EPSILON10:
-                    raise ValueError("only integer spin and (partially spin "
-                                     "half) currently supported")
-            max_spin = int(np.max(nic.spins))
-            if max_spin > ell_max:
-                ell_max = max_spin
-        return ell_max, spin_half
-
-    def get_grid_nPnonzero(self):
-        """
-        Return the interpolation grid used for nonzero total momentum.
-
-        Returns
-        -------
-        Evals : numpy.ndarray or None
-            Energy grid, or ``None`` when ``nP`` is zero.
-        Lvals : numpy.ndarray or None
-            Volume grid, or ``None`` when ``nP`` is zero.
-        """
-        if self.nPSQ != 0:
-            if self.verbosity >= 2:
-                print(f"{bcolors.OKGREEN}"
-                      "nPSQ is nonzero, grid will be used"
-                      f"{bcolors.ENDC}")
-            [Evals, Lvals] = self._get_grid_nPnonzero(self.Emax, self.Lmax,
-                                                      self.deltaE_nPnz,
-                                                      self.deltaL_nPnz)
-            if self.verbosity >= 2:
-                print(f"{bcolors.OKGREEN}"
-                      f"Grid for non-zero nP:\n"
-                      f"Evals = {Evals}\n"
-                      f"Lvals = {Lvals}")
-        else:
-            Evals = None
-            Lvals = None
-        return Evals, Lvals
-
-    def _get_grid_nPnonzero(self, Emax, Lmax, deltaE, deltaL):
-        Lmin = np.mod(Lmax-L_GRID_SHIFT, deltaL)+L_GRID_SHIFT
-        Emin = np.mod(Emax-E_GRID_SHIFT, deltaE)+E_GRID_SHIFT
-        Lvals = np.arange(Lmin, Lmax+EPSILON4, deltaL)
-        Evals = np.arange(Emin, Emax+EPSILON4, deltaE)
-        if np.abs(Lvals[-1] - Lmax) > EPSILON20:
-            Lvals = np.append(Lvals, Lmax)
-        if np.abs(Evals[-1] - Emax) > EPSILON20:
-            Evals = np.append(Evals, Emax)
-        Lvals = Lvals[::-1]
-        Evals = Evals[::-1]
-        return [Evals, Lvals]
-
-    def get_param_structure(self):
-        """
-        Build the nested parameter structure expected by QC evaluators.
-
-        Returns
-        -------
-        list
-            Two-entry list containing two-body p-cot-delta parameter blocks
-            followed by three-body ``Kdf`` parameters.
-        """
-        param_structure = []
-        two_param_structure = []
-        for sc in self.fcs.sc_list_sorted:
-            param_entry = []
-            for n_params_tmp in sc.n_params_set:
-                param_entry.append([0.]*n_params_tmp)
-            two_param_structure.append(param_entry)
-        param_structure.append(two_param_structure)
-        three_param_structure = [0.]*len(self.tbis.kdf_functions)
-        param_structure.append(three_param_structure)
-        return param_structure
-
-    def populate_all_nvec_arr(self):
-        """
-        Populate spectator-momentum arrays for every kinematic slice.
-
-        The first slot is reserved for two-particle channels when present.
-        Remaining slots correspond to three-particle mass slices.
-        """
-        if self.n_two_channels > 0:
-            slot_index = 0
-            self.populate_nvec_arr_slot(slot_index,
-                                        three_particle_channel=False)
-        for three_slice_index in range(self.fcs.n_three_slices):
-            if self.n_two_channels > 0:
-                slot_index = three_slice_index+1
-            else:
-                slot_index = three_slice_index
-            self.populate_nvec_arr_slot(slot_index)
-
-    def populate_nvec_arr_slot(self, slot_index, three_particle_channel=True):
-        """
-        Populate a single spectator-momentum slot.
-
-        Parameters
-        ----------
-        slot_index : int
-            Index into ``tbks_list`` to populate.
-        three_particle_channel : bool, optional
-            Whether the slot corresponds to a three-particle channel. If
-            false, the slot is treated as a two-particle channel.
-
-        Raises
-        ------
-        ValueError
-            If an unsupported spin or momentum configuration is requested.
-        """
-        if three_particle_channel:
-            if self.n_two_channels > 0:
-                three_slice_index = slot_index-1
-            else:
-                three_slice_index = slot_index
-            if self.nPSQ == 0:
-                nPspecmax = self._get_nPspecmax(three_slice_index)
-                if self.verbosity >= 2:
-                    print(f"{bcolors.OKGREEN}"
-                          "Populating nvec array, three_slice_index = "
-                          f"{three_slice_index}"
-                          f"{bcolors.ENDC}")
-                self._populate_slot_zero_momentum(slot_index, nPspecmax)
-                if self.spin_half:
-                    self._populate_spin_zero_momentum(slot_index, nPspecmax)
-            else:
-                nPspecmax = self._get_nPspecmax(three_slice_index)
-                self._populate_slot_nonzero_momentum(slot_index,
-                                                     three_slice_index,
-                                                     nPspecmax)
-                if self.spin_half:
-                    raise ValueError("half spin not yet supported for "
-                                     "nonzero nP")
-        elif not three_particle_channel and not self.spin_half:
-            nPspecmax = EPSILON4
-            self._populate_slot_zero_momentum(slot_index, nPspecmax)
-        else:
-            raise ValueError("half spin not yet supported for two-particle "
-                             "channels")
-
-    def _populate_spin_zero_momentum(self, slot_index, nPspecmax):
-        warnings.warn(f"\n{bcolors.WARNING}"
-                      f"Populate for spin not yet implemented"
-                      f"{bcolors.ENDC}", stacklevel=2)
-        pass
-
-    def _populate_slot_zero_momentum(self, slot_index, nPspecmax):
-        if isinstance(self.tbks_list[slot_index], list):
-            tbks_tmp = self.tbks_list[slot_index][0]
-            if self.verbosity >= 2:
-                print(f"{bcolors.OKGREEN}"
-                      "self.tbks_list[slot_index] is a list, "
-                      "taking first entry"
-                      f"{bcolors.ENDC}")
-        else:
-            tbks_tmp = self.tbks_list[slot_index]
-            if self.verbosity >= 2:
-                print(f"{bcolors.OKGREEN}"
-                      "self.tbks_list[slot_index] is not a list"
-                      f"{bcolors.ENDC}")
-        tbks_copy = deepcopy(tbks_tmp)
-        tbks_copy.verbosity = self.verbosity
-        self.tbks_list[slot_index] = [tbks_copy]
-        nPspec = nPspecmax
-        if self.verbosity >= 2:
-            print(f"{bcolors.OKGREEN}"
-                  "Populating nvec array, slot_index = "
-                  f"{slot_index}, nPspecmax = {nPspecmax}"
-                  f"{bcolors.ENDC}")
-        while nPspec > 0:
-            nPspec = self._populate_nP_iteration(slot_index, tbks_tmp, nPspec)
-        self.tbks_list[slot_index] = self.tbks_list[slot_index][:-1]
-
-    def _populate_slot_nonzero_momentum(self, slot_index, three_slice_index,
-                                        nPspecmax):
-        if isinstance(self.tbks_list[slot_index], list):
-            tbks_tmp = self.tbks_list[slot_index][0]
-            if self.verbosity >= 2:
-                print(f"{bcolors.OKGREEN}"
-                      "self.tbks_list[slot_index] is a list, "
-                      "taking first entry"
-                      f"{bcolors.ENDC}")
-        else:
-            tbks_tmp = self.tbks_list[slot_index]
-            if self.verbosity >= 2:
-                print(f"{bcolors.OKGREEN}"
-                      "self.tbks_list[slot_index] is not a list"
-                      f"{bcolors.ENDC}")
-        rng = range(-int(nPspecmax), int(nPspecmax)+1)
-        mesh = np.meshgrid(*([rng]*3))
-        nvec_arr = np.vstack([y.flat for y in mesh]).T
-        tbks_copy = deepcopy(tbks_tmp)
-        tbks_copy.verbosity = self.verbosity
-        self.tbks_list[slot_index] = [tbks_copy]
-        Lmax = self.Lmax
-        Emax = self.Emax
-        deltaE = self.deltaE_nPnz
-        deltaL = self.deltaL_nPnz
-        sc = self.fcs.sc_list_sorted[
-            self.fcs.slices_by_three_masses[three_slice_index][0]]
-        m_spec = sc.spectator.mass
-        nP = self.fvs.nP
-        [Evals, Lvals] = self._get_grid_nPnonzero(Emax, Lmax, deltaE, deltaL)
-        for Ltmp in Lvals:
-            for Etmp in Evals:
-                self._populate_EL_iteration(slot_index, tbks_tmp, nvec_arr,
-                                            m_spec, nP, Ltmp, Etmp)
-        self.tbks_list[slot_index] = self.tbks_list[slot_index][:-1]
-
-    def _populate_EL_iteration(self, slot_index, tbks_tmp, nvec_arr, m_spec,
-                               nP, Ltmp, Etmp):
-        E2CMSQ = (Etmp-np.sqrt(m_spec**2+FOURPI2/Ltmp**2
-                               * ((nvec_arr**2)
-                                  .sum(axis=1))))**2\
-            - FOURPI2/Ltmp**2*((nP-nvec_arr)**2).sum(axis=1)
-        carr = E2CMSQ < 0.0
-        E2CMSQ = E2CMSQ.reshape((len(E2CMSQ), 1))
-        E2nvec_arr = np.concatenate((E2CMSQ, nvec_arr), axis=1)
-        E2nvec_arr = np.delete(E2nvec_arr, np.where(carr), axis=0)
-        nvec_arr_tmp = ((E2nvec_arr.T)[1:]).T
-        nvec_arr_tmp = nvec_arr_tmp.astype(np.int64)
-        if self.verbosity >= 2:
-            print(f"{bcolors.OKGREEN}"
-                  "Populating nvec array, L = "
-                  f"{np.round(Ltmp, 10)}, E = {np.round(Etmp, 10)}"
-                  f"{bcolors.ENDC}")
-        self.tbks_list[slot_index][-1].nvec_arr = nvec_arr_tmp
-        if self.verbosity >= 2:
-            print(f"{bcolors.OKGREEN}"
-                  f"Values of ThreeBodyKinematicSpace at slot {slot_index}:\n"
-                  f"{self.tbks_list[slot_index][-1]}"
-                  f"{bcolors.ENDC}")
-        tbks_copy = deepcopy(tbks_tmp)
-        tbks_copy.verbosity = self.verbosity
-        self.tbks_list[slot_index] = self.tbks_list[slot_index]\
-            + [tbks_copy]
-
-    def _get_ell_sets(self):
-        ell_sets = [[]]
-        for sc_index in range(self.n_channels):
-            ell_set = self.fcs.sc_list_sorted[sc_index].ell_set
-            ell_sets = ell_sets+[ell_set]
-        return ell_sets[1:]
-
-    def _get_sc_to_three_slice(self):
-        """Get the spectator channel to three-slice mapping."""
-        last_loc = -1
-        offset = 1
-        three_channel_max =\
-            self.fcs.slices_by_three_masses[last_loc][last_loc]-offset
-        no_two_channels = self.n_two_channels == 0
-
-        sc_to_three_slice = []
-        for sc_index in range(self.n_channels):
-            sc_too_high = sc_index > three_channel_max
-            if no_two_channels and sc_too_high:
-                raise ValueError(f"using sc_index = {sc_index} with "
-                                 f"three_slices = "
-                                 f"{self.fcs.slices_by_three_masses} "
-                                 f"and (no two-particle channels) "
-                                 f"is not allowed")
-            if sc_index < self.n_two_channels:
-                three_slice_index = 0
-            else:
-                sc_index_shift = sc_index-self.n_two_channels
-                three_slice_index = -1
-                for k in range(len(self.fcs.slices_by_three_masses)):
-                    three_slice = self.fcs.slices_by_three_masses[k]
-                    if three_slice[0] <= sc_index_shift < three_slice[1]:
-                        three_slice_index = k
-                if self.n_two_channels > 0:
-                    three_slice_index = three_slice_index+1
-            sc_to_three_slice.append(three_slice_index)
-        return sc_to_three_slice
-
-    def populate_all_kellm_spaces(self):
-        """
-        Populate spectator-momentum plus angular-momentum spaces.
-
-        Creates ``kellm_spaces`` and shell boundaries ``kellm_shells`` for each
-        spectator channel and each precomputed kinematic space.
-        """
-        if self.verbosity >= 2:
-            print(f"{bcolors.OKGREEN}"
-                  f"Populating kellm spaces\n"
-                  f"{self.n_channels} channels to populate"
-                  f"{bcolors.ENDC}")
-        kellm_shells = []
-        kellm_spaces = []
-        for sc_index in range(self.n_channels):
-            three_slice_index = self.sc_to_three_slice[sc_index]
-            tbks_fixed_masses_list = self.tbks_list[three_slice_index]
-            ellm_set = self.ellm_sets[sc_index]
-            kellm_shells_entry = []
-            kellm_spaces_entry = []
-            for tbks_entry in tbks_fixed_masses_list:
-                nvec_arr = tbks_entry.nvec_arr
-                kellm_shell = (len(ellm_set)*np.array(tbks_entry.shells
-                                                      )).tolist()
-                kellm_shells_entry.append(kellm_shell)
-                ellm_set_extended = np.tile(ellm_set, (len(nvec_arr), 1))
-                nvec_arr_extended = np.repeat(nvec_arr, len(ellm_set),
-                                              axis=0)
-                kellm_space = np.concatenate((nvec_arr_extended,
-                                              ellm_set_extended),
-                                             axis=1)
-                kellm_spaces_entry.append(kellm_space)
-            kellm_shells.append(kellm_shells_entry)
-            kellm_spaces.append(kellm_spaces_entry)
-        self.kellm_spaces = kellm_spaces
-        self.kellm_shells = kellm_shells
-        if self.verbosity >= 2:
-            print(f"{bcolors.OKGREEN}"
-                  "Result for kellm spaces:\n"
-                  "location: channel index, nvec-space index"
-                  f"{bcolors.ENDC}")
-            np.set_printoptions(threshold=20)
-            for i in range(len(self.kellm_spaces)):
-                for j in range(len(self.kellm_spaces[i])):
-                    print(f"{bcolors.OKGREEN}")
-                    print('location:', i, j)
-                    print(self.kellm_spaces[i][j])
-                    print(f"{bcolors.ENDC}")
-            np.set_printoptions(threshold=PRINT_THRESHOLD_DEFAULT)
-
-    def populate_all_proj_dicts(self):
-        """
-        Populate interacting-channel projection dictionaries.
-
-        The resulting dictionaries are organized by spectator channel and, for
-        shell-resolved projections, by kinematic shell set.
-        """
-        group = self.group
-        proj_dicts_by_sc = []
-        proj_dicts_by_sc_and_shellset = []
-        if self.verbosity >= 2:
-            print(f"{bcolors.OKGREEN}\n"
-                  f"Getting the dict for following qcis:")
-            print(self)
-            print(f"{self}{bcolors.ENDC}")
-        for sc_index in range(self.n_channels):
-            fixed_sc_proj_dict = group.get_fixed_sc_proj_dict(
-                qcis=self, sc_index=sc_index)
-            proj_dicts_by_sc.append(fixed_sc_proj_dict)
-            fixed_sc_proj_dicts_by_shellset = []
-            for kellm_shell_index in range(len(self.kellm_shells[sc_index])):
-                kellm_shell_set = self.kellm_shells[sc_index][
-                    kellm_shell_index]
-                fixed_sc_and_shellset_proj_dict = []
-                for kellm_shell in kellm_shell_set:
-                    fixed_sc_and_shellset_proj_dict.append(
-                        group.get_fixed_sc_and_shell_proj_dict(
-                            qcis=self, sc_index=sc_index,
-                            kellm_shell=kellm_shell,
-                            kellm_shell_index=kellm_shell_index))
-                fixed_sc_proj_dicts_by_shellset.append(
-                    fixed_sc_and_shellset_proj_dict)
-            proj_dicts_by_sc_and_shellset.append(
-                fixed_sc_proj_dicts_by_shellset)
-        self.proj_dicts_by_sc = proj_dicts_by_sc
-        self.proj_dicts_by_sc_and_shellset = proj_dicts_by_sc_and_shellset
 
     def populate_all_nonint_data(self):
         """
@@ -1287,21 +698,21 @@ class QCIndexSpace:
                 isospin_channel = self.fcs.ni_list[nic_index].isospin_channel
                 nonint_proj_dict\
                     .append(self.group.get_proj_nonint_two_particles_dict(
-                        qcis=self, nic_index=nic_index,
+                        qcis=self.qcis, nic_index=nic_index,
                         isospin_channel=isospin_channel))
             elif three_particles and first_spin == 0.:
                 nonint_proj_dict.append(
                     self.group.get_proj_nonint_three_pions_dict(
-                        qcis=self, nic_index=nic_index))
+                        qcis=self.qcis, nic_index=nic_index))
             elif three_particles and first_spin == 1.:
                 nonint_proj_dict.append(
                     self.group.
                     get_proj_nonint_three_spinning_dict(
-                        qcis=self, nic_index=nic_index))
+                        qcis=self.qcis, nic_index=nic_index))
             elif three_particles and self.spin_half:
                 nonint_proj_dict.append(
                     self.group.get_proj_nonint_three_spinning_dict(
-                        qcis=self, nic_index=nic_index))
+                        qcis=self.qcis, nic_index=nic_index))
             else:
                 raise ValueError("only two and three particles with certain "
                                  "spin combinations are supported by "
@@ -1450,184 +861,6 @@ class QCIndexSpace:
             omega2 = np.sqrt(mSQ2+FOURPI2*nSQ2/L**2)
             return omega1+omega2
         return nonint_function
-
-    def _get_ESQmin(self, three_slice_index):
-        sc_index = self.fcs.slices_by_three_masses[three_slice_index][0]
-        return self.tbis.ESQmins[sc_index]
-
-    def _get_nPspecmax(self, three_slice_index):
-        sc = self.fcs.sc_list_sorted[
-            self.fcs.slices_by_three_masses[three_slice_index][0]]
-        m_spec = sc.spectator.mass
-        Emax = self.Emax
-        EmaxSQ = Emax**2
-        nPSQ = self.nPSQ
-        Lmax = self.Lmax
-        ESQmin = self._get_ESQmin(three_slice_index)
-        if (ESQmin != 0.0):
-            if nPSQ == 0:
-                nPspecmax = (Lmax*np.sqrt(
-                    Emax**4+(ESQmin-m_spec**2)**2-2.*Emax**2*(ESQmin+m_spec**2)
-                    ))/(2.*Emax*TWOPI)
-                return nPspecmax
-            else:
-                raise ValueError("simultaneous nonzero nP and ESQmin not"
-                                 " supported")
-        else:
-            if nPSQ == 0:
-                nPspecmax = Lmax*(EmaxSQ-m_spec**2)/(2.0*TWOPI*Emax)
-                return nPspecmax
-            else:
-                nPmag = np.sqrt(nPSQ)
-                nPspecmax = (FOURPI2*nPmag*(
-                    Lmax**2*(EmaxSQ+m_spec**2)-FOURPI2*nPSQ
-                    )+np.sqrt(EmaxSQ*FOURPI2*Lmax**2*(
-                        Lmax**2*(-EmaxSQ+m_spec**2)+FOURPI2*nPSQ
-                        )**2))/(2.*FOURPI2*(EmaxSQ*Lmax**2-FOURPI2*nPSQ))
-                return nPspecmax
-
-    def _populate_nP_iteration(self, slot_index, tbks_tmp, nPspec):
-        if self.verbosity >= 2:
-            print(f"{bcolors.OKGREEN}"
-                  "Populating nvec array, nPspec**2 = "
-                  f"{int(nPspec**2)}"
-                  f"{bcolors.ENDC}")
-        rng = range(-int(nPspec), int(nPspec)+1)
-        mesh = np.meshgrid(*([rng]*3))
-        nvec_arr = np.vstack([y.flat for y in mesh]).T
-        carr = (nvec_arr*nvec_arr).sum(1) > nPspec**2
-        nvec_arr = np.delete(nvec_arr, np.where(carr), axis=0)
-        self.tbks_list[slot_index][-1].nvec_arr = nvec_arr
-        if self.verbosity >= 2:
-            print(f"{bcolors.OKGREEN}"
-                  f"Values of ThreeBodyKinematicSpace at slot {slot_index}:\n"
-                  f"{self.tbks_list[slot_index][-1]}"
-                  f"{bcolors.ENDC}")
-        tbks_copy = deepcopy(tbks_tmp)
-        tbks_copy.verbosity = self.verbosity
-        self.tbks_list[slot_index] =\
-            self.tbks_list[slot_index]+[tbks_copy]
-        nPspecSQ = nPspec**2-1.0
-        if nPspecSQ >= 0.0:
-            nPspec = np.sqrt(nPspecSQ)
-        else:
-            nPspec = -1.0
-        return nPspec
-
-    def get_tbks_sub_indices(self, E, L):
-        """
-        Get kinematic-space indices relevant at a given energy and volume.
-
-        Parameters
-        ----------
-        E : float
-            Energy at which the QC matrix will be evaluated.
-        L : float
-            Volume at which the QC matrix will be evaluated.
-
-        Returns
-        -------
-        list of int
-            Indices into each ``tbks_list`` entry selecting the precomputed
-            kinematic space appropriate for ``E`` and ``L``.
-
-        Raises
-        ------
-        ValueError
-            If ``E`` exceeds ``Emax`` or ``L`` exceeds ``Lmax``.
-        """
-        if E > self.Emax:
-            raise ValueError("get_tbks_sub_indices called with E > Emax")
-        if L > self.Lmax:
-            raise ValueError("get_tbks_sub_indices called with L > Lmax")
-        if self.nPSQ != 0:
-            tbks_sub_indices =\
-                self._get_tbks_sub_indices_nonzero_mom(E, L)
-            return tbks_sub_indices
-        tbks_sub_indices = self._get_tbks_sub_indices_zero_mom(E, L)
-        return tbks_sub_indices
-
-    def _get_tbks_sub_indices_zero_mom(self, E, L):
-        tbks_sub_indices = [0]*len(self.tbks_list)
-        for slice_index in range(self.fcs.n_three_slices):
-            sc_index = self.fcs.slices_by_three_masses[slice_index][0]
-            nPspecmax = self._get_nPspecmax(slice_index)
-            sc = self.fcs.sc_list_sorted[sc_index]
-            m_spec = sc.fc.masses[sc.indexing[0]]
-            ESQ = E**2
-            nPSQ = self.nPSQ
-            ESQmin = self._get_ESQmin(slice_index)
-            if (ESQmin != 0.0):
-                if nPSQ == 0:
-                    nPspecnew = (L*np.sqrt(
-                        E**4+(ESQmin-m_spec**2)**2-2.*E**2*(ESQmin+m_spec**2)
-                        ))/(2.*E*TWOPI)
-                else:
-                    raise ValueError("nonzero nP and Emin not supported")
-            else:
-                if nPSQ == 0:
-                    if E == 0.0:
-                        nPspecnew = 0.0
-                        warnings.warn(f"\n{bcolors.WARNING}"
-                                      "E = 0.0 in get_tbks_sub_indices; "
-                                      "setting nspecnew to 0.0"
-                                      f"{bcolors.ENDC}", stacklevel=2)
-                    else:
-                        nPspecnew = L*(ESQ-m_spec**2)/(2.0*TWOPI*E)
-
-                else:
-                    nPmag = np.sqrt(nPSQ)
-                    nPspecnew = (FOURPI2*nPmag*(
-                        L**2*(ESQ+m_spec**2)-FOURPI2*nPSQ
-                        )+np.sqrt(ESQ*FOURPI2*L**2*(
-                            L**2*(-ESQ+m_spec**2)+FOURPI2*nPSQ
-                            )**2))/(2.*FOURPI2*(ESQ*L**2-FOURPI2*nPSQ))
-            nPmaxintSQ = int(nPspecmax**2)
-            nPnewintSQ = int(nPspecnew**2)
-            tbks_sub_indices[sc_index] = nPmaxintSQ - nPnewintSQ
-        return tbks_sub_indices
-
-    def _get_tbks_sub_indices_nonzero_mom(self, E, L):
-        tbks_sub_indices = [0]*len(self.tbks_list)
-        for slice_index in range(self.fcs.n_three_slices):
-            sc_index = self.fcs.slices_by_three_masses[slice_index][0]
-            sc = self.fcs.sc_list_sorted[sc_index]
-            m_spec = sc.spectator.mass
-            nP = self.nP
-            tbkstmp_set = self.tbks_list[sc_index]
-            still_searching = True
-            i = 0
-            while still_searching:
-                try:
-                    tbkstmp = tbkstmp_set[i]
-                    nvec_arr = tbkstmp.nvec_arr
-                    E2CMSQfull = (E-np.sqrt(m_spec**2
-                                            + FOURPI2/L**2
-                                            * ((nvec_arr**2).sum(axis=1))))**2\
-                        - FOURPI2/L**2*((nP-nvec_arr)**2).sum(axis=1)
-                    still_searching = not (np.sort(E2CMSQfull) > 0.0).all()
-                    i += 1
-                except IndexError:
-                    warnings.warn(f"\n{bcolors.WARNING}"
-                                  "Crude search inside of "
-                                  "get_tbks_sub_indices failed; taking last "
-                                  "index before failure"
-                                  f"{bcolors.ENDC}", stacklevel=2)
-                    break
-            i -= 1
-            tbkstmp = tbkstmp_set[i]
-            nvec_arr = tbkstmp.nvec_arr
-            E2CMSQfull = (E-np.sqrt(m_spec**2
-                                    + FOURPI2/L**2
-                                    * ((nvec_arr**2).sum(axis=1))))**2\
-                - FOURPI2/L**2*((nP-nvec_arr)**2).sum(axis=1)
-            tbks_sub_indices[sc_index] = i
-        warnings.warn(f"\n{bcolors.WARNING}"
-                      f"get_tbks_sub_indices is being called with "
-                      f"non_zero nP; this can lead to shells being "
-                      f"missed! result is = {str(tbks_sub_indices)}"
-                      f"{bcolors.ENDC}", stacklevel=2)
-        return tbks_sub_indices
 
     def _load_ni_data_three(self, fc):
         [m1, m2, m3] = fc.masses
@@ -2168,6 +1401,826 @@ class QCIndexSpace:
                 nvecset_ab_inds, nvecset_aa_inds,
                 nvecset_ab_counts, nvecset_aa_counts,
                 nvecset_ab_batched, nvecset_aa_batched]
+
+
+class QCIndexSpace:
+    """
+    Represent the full quantization-condition index space.
+
+    ``QCIndexSpace`` combines flavor channels, finite-volume symmetry data,
+    three-body interaction choices, spectator momentum spaces, and projection
+    dictionaries. Non-interacting reference levels are built and stored in the
+    associated ``nis`` :class:`NonIntSpace` instance.
+
+    Parameters
+    ----------
+    fcs : FlavorChannelSpace, optional
+        Flavor-channel space. If omitted, a default three-particle channel
+        space is created.
+    fvs : FiniteVolumeSetup, optional
+        Finite-volume setup. If omitted, the default setup is used.
+    tbis : ThreeBodyInteractionScheme, optional
+        Three-body interaction scheme. If omitted, the default scheme is used.
+    Emax : float, optional
+        Maximum energy used when building spectator and non-interacting index
+        spaces.
+    Lmax : float, optional
+        Maximum volume used when building spectator and non-interacting index
+        spaces.
+    deltaE_nPnz, deltaL_nPnz : float, optional
+        Grid spacings used for nonzero total momentum.
+    verbosity : int, optional
+        Verbosity level for diagnostic output.
+
+    Attributes
+    ----------
+    nP : numpy.ndarray of int, shape (3,)
+        Total finite-volume momentum inherited from ``fvs``.
+    nPSQ : int
+        Squared total momentum.
+    group : Groups
+        Symmetry-group helper for the selected maximum angular momentum and
+        spin sector.
+    Evals, Lvals : numpy.ndarray or None
+        Energy and volume grids used for nonzero total momentum.
+    param_structure : list
+        Nested structure describing the expected QC parameter input.
+    ell_sets, ellm_sets : list
+        Angular-momentum sets and expanded ``(ell, m)`` sets by spectator
+        channel.
+    proj_dict : dict
+        Projection matrices for the full QC space.
+    nis : NonIntSpace
+        Non-interacting momentum sets, projection dictionaries, multiplicities,
+        and energy functions.
+    tbks_list : list of ThreeBodyKinematicSpace
+        Spectator-momentum spaces by two-body/three-body mass slice.
+    kellm_spaces, kellm_shells : list
+        Spectator-momentum plus angular-momentum spaces, and their shell
+        block boundaries.
+    Raises
+    ------
+    ValueError
+        If a channel threshold exceeds ``Emax``, if unsupported particle
+        counts are present, or if momentum/spin combinations are unsupported.
+    """
+
+    def __init__(self, fcs=None, fvs=None, tbis=None, Emax=5., Lmax=5.,
+                 deltaE_nPnz=DELTA_E_NPNZ_GRID, deltaL_nPnz=DELTA_L_NPNZ_GRID,
+                 verbosity=0):
+        """
+        Initialize a quantization-condition index space.
+
+        Parameters
+        ----------
+        fcs : FlavorChannelSpace, optional
+            Flavor-channel space to index.
+        fvs : FiniteVolumeSetup, optional
+            Finite-volume setup.
+        tbis : ThreeBodyInteractionScheme, optional
+            Three-body interaction scheme.
+        Emax : float, optional
+            Maximum energy for index construction.
+        Lmax : float, optional
+            Maximum volume for index construction.
+        deltaE_nPnz, deltaL_nPnz : float, optional
+            Nonzero-momentum grid spacings.
+        verbosity : int, optional
+            Verbosity level.
+        """
+        self._verbosity = verbosity
+        self.verbosity = verbosity
+        self.Emax = Emax
+        self.Lmax = Lmax
+        self.deltaE_nPnz = deltaE_nPnz
+        self.deltaL_nPnz = deltaL_nPnz
+
+        if fcs is None:
+            if verbosity >= 2:
+                print(f"{bcolors.OKGREEN}"
+                      "Setting the flavor-channel space, None was passed"
+                      f"{bcolors.ENDC}")
+            self._fcs = FlavorChannelSpace(fc_list=[FlavorChannel(3)])
+        else:
+            if verbosity >= 2:
+                print(f"{bcolors.OKGREEN}"
+                      "Setting the flavor-channel space"
+                      f"{bcolors.ENDC}")
+            self._fcs = fcs
+
+        if fvs is None:
+            if verbosity >= 2:
+                print(f"{bcolors.OKGREEN}"
+                      "Setting the finite-volume setup, None was passed"
+                      f"{bcolors.ENDC}")
+            self.fvs = FiniteVolumeSetup()
+        else:
+            if verbosity >= 2:
+                print(f"{bcolors.OKGREEN}"
+                      "Setting the finite-volume setup"
+                      f"{bcolors.ENDC}")
+            self.fvs = fvs
+
+        if tbis is None:
+            if verbosity >= 2:
+                print(f"{bcolors.OKGREEN}"
+                      "Setting the three-body interaction scheme, None was "
+                      "passed"
+                      f"{bcolors.ENDC}")
+            self.tbis = ThreeBodyInteractionScheme()
+        else:
+            if verbosity >= 2:
+                print(f"{bcolors.OKGREEN}"
+                      "Setting the three-body interaction scheme"
+                      f"{bcolors.ENDC}")
+            self.tbis = tbis
+
+        self._nP = self.fvs.nP
+        self.nP = self.fvs.nP
+        if verbosity >= 2:
+            print(f"{bcolors.OKGREEN}"
+                  f"Setting the total momentum to nP = {self._nP}"
+                  f"{bcolors.ENDC}")
+        self.fcs = self._fcs
+        self.nis = NonIntSpace(self)
+
+    @property
+    def verbosity(self):
+        """Verbosity of the QCIndexSpace."""
+        return self._verbosity
+
+    @verbosity.setter
+    def verbosity(self, verbosity):
+        """Set the verbosity of the QCIndexSpace."""
+        if not isinstance(verbosity, int):
+            raise ValueError("verbosity must be an int")
+        self._verbosity = verbosity
+
+    @property
+    def nP(self):
+        """Total momentum in the finite-volume frame."""
+        return self._nP
+
+    @nP.setter
+    def nP(self, nP):
+        """Set the total momentum in the finite-volume frame."""
+        if not isinstance(nP, np.ndarray):
+            raise ValueError("nP must be a numpy array")
+        elif not np.array(nP).shape == (3,):
+            raise ValueError("nP must have shape (3,)")
+        elif not ((isinstance(nP[0], np.int64))
+                  and (isinstance(nP[1], np.int64))
+                  and (isinstance(nP[2], np.int64))):
+            raise ValueError("nP must be populated with ints")
+        else:
+            self._nP = nP
+            self.nPSQ = (nP)@(nP)
+            self.nPmag = np.sqrt(self.nPSQ)
+
+    @property
+    def fcs(self):
+        """FlavorChannelSpace object."""
+        return self._fcs
+
+    @fcs.setter
+    def fcs(self, fcs):
+        """Set the FlavorChannelSpace object."""
+        self.n_channels = len(fcs.sc_list_sorted)
+        n_two_channels = 0
+        n_three_channels = 0
+        for sc in fcs.sc_list_sorted:
+            if np.sum([particle.mass for particle in sc.fc.particles])\
+               > self.Emax:
+                raise ValueError("QCIndexSpace includes channel with "
+                                 + "threshold exceeding Emax")
+            if sc.fc.n_particles == 2:
+                n_two_channels += 1
+            elif sc.fc.n_particles == 3:
+                n_three_channels += 1
+            else:
+                raise ValueError("QCIndexSpace currently only supports "
+                                 + "two- and three-particle channels")
+        self.n_two_channels = n_two_channels
+        self.n_three_channels = n_three_channels
+
+        tbks_list = []
+        if self.n_two_channels > 0:
+            tbks_list.append(ThreeBodyKinematicSpace(nP=self.nP))
+        for _ in range(self.fcs.n_three_slices):
+            tbks_list.append(ThreeBodyKinematicSpace(nP=self.nP))
+        self.tbks_list = tbks_list
+        self._fcs = fcs
+
+    @property
+    def ell_sets(self):
+        """Angular-momentum value sets."""
+        return self._ell_sets
+
+    @ell_sets.setter
+    def ell_sets(self, ell_sets):
+        """Set angular-momentum value sets."""
+        self._ell_sets = ell_sets
+        ellm_sets = []
+        for ell_set in ell_sets:
+            ellm_set = []
+            for ell in ell_set:
+                for mazi in range(-ell, ell+1):
+                    ellm_set.append((ell, mazi))
+            ellm_sets.append(ellm_set)
+        self.ellm_sets = ellm_sets
+
+    def populate(self):
+        """
+        Populate all derived index-space data.
+
+        This builds symmetry groups, nonzero-momentum grids, parameter
+        structures, spectator-momentum spaces, angular-momentum spaces,
+        projection dictionaries, and non-interacting reference data.
+        """
+        ell_max, spin_half = self.get_ell_and_spin()
+        self.group = Groups(ell_max=ell_max, spin_half=spin_half)
+        self.spin_half = spin_half
+        self.Evals, self.Lvals = self.get_grid_nPnonzero()
+        self.param_structure = self.get_param_structure()
+        self.populate_all_nvec_arr()
+        self.ell_sets = self._get_ell_sets()
+        self.sc_to_three_slice = self._get_sc_to_three_slice()
+        if not self.spin_half:
+            self.populate_all_kellm_spaces()
+            self.populate_all_proj_dicts()
+            self.proj_dict = self.group.get_full_proj_dict(qcis=self)
+        self.nis = NonIntSpace(self)
+        self.nis.populate()
+
+    def get_ell_and_spin(self):
+        """
+        Determine the maximum angular momentum and spin sector.
+
+        Returns
+        -------
+        ell_max : int
+            Maximum angular momentum needed by interacting and
+            non-interacting channels.
+        spin_half : bool
+            Whether a spin-half channel is present.
+
+        Raises
+        ------
+        ValueError
+            If a non-integer spin other than one-half is encountered.
+        """
+        ell_max = 4
+        spin_half = False
+        for sc in self.fcs.sc_list_sorted:
+            if np.max(sc.ell_set) > ell_max:
+                ell_max = np.max(sc.ell_set)
+        for nic in self.fcs.ni_list:
+            spins = nic.spins
+            for spin in spins:
+                spin_int = int(spin)
+                if (np.abs(spin-spin_int) > EPSILON10
+                   and np.abs(spin-0.5) < EPSILON10):
+                    warnings.warn(f"\n{bcolors.WARNING}"
+                                  "Spin half detected; certain objects may "
+                                  "not be supported"
+                                  f"{bcolors.ENDC}", stacklevel=2)
+                    spin_half = True
+                elif np.abs(spin-spin_int) > EPSILON10:
+                    raise ValueError("only integer spin and (partially spin "
+                                     "half) currently supported")
+            max_spin = int(np.max(nic.spins))
+            if max_spin > ell_max:
+                ell_max = max_spin
+        return ell_max, spin_half
+
+    def get_grid_nPnonzero(self):
+        """
+        Return the interpolation grid used for nonzero total momentum.
+
+        Returns
+        -------
+        Evals : numpy.ndarray or None
+            Energy grid, or ``None`` when ``nP`` is zero.
+        Lvals : numpy.ndarray or None
+            Volume grid, or ``None`` when ``nP`` is zero.
+        """
+        if self.nPSQ != 0:
+            if self.verbosity >= 2:
+                print(f"{bcolors.OKGREEN}"
+                      "nPSQ is nonzero, grid will be used"
+                      f"{bcolors.ENDC}")
+            [Evals, Lvals] = self._get_grid_nPnonzero(self.Emax, self.Lmax,
+                                                      self.deltaE_nPnz,
+                                                      self.deltaL_nPnz)
+            if self.verbosity >= 2:
+                print(f"{bcolors.OKGREEN}"
+                      f"Grid for non-zero nP:\n"
+                      f"Evals = {Evals}\n"
+                      f"Lvals = {Lvals}")
+        else:
+            Evals = None
+            Lvals = None
+        return Evals, Lvals
+
+    def _get_grid_nPnonzero(self, Emax, Lmax, deltaE, deltaL):
+        Lmin = np.mod(Lmax-L_GRID_SHIFT, deltaL)+L_GRID_SHIFT
+        Emin = np.mod(Emax-E_GRID_SHIFT, deltaE)+E_GRID_SHIFT
+        Lvals = np.arange(Lmin, Lmax+EPSILON4, deltaL)
+        Evals = np.arange(Emin, Emax+EPSILON4, deltaE)
+        if np.abs(Lvals[-1] - Lmax) > EPSILON20:
+            Lvals = np.append(Lvals, Lmax)
+        if np.abs(Evals[-1] - Emax) > EPSILON20:
+            Evals = np.append(Evals, Emax)
+        Lvals = Lvals[::-1]
+        Evals = Evals[::-1]
+        return [Evals, Lvals]
+
+    def get_param_structure(self):
+        """
+        Build the nested parameter structure expected by QC evaluators.
+
+        Returns
+        -------
+        list
+            Two-entry list containing two-body p-cot-delta parameter blocks
+            followed by three-body ``Kdf`` parameters.
+        """
+        param_structure = []
+        two_param_structure = []
+        for sc in self.fcs.sc_list_sorted:
+            param_entry = []
+            for n_params_tmp in sc.n_params_set:
+                param_entry.append([0.]*n_params_tmp)
+            two_param_structure.append(param_entry)
+        param_structure.append(two_param_structure)
+        three_param_structure = [0.]*len(self.tbis.kdf_functions)
+        param_structure.append(three_param_structure)
+        return param_structure
+
+    def populate_all_nvec_arr(self):
+        """
+        Populate spectator-momentum arrays for every kinematic slice.
+
+        The first slot is reserved for two-particle channels when present.
+        Remaining slots correspond to three-particle mass slices.
+        """
+        if self.n_two_channels > 0:
+            slot_index = 0
+            self.populate_nvec_arr_slot(slot_index,
+                                        three_particle_channel=False)
+        for three_slice_index in range(self.fcs.n_three_slices):
+            if self.n_two_channels > 0:
+                slot_index = three_slice_index+1
+            else:
+                slot_index = three_slice_index
+            self.populate_nvec_arr_slot(slot_index)
+
+    def populate_nvec_arr_slot(self, slot_index, three_particle_channel=True):
+        """
+        Populate a single spectator-momentum slot.
+
+        Parameters
+        ----------
+        slot_index : int
+            Index into ``tbks_list`` to populate.
+        three_particle_channel : bool, optional
+            Whether the slot corresponds to a three-particle channel. If
+            false, the slot is treated as a two-particle channel.
+
+        Raises
+        ------
+        ValueError
+            If an unsupported spin or momentum configuration is requested.
+        """
+        if three_particle_channel:
+            if self.n_two_channels > 0:
+                three_slice_index = slot_index-1
+            else:
+                three_slice_index = slot_index
+            if self.nPSQ == 0:
+                nPspecmax = self._get_nPspecmax(three_slice_index)
+                if self.verbosity >= 2:
+                    print(f"{bcolors.OKGREEN}"
+                          "Populating nvec array, three_slice_index = "
+                          f"{three_slice_index}"
+                          f"{bcolors.ENDC}")
+                self._populate_slot_zero_momentum(slot_index, nPspecmax)
+                if self.spin_half:
+                    self._populate_spin_zero_momentum(slot_index, nPspecmax)
+            else:
+                nPspecmax = self._get_nPspecmax(three_slice_index)
+                self._populate_slot_nonzero_momentum(slot_index,
+                                                     three_slice_index,
+                                                     nPspecmax)
+                if self.spin_half:
+                    raise ValueError("half spin not yet supported for "
+                                     "nonzero nP")
+        elif not three_particle_channel and not self.spin_half:
+            nPspecmax = EPSILON4
+            self._populate_slot_zero_momentum(slot_index, nPspecmax)
+        else:
+            raise ValueError("half spin not yet supported for two-particle "
+                             "channels")
+
+    def _populate_spin_zero_momentum(self, slot_index, nPspecmax):
+        warnings.warn(f"\n{bcolors.WARNING}"
+                      f"Populate for spin not yet implemented"
+                      f"{bcolors.ENDC}", stacklevel=2)
+        pass
+
+    def _populate_slot_zero_momentum(self, slot_index, nPspecmax):
+        if isinstance(self.tbks_list[slot_index], list):
+            tbks_tmp = self.tbks_list[slot_index][0]
+            if self.verbosity >= 2:
+                print(f"{bcolors.OKGREEN}"
+                      "self.tbks_list[slot_index] is a list, "
+                      "taking first entry"
+                      f"{bcolors.ENDC}")
+        else:
+            tbks_tmp = self.tbks_list[slot_index]
+            if self.verbosity >= 2:
+                print(f"{bcolors.OKGREEN}"
+                      "self.tbks_list[slot_index] is not a list"
+                      f"{bcolors.ENDC}")
+        tbks_copy = deepcopy(tbks_tmp)
+        tbks_copy.verbosity = self.verbosity
+        self.tbks_list[slot_index] = [tbks_copy]
+        nPspec = nPspecmax
+        if self.verbosity >= 2:
+            print(f"{bcolors.OKGREEN}"
+                  "Populating nvec array, slot_index = "
+                  f"{slot_index}, nPspecmax = {nPspecmax}"
+                  f"{bcolors.ENDC}")
+        while nPspec > 0:
+            nPspec = self._populate_nP_iteration(slot_index, tbks_tmp, nPspec)
+        self.tbks_list[slot_index] = self.tbks_list[slot_index][:-1]
+
+    def _populate_slot_nonzero_momentum(self, slot_index, three_slice_index,
+                                        nPspecmax):
+        if isinstance(self.tbks_list[slot_index], list):
+            tbks_tmp = self.tbks_list[slot_index][0]
+            if self.verbosity >= 2:
+                print(f"{bcolors.OKGREEN}"
+                      "self.tbks_list[slot_index] is a list, "
+                      "taking first entry"
+                      f"{bcolors.ENDC}")
+        else:
+            tbks_tmp = self.tbks_list[slot_index]
+            if self.verbosity >= 2:
+                print(f"{bcolors.OKGREEN}"
+                      "self.tbks_list[slot_index] is not a list"
+                      f"{bcolors.ENDC}")
+        rng = range(-int(nPspecmax), int(nPspecmax)+1)
+        mesh = np.meshgrid(*([rng]*3))
+        nvec_arr = np.vstack([y.flat for y in mesh]).T
+        tbks_copy = deepcopy(tbks_tmp)
+        tbks_copy.verbosity = self.verbosity
+        self.tbks_list[slot_index] = [tbks_copy]
+        Lmax = self.Lmax
+        Emax = self.Emax
+        deltaE = self.deltaE_nPnz
+        deltaL = self.deltaL_nPnz
+        sc = self.fcs.sc_list_sorted[
+            self.fcs.slices_by_three_masses[three_slice_index][0]]
+        m_spec = sc.spectator.mass
+        nP = self.fvs.nP
+        [Evals, Lvals] = self._get_grid_nPnonzero(Emax, Lmax, deltaE, deltaL)
+        for Ltmp in Lvals:
+            for Etmp in Evals:
+                self._populate_EL_iteration(slot_index, tbks_tmp, nvec_arr,
+                                            m_spec, nP, Ltmp, Etmp)
+        self.tbks_list[slot_index] = self.tbks_list[slot_index][:-1]
+
+    def _populate_EL_iteration(self, slot_index, tbks_tmp, nvec_arr, m_spec,
+                               nP, Ltmp, Etmp):
+        E2CMSQ = (Etmp-np.sqrt(m_spec**2+FOURPI2/Ltmp**2
+                               * ((nvec_arr**2)
+                                  .sum(axis=1))))**2\
+            - FOURPI2/Ltmp**2*((nP-nvec_arr)**2).sum(axis=1)
+        carr = E2CMSQ < 0.0
+        E2CMSQ = E2CMSQ.reshape((len(E2CMSQ), 1))
+        E2nvec_arr = np.concatenate((E2CMSQ, nvec_arr), axis=1)
+        E2nvec_arr = np.delete(E2nvec_arr, np.where(carr), axis=0)
+        nvec_arr_tmp = ((E2nvec_arr.T)[1:]).T
+        nvec_arr_tmp = nvec_arr_tmp.astype(np.int64)
+        if self.verbosity >= 2:
+            print(f"{bcolors.OKGREEN}"
+                  "Populating nvec array, L = "
+                  f"{np.round(Ltmp, 10)}, E = {np.round(Etmp, 10)}"
+                  f"{bcolors.ENDC}")
+        self.tbks_list[slot_index][-1].nvec_arr = nvec_arr_tmp
+        if self.verbosity >= 2:
+            print(f"{bcolors.OKGREEN}"
+                  f"Values of ThreeBodyKinematicSpace at slot {slot_index}:\n"
+                  f"{self.tbks_list[slot_index][-1]}"
+                  f"{bcolors.ENDC}")
+        tbks_copy = deepcopy(tbks_tmp)
+        tbks_copy.verbosity = self.verbosity
+        self.tbks_list[slot_index] = self.tbks_list[slot_index]\
+            + [tbks_copy]
+
+    def _get_ell_sets(self):
+        ell_sets = [[]]
+        for sc_index in range(self.n_channels):
+            ell_set = self.fcs.sc_list_sorted[sc_index].ell_set
+            ell_sets = ell_sets+[ell_set]
+        return ell_sets[1:]
+
+    def _get_sc_to_three_slice(self):
+        """Get the spectator channel to three-slice mapping."""
+        last_loc = -1
+        offset = 1
+        three_channel_max =\
+            self.fcs.slices_by_three_masses[last_loc][last_loc]-offset
+        no_two_channels = self.n_two_channels == 0
+
+        sc_to_three_slice = []
+        for sc_index in range(self.n_channels):
+            sc_too_high = sc_index > three_channel_max
+            if no_two_channels and sc_too_high:
+                raise ValueError(f"using sc_index = {sc_index} with "
+                                 f"three_slices = "
+                                 f"{self.fcs.slices_by_three_masses} "
+                                 f"and (no two-particle channels) "
+                                 f"is not allowed")
+            if sc_index < self.n_two_channels:
+                three_slice_index = 0
+            else:
+                sc_index_shift = sc_index-self.n_two_channels
+                three_slice_index = -1
+                for k in range(len(self.fcs.slices_by_three_masses)):
+                    three_slice = self.fcs.slices_by_three_masses[k]
+                    if three_slice[0] <= sc_index_shift < three_slice[1]:
+                        three_slice_index = k
+                if self.n_two_channels > 0:
+                    three_slice_index = three_slice_index+1
+            sc_to_three_slice.append(three_slice_index)
+        return sc_to_three_slice
+
+    def populate_all_kellm_spaces(self):
+        """
+        Populate spectator-momentum plus angular-momentum spaces.
+
+        Creates ``kellm_spaces`` and shell boundaries ``kellm_shells`` for each
+        spectator channel and each precomputed kinematic space.
+        """
+        if self.verbosity >= 2:
+            print(f"{bcolors.OKGREEN}"
+                  f"Populating kellm spaces\n"
+                  f"{self.n_channels} channels to populate"
+                  f"{bcolors.ENDC}")
+        kellm_shells = []
+        kellm_spaces = []
+        for sc_index in range(self.n_channels):
+            three_slice_index = self.sc_to_three_slice[sc_index]
+            tbks_fixed_masses_list = self.tbks_list[three_slice_index]
+            ellm_set = self.ellm_sets[sc_index]
+            kellm_shells_entry = []
+            kellm_spaces_entry = []
+            for tbks_entry in tbks_fixed_masses_list:
+                nvec_arr = tbks_entry.nvec_arr
+                kellm_shell = (len(ellm_set)*np.array(tbks_entry.shells
+                                                      )).tolist()
+                kellm_shells_entry.append(kellm_shell)
+                ellm_set_extended = np.tile(ellm_set, (len(nvec_arr), 1))
+                nvec_arr_extended = np.repeat(nvec_arr, len(ellm_set),
+                                              axis=0)
+                kellm_space = np.concatenate((nvec_arr_extended,
+                                              ellm_set_extended),
+                                             axis=1)
+                kellm_spaces_entry.append(kellm_space)
+            kellm_shells.append(kellm_shells_entry)
+            kellm_spaces.append(kellm_spaces_entry)
+        self.kellm_spaces = kellm_spaces
+        self.kellm_shells = kellm_shells
+        if self.verbosity >= 2:
+            print(f"{bcolors.OKGREEN}"
+                  "Result for kellm spaces:\n"
+                  "location: channel index, nvec-space index"
+                  f"{bcolors.ENDC}")
+            np.set_printoptions(threshold=20)
+            for i in range(len(self.kellm_spaces)):
+                for j in range(len(self.kellm_spaces[i])):
+                    print(f"{bcolors.OKGREEN}")
+                    print('location:', i, j)
+                    print(self.kellm_spaces[i][j])
+                    print(f"{bcolors.ENDC}")
+            np.set_printoptions(threshold=PRINT_THRESHOLD_DEFAULT)
+
+    def populate_all_proj_dicts(self):
+        """
+        Populate interacting-channel projection dictionaries.
+
+        The resulting dictionaries are organized by spectator channel and, for
+        shell-resolved projections, by kinematic shell set.
+        """
+        group = self.group
+        proj_dicts_by_sc = []
+        proj_dicts_by_sc_and_shellset = []
+        if self.verbosity >= 2:
+            print(f"{bcolors.OKGREEN}\n"
+                  f"Getting the dict for following qcis:")
+            print(self)
+            print(f"{self}{bcolors.ENDC}")
+        for sc_index in range(self.n_channels):
+            fixed_sc_proj_dict = group.get_fixed_sc_proj_dict(
+                qcis=self, sc_index=sc_index)
+            proj_dicts_by_sc.append(fixed_sc_proj_dict)
+            fixed_sc_proj_dicts_by_shellset = []
+            for kellm_shell_index in range(len(self.kellm_shells[sc_index])):
+                kellm_shell_set = self.kellm_shells[sc_index][
+                    kellm_shell_index]
+                fixed_sc_and_shellset_proj_dict = []
+                for kellm_shell in kellm_shell_set:
+                    fixed_sc_and_shellset_proj_dict.append(
+                        group.get_fixed_sc_and_shell_proj_dict(
+                            qcis=self, sc_index=sc_index,
+                            kellm_shell=kellm_shell,
+                            kellm_shell_index=kellm_shell_index))
+                fixed_sc_proj_dicts_by_shellset.append(
+                    fixed_sc_and_shellset_proj_dict)
+            proj_dicts_by_sc_and_shellset.append(
+                fixed_sc_proj_dicts_by_shellset)
+        self.proj_dicts_by_sc = proj_dicts_by_sc
+        self.proj_dicts_by_sc_and_shellset = proj_dicts_by_sc_and_shellset
+
+    def _get_ESQmin(self, three_slice_index):
+        sc_index = self.fcs.slices_by_three_masses[three_slice_index][0]
+        return self.tbis.ESQmins[sc_index]
+
+    def _get_nPspecmax(self, three_slice_index):
+        sc = self.fcs.sc_list_sorted[
+            self.fcs.slices_by_three_masses[three_slice_index][0]]
+        m_spec = sc.spectator.mass
+        Emax = self.Emax
+        EmaxSQ = Emax**2
+        nPSQ = self.nPSQ
+        Lmax = self.Lmax
+        ESQmin = self._get_ESQmin(three_slice_index)
+        if (ESQmin != 0.0):
+            if nPSQ == 0:
+                nPspecmax = (Lmax*np.sqrt(
+                    Emax**4+(ESQmin-m_spec**2)**2-2.*Emax**2*(ESQmin+m_spec**2)
+                    ))/(2.*Emax*TWOPI)
+                return nPspecmax
+            else:
+                raise ValueError("simultaneous nonzero nP and ESQmin not"
+                                 " supported")
+        else:
+            if nPSQ == 0:
+                nPspecmax = Lmax*(EmaxSQ-m_spec**2)/(2.0*TWOPI*Emax)
+                return nPspecmax
+            else:
+                nPmag = np.sqrt(nPSQ)
+                nPspecmax = (FOURPI2*nPmag*(
+                    Lmax**2*(EmaxSQ+m_spec**2)-FOURPI2*nPSQ
+                    )+np.sqrt(EmaxSQ*FOURPI2*Lmax**2*(
+                        Lmax**2*(-EmaxSQ+m_spec**2)+FOURPI2*nPSQ
+                        )**2))/(2.*FOURPI2*(EmaxSQ*Lmax**2-FOURPI2*nPSQ))
+                return nPspecmax
+
+    def _populate_nP_iteration(self, slot_index, tbks_tmp, nPspec):
+        if self.verbosity >= 2:
+            print(f"{bcolors.OKGREEN}"
+                  "Populating nvec array, nPspec**2 = "
+                  f"{int(nPspec**2)}"
+                  f"{bcolors.ENDC}")
+        rng = range(-int(nPspec), int(nPspec)+1)
+        mesh = np.meshgrid(*([rng]*3))
+        nvec_arr = np.vstack([y.flat for y in mesh]).T
+        carr = (nvec_arr*nvec_arr).sum(1) > nPspec**2
+        nvec_arr = np.delete(nvec_arr, np.where(carr), axis=0)
+        self.tbks_list[slot_index][-1].nvec_arr = nvec_arr
+        if self.verbosity >= 2:
+            print(f"{bcolors.OKGREEN}"
+                  f"Values of ThreeBodyKinematicSpace at slot {slot_index}:\n"
+                  f"{self.tbks_list[slot_index][-1]}"
+                  f"{bcolors.ENDC}")
+        tbks_copy = deepcopy(tbks_tmp)
+        tbks_copy.verbosity = self.verbosity
+        self.tbks_list[slot_index] =\
+            self.tbks_list[slot_index]+[tbks_copy]
+        nPspecSQ = nPspec**2-1.0
+        if nPspecSQ >= 0.0:
+            nPspec = np.sqrt(nPspecSQ)
+        else:
+            nPspec = -1.0
+        return nPspec
+
+    def get_tbks_sub_indices(self, E, L):
+        """
+        Get kinematic-space indices relevant at a given energy and volume.
+
+        Parameters
+        ----------
+        E : float
+            Energy at which the QC matrix will be evaluated.
+        L : float
+            Volume at which the QC matrix will be evaluated.
+
+        Returns
+        -------
+        list of int
+            Indices into each ``tbks_list`` entry selecting the precomputed
+            kinematic space appropriate for ``E`` and ``L``.
+
+        Raises
+        ------
+        ValueError
+            If ``E`` exceeds ``Emax`` or ``L`` exceeds ``Lmax``.
+        """
+        if E > self.Emax:
+            raise ValueError("get_tbks_sub_indices called with E > Emax")
+        if L > self.Lmax:
+            raise ValueError("get_tbks_sub_indices called with L > Lmax")
+        if self.nPSQ != 0:
+            tbks_sub_indices =\
+                self._get_tbks_sub_indices_nonzero_mom(E, L)
+            return tbks_sub_indices
+        tbks_sub_indices = self._get_tbks_sub_indices_zero_mom(E, L)
+        return tbks_sub_indices
+
+    def _get_tbks_sub_indices_zero_mom(self, E, L):
+        tbks_sub_indices = [0]*len(self.tbks_list)
+        for slice_index in range(self.fcs.n_three_slices):
+            sc_index = self.fcs.slices_by_three_masses[slice_index][0]
+            nPspecmax = self._get_nPspecmax(slice_index)
+            sc = self.fcs.sc_list_sorted[sc_index]
+            m_spec = sc.fc.masses[sc.indexing[0]]
+            ESQ = E**2
+            nPSQ = self.nPSQ
+            ESQmin = self._get_ESQmin(slice_index)
+            if (ESQmin != 0.0):
+                if nPSQ == 0:
+                    nPspecnew = (L*np.sqrt(
+                        E**4+(ESQmin-m_spec**2)**2-2.*E**2*(ESQmin+m_spec**2)
+                        ))/(2.*E*TWOPI)
+                else:
+                    raise ValueError("nonzero nP and Emin not supported")
+            else:
+                if nPSQ == 0:
+                    if E == 0.0:
+                        nPspecnew = 0.0
+                        warnings.warn(f"\n{bcolors.WARNING}"
+                                      "E = 0.0 in get_tbks_sub_indices; "
+                                      "setting nspecnew to 0.0"
+                                      f"{bcolors.ENDC}", stacklevel=2)
+                    else:
+                        nPspecnew = L*(ESQ-m_spec**2)/(2.0*TWOPI*E)
+
+                else:
+                    nPmag = np.sqrt(nPSQ)
+                    nPspecnew = (FOURPI2*nPmag*(
+                        L**2*(ESQ+m_spec**2)-FOURPI2*nPSQ
+                        )+np.sqrt(ESQ*FOURPI2*L**2*(
+                            L**2*(-ESQ+m_spec**2)+FOURPI2*nPSQ
+                            )**2))/(2.*FOURPI2*(ESQ*L**2-FOURPI2*nPSQ))
+            nPmaxintSQ = int(nPspecmax**2)
+            nPnewintSQ = int(nPspecnew**2)
+            tbks_sub_indices[sc_index] = nPmaxintSQ - nPnewintSQ
+        return tbks_sub_indices
+
+    def _get_tbks_sub_indices_nonzero_mom(self, E, L):
+        tbks_sub_indices = [0]*len(self.tbks_list)
+        for slice_index in range(self.fcs.n_three_slices):
+            sc_index = self.fcs.slices_by_three_masses[slice_index][0]
+            sc = self.fcs.sc_list_sorted[sc_index]
+            m_spec = sc.spectator.mass
+            nP = self.nP
+            tbkstmp_set = self.tbks_list[sc_index]
+            still_searching = True
+            i = 0
+            while still_searching:
+                try:
+                    tbkstmp = tbkstmp_set[i]
+                    nvec_arr = tbkstmp.nvec_arr
+                    E2CMSQfull = (E-np.sqrt(m_spec**2
+                                            + FOURPI2/L**2
+                                            * ((nvec_arr**2).sum(axis=1))))**2\
+                        - FOURPI2/L**2*((nP-nvec_arr)**2).sum(axis=1)
+                    still_searching = not (np.sort(E2CMSQfull) > 0.0).all()
+                    i += 1
+                except IndexError:
+                    warnings.warn(f"\n{bcolors.WARNING}"
+                                  "Crude search inside of "
+                                  "get_tbks_sub_indices failed; taking last "
+                                  "index before failure"
+                                  f"{bcolors.ENDC}", stacklevel=2)
+                    break
+            i -= 1
+            tbkstmp = tbkstmp_set[i]
+            nvec_arr = tbkstmp.nvec_arr
+            E2CMSQfull = (E-np.sqrt(m_spec**2
+                                    + FOURPI2/L**2
+                                    * ((nvec_arr**2).sum(axis=1))))**2\
+                - FOURPI2/L**2*((nP-nvec_arr)**2).sum(axis=1)
+            tbks_sub_indices[sc_index] = i
+        warnings.warn(f"\n{bcolors.WARNING}"
+                      f"get_tbks_sub_indices is being called with "
+                      f"non_zero nP; this can lead to shells being "
+                      f"missed! result is = {str(tbks_sub_indices)}"
+                      f"{bcolors.ENDC}", stacklevel=2)
+        return tbks_sub_indices
 
     @staticmethod
     def count_by_isospin(flavor_basis):
