@@ -248,7 +248,7 @@ class TestQC(unittest.TestCase):
         spectrum = ampyl.FVSpectrum(qc)
         irrep = qc_dict['irrep']
         ni_functions = []
-        for ni_function_channel in qc.qcis.nonint_functions:
+        for ni_function_channel in qc.qcis.nis.nonint_functions:
             ni_functions.extend(ni_function_channel[irrep])
 
         self.assertFalse(hasattr(qc, 'energy_solver'))
