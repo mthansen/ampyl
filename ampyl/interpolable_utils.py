@@ -68,6 +68,7 @@ def _interpolator_data_attrs(interpolable):
         'pole_mass_lists',
         'pole_textures_lists',
         'complement_textures_lists',
+        'pole_residue_matrix_lists',
     )
 
 
@@ -745,6 +746,62 @@ def _get_pole_textures(interpolable, matrix_dim_list,
         complement_textures_list.append(complement_textures)
     return pole_list, pole_mass_list, pole_textures_list, \
         complement_textures_list
+
+
+def _get_pole_residue_matrix_list(interpolable, L, irrep):
+    pole_residue_matrix_list = []
+    pole_list = interpolable.pole_lists[irrep]
+    pole_mass_list = interpolable.pole_mass_lists[irrep]
+    pole_textures_list = interpolable.pole_textures_lists[irrep]
+    for sector_index in range(len(pole_list)):
+        poles = pole_list[sector_index]
+        pole_masses = pole_mass_list[sector_index]
+        pole_textures = pole_textures_list[sector_index]
+        residue_matrices = []
+        for pole_index in range(len(poles)):
+            E_pole = _get_pole_energy(poles[pole_index],
+                                      pole_masses[pole_index], L)
+            smooth_value = interpolable.interps[irrep]((E_pole, L))
+            smooth_value = _pad_matrix_to_shape(
+                smooth_value, pole_textures[pole_index].shape)
+            residue_matrix = smooth_value*pole_textures[pole_index]
+            for other_pole_index in range(len(poles)):
+                if other_pole_index == pole_index:
+                    continue
+                other_E_pole = _get_pole_energy(
+                    poles[other_pole_index],
+                    pole_masses[other_pole_index],
+                    L)
+                denominator = E_pole-other_E_pole
+                other_texture = pole_textures[other_pole_index]
+                if np.abs(denominator) < EPSILON10:
+                    overlap = pole_textures[pole_index]*other_texture
+                    if np.any(overlap != 0.):
+                        raise ValueError(
+                            "coincident poles share at least one matrix "
+                            "entry, so the strict simple residue is not "
+                            "defined")
+                    continue
+                pole_factor_matrix =\
+                    other_texture/denominator + (1.-other_texture)
+                residue_matrix = residue_matrix*pole_factor_matrix
+            residue_matrices.append(residue_matrix)
+        pole_residue_matrix_list.append(np.array(residue_matrices))
+    return pole_residue_matrix_list
+
+
+def _get_pole_energy(pole, pole_masses, L):
+    return np.sqrt(pole*FOURPI2/L**2 + pole_masses**2).sum()
+
+
+def _pad_matrix_to_shape(matrix, shape):
+    if matrix.shape == shape:
+        return matrix
+    matrix_tmp = np.zeros(shape, dtype=matrix.dtype)
+    row_dim = min(shape[0], len(matrix))
+    col_dim = min(shape[1], len(matrix.T))
+    matrix_tmp[:row_dim, :col_dim] = matrix[:row_dim, :col_dim]
+    return matrix_tmp
 
 
 def _get_value_interpolated(interpolable, E, L, irrep):
