@@ -777,10 +777,14 @@ def _get_pole_residue_matrix_list(interpolable, L, irrep):
                 if np.abs(denominator) < EPSILON10:
                     overlap = pole_textures[pole_index]*other_texture
                     if np.any(overlap != 0.):
-                        raise ValueError(
+                        warnings.warn(
                             "coincident poles share at least one matrix "
                             "entry, so the strict simple residue is not "
                             "defined")
+                    #     raise ValueError(
+                    #         "coincident poles share at least one matrix "
+                    #         "entry, so the strict simple residue is not "
+                    #         "defined")
                     continue
                 pole_factor_matrix =\
                     other_texture/denominator + (1.-other_texture)
