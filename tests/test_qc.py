@@ -224,6 +224,199 @@ class TestQC(unittest.TestCase):
         diffSQ = np.sum((roots - roots_expected)**2)
         self.assertTrue(diffSQ < 1.e-15)
 
+    def test_leading_energy_shift_uses_single_residue_eigenvector(self):
+        irrep = ('A1PLUS', 0)
+        residue_matrix = np.array([[2.0, 0.0], [0.0, 0.0]])
+        k_matrix = np.array([[4.0, 0.0], [0.0, 7.0]])
+
+        class FakeRegistry:
+            def __init__(self, value):
+                self.value = value
+
+            def get(self, identifier=0):
+                return self.value
+
+        class FakeFplusG:
+            def __init__(self):
+                self.pole_lists = {irrep: [np.array([[0, 0, 0]])]}
+                self.pole_mass_lists = {
+                    irrep: [np.array([[1.0, 1.0, 1.0]])]
+                }
+                self.cob_matrix_lists = {}
+
+            def get_pole_residue_matrices(self, **kwargs):
+                return [np.array([residue_matrix])]
+
+            def get_pole_candidate(self, L, n1, n2, n3, m1, m2, m3):
+                return m1+m2+m3
+
+        class FakeK:
+            def get_value(self, E, L, pcotdelta_parameter_lists, project,
+                          irrep_value):
+                return k_matrix
+
+        class FakeMatrixBuilder:
+            def _match_matrix_to_k(self, matrix, K, matrix_name):
+                return K, matrix
+
+        class FakeQC:
+            def __init__(self):
+                self.fplusg_list = FakeRegistry(FakeFplusG())
+                self.k_list = FakeRegistry(FakeK())
+                self.matrix_builder = FakeMatrixBuilder()
+
+            def validate_qc_dict(self, qc_dict):
+                return qc_dict
+
+        spectrum = ampyl.FVSpectrum(FakeQC())
+        qc_dict = {'k_params': [[['unused']], []], 'project': True,
+                   'irrep': irrep}
+
+        shifts = spectrum.get_leading_energy_shifts_at_L(
+            5.0, [2.5, 3.5], qc_dict)
+
+        self.assertEqual(len(shifts), 1)
+        self.assertAlmostEqual(shifts[0]['E_pole'], 3.0)
+        self.assertAlmostEqual(shifts[0]['shift'], -8.0)
+        self.assertEqual(shifts[0]['sector_index'], 0)
+        self.assertEqual(shifts[0]['pole_index'], 0)
+
+    def test_leading_energy_shift_aligns_k_with_smooth_basis(self):
+        irrep = ('A1PLUS', 0)
+        residue_matrix = np.array([[2.0, 0.0], [0.0, 0.0]])
+        k_matrix = np.array([[4.0]])
+        cob_matrix = np.array([[1.0, 0.0]])
+
+        class FakeRegistry:
+            def __init__(self, value):
+                self.value = value
+
+            def get(self, identifier=0):
+                return self.value
+
+        class FakeFplusG:
+            def __init__(self):
+                self.pole_lists = {irrep: [np.array([[0, 0, 0]])]}
+                self.pole_mass_lists = {
+                    irrep: [np.array([[1.0, 1.0, 1.0]])]
+                }
+                self.cob_matrix_lists = {irrep: [cob_matrix]}
+
+            def get_pole_residue_matrices(self, **kwargs):
+                self.requested_basis = kwargs.get('basis')
+                return [np.array([residue_matrix])]
+
+            def get_pole_candidate(self, L, n1, n2, n3, m1, m2, m3):
+                return m1+m2+m3
+
+        class FakeK:
+            def get_value(self, E, L, pcotdelta_parameter_lists, project,
+                          irrep_value):
+                return k_matrix
+
+        class FakeMatrixBuilder:
+            def _match_matrix_to_k(self, matrix, K, matrix_name):
+                raise AssertionError("K should be aligned with the COB matrix")
+
+        class FakeQC:
+            def __init__(self):
+                self.fplusg = FakeFplusG()
+                self.fplusg_list = FakeRegistry(self.fplusg)
+                self.k_list = FakeRegistry(FakeK())
+                self.matrix_builder = FakeMatrixBuilder()
+
+            def validate_qc_dict(self, qc_dict):
+                return qc_dict
+
+        qc = FakeQC()
+        spectrum = ampyl.FVSpectrum(qc)
+        qc_dict = {'k_params': [[['unused']], []], 'project': True,
+                   'irrep': irrep}
+
+        shifts = spectrum.get_leading_energy_shifts_at_L(
+            5.0, [2.5, 3.5], qc_dict)
+
+        self.assertEqual(qc.fplusg.requested_basis, 'smooth')
+        self.assertEqual(len(shifts), 1)
+        self.assertAlmostEqual(shifts[0]['shift'], -8.0)
+
+    def test_leading_energy_shift_skips_inactive_cob_sectors(self):
+        irrep = ('A1PLUS', 0)
+        residue_matrix = np.array([[2.0]])
+        k_matrix = np.array([[4.0]])
+
+        class FakeFCS:
+            n_three_slices = 1
+
+        class FakeQCIS:
+            fcs = FakeFCS()
+
+            def get_tbks_sub_indices(self, E, L):
+                return [1]
+
+        class FakeRegistry:
+            def __init__(self, value):
+                self.value = value
+
+            def get(self, identifier=0):
+                return self.value
+
+        class FakeFplusG:
+            def __init__(self):
+                self.qcis = FakeQCIS()
+                self.pole_lists = {
+                    irrep: [
+                        np.array([[0, 0, 0]]),
+                        np.array([[0, 0, 0]]),
+                    ]
+                }
+                self.pole_mass_lists = {
+                    irrep: [
+                        np.array([[1.0, 1.0, 1.0]]),
+                        np.array([[1.0, 1.0, 1.0]]),
+                    ]
+                }
+                self.cob_matrix_lists = {
+                    irrep: [
+                        np.array([[1.0]]),
+                        np.array([[1.0]]),
+                    ]
+                }
+                self.cob_matrix_key_lists = {irrep: [(0,), (1,)]}
+
+            def get_pole_residue_matrices(self, **kwargs):
+                return [np.array([residue_matrix]),
+                        np.array([residue_matrix])]
+
+            def get_pole_candidate(self, L, n1, n2, n3, m1, m2, m3):
+                return m1+m2+m3
+
+        class FakeK:
+            def get_value(self, E, L, pcotdelta_parameter_lists, project,
+                          irrep_value):
+                return k_matrix
+
+        class FakeQC:
+            def __init__(self):
+                self.fplusg = FakeFplusG()
+                self.fplusg_list = FakeRegistry(self.fplusg)
+                self.k_list = FakeRegistry(FakeK())
+
+            def validate_qc_dict(self, qc_dict):
+                return qc_dict
+
+        spectrum = ampyl.FVSpectrum(FakeQC())
+        qc_dict = {'k_params': [[['unused']], []], 'project': True,
+                   'irrep': irrep}
+
+        shifts = spectrum.get_leading_energy_shifts_at_L(
+            5.0, [2.5, 3.5], qc_dict)
+
+        self.assertEqual(len(shifts), 1)
+        self.assertEqual(shifts[0]['sector_index'], 1)
+        self.assertEqual(shifts[0]['sector_key'], (1,))
+        self.assertEqual(shifts[0]['active_sector_key'], (1,))
+
     def test_evaluation_policy_uses_first_matching_element(self):
         policy = ampyl.EvaluationPolicy([
             {'Lmin': 3.0, 'Lmax': 5.0, 'Emin': 4.0, 'Emax': 6.0,
