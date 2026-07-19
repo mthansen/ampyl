@@ -605,29 +605,46 @@ class Interpolable:
 
     def get_pole_residue_matrices(self, L=5.0, irrep=None,
                                   interpolator_id=None,
-                                  interpolator_name=None):
+                                  interpolator_name=None,
+                                  E_range=None, basis='standard'):
         """
         Evaluate strict pole-residue matrices from stored interpolation data.
 
-        The returned object is a list over smooth-basis sectors. Each sector
+        The returned object is a list over standard-basis sectors. Each sector
         entry is an array whose leading index labels the saved poles in
         ``pole_lists[irrep][sector]``. Entries where a pole is absent are zero;
         entries where other poles are also present include those pole factors
-        evaluated at the target pole.
+        evaluated at the target pole. Internally, pole residues are assembled
+        in the smooth interpolator basis and then rotated back to the standard
+        basis before return. Set ``basis='smooth'`` to leave residues in the
+        smooth interpolator basis. If ``E_range`` is supplied, saved poles
+        outside the range are returned as zero matrices without evaluating the
+        interpolator at the out-of-range pole energy.
         """
+        if basis not in ('standard', 'smooth'):
+            raise ValueError("basis must be 'standard' or 'smooth'")
         check_utils.check_value_within_qcis_bounds(self, E=0., L=L)
         self._load_interpolator(interpolator_id=interpolator_id,
                                 interpolator_name=interpolator_name)
         L_key = float(np.round(L, decimals=10))
+        cache_key = L_key
+        if E_range is not None:
+            cache_key = (
+                L_key,
+                float(np.round(E_range[0], decimals=10)),
+                float(np.round(E_range[1], decimals=10)),
+            )
+        if basis != 'standard':
+            cache_key = (basis, cache_key)
         if (irrep in self.pole_residue_matrix_lists
-           and L_key in self.pole_residue_matrix_lists[irrep]):
-            return self.pole_residue_matrix_lists[irrep][L_key]
+           and cache_key in self.pole_residue_matrix_lists[irrep]):
+            return self.pole_residue_matrix_lists[irrep][cache_key]
         pole_residue_matrix_list =\
             interpolable_utils._get_pole_residue_matrix_list(
-                self, L, irrep)
+                self, L, irrep, E_range=E_range, basis=basis)
         if irrep not in self.pole_residue_matrix_lists:
             self.pole_residue_matrix_lists[irrep] = {}
-        self.pole_residue_matrix_lists[irrep][L_key]\
+        self.pole_residue_matrix_lists[irrep][cache_key]\
             = pole_residue_matrix_list
         if self.active_interpolator_id is not None:
             self.interpolators[self.active_interpolator_id][

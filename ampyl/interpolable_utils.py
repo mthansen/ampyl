@@ -82,9 +82,11 @@ def _get_interpolation_flag(interpolable, short_string, interpolate):
 
 
 def _canonicalize_pole_candidate(nvecSQs, masses):
-    """Sort a pole candidate and apply the same permutation to its masses."""
+    """Sort a pole candidate while preserving nvecSQ-mass alignment."""
     candidate = np.array(list(zip(nvecSQs, masses)), dtype=float)
-    permuted = candidate[np.argsort(candidate[:, 0], kind='stable')]
+    permuted = candidate[
+        np.lexsort((candidate[:, 0], candidate[:, 1]))
+    ]
     return tuple(permuted[:, 0].astype(int).tolist()), tuple(
         permuted[:, 1].tolist())
 
@@ -714,17 +716,20 @@ def _get_pole_textures(interpolable, matrix_dim_list,
                    or j >= len(polefree_interp_data_list[i])):
                     break
                 for pole_data in (polefree_interp_data_list[i][j][2]):
-                    pole_key = (tuple(pole_data[2]), tuple(pole_data[3]))
+                    pole_key = _canonicalize_pole_candidate(
+                        pole_data[2], pole_data[3])
                     if pole_key not in pole_dict:
                         texture = np.zeros((matrix_dimension,
                                             matrix_dimension))
                         texture[i][j] = 1.
                         pole_dict[pole_key] = texture
                         pole_index_dict[pole_key] = len(poles)
-                        poles.append(pole_data[2])
-                        pole_masses.append(pole_data[3])
+                        poles.append(list(pole_key[0]))
+                        pole_masses.append(list(pole_key[1]))
                         pole_textures.append(deepcopy(texture))
                     else:
+                        if pole_dict[pole_key][i][j] != 0.:
+                            continue
                         texture = np.zeros((matrix_dimension,
                                             matrix_dimension))
                         texture[i][j] = 1.
@@ -748,19 +753,41 @@ def _get_pole_textures(interpolable, matrix_dim_list,
         complement_textures_list
 
 
-def _get_pole_residue_matrix_list(interpolable, L, irrep):
+def _get_pole_residue_matrix_list(interpolable, L, irrep, E_range=None,
+                                  basis='standard'):
     pole_residue_matrix_list = []
     pole_list = interpolable.pole_lists[irrep]
     pole_mass_list = interpolable.pole_mass_lists[irrep]
     pole_textures_list = interpolable.pole_textures_lists[irrep]
+    cob_matrix_list = getattr(interpolable, 'cob_matrix_lists', {}).get(
+        irrep, [])
+    if E_range is not None:
+        E_range = [float(E_range[0]), float(E_range[1])]
+        interp = interpolable.interps.get(irrep)
+        interp_grid = getattr(interp, 'grid', None)
+        if interp_grid is not None:
+            E_range[0] = max(E_range[0], float(interp_grid[0][0]))
+            E_range[1] = min(E_range[1], float(interp_grid[0][-1]))
     for sector_index in range(len(pole_list)):
         poles = pole_list[sector_index]
         pole_masses = pole_mass_list[sector_index]
         pole_textures = pole_textures_list[sector_index]
+        cob_matrix = None
+        if sector_index < len(cob_matrix_list):
+            cob_matrix = cob_matrix_list[sector_index]
         residue_matrices = []
         for pole_index in range(len(poles)):
             E_pole = _get_pole_energy(poles[pole_index],
                                       pole_masses[pole_index], L)
+            if (E_range is not None
+               and (E_pole < E_range[0] or E_pole > E_range[1])):
+                residue_matrix = np.zeros_like(pole_textures[pole_index],
+                                               dtype=float)
+                if cob_matrix is not None and basis == 'standard':
+                    residue_matrix = np.zeros(
+                        (cob_matrix.shape[0], cob_matrix.shape[0]))
+                residue_matrices.append(residue_matrix)
+                continue
             smooth_value = interpolable.interps[irrep]((E_pole, L))
             smooth_value = _pad_matrix_to_shape(
                 smooth_value, pole_textures[pole_index].shape)
@@ -781,14 +808,15 @@ def _get_pole_residue_matrix_list(interpolable, L, irrep):
                             "coincident poles share at least one matrix "
                             "entry, so the strict simple residue is not "
                             "defined")
-                    #     raise ValueError(
-                    #         "coincident poles share at least one matrix "
-                    #         "entry, so the strict simple residue is not "
-                    #         "defined")
                     continue
                 pole_factor_matrix =\
                     other_texture/denominator + (1.-other_texture)
                 residue_matrix = residue_matrix*pole_factor_matrix
+            if cob_matrix is not None and basis == 'standard':
+                smooth_dim = cob_matrix.shape[1]
+                residue_matrix = _pad_matrix_to_shape(
+                    residue_matrix, (smooth_dim, smooth_dim))
+                residue_matrix = cob_matrix@residue_matrix@cob_matrix.T
             residue_matrices.append(residue_matrix)
         pole_residue_matrix_list.append(np.array(residue_matrices))
     return pole_residue_matrix_list
