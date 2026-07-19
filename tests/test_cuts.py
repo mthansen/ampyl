@@ -236,24 +236,25 @@ class TestPoleCandidates(unittest.TestCase):
         self.assertEqual(len(all_nvecSQs), len(all_nvecSQs_set))
 
     def test_canonicalize_pole_candidate_keeps_mass_alignment(self):
-        """Sorting nvecSQs should apply the same permutation to masses."""
+        """Sorting by mass then nvecSQ should keep pair alignment."""
         pole_nvecSQs, pole_masses = interpolable_utils\
             ._canonicalize_pole_candidate(
                 [5, 1, 3],
-                [10.0, 20.0, 30.0],
+                [2.0, 1.0, 2.0],
             )
 
         self.assertEqual(pole_nvecSQs, (1, 3, 5))
-        self.assertEqual(pole_masses, (20.0, 30.0, 10.0))
+        self.assertEqual(pole_masses, (1.0, 2.0, 2.0))
 
-    def test_pole_textures_keep_distinct_mass_assignments(self):
-        """Equal nvecSQs with different masses should remain distinct poles."""
+    def test_pole_textures_collapse_simultaneous_exchanges(self):
+        """Simultaneous nvecSQ and mass exchanges are the same pole."""
         polefree_interp_data_list = [[[
             [],
             [],
             [
                 [0, 0, [1, 2, 3], [1.0, 2.0, 3.0]],
                 [0, 0, [1, 2, 3], [3.0, 2.0, 1.0]],
+                [0, 0, [3, 2, 1], [3.0, 2.0, 1.0]],
             ],
         ]]]
 
@@ -264,10 +265,10 @@ class TestPoleCandidates(unittest.TestCase):
                 polefree_interp_data_list,
             )
 
-        self.assertEqual(pole_list[0].tolist(), [[1, 2, 3], [1, 2, 3]])
+        self.assertEqual(pole_list[0].tolist(), [[1, 2, 3], [3, 2, 1]])
         self.assertEqual(
             pole_mass_list[0].tolist(),
-            [[1.0, 2.0, 3.0], [3.0, 2.0, 1.0]],
+            [[1.0, 2.0, 3.0], [1.0, 2.0, 3.0]],
         )
         self.assertEqual(
             pole_textures_list[0].tolist(),
@@ -297,18 +298,19 @@ class TestPoleCandidates(unittest.TestCase):
         pole_candidate_keys = {
             (tuple(candidate[0]), tuple(candidate[1]))
             for candidate in pole_candidates
-            if tuple(candidate[0]) == (2, 4, 6)
+            if (tuple(sorted(candidate[0])) == (2, 4, 6)
+                and tuple(candidate[1]) == (1.0, 2.0, 3.0))
         }
 
         self.assertEqual(
             pole_candidate_keys,
             {
-                ((2, 4, 6), (2.0, 1.0, 3.0)),
                 ((2, 4, 6), (1.0, 2.0, 3.0)),
-                ((2, 4, 6), (2.0, 3.0, 1.0)),
-                ((2, 4, 6), (3.0, 1.0, 2.0)),
-                ((2, 4, 6), (1.0, 3.0, 2.0)),
-                ((2, 4, 6), (3.0, 2.0, 1.0)),
+                ((2, 6, 4), (1.0, 2.0, 3.0)),
+                ((4, 2, 6), (1.0, 2.0, 3.0)),
+                ((4, 6, 2), (1.0, 2.0, 3.0)),
+                ((6, 2, 4), (1.0, 2.0, 3.0)),
+                ((6, 4, 2), (1.0, 2.0, 3.0)),
             },
         )
 
