@@ -654,3 +654,170 @@ class FVSpectrum:
         """
         return fv_spectrum_utils._get_roots_from_range(
             self, E_range, L, qc_dict, ni_functions, cuts)
+
+    def get_leading_energy_shifts_at_L(
+            self, L, E_range, qc_dict, eigenvalue_threshold=1.e-10,
+            fplusg_id=0, k_id=0, interpolator_id=None,
+            interpolator_name=None):
+        """Return leading energy shifts from pole-residue matrices at fixed L.
+
+        Parameters
+        ----------
+        L : float
+            Box length.
+        E_range : list[float]
+            Two-element energy interval in which poles are included.
+        qc_dict : dict
+            QC evaluation options. ``'k_params'``, ``'project'``, and
+            ``'irrep'`` are used to evaluate K matrices.
+        eigenvalue_threshold : float, optional
+            Minimum absolute value for a residue-matrix eigenvalue to define
+            a nonzero-residue direction.
+        fplusg_id : int or str, optional
+            Stored F+G component ID, or name, from which residues are loaded.
+        k_id : int or str, optional
+            Stored K component ID, or name, used for the shift projection.
+        interpolator_id : int or str, optional
+            Stored F+G interpolator ID, or name, to activate before residue
+            evaluation.
+        interpolator_name : str, optional
+            Stored F+G interpolator name to activate before residue
+            evaluation.
+
+        Returns
+        -------
+        list[dict]
+            One entry per pole in ``E_range`` with exactly one nonzero
+            residue eigenvalue. Each entry contains the pole location,
+            residue eigenvalue, eigenvector, and leading shift.
+
+        Raises
+        ------
+        NotImplementedError
+            If a residue matrix has more than one eigenvalue above
+            ``eigenvalue_threshold``.
+        ValueError
+            If the projected K matrix and residue matrix have incompatible
+            shapes.
+        """
+        L = float(L)
+        E_range = [float(E_range[0]), float(E_range[1])]
+        qc_dict = self.qc.validate_qc_dict(dict(qc_dict))
+        irrep = qc_dict['irrep']
+        project = qc_dict['project']
+        pcotdelta_parameter_lists = qc_dict['k_params'][0]
+
+        fplusg = self.qc.fplusg_list.get(fplusg_id)
+        k = self.qc.k_list.get(k_id)
+        residue_blocks = fplusg.get_pole_residue_matrices(
+            L=L, irrep=irrep, interpolator_id=interpolator_id,
+            interpolator_name=interpolator_name, E_range=E_range,
+            basis='smooth')
+
+        shifts = []
+        pole_lists = fplusg.pole_lists[irrep]
+        pole_mass_lists = fplusg.pole_mass_lists[irrep]
+        cob_keys = getattr(fplusg, 'cob_matrix_key_lists', {}).get(irrep, [])
+        for sector_index in range(len(pole_lists)):
+            poles = pole_lists[sector_index]
+            pole_masses = pole_mass_lists[sector_index]
+            for pole_index in range(len(poles)):
+                E_pole = fplusg.get_pole_candidate(
+                    L, *poles[pole_index], *pole_masses[pole_index])
+                if E_pole < E_range[0] or E_pole > E_range[1]:
+                    continue
+                active_sector_key = None
+                if sector_index < len(cob_keys):
+                    tbks_sub_indices = fplusg.qcis.get_tbks_sub_indices(
+                        float(E_pole), L)
+                    active_sector_key = tuple(
+                        tbks_sub_indices[:fplusg.qcis.fcs.n_three_slices])
+                    if active_sector_key != cob_keys[sector_index]:
+                        continue
+                residue_matrix = residue_blocks[sector_index][pole_index]
+                residue_matrix = np.asarray(residue_matrix)
+                k_matrix = k.get_value(
+                    float(E_pole), L, pcotdelta_parameter_lists, project,
+                    irrep)
+                k_matrix = np.asarray(k_matrix)
+                cob_matrices = fplusg.cob_matrix_lists.get(irrep, [])
+                cob_matrix = None
+                if sector_index < len(cob_matrices):
+                    cob_matrix = cob_matrices[sector_index]
+                if cob_matrix is not None:
+                    active_shape = (cob_matrix.shape[0],
+                                    cob_matrix.shape[0])
+                    active_basis_matrix = np.zeros(active_shape,
+                                                   dtype=k_matrix.dtype)
+                    row_dim = min(active_shape[0], k_matrix.shape[0])
+                    col_dim = min(active_shape[1], k_matrix.shape[1])
+                    active_basis_matrix[:row_dim, :col_dim] =\
+                        k_matrix[:row_dim, :col_dim]
+                    k_matrix = (
+                        cob_matrix.T
+                        @ active_basis_matrix
+                        @ cob_matrix
+                    )
+                else:
+                    k_matrix, residue_matrix = self.qc.matrix_builder\
+                        ._match_matrix_to_k(
+                            residue_matrix, k_matrix, 'residue matrix')
+                if k_matrix.shape != residue_matrix.shape:
+                    raise ValueError(
+                        "K matrix shape does not match residue matrix shape "
+                        "after basis alignment "
+                        f"for sector {sector_index}, pole {pole_index}: "
+                        f"{k_matrix.shape} != {residue_matrix.shape}")
+                hermitian_residue_matrix = 0.5*(
+                    residue_matrix+residue_matrix.conj().T)
+                eigenvalues, eigenvectors = np.linalg.eigh(
+                    hermitian_residue_matrix)
+                nonzero_indices = np.where(
+                    np.abs(eigenvalues) > eigenvalue_threshold)[0]
+                if len(nonzero_indices) == 0:
+                    continue
+
+                nonzero_eigenvectors = eigenvectors[:, nonzero_indices]
+                if len(nonzero_indices) > 1:
+                    k_subspace = (
+                        nonzero_eigenvectors.conj().T
+                        @ k_matrix
+                        @ nonzero_eigenvectors
+                    )
+                    residue_subspace = (
+                        nonzero_eigenvectors.conj().T
+                        @ hermitian_residue_matrix
+                        @ nonzero_eigenvectors
+                    )
+                    raise NotImplementedError(
+                        "Leading energy shift for multi-dimensional residue "
+                        "subspaces is not implemented.\n"
+                        "K matrix in nonzero-residue eigenbasis:\n"
+                        f"{k_subspace}\n"
+                        "Residue matrix in nonzero-residue eigenbasis:\n"
+                        f"{residue_subspace}")
+
+                eigenvalue_index = nonzero_indices[0]
+                eigenvalue = eigenvalues[eigenvalue_index]
+                eigenvector = eigenvectors[:, eigenvalue_index]
+                inverse_k_projection = (
+                    eigenvector.conj().T
+                    @ np.linalg.pinv(k_matrix)
+                    @ eigenvector
+                )
+                shift = -eigenvalue/inverse_k_projection
+                shifts.append({
+                    'E_pole': float(E_pole),
+                    'shift': float(np.real_if_close(shift)),
+                    'sector_index': sector_index,
+                    'sector_key': (cob_keys[sector_index]
+                                   if sector_index < len(cob_keys)
+                                   else None),
+                    'active_sector_key': active_sector_key,
+                    'pole_index': pole_index,
+                    'pole': np.array(poles[pole_index]),
+                    'pole_masses': np.array(pole_masses[pole_index]),
+                    'eigenvalue': eigenvalue,
+                    'eigenvector': eigenvector,
+                })
+        return shifts
