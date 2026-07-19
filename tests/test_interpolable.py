@@ -69,7 +69,7 @@ class TestInterpolable(unittest.TestCase):
             [[0., 4.],
              [0., 4.]])
 
-    def test_strict_pole_residue_rejects_overlapping_coincident_poles(self):
+    def test_strict_pole_residue_warns_on_overlapping_coincident_poles(self):
         irrep = ('A1', 0)
         interpolable = SimpleNamespace(
             interps={irrep: lambda point: np.ones((1, 1))},
@@ -79,9 +79,12 @@ class TestInterpolable(unittest.TestCase):
             pole_textures_lists={irrep: [np.array([[[1.]], [[1.]]])]},
         )
 
-        with self.assertRaises(ValueError):
-            interpolable_utils._get_pole_residue_matrix_list(
+        with self.assertWarnsRegex(
+                UserWarning,
+                "coincident poles share at least one matrix entry"):
+            residues = interpolable_utils._get_pole_residue_matrix_list(
                 interpolable, 2., irrep)
+        np.testing.assert_allclose(residues[0], [[[1.]], [[1.]]])
 
     def test_public_pole_residue_method_caches_by_volume(self):
         irrep = ('A1', 0)
