@@ -40,6 +40,7 @@ from ampyl.flavor import FlavorChannel
 from ampyl.flavor import FlavorChannelSpace
 from ampyl.groups import Groups
 from ampyl import nonint_utils
+from ampyl.constants import FOURPI2
 from ampyl.spaces import QCIndexSpace
 
 
@@ -114,6 +115,79 @@ class TestNonInteracting(unittest.TestCase):
                                 len(qcis.nis.nvecset_aaa[1]))
         self.assertGreaterEqual(len(qcis.nis.nvecset_ab[3]),
                                 len(qcis.nis.nvecset_aa[3]))
+
+
+class TestNonIntTwoParticleEnergies(unittest.TestCase):
+    """Two-particle non-interacting energies must use the channel masses."""
+
+    def _build(self, mass1, mass2, Emax=4.5, Lmax=4.0):
+        """Build a populated qcis whose only ni channel is (mass1, mass2)."""
+        first = Particle(mass=mass1, flavor="pi")
+        if mass1 == mass2:
+            second = first
+        else:
+            second = Particle(mass=mass2, flavor="K")
+        fc_three = FlavorChannel(3, particles=[first, first, first])
+        fc_two = FlavorChannel(2, particles=[first, second])
+        fcs = FlavorChannelSpace(fc_list=[fc_three], ni_list=[fc_two])
+        qcis = QCIndexSpace(fcs=fcs, Emax=Emax, Lmax=Lmax)
+        qcis.group = Groups(ell_max=4, spin_half=False)
+        qcis.populate()
+        qcis.nis.populate_nonint_functions()
+        return qcis
+
+    def _levels(self, qcis):
+        """Yield (nSQ1, nSQ2, function) for every two-particle level."""
+        for key, functions in qcis.nis.nonint_functions[0].items():
+            multiplicities = qcis.nis.nonint_multiplicities[0][key]
+            for multiplicity, function in zip(multiplicities, functions):
+                yield multiplicity[0], multiplicity[1], function
+
+    def _expected(self, mass1, mass2, nSQ1, nSQ2, L):
+        """Evaluate the analytic sum of two finite-volume energies."""
+        return (np.sqrt(mass1**2+FOURPI2*nSQ1/L**2)
+                + np.sqrt(mass2**2+FOURPI2*nSQ2/L**2))
+
+    def test_degenerate_channel_uses_channel_masses(self):
+        """Equal-mass levels must match the analytic expression."""
+        mass = 1.0
+        L = 4.0
+        qcis = self._build(mass, mass)
+        self.assertEqual(qcis.nis._nonint_channel_particle_label(0), 'aa')
+        checked = 0
+        for nSQ1, nSQ2, function in self._levels(qcis):
+            self.assertAlmostEqual(
+                function(L), self._expected(mass, mass, nSQ1, nSQ2, L),
+                places=12)
+            checked += 1
+        self.assertGreater(checked, 0)
+
+    def test_nondegenerate_channel_pairs_masses_with_momenta(self):
+        """Unequal-mass levels pin mass 1 to slot 1 and mass 2 to slot 2."""
+        mass1, mass2 = 1.0, 1.7
+        L = 4.0
+        qcis = self._build(mass1, mass2)
+        self.assertEqual(qcis.nis._nonint_channel_particle_label(0), 'ab')
+        checked = 0
+        for nSQ1, nSQ2, function in self._levels(qcis):
+            self.assertAlmostEqual(
+                function(L), self._expected(mass1, mass2, nSQ1, nSQ2, L),
+                places=12)
+            checked += 1
+        self.assertGreater(checked, 0)
+
+    def test_nonint_two_levels_respect_Emax(self):
+        """Enumeration and evaluation must agree on the mass used.
+
+        The momentum sets are cut on ``E <= Emax`` using the channel masses
+        in ``nonint_utils._get_nvecset_ab_two``. Any level exceeding Emax
+        means the evaluation is using a different mass than the cut did.
+        """
+        for mass1, mass2 in [(1.0, 1.0), (1.0, 1.7)]:
+            qcis = self._build(mass1, mass2)
+            for nSQ1, nSQ2, function in self._levels(qcis):
+                self.assertLessEqual(function(qcis.Lmax),
+                                     qcis.Emax+1.0e-12)
 
 
 class Template(unittest.TestCase):

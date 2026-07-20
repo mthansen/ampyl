@@ -768,14 +768,6 @@ class NonIntSpace:
                                 / irrep_dim)
                             entry = [*nSQs, nPSQ, multi]
                             channel_multis_summary_list.append(entry)
-                            # if cindex == 1:
-                            #     entry = [nSQs[1], nSQs[0], nPSQ, multi]
-                            #     channel_multis_summary_list.append(entry)
-                            #     warnings.warn(f"\n{bcolors.WARNING}"
-                            #                   "Assuming a non-degenerate "
-                            #                   "two-particle channel."
-                            #                   f"{bcolors.ENDC}",
-                            #                   stacklevel=2)
                 nonint_multis_channel_dict[key_best_irreps]\
                     = channel_multis_summary_list
             nonint_multiplicities.append(nonint_multis_channel_dict)
@@ -805,7 +797,7 @@ class NonIntSpace:
                             nonint_channel_mult, cindex)
                     elif len(nonint_channel_mult) == 4:
                         nonint_function = self._get_nonint_function_two(
-                            nonint_channel_mult)
+                            nonint_channel_mult, cindex)
                     else:
                         raise ValueError("nonint_function not supported")
                     nonint_channel_functions_dict[key].append(nonint_function)
@@ -839,10 +831,16 @@ class NonIntSpace:
             return omega1+omega2+omega3
         return nonint_function
 
-    def _get_nonint_function_two(self, nonint_channel_mult):
+    def _get_nonint_function_two(self, nonint_channel_mult, cindex):
         nSQ1, nSQ2, _, _ = nonint_channel_mult
-        mSQ1 = 2.2**2
-        mSQ2 = 1.
+        masses = self.fcs.ni_list[cindex].masses
+        if len(masses) != 2:
+            raise ValueError("two-particle non-interacting function requires "
+                             f"exactly two masses, got {len(masses)} for "
+                             f"channel {cindex}")
+        m1, m2 = masses
+        mSQ1 = m1**2
+        mSQ2 = m2**2
 
         def nonint_function(L):
             """
