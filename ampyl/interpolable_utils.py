@@ -464,187 +464,95 @@ def _get_shell_nvecSQs_projs(interpolable, E=5.0, L=5.0,
     return [nvecSQ_mat_shells, proj_tmp_left, proj_tmp_right]
 
 
-def _get_all_relevant_nvecSQs_list_bad_loop(interpolable, Emax, project, irrep,
-                                            max_interp_dim,
-                                            interp_data_list,
-                                            cob_matrix_list,
-                                            all_pole_candidates):
-    interp_data_index = 1
-    all_relevant_nvecSQs = []
-    for i in range(max_interp_dim):
-        for j in range(max_interp_dim):
-            interp_data_matrix_entry = interp_data_list[i][j][
-                interp_data_index][1:]
-            if len(interp_data_matrix_entry) != 0:
-                Lmin_tmp = BAD_MIN_GUESS
-                Lmax_tmp = BAD_MAX_GUESS
-                Emin_tmp = BAD_MIN_GUESS
-                Emax_tmp = BAD_MAX_GUESS
-                for single_interp_entry in interp_data_matrix_entry:
-                    energy_volume_set = single_interp_entry[:-1]
-                    [E_candidate, L_candidate] = energy_volume_set
-                    if E_candidate < Emin_tmp:
-                        Emin_tmp = E_candidate
-                    if E_candidate > Emax_tmp:
-                        Emax_tmp = E_candidate
-                    if L_candidate < Lmin_tmp:
-                        Lmin_tmp = L_candidate
-                    if L_candidate > Lmax_tmp:
-                        Lmax_tmp = L_candidate
-                nvecSQs_all_keeps = [[]]
-                for nvecSQ_entry, masses in all_pole_candidates:
-                    n1vecSQ = nvecSQ_entry[0]
-                    n2vecSQ = nvecSQ_entry[1]
-                    n3vecSQ = nvecSQ_entry[2]
-                    m1, m2, m3 = masses
-                    removal_at_Lmin = get_pole_candidate(
-                        interpolable, Lmin_tmp, n1vecSQ, n2vecSQ, n3vecSQ,
-                        m1, m2, m3)
-                    removal_at_Lmax = get_pole_candidate(
-                        interpolable, Lmax_tmp, n1vecSQ, n2vecSQ, n3vecSQ,
-                        m1, m2, m3)
-                    if ((Emin_tmp < removal_at_Lmin < Emax_tmp)
-                       or (Emin_tmp < removal_at_Lmax < Emax_tmp)):
-                        nvecSQs_all_keeps = nvecSQs_all_keeps\
-                            + [[[n1vecSQ, n2vecSQ, n3vecSQ],
-                                [m1, m2, m3]]]
-                nvecSQs_all_keeps = nvecSQs_all_keeps[1:]
-                for nvecSQs_keep in nvecSQs_all_keeps:
-                    [n1vecSQ, n2vecSQ, n3vecSQ] = nvecSQs_keep[0]
-                    [m1, m2, m3] = nvecSQs_keep[1]
-                    Lvals_tmp = [Lmin_tmp+EPSILON4, Lmax_tmp-EPSILON4]
-                    for Ltmp in Lvals_tmp:
-                        Etmp = _get_pole_candidate_eps(
-                            interpolable, Ltmp, n1vecSQ, n2vecSQ, n3vecSQ,
-                            m1, m2, m3)
-                        if Etmp < Emax:
-                            try:
-                                matrix_tmp = interpolable\
-                                    .get_value(E=Etmp, L=Ltmp,
-                                               project=project,
-                                               irrep=irrep)
-                                cob_matrix_key_list =\
-                                    interpolable.cob_matrix_key_lists.get(
-                                        irrep, [])
-                                cob_matrix = _get_cob_matrix_for_value(
-                                    interpolable, Etmp, Ltmp, cob_matrix_list,
-                                    cob_matrix_key_list)
-                                if cob_matrix is not None:
-                                    matrix_tmp =\
-                                        (cob_matrix.T)@matrix_tmp@cob_matrix
-                                interpolable_value = matrix_tmp[i][j]
-                                near_pole_mag = np.abs(interpolable_value)
-                                pole_found = (near_pole_mag > POLE_CUT)
-                                if (pole_found and
-                                    ([i, j,
-                                      nvecSQs_keep[0],
-                                      nvecSQs_keep[1]] not in
-                                     all_relevant_nvecSQs)):
-                                    all_relevant_nvecSQs.\
-                                        append([i, j,
-                                                nvecSQs_keep[0],
-                                                nvecSQs_keep[1]])
-                            except IndexError:
-                                pass
-    return all_relevant_nvecSQs
-
-
-def _get_all_relevant_nvecSQs_list_good_loop(
-        interpolable, Emax, project, irrep, max_interp_dim,
-        interp_data_list, cob_matrix_list, all_pole_candidates):
-    interp_data_index = 1
-    all_relevant_nvecSQs = []
-    for i in [0]:
-        for j in [0]:
-            interp_data_matrix_entry = interp_data_list[i][j][
-                interp_data_index][1:]
-            if len(interp_data_matrix_entry) != 0:
-                Lmin_tmp = BAD_MIN_GUESS
-                Lmax_tmp = BAD_MAX_GUESS
-                Emin_tmp = BAD_MIN_GUESS
-                Emax_tmp = BAD_MAX_GUESS
-                for single_interp_entry in interp_data_matrix_entry:
-                    energy_volume_set = single_interp_entry[:-1]
-                    [E_candidate, L_candidate] = energy_volume_set
-                    if E_candidate < Emin_tmp:
-                        Emin_tmp = E_candidate
-                    if E_candidate > Emax_tmp:
-                        Emax_tmp = E_candidate
-                    if L_candidate < Lmin_tmp:
-                        Lmin_tmp = L_candidate
-                    if L_candidate > Lmax_tmp:
-                        Lmax_tmp = L_candidate
-                nvecSQs_all_keeps = [[]]
-                for nvecSQ_entry, masses in all_pole_candidates:
-                    n1vecSQ = nvecSQ_entry[0]
-                    n2vecSQ = nvecSQ_entry[1]
-                    n3vecSQ = nvecSQ_entry[2]
-                    m1, m2, m3 = masses
-                    removal_at_Lmin = get_pole_candidate(
-                        interpolable, Lmin_tmp, n1vecSQ, n2vecSQ, n3vecSQ,
-                        m1, m2, m3)
-                    removal_at_Lmax = get_pole_candidate(
-                        interpolable, Lmax_tmp, n1vecSQ, n2vecSQ, n3vecSQ,
-                        m1, m2, m3)
-                    if ((Emin_tmp < removal_at_Lmin < Emax_tmp)
-                       or (Emin_tmp < removal_at_Lmax < Emax_tmp)):
-                        nvecSQs_all_keeps = nvecSQs_all_keeps\
-                            + [[[n1vecSQ, n2vecSQ, n3vecSQ],
-                                [m1, m2, m3]]]
-                nvecSQs_all_keeps = nvecSQs_all_keeps[1:]
-
-    for nvecSQs_keep in nvecSQs_all_keeps:
-        [n1vecSQ, n2vecSQ, n3vecSQ] = nvecSQs_keep[0]
-        [m1, m2, m3] = nvecSQs_keep[1]
-        print(nvecSQs_keep)
-        Lvals_tmp = [Lmin_tmp+EPSILON4, Lmax_tmp-EPSILON4]
-        for Ltmp in Lvals_tmp:
-            Etmp = _get_pole_candidate_eps(
-                interpolable, Ltmp, n1vecSQ, n2vecSQ, n3vecSQ, m1, m2, m3)
-            if Etmp < Emax:
-                try:
-                    matrix_tmp = interpolable.get_value(E=Etmp, L=Ltmp,
-                                                        project=project,
-                                                        irrep=irrep)
-                    cob_matrix_key_list =\
-                        interpolable.cob_matrix_key_lists.get(irrep, [])
-                    cob_matrix = _get_cob_matrix_for_value(
-                        interpolable, Etmp, Ltmp, cob_matrix_list,
-                        cob_matrix_key_list)
-                    if cob_matrix is not None:
-                        matrix_tmp = (cob_matrix.T)@matrix_tmp@cob_matrix
-                    for i in range(max_interp_dim):
-                        for j in range(max_interp_dim):
-                            interpolable_value = matrix_tmp[i][j]
-                            near_pole_mag = np.abs(interpolable_value)
-                            pole_found = (near_pole_mag > POLE_CUT)
-                            if (pole_found and
-                                ([i, j,
-                                  nvecSQs_keep[0],
-                                  nvecSQs_keep[1]] not in
-                                    all_relevant_nvecSQs)):
-                                all_relevant_nvecSQs.\
-                                    append([i, j,
-                                            nvecSQs_keep[0],
-                                            nvecSQs_keep[1]])
-                except IndexError:
-                    pass
-    return all_relevant_nvecSQs
+def _get_entry_window_and_keeps(interpolable, interp_data_matrix_entry,
+                                all_pole_candidates):
+    Lmin_tmp = BAD_MIN_GUESS
+    Lmax_tmp = BAD_MAX_GUESS
+    Emin_tmp = BAD_MIN_GUESS
+    Emax_tmp = BAD_MAX_GUESS
+    for single_interp_entry in interp_data_matrix_entry:
+        energy_volume_set = single_interp_entry[:-1]
+        [E_candidate, L_candidate] = energy_volume_set
+        if E_candidate < Emin_tmp:
+            Emin_tmp = E_candidate
+        if E_candidate > Emax_tmp:
+            Emax_tmp = E_candidate
+        if L_candidate < Lmin_tmp:
+            Lmin_tmp = L_candidate
+        if L_candidate > Lmax_tmp:
+            Lmax_tmp = L_candidate
+    nvecSQs_keeps = []
+    for nvecSQ_entry, masses in all_pole_candidates:
+        n1vecSQ = nvecSQ_entry[0]
+        n2vecSQ = nvecSQ_entry[1]
+        n3vecSQ = nvecSQ_entry[2]
+        m1, m2, m3 = masses
+        removal_at_Lmin = get_pole_candidate(
+            interpolable, Lmin_tmp, n1vecSQ, n2vecSQ, n3vecSQ, m1, m2, m3)
+        removal_at_Lmax = get_pole_candidate(
+            interpolable, Lmax_tmp, n1vecSQ, n2vecSQ, n3vecSQ, m1, m2, m3)
+        if ((Emin_tmp < removal_at_Lmin < Emax_tmp)
+           or (Emin_tmp < removal_at_Lmax < Emax_tmp)):
+            nvecSQs_keeps.append([[n1vecSQ, n2vecSQ, n3vecSQ],
+                                  [m1, m2, m3]])
+    return Lmin_tmp, Lmax_tmp, nvecSQs_keeps
 
 
 def _get_all_relevant_nvecSQs_list(interpolable, Emax, project, irrep,
                                    max_interp_dim, interp_data_list,
                                    cob_matrix_list, all_pole_candidates):
-    args = [Emax, project, irrep, max_interp_dim, interp_data_list,
-            cob_matrix_list, all_pole_candidates]
-    populate_interp_zeros = QC_IMPL_DEFAULTS['populate_interp_zeros']
-    if 'populate_interp_zeros' in interpolable.qcis.fvs.qc_impl:
-        populate_interp_zeros =\
-            interpolable.qcis.fvs.qc_impl['populate_interp_zeros']
-    if populate_interp_zeros:
-        return _get_all_relevant_nvecSQs_list_good_loop(interpolable, *args)
-    else:
-        return _get_all_relevant_nvecSQs_list_bad_loop(interpolable, *args)
+    interp_data_index = 1
+    # First screen the pole candidates against each matrix entry's own
+    # E/L data window and record the (E, L) points at which that entry
+    # wants the matrix checked, so that each distinct point is evaluated
+    # only once below rather than once per entry.
+    eval_requests = {}
+    for i in range(max_interp_dim):
+        for j in range(max_interp_dim):
+            interp_data_matrix_entry = interp_data_list[i][j][
+                interp_data_index][1:]
+            if len(interp_data_matrix_entry) == 0:
+                continue
+            Lmin_tmp, Lmax_tmp, nvecSQs_keeps = _get_entry_window_and_keeps(
+                interpolable, interp_data_matrix_entry, all_pole_candidates)
+            for nvecSQs_keep in nvecSQs_keeps:
+                [n1vecSQ, n2vecSQ, n3vecSQ] = nvecSQs_keep[0]
+                [m1, m2, m3] = nvecSQs_keep[1]
+                Lvals_tmp = [Lmin_tmp+EPSILON4, Lmax_tmp-EPSILON4]
+                for Ltmp in Lvals_tmp:
+                    Etmp = _get_pole_candidate_eps(
+                        interpolable, Ltmp, n1vecSQ, n2vecSQ, n3vecSQ,
+                        m1, m2, m3)
+                    if Etmp < Emax:
+                        key = (Etmp, Ltmp)
+                        if key not in eval_requests:
+                            eval_requests[key] = []
+                        eval_requests[key].append([i, j, nvecSQs_keep])
+    all_relevant_nvecSQs = []
+    cob_matrix_key_list = interpolable.cob_matrix_key_lists.get(irrep, [])
+    for (Etmp, Ltmp), requests in eval_requests.items():
+        try:
+            matrix_tmp = interpolable.get_value(E=Etmp, L=Ltmp,
+                                                project=project,
+                                                irrep=irrep)
+            cob_matrix = _get_cob_matrix_for_value(
+                interpolable, Etmp, Ltmp, cob_matrix_list,
+                cob_matrix_key_list)
+            if cob_matrix is not None:
+                matrix_tmp = (cob_matrix.T)@matrix_tmp@cob_matrix
+        except IndexError:
+            continue
+        for [i, j, nvecSQs_keep] in requests:
+            try:
+                interpolable_value = matrix_tmp[i][j]
+            except IndexError:
+                continue
+            near_pole_mag = np.abs(interpolable_value)
+            pole_found = (near_pole_mag > POLE_CUT)
+            relevant_entry = [i, j, nvecSQs_keep[0], nvecSQs_keep[1]]
+            if pole_found and relevant_entry not in all_relevant_nvecSQs:
+                all_relevant_nvecSQs.append(relevant_entry)
+    return all_relevant_nvecSQs
 
 
 def _get_pole_candidate_eps(interpolable, L, n1vecSQ, n2vecSQ, n3vecSQ,

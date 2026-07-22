@@ -299,5 +299,118 @@ class TestInterpolable(unittest.TestCase):
         np.testing.assert_allclose(smooth_residues[0][0], np.zeros((2, 2)))
 
 
+class TestGetAllRelevantNvecSQsList(unittest.TestCase):
+    """Unit tests for _get_all_relevant_nvecSQs_list.
+
+    A candidate with nvecSQs (0, 0, 0) and unit masses has its pole at
+    E = 3 for every volume, which makes the screening windows easy to
+    reason about."""
+
+    IRREP = ('A1PLUS', 0)
+
+    @staticmethod
+    def _make_interpolable(matrix, call_log):
+        def get_value(E=None, L=None, project=None, irrep=None):
+            call_log.append((E, L))
+            return matrix
+        return SimpleNamespace(get_value=get_value, cob_matrix_key_lists={})
+
+    @staticmethod
+    def _make_interp_data_list(max_interp_dim, data_points):
+        # The first element of each entry's data list is dropped by the
+        # function, so a placeholder occupies the leading slot.
+        return [[[[], [['placeholder']]+[list(point)
+                                         for point in data_points]]
+                 for _ in range(max_interp_dim)]
+                for _ in range(max_interp_dim)]
+
+    def setUp(self):
+        self.data_points = [[2.0, 4.0, 0.1], [4.0, 6.0, 0.1],
+                            [2.0, 6.0, 0.1], [4.0, 4.0, 0.1]]
+        self.candidates = [([0, 0, 0], (1.0, 1.0, 1.0))]
+
+    def test_finds_pole_entries_above_cut_only(self):
+        call_log = []
+        matrix = np.array([[200.0, 1.0], [1.0, 50.0]])
+        interpolable = self._make_interpolable(matrix, call_log)
+        interp_data_list = self._make_interp_data_list(2, self.data_points)
+
+        result = interpolable_utils._get_all_relevant_nvecSQs_list(
+            interpolable, 5.0, True, self.IRREP, 2, interp_data_list,
+            [], self.candidates)
+
+        self.assertEqual(result, [[0, 0, [0, 0, 0], [1.0, 1.0, 1.0]]])
+
+    def test_evaluates_each_point_once_across_entries(self):
+        # All four matrix entries share the same data window, so both
+        # L-endpoint evaluations must be shared rather than repeated
+        # per entry.
+        call_log = []
+        matrix = np.array([[200.0, 1.0], [1.0, 50.0]])
+        interpolable = self._make_interpolable(matrix, call_log)
+        interp_data_list = self._make_interp_data_list(2, self.data_points)
+
+        interpolable_utils._get_all_relevant_nvecSQs_list(
+            interpolable, 5.0, True, self.IRREP, 2, interp_data_list,
+            [], self.candidates)
+
+        self.assertEqual(len(call_log), 2)
+
+    def test_empty_interp_data_returns_empty_list(self):
+        # Regression: the removed good_loop variant raised
+        # UnboundLocalError when entry (0, 0) had no data.
+        call_log = []
+        interpolable = self._make_interpolable(np.zeros((2, 2)), call_log)
+        interp_data_list = [[[[], [[]]] for _ in range(2)]
+                            for _ in range(2)]
+
+        result = interpolable_utils._get_all_relevant_nvecSQs_list(
+            interpolable, 5.0, True, self.IRREP, 2, interp_data_list,
+            [], self.candidates)
+
+        self.assertEqual(result, [])
+        self.assertEqual(call_log, [])
+
+    def test_candidate_outside_data_window_is_screened_out(self):
+        call_log = []
+        interpolable = self._make_interpolable(
+            np.full((2, 2), 200.0), call_log)
+        interp_data_list = self._make_interp_data_list(2, self.data_points)
+        far_candidates = [([0, 0, 0], (5.0, 5.0, 5.0))]  # pole at E = 15
+
+        result = interpolable_utils._get_all_relevant_nvecSQs_list(
+            interpolable, 20.0, True, self.IRREP, 2, interp_data_list,
+            [], far_candidates)
+
+        self.assertEqual(result, [])
+        self.assertEqual(call_log, [])
+
+    def test_pole_above_emax_is_not_evaluated(self):
+        call_log = []
+        interpolable = self._make_interpolable(
+            np.full((2, 2), 200.0), call_log)
+        interp_data_list = self._make_interp_data_list(2, self.data_points)
+
+        result = interpolable_utils._get_all_relevant_nvecSQs_list(
+            interpolable, 2.5, True, self.IRREP, 2, interp_data_list,
+            [], self.candidates)
+
+        self.assertEqual(result, [])
+        self.assertEqual(call_log, [])
+
+    def test_values_below_pole_cut_yield_no_entries(self):
+        call_log = []
+        interpolable = self._make_interpolable(
+            np.full((2, 2), 50.0), call_log)
+        interp_data_list = self._make_interp_data_list(2, self.data_points)
+
+        result = interpolable_utils._get_all_relevant_nvecSQs_list(
+            interpolable, 5.0, True, self.IRREP, 2, interp_data_list,
+            [], self.candidates)
+
+        self.assertEqual(result, [])
+        self.assertEqual(len(call_log), 2)
+
+
 if __name__ == '__main__':
     unittest.main()
