@@ -54,59 +54,46 @@ warnings.simplefilter("once")
 class Groups:
     """Class for finite-volume group-theory relevant for three particles."""
 
+    # The OhP element order is a load-bearing, module-wide invariant:
+    # every bTdict and chardict row is positionally aligned with it.
+    # Elements 0-23 are the proper rotations ordered by conjugacy class
+    # (identity, six edge C2, eight C3, six C4, three face C2); elements
+    # 24-47 are parity times elements 0-23 in the same order. Each
+    # rotation is stored as a word in the two generators below and
+    # multiplied out in _generate_OhP.
+    OHP_GEN_A = np.array([[0, -1, 0],
+                          [1, 0, 0],
+                          [0, 0, 1]])  # C4 about z
+
+    OHP_GEN_B = np.array([[0, 0, 1],
+                          [1, 0, 0],
+                          [0, 1, 0]])  # C3 about (1, 1, 1)
+
+    OHP_ROTATION_WORDS = [
+        '',                                                # identity
+        'baaab', 'abbaab', 'ab', 'aabba', 'ba', 'abbaa',   # six edge C2
+        'aabb', 'baa', 'aab', 'bbaa', 'b', 'bb', 'baab',   # eight C3
+        'abba',
+        'a', 'aaa', 'baaa', 'abb', 'bba', 'aaab',          # six C4
+        'aa', 'bbaab', 'baabb']                            # three face C2
+
+    @classmethod
+    def _generate_OhP(cls):
+        generators = {'a': cls.OHP_GEN_A, 'b': cls.OHP_GEN_B}
+        rotations = []
+        for word in cls.OHP_ROTATION_WORDS:
+            group_element = np.identity(3, dtype=int)
+            for letter in word:
+                group_element = group_element@generators[letter]
+            rotations.append(group_element)
+        return np.array(rotations
+                        + [-group_element for group_element in rotations])
+
     def __init__(self, ell_max, spin_half=False):
         self.ell_max = ell_max
         self.spin_half = spin_half
 
-        self.OhP = np.array(
-            [[[1, 0, 0], [0, 1, 0], [0, 0, 1]],
-             [[0, 1, 0], [1, 0, 0], [0, 0, -1]],
-             [[0, -1, 0], [-1, 0, 0], [0, 0, -1]],
-             [[-1, 0, 0], [0, 0, 1], [0, 1, 0]],
-             [[-1, 0, 0], [0, 0, -1], [0, -1, 0]],
-             [[0, 0, 1], [0, -1, 0], [1, 0, 0]],
-             [[0, 0, -1], [0, -1, 0], [-1, 0, 0]],
-             [[0, -1, 0], [0, 0, -1], [1, 0, 0]],
-             [[0, 0, 1], [-1, 0, 0], [0, -1, 0]],
-             [[0, 0, -1], [-1, 0, 0], [0, 1, 0]],
-             [[0, -1, 0], [0, 0, 1], [-1, 0, 0]],
-             [[0, 0, 1], [1, 0, 0], [0, 1, 0]],
-             [[0, 1, 0], [0, 0, 1], [1, 0, 0]],
-             [[0, 1, 0], [0, 0, -1], [-1, 0, 0]],
-             [[0, 0, -1], [1, 0, 0], [0, -1, 0]],
-             [[0, -1, 0], [1, 0, 0], [0, 0, 1]],
-             [[0, 1, 0], [-1, 0, 0], [0, 0, 1]],
-             [[0, 0, 1], [0, 1, 0], [-1, 0, 0]],
-             [[0, 0, -1], [0, 1, 0], [1, 0, 0]],
-             [[1, 0, 0], [0, 0, 1], [0, -1, 0]],
-             [[1, 0, 0], [0, 0, -1], [0, 1, 0]],
-             [[-1, 0, 0], [0, -1, 0], [0, 0, 1]],
-             [[-1, 0, 0], [0, 1, 0], [0, 0, -1]],
-             [[1, 0, 0], [0, -1, 0], [0, 0, -1]],
-             [[-1, 0, 0], [0, -1, 0], [0, 0, -1]],
-             [[0, -1, 0], [-1, 0, 0], [0, 0, 1]],
-             [[0, 1, 0], [1, 0, 0], [0, 0, 1]],
-             [[1, 0, 0], [0, 0, -1], [0, -1, 0]],
-             [[1, 0, 0], [0, 0, 1], [0, 1, 0]],
-             [[0, 0, -1], [0, 1, 0], [-1, 0, 0]],
-             [[0, 0, 1], [0, 1, 0], [1, 0, 0]],
-             [[0, 1, 0], [0, 0, 1], [-1, 0, 0]],
-             [[0, 0, -1], [1, 0, 0], [0, 1, 0]],
-             [[0, 0, 1], [1, 0, 0], [0, -1, 0]],
-             [[0, 1, 0], [0, 0, -1], [1, 0, 0]],
-             [[0, 0, -1], [-1, 0, 0], [0, -1, 0]],
-             [[0, -1, 0], [0, 0, -1], [-1, 0, 0]],
-             [[0, -1, 0], [0, 0, 1], [1, 0, 0]],
-             [[0, 0, 1], [-1, 0, 0], [0, 1, 0]],
-             [[0, 1, 0], [-1, 0, 0], [0, 0, -1]],
-             [[0, -1, 0], [1, 0, 0], [0, 0, -1]],
-             [[0, 0, -1], [0, -1, 0], [1, 0, 0]],
-             [[0, 0, 1], [0, -1, 0], [-1, 0, 0]],
-             [[-1, 0, 0], [0, 0, -1], [0, 1, 0]],
-             [[-1, 0, 0], [0, 0, 1], [0, -1, 0]],
-             [[1, 0, 0], [0, 1, 0], [0, 0, -1]],
-             [[1, 0, 0], [0, -1, 0], [0, 0, 1]],
-             [[-1, 0, 0], [0, 1, 0], [0, 0, 1]]])
+        self.OhP = self._generate_OhP()
 
         self.OhP_double_PLUS, self.OhP_double_PLUS_intspin =\
             self._get_double_cover_group()

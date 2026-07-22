@@ -103,6 +103,46 @@ class TestOhPGroupAxioms(TestGroupsFixture):
                 self.assertTrue(contains_matrix(self.groups.OhP, product))
 
 
+class TestOhPElementOrder(TestGroupsFixture):
+    """The OhP element order is load-bearing: every bTdict and chardict
+    row is positionally aligned with it. This pins the historical order,
+    recorded as signed permutations (element rows in order, e.g. '+y+x-z'
+    maps x->+y, y->+x, z->-z)."""
+
+    OHP_SIGNED_PERMUTATIONS = [
+        '+x+y+z', '+y+x-z', '-y-x-z', '-x+z+y', '-x-z-y', '+z-y+x',
+        '-z-y-x', '-y-z+x', '+z-x-y', '-z-x+y', '-y+z-x', '+z+x+y',
+        '+y+z+x', '+y-z-x', '-z+x-y', '-y+x+z', '+y-x+z', '+z+y-x',
+        '-z+y+x', '+x+z-y', '+x-z+y', '-x-y+z', '-x+y-z', '+x-y-z',
+        '-x-y-z', '-y-x+z', '+y+x+z', '+x-z-y', '+x+z+y', '-z+y-x',
+        '+z+y+x', '+y+z-x', '-z+x+y', '+z+x-y', '+y-z+x', '-z-x-y',
+        '-y-z-x', '-y+z+x', '+z-x+y', '+y-x-z', '-y+x-z', '-z-y+x',
+        '+z-y-x', '-x-z+y', '-x+z-y', '+x+y-z', '+x-y+z', '-x+y+z']
+
+    def test_ohp_matches_recorded_element_order(self):
+        axis_columns = {'x': 0, 'y': 1, 'z': 2}
+        self.assertEqual(len(self.OHP_SIGNED_PERMUTATIONS), 48)
+        for i, code in enumerate(self.OHP_SIGNED_PERMUTATIONS):
+            expected = np.zeros((3, 3), dtype=int)
+            for row in range(3):
+                sign = 1 if code[2*row] == '+' else -1
+                expected[row, axis_columns[code[2*row+1]]] = sign
+            self.assertTrue((self.groups.OhP[i] == expected).all(),
+                            msg=f"OhP element {i} does not match the "
+                            "recorded historical order")
+
+    def test_ohp_second_half_is_parity_times_first_half(self):
+        ohp = self.groups.OhP
+        self.assertTrue((ohp[24:] == -ohp[:24]).all())
+
+    def test_ohp_generators_are_elements_and_dtype_is_integer(self):
+        self.assertTrue(np.issubdtype(self.groups.OhP.dtype, np.integer))
+        self.assertTrue(contains_matrix(self.groups.OhP,
+                                        self.groups.OHP_GEN_A))
+        self.assertTrue(contains_matrix(self.groups.OhP,
+                                        self.groups.OHP_GEN_B))
+
+
 class TestLittleGroups(TestGroupsFixture):
     """Little groups are stabilizer subgroups of OhP."""
 
