@@ -144,7 +144,7 @@ class TestF(unittest.TestCase):
         F_direct = self.get_value_direct(5., np.array([0, 0, 0]), 7.,
                                          self.qcis.kellm_spaces[0][0],
                                          C1cut, alphaKSS)
-        self.assertTrue((F-F_direct < self.epsilon).all())
+        self.assertTrue((np.abs(F-F_direct) < self.epsilon).all())
 
     def test_f_two(self):
         """Test F, second test."""
@@ -154,7 +154,7 @@ class TestF(unittest.TestCase):
         F_direct = self.get_value_direct(5., np.array([0, 0, 1]), 7.,
                                          self.qcis_001.kellm_spaces[0][0],
                                          C1cut, alphaKSS)
-        self.assertTrue((F-F_direct < self.epsilon).all())
+        self.assertTrue((np.abs(F-F_direct) < self.epsilon).all())
 
     def test_f_dimer_symmetry_factor(self):
         """Test F is doubled only for non-identical dimer particles."""
