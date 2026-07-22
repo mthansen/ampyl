@@ -553,8 +553,8 @@ class Groups:
 
         self.chardict['Dic4_B2'] = self.bTdict['Dic4_B2']
 
-        self.bTdict['Dic4_E2'] = np.array([[0., -1j*RTWO, 1j*RTWO, 0.,
-                                            -1j*RTWO, 1j*RTWO, 0., 0.],
+        self.bTdict['Dic4_E2'] = np.array([[RTWO, 0., 0., -RTWO,
+                                            0., 0., -RTWO, RTWO],
                                            [RTWO, 0., 0., -RTWO,
                                             0., 0., RTWO, -RTWO]])
 
@@ -1177,14 +1177,17 @@ class Groups:
     def _clean_projector(self, proj):
         eigvals, eigvecs = np.linalg.eig(proj)
         eigvecsT = eigvecs.T
+        # numerical noise in the eigenvalues scales with the size of the
+        # entries of proj, so the chop threshold must be relative
+        eigval_chop_threshold = EPSILON8*max(1.0, np.max(np.abs(proj)))
         eigvals_chop = []
         for eigval in eigvals:
-            if (np.abs(eigval.imag) < EPSILON8):
+            if (np.abs(eigval.imag) < eigval_chop_threshold):
                 eigval = eigval.real
             if isinstance(eigval, float)\
-               and (np.abs(eigval) < EPSILON8):
+               and (np.abs(eigval) < eigval_chop_threshold):
                 eigval = 0.0
-            if (np.abs(eigval.real) < EPSILON8):
+            if (np.abs(eigval.real) < eigval_chop_threshold):
                 eigval = eigval.imag*1j
             eigvals_chop = eigvals_chop+[eigval]
         eigvals_chop = np.array(eigvals_chop)
