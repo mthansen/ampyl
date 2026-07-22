@@ -1006,7 +1006,7 @@ class Groups:
             group = self.Dic2
             bT = self.bTdict[group_str+'_'+irrep][irrep_row]
         else:
-            return ValueError("group not yet supported by get_large_proj")
+            raise ValueError("group not yet supported by get_large_proj")
         dim = len(nvec_arr)*len(ellm_set)
         proj = np.zeros((dim, dim))
         for g_ind in range(len(group)):
@@ -1035,7 +1035,7 @@ class Groups:
             group = self.Dic2
             bT = self.chardict[group_str+'_'+irrep][irow]
         else:
-            return ValueError("group not yet supported by get_large_proj")
+            raise ValueError("group not yet supported by get_large_proj")
         if definite_iso:
             dim = len(aaa_arr)+len(abc_arr)
         else:
@@ -1067,7 +1067,7 @@ class Groups:
             group = self.Dic2
             bT = self.chardict[group_str+'_'+irrep][irow]
         else:
-            return ValueError("group not yet supported by get_large_proj")
+            raise ValueError("group not yet supported by get_large_proj")
         dim = len(nvecset_batched)
         proj = np.zeros((dim, dim))
         for g_ind in range(len(group)):
@@ -1100,7 +1100,7 @@ class Groups:
                 group = self.Dic2
                 bT = self.chardict[group_str+'_'+irrep][irow]
             else:
-                return ValueError("group not yet supported by get_large_proj")
+                raise ValueError("group not yet supported by get_large_proj")
         else:
             if (nP == np.array([0, 0, 0])).all():
                 group_str = 'OhP'
@@ -1161,7 +1161,7 @@ class Groups:
             group = self.Dic2
             bT = self.chardict[group_str+'_'+irrep][irow]
         else:
-            return ValueError("group not yet supported by get_large_proj")
+            raise ValueError("group not yet supported by get_large_proj")
         total_spin_dimension = int((2.0*first_spin+1.0)*(2.0*second_spin+1.0))
         dim = len(nvecset_ab_batched)*total_spin_dimension
         proj = np.zeros((dim, dim))
@@ -1265,8 +1265,10 @@ class Groups:
         if grand_total == total_size:
             summary_str += "total matches size of kellm space"
         else:
-            summary_str += ("does not match size of kellm space, "
-                            "something went wrong")
+            raise RuntimeError(
+                f"irrep decomposition does not span the space: "
+                f"projectors cover {grand_total} slots but the space "
+                f"has size {total_size}\n"+summary_str)
         return best_irreps, summary_str
 
     def get_iso_projection(self, qcis=None, cindex=0, iso_index=0,
@@ -1338,7 +1340,7 @@ class Groups:
 
         for i in range(len(irrep_set)):
             irrep = irrep_set[i]
-            for irow in range(len(self.bTdict[group_str+'_'+irrep])):
+            for irow in range(len(self.chardict[group_str+'_'+irrep])):
                 proj = self.get_proj_nonint_three_scalars(
                     nP, irrep, irow, aaa_arr, abc_arr,
                     definite_iso)
@@ -1957,13 +1959,13 @@ class Groups:
 
     def get_fixed_sc_proj_dict(self, qcis=None, sc_index=0):
         """Get the dictionary of small projectors for a given qcis."""
-        if qcis.verbosity >= 2:
-            print("getting the dict for channel =", sc_index)
         if qcis is None:
             raise ValueError("qcis cannot be None")
+        if qcis.verbosity >= 2:
+            print("getting the dict for channel =", sc_index)
         nP = qcis.fvs.nP
         irrep_set = qcis.fvs.irrep_set
-        if (nP@nP != 0) and (nP@nP != 1) and (nP@nP != 2) and (nP@nP != 4):
+        if (nP@nP != 0) and (nP@nP != 1) and (nP@nP != 2):
             raise ValueError("momentum = ", nP, " is not yet supported")
         proj_dict = {}
         if (nP@nP == 0):

@@ -293,7 +293,7 @@ def _build_sorted_sc_list(fcs):
             sc_compact_single = _add_three_particle_compact(
                 sc, sc_index, sc_compact_single)
         else:
-            return ValueError("n_particles > 3 not implemented yet")
+            raise ValueError("n_particles > 3 not implemented yet")
         sc_compact[possible_numbers_of_particles.index(sc.fc.n_particles)]\
             .append(sc_compact_single)
 
