@@ -115,6 +115,7 @@ class K:
                         sc_ind][ibest][slice_index][irrep]
                     proj_tmp_left = np.conjugate((proj_tmp_right).T)
             except KeyError:
+                shell_utils._verify_irrep_is_known(self.qcis, irrep)
                 return np.array([])
         if project:
             Kshell = proj_tmp_left@Kshell@proj_tmp_right
@@ -312,6 +313,7 @@ class Kdf:
                                                mask_row_shells,
                                                mask_col_shells)
             except KeyError:
+                shell_utils._verify_irrep_is_known(self.qcis, irrep)
                 return np.array([])
 
         if len(k3_params) != 1:

@@ -375,6 +375,7 @@ class G(Interpolable):
                                            row_shell_index, col_shell_index,
                                            irrep)
             except KeyError:
+                shell_utils._verify_irrep_is_known(self.qcis, irrep)
                 return np.array([])
 
         g_uses_prep_mat = QC_IMPL_DEFAULTS['g_uses_prep_mat']
@@ -672,6 +673,7 @@ class F(Interpolable):
                         sc_ind][0][slice_index][irrep]
                     proj_tmp_left = np.conjugate((proj_tmp_right).T)
             except KeyError:
+                shell_utils._verify_irrep_is_known(self.qcis, irrep)
                 return np.array([])
         if project:
             Fshell = proj_tmp_left@Fshell@proj_tmp_right

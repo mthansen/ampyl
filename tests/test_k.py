@@ -97,6 +97,39 @@ class TestKdfGetShell(unittest.TestCase):
         self.assertEqual(shell.shape, (1, 2))
         self.assertTrue(np.all(shell == 0.0))
 
+    def test_unknown_irrep_raises_instead_of_empty_block(self):
+        # Regression: an irrep absent from every projector dictionary
+        # (e.g. a typo) previously returned an empty array, which was
+        # zero-padded downstream into a plausible all-zero block.
+        irrep = ('A1PLUS', 0)
+        proj_dicts = [
+            [[{irrep: np.identity(3)}, {irrep: np.identity(6)}]],
+            [[{irrep: np.identity(3)}, {irrep: np.identity(6)}]]]
+        kdf = self._make_kdf(proj_dicts)
+        with self.assertRaises(ValueError):
+            kdf.get_shell(
+                E=5.0, L=5.0, k3_params=[2.5], m1=1.0, m2=1.0, m3=1.0,
+                cindex_row=0, cindex_col=0, sc_index_row=0, sc_index_col=1,
+                ell1=1, ell2=1, tbks_entry=self._tbks_entry(),
+                row_shell_index=0, col_shell_index=1,
+                project=True, irrep=('BOGUS', 0))
+
+    def test_known_irrep_missing_for_shell_returns_empty(self):
+        # A known irrep that this particular shell does not contribute
+        # to is legitimate and must still yield the empty block.
+        irrep = ('A1PLUS', 0)
+        proj_dicts = [
+            [[{irrep: np.identity(3)}, {}]],
+            [[{irrep: np.identity(3)}, {}]]]
+        kdf = self._make_kdf(proj_dicts)
+        shell = kdf.get_shell(
+            E=5.0, L=5.0, k3_params=[2.5], m1=1.0, m2=1.0, m3=1.0,
+            cindex_row=0, cindex_col=0, sc_index_row=0, sc_index_col=1,
+            ell1=1, ell2=1, tbks_entry=self._tbks_entry(),
+            row_shell_index=0, col_shell_index=1,
+            project=True, irrep=irrep)
+        self.assertEqual(len(shell), 0)
+
     def test_projected_block_matches_manual_projection(self):
         irrep = 'A1PLUS'
         proj_row = np.arange(6.).reshape((3, 2))

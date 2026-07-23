@@ -40,6 +40,25 @@ from .constants import FOURPI2, TWOPI
 from .constants import QC_IMPL_DEFAULTS
 
 
+def _verify_irrep_is_known(qcis, irrep):
+    """Raise if irrep appears in no shell projector dictionary.
+
+    A key missing from one shell's dictionary is legitimate -- that
+    shell simply contributes nothing to the irrep -- but a key missing
+    from every dictionary is a typo'd or otherwise invalid irrep, which
+    callers must not silently convert into an empty block.
+    """
+    known_irreps = set()
+    for sc_dicts in qcis.proj_dicts_by_sc_and_shellset:
+        for shellset_dicts in sc_dicts:
+            for shell_dict in shellset_dicts:
+                known_irreps.update(shell_dict.keys())
+    if irrep not in known_irreps:
+        raise ValueError(
+            f"irrep {irrep} appears in no projector dictionary; "
+            f"known irreps are {sorted(known_irreps, key=str)}")
+
+
 def _get_masks_and_shells_for_k(k, E, L, tbks_entry, cindex, slice_index):
     nP = k.qcis.fvs.nP
     mask_slices = None
