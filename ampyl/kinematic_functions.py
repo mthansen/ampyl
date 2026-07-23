@@ -568,24 +568,31 @@ def standard_boost_array(beta_vec=np.array([[[0.0, 0.0, 0.0]]]),
     Parameters
     ----------
     beta_vec : numpy.ndarray, optional
-        Array of boost velocity vectors.
+        Array of boost velocity vectors. Each entry is treated
+        independently; magnitudes need not agree across entries.
     four_momentum : numpy.ndarray, optional
         Array of four-momenta to be boosted.
 
     Returns
     -------
     numpy.ndarray
-        Boosted four-momenta. If the boost is unphysical, an array of
-        zeros with the same shape is returned.
+        Boosted four-momenta. Entries with a vanishing boost velocity
+        are returned unchanged, and entries with an unphysical boost
+        (``beta**2 >= 1``) are returned as zero four-vectors, matching
+        ``standard_boost``.
     """
-    betaSQ = (beta_vec[0][0]@beta_vec[0][0])*np.ones(beta_vec.shape[:-1])
-    if betaSQ[0][0] == 0.0:
-        return four_momentum
-    if betaSQ[0][0] < 0.0:
-        return np.zeros(four_momentum.shape)
-    beta = np.sqrt(betaSQ)
-    beta_hat = beta_vec/np.repeat(beta, 3, axis=1).reshape(beta_vec.shape)
-    gamma = np.sqrt(1.0/(1.0-betaSQ))
+    betaSQ = (beta_vec*beta_vec).sum(-1)
+    physical = betaSQ < 1.0
+    safe_betaSQ = np.where(physical, betaSQ, 0.0)
+    beta = np.sqrt(safe_betaSQ)
+    # Safe as a divisor for building beta_hat only: for vanishing
+    # entries beta_hat becomes the zero vector, so the boost reduces to
+    # the identity; for unphysical entries beta_hat is not a unit
+    # vector, but those entries are zeroed in the final return.
+    beta_hat_safe_divisor = np.where(beta > 0.0, beta, 1.0)
+    beta_hat = beta_vec/np.repeat(beta_hat_safe_divisor, 3, axis=1
+                                  ).reshape(beta_vec.shape)
+    gamma = np.sqrt(1.0/(1.0-safe_betaSQ))
     momentum_spatial_vec = four_momentum[:, :, 1:]
     momentum_par_component = (momentum_spatial_vec*beta_hat).sum(2)
     momentum_par_vec = np.repeat(momentum_par_component, 3, axis=1
@@ -618,4 +625,6 @@ def standard_boost_array(beta_vec=np.array([[[0.0, 0.0, 0.0]]]),
             ),
             momentum_spatial_vec_boosted),
         axis=2)
-    return four_momentum_boosted
+    return np.where(physical.reshape(physical.shape+(1,)),
+                    four_momentum_boosted,
+                    np.zeros(four_momentum.shape))
