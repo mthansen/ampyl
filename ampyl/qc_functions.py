@@ -48,6 +48,7 @@ from .constants import TWOPI
 from .constants import FOURPI2
 from .constants import R4PI
 from .constants import EPSILON15
+from .constants import EPSILON20
 from .constants import QC_IMPL_DEFAULTS
 import functools
 import warnings
@@ -259,11 +260,15 @@ def __helperG_array(E, nP, L, m1, m2, m3,
                     tbks_entry,
                     row_shell,
                     col_shell):
+    shell_data = get_nvec_data(tbks_entry, row_shell, col_shell)
+    return __helperG_kinematics(E, nP, L, m1, m2, m3, shell_data)
+
+
+def __helperG_kinematics(E, nP, L, m1, m2, m3, shell_data):
     [n1vec_arr_shell, n1vecSQ_arr_shell,
      n2vec_arr_shell, n2vecSQ_arr_shell,
      n1vec_mat_shell, n2vec_mat_shell, n3vec_mat_shell,
-     n1vecSQ_mat_shell, n2vecSQ_mat_shell, n3vecSQ_mat_shell]\
-        = get_nvec_data(tbks_entry, row_shell, col_shell)
+     n1vecSQ_mat_shell, n2vecSQ_mat_shell, n3vecSQ_mat_shell] = shell_data
     Pvec = TWOPI*nP/L
     p1specvec_arr_slice\
         = TWOPI*n1vec_arr_shell/L  # called \vec p in 1408.5933
@@ -353,115 +358,18 @@ def __helperG_array_prep_mat(E, nP, L, m1, m2, m3,
                              tbks_entry,
                              row_shell_index,
                              col_shell_index):
-    n1vec_arr_shell\
-        = tbks_entry.n1vec_arr_all_shells[row_shell_index][
-            col_shell_index]
-    n1vecSQ_arr_shell\
-        = tbks_entry.n1vecSQ_arr_all_shells[row_shell_index][
-            col_shell_index]
-    n2vec_arr_shell\
-        = tbks_entry.n2vec_arr_all_shells[row_shell_index][
-            col_shell_index]
-    n2vecSQ_arr_shell\
-        = tbks_entry.n2vecSQ_arr_all_shells[row_shell_index][
-            col_shell_index]
-    n1vec_mat_shell\
-        = tbks_entry.n1vec_mat_all_shells[row_shell_index][
-            col_shell_index]
-    n2vec_mat_shell\
-        = tbks_entry.n2vec_mat_all_shells[row_shell_index][
-            col_shell_index]
-    # n3vec_mat_shell\
-    #     = tbks_entry.n3vec_mat_all_shells[row_shell_index][
-    #         col_shell_index]
-    n1vecSQ_mat_shell\
-        = tbks_entry.n1vecSQ_mat_all_shells[row_shell_index][
-            col_shell_index]
-    n2vecSQ_mat_shell\
-        = tbks_entry.n2vecSQ_mat_all_shells[row_shell_index][
-            col_shell_index]
-    n3vecSQ_mat_shell\
-        = tbks_entry.n3vecSQ_mat_all_shells[row_shell_index][
-            col_shell_index]
-
-    Pvec = TWOPI*nP/L
-    p1specvec_arr_slice\
-        = TWOPI*n1vec_arr_shell/L  # called \vec p in 1408.5933
-    p2specvec_arr_slice\
-        = TWOPI*n2vec_arr_shell/L  # called \vec k in 1408.5933
-    p1specvecSQ_arr_slice = (TWOPI**2)*n1vecSQ_arr_shell/L**2
-    p2specvecSQ_arr_slice = (TWOPI**2)*n2vecSQ_arr_shell/L**2
-    omegap1spec_arr_slice = np.sqrt(m3**2+p1specvecSQ_arr_slice)
-    omegap2spec_arr_slice = np.sqrt(m1**2+p2specvecSQ_arr_slice)
-
-    p1specvec_mat_shell\
-        = TWOPI*n1vec_mat_shell/L  # called \vec p in 1408.5933
-    p2specvec_mat_shell\
-        = TWOPI*n2vec_mat_shell/L  # called \vec k in 1408.5933
-    p1specvecSQ_mat_shell = (TWOPI**2)*n1vecSQ_mat_shell/L**2
-    p2specvecSQ_mat_shell = (TWOPI**2)*n2vecSQ_mat_shell/L**2
-    omegap1spec_mat_shell = np.sqrt(m3**2+p1specvecSQ_mat_shell)
-    omegap2spec_mat_shell = np.sqrt(m1**2+p2specvecSQ_mat_shell)
-
-    # Following is called \vec \beta_p in 1408.5933
-    beta_for1 = -(Pvec-p1specvec_mat_shell)/np.repeat(
-        E-omegap1spec_mat_shell, 3, axis=1
-        ).reshape((Pvec-p1specvec_mat_shell).shape)
-
-    # Following is called \vec \beta_k in 1408.5933
-    beta_for2 = -(Pvec-p2specvec_mat_shell)/np.repeat(
-        E-omegap2spec_mat_shell, 3, axis=1
-        ).reshape((Pvec-p2specvec_mat_shell).shape)
-
-    # Following is called k^\mu in 1408.5933
-    fourmom_for1 = np.concatenate(
-        (omegap2spec_mat_shell.reshape(
-            omegap2spec_mat_shell.shape+(1,)), p2specvec_mat_shell),
-        axis=2)
-
-    # Following is called \vec k^* in 1408.5933
-    vecstar_for1 = standard_boost_array(beta_for1, fourmom_for1)[:, :, 1:]
-
-    # Following is called p^\mu in 1408.5933
-    fourmom_for2 = np.concatenate(
-        (omegap1spec_mat_shell.reshape(omegap1spec_mat_shell.shape+(1,)),
-         p1specvec_mat_shell),
-        axis=2)
-
-    # Following is called \vec p^* in 1408.5933
-    vecstar_for2 = standard_boost_array(beta_for2, fourmom_for2)[:, :, 1:]
-
-    E2CMSQ_for1 = (E-omegap1spec_arr_slice)**2\
-        - ((Pvec-p1specvec_arr_slice)*(Pvec-p1specvec_arr_slice)).sum(1)
-    E2CMSQ_for2 = (E-omegap2spec_arr_slice)**2\
-        - ((Pvec-p2specvec_arr_slice)*(Pvec-p2specvec_arr_slice)).sum(1)
-
-    if m1 == m2:
-        qSQ_for1 = E2CMSQ_for1/4.0-m1**2
-    else:
-        qSQ_for1 = (E2CMSQ_for1**2-2.0*E2CMSQ_for1*m1**2
-                    + m1**4-2.0*E2CMSQ_for1*m2**2-2.0*m1**2*m2**2+m2**4)\
-                / (4.0*E2CMSQ_for1)
-    if m2 == m3:
-        qSQ_for2 = E2CMSQ_for2/4.0-m3**2
-    else:
-        qSQ_for2 = (E2CMSQ_for2**2-2.0*E2CMSQ_for2*m3**2
-                    + m3**4-2.0*E2CMSQ_for2*m2**2-2.0*m3**2*m2**2+m2**4)\
-                / (4.0*E2CMSQ_for2)
-
-    q_for1 = np.sqrt(qSQ_for1+0.*1j)
-    q_for2 = np.sqrt(qSQ_for2+0.*1j)
-
-    q_for1_mat = np.repeat(q_for1.reshape(q_for1.shape+(1,)),
-                           vecstar_for1.shape[1], axis=1)
-    q_for2_mat = np.repeat(q_for2.reshape((1,)+q_for2.shape),
-                           vecstar_for2.shape[0], axis=0)
-
-    return [vecstar_for1, vecstar_for2, E2CMSQ_for1,
-            E2CMSQ_for2, q_for1, q_for2, q_for1_mat, q_for2_mat,
-            omegap1spec_mat_shell, omegap2spec_mat_shell,
-            omegap1spec_arr_slice, omegap2spec_arr_slice,
-            n3vecSQ_mat_shell]
+    shell_data = [
+        tbks_entry.n1vec_arr_all_shells[row_shell_index][col_shell_index],
+        tbks_entry.n1vecSQ_arr_all_shells[row_shell_index][col_shell_index],
+        tbks_entry.n2vec_arr_all_shells[row_shell_index][col_shell_index],
+        tbks_entry.n2vecSQ_arr_all_shells[row_shell_index][col_shell_index],
+        tbks_entry.n1vec_mat_all_shells[row_shell_index][col_shell_index],
+        tbks_entry.n2vec_mat_all_shells[row_shell_index][col_shell_index],
+        tbks_entry.n3vec_mat_all_shells[row_shell_index][col_shell_index],
+        tbks_entry.n1vecSQ_mat_all_shells[row_shell_index][col_shell_index],
+        tbks_entry.n2vecSQ_mat_all_shells[row_shell_index][col_shell_index],
+        tbks_entry.n3vecSQ_mat_all_shells[row_shell_index][col_shell_index]]
+    return __helperG_kinematics(E, nP, L, m1, m2, m3, shell_data)
 
 
 def getG_array(E, nP, L, m1, m2, m3,
@@ -508,14 +416,22 @@ def getG_array(E, nP, L, m1, m2, m3,
         alpha2 = alpha
     if beta2 is None:
         beta2 = beta
+    helper_data = __helperG_array(E, nP, L, m1, m2, m3, tbks_entry,
+                                  row_shell, col_shell)
+    return __getG_array_core(E, L, m1, m2, m3, helper_data, ell1, ell2,
+                             alpha, beta, alpha2, beta2, qc_impl,
+                             three_scheme, g_rescale)
+
+
+def __getG_array_core(E, L, m1, m2, m3, helper_data, ell1, ell2,
+                      alpha, beta, alpha2, beta2, qc_impl, three_scheme,
+                      g_rescale):
     J_slow = False
     [vecstar_for1, vecstar_for2, E2CMSQ_for1,
      E2CMSQ_for2, q_for1, q_for2, q_for1_mat, q_for2_mat,
      omegap1spec_mat_shell, omegap2spec_mat_shell,
      omegap1spec_arr_slice, omegap2spec_arr_slice,
-     n3vecSQ_mat_shell]\
-        = __helperG_array(E, nP, L, m1, m2, m3, tbks_entry,
-                          row_shell, col_shell)
+     n3vecSQ_mat_shell] = helper_data
 
     shape1_tmp = vecstar_for1.shape
     r2_shape = shape1_tmp[:-1]
@@ -599,7 +515,7 @@ def getG_array(E, nP, L, m1, m2, m3,
     H2_mat = np.repeat((np.repeat(H1.reshape(H1.shape+(1,)),
                                   (full_mat_big.shape)[1], axis=1)),
                        2*ell1+1, axis=0)
-    if np.sum(H1_mat**2) < 1.e-20 or np.sum(H2_mat**2) < 1.e-20:
+    if np.sum(H1_mat**2) < EPSILON20 or np.sum(H2_mat**2) < EPSILON20:
         return np.zeros_like(full_mat_big)
     return YY*full_mat_big*H1_mat*H2_mat*g_rescale
 
@@ -706,98 +622,11 @@ def getG_array_prep_mat(E, nP, L, m1, m2, m3,
         alpha2 = alpha
     if beta2 is None:
         beta2 = beta
-    J_slow = False
-    [vecstar_for1, vecstar_for2, E2CMSQ_for1,
-     E2CMSQ_for2, q_for1, q_for2, q_for1_mat, q_for2_mat,
-     omegap1spec_mat_shell, omegap2spec_mat_shell,
-     omegap1spec_arr_slice, omegap2spec_arr_slice,
-     n3vecSQ_mat_shell]\
-        = __helperG_array_prep_mat(E, nP, L, m1, m2, m3, tbks_entry,
-                                   row_shell_index, col_shell_index)
-
-    shape1_tmp = vecstar_for1.shape
-    r2_shape = shape1_tmp[:-1]
-
-    calY1mat = [[]]
-    calY2conjmat = [[]]
-    for mazi1 in np.arange(-ell1, ell1+1):
-        calY1row = []
-        calY2conjrow = []
-        for mazi2 in np.arange(-ell2, ell2+1):
-            calY1, _ = calY(
-                ell1, mazi1, vecstar_for1.reshape(
-                    (shape1_tmp[0]*shape1_tmp[1], 3)),
-                q_for1_mat.reshape(q_for1_mat.size), qc_impl)
-            shape2_tmp = vecstar_for2.shape
-            _, calY2conj = calY(
-                ell2, mazi2, vecstar_for2.reshape(
-                    (shape2_tmp[0]*shape2_tmp[1], 3)),
-                q_for2_mat.reshape(q_for2_mat.size), qc_impl)
-            calY1 = (calY1).reshape(r2_shape)
-            calY1row = calY1row+[calY1]
-            calY2conj = (calY2conj).reshape(r2_shape)
-            calY2conjrow = calY2conjrow+[calY2conj]
-        calY1mat = calY1mat+[calY1row]
-        calY2conjmat = calY2conjmat+[calY2conjrow]
-
-    calY1mat = np.transpose(np.array(calY1mat[1:]), axes=(2, 0, 3, 1))
-    Y1shapetmp = calY1mat.shape
-    calY1mat = calY1mat.reshape((Y1shapetmp[0], Y1shapetmp[1],
-                                 Y1shapetmp[2]*Y1shapetmp[3]))
-    calY1mat = np.transpose(calY1mat, axes=(2, 0, 1))
-    Y1shapetmp = calY1mat.shape
-    calY1mat = calY1mat.reshape((Y1shapetmp[0],
-                                 Y1shapetmp[1]*Y1shapetmp[2]))
-    calY1mat = np.transpose(calY1mat)
-
-    calY2conjmat = np.transpose(np.array(calY2conjmat[1:]),
-                                axes=(2, 0, 3, 1))
-    Y2conjshapetmp = calY2conjmat.shape
-    calY2conjmat = calY2conjmat.reshape((Y2conjshapetmp[0],
-                                         Y2conjshapetmp[1],
-                                         Y2conjshapetmp[2]
-                                         * Y2conjshapetmp[3]))
-    calY2conjmat = np.transpose(calY2conjmat, axes=(2, 0, 1))
-    Y2conjshapetmp = calY2conjmat.shape
-    calY2conjmat = calY2conjmat.reshape((Y2conjshapetmp[0],
-                                         Y2conjshapetmp[1]
-                                         * Y2conjshapetmp[2]))
-    calY2conjmat = np.transpose(calY2conjmat)
-    YY = calY1mat*calY2conjmat
-
-    H1 = H(E2CMSQ_for1.reshape(E2CMSQ_for1.size), m1+m2, alpha, beta, J_slow)
-    H2 = H(E2CMSQ_for2.reshape(E2CMSQ_for2.size), m2+m3, alpha2, beta2, J_slow)
-
-    omega1_mat = omegap2spec_mat_shell
-    omega2_mat = np.sqrt(m2**2+FOURPI2*n3vecSQ_mat_shell/L**2)
-    omega3_mat = omegap1spec_mat_shell
-
-    if three_scheme == 'original pole':
-        simple_factor_mat = 1.0/(2.0*omega1_mat*omega2_mat*L**3)
-    elif three_scheme == 'relativistic pole':
-        simple_factor_mat = 1.0/(2.0*omega1_mat*L**3
-                                 * (E-omega1_mat-omega3_mat+omega2_mat))
-    else:
-        raise ValueError("three_scheme not recognized")
-
-    hermitian = QC_IMPL_DEFAULTS['hermitian']
-    if 'hermitian' in qc_impl:
-        hermitian = qc_impl['hermitian']
-    if hermitian:
-        simple_factor_mat = simple_factor_mat/(2.0*omega3_mat)
-
-    pole_factor = 1.0/(E-omega1_mat-omega2_mat-omega3_mat)
-    full_mat = simple_factor_mat*pole_factor
-    full_mat_big = np.repeat(np.repeat(full_mat, 2*ell1+1, axis=0),
-                             2*ell2+1, axis=1)
-
-    H1_mat = np.repeat((np.repeat(H2.reshape((1,)+H2.shape),
-                                  (full_mat_big.shape)[0], axis=0)),
-                       2*ell2+1, axis=1)
-    H2_mat = np.repeat((np.repeat(H1.reshape(H1.shape+(1,)),
-                                  (full_mat_big.shape)[1], axis=1)),
-                       2*ell1+1, axis=0)
-    return YY*full_mat_big*H1_mat*H2_mat*g_rescale
+    helper_data = __helperG_array_prep_mat(E, nP, L, m1, m2, m3, tbks_entry,
+                                           row_shell_index, col_shell_index)
+    return __getG_array_core(E, L, m1, m2, m3, helper_data, ell1, ell2,
+                             alpha, beta, alpha2, beta2, qc_impl,
+                             three_scheme, g_rescale)
 
 
 def summand(nP2=np.array([0, 0, 0]), qSQ=1.5, gamSQ=1.0, alpha_mass=0.5,
