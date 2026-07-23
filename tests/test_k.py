@@ -2,8 +2,10 @@
 # -*- coding: utf-8 -*-
 
 import unittest
+from types import SimpleNamespace
 import numpy as np
 import ampyl
+from ampyl.k_matrices import Kdf
 
 
 class TestK(unittest.TestCase):
@@ -50,6 +52,68 @@ class TestK(unittest.TestCase):
             self.assertTrue(
                 np.allclose(shell_k, expected_factor*raw_k, rtol=0.0,
                             atol=epsilon))
+
+
+class TestKdfGetShell(unittest.TestCase):
+    """Unit tests for Kdf.get_shell block sizing and projection.
+
+    The block dimensions come from the shell slices and the angular
+    momenta. Regression: they were previously read off the projector
+    shapes, so the unprojected path (project=False, the signature
+    default) raised UnboundLocalError."""
+
+    SHELLS = [[0, 1], [1, 3]]
+
+    @staticmethod
+    def _make_kdf(proj_dicts=None):
+        qcis = SimpleNamespace(
+            fvs=SimpleNamespace(nP=np.array([0, 0, 0])),
+            sc_to_three_slice=[0, 0],
+            proj_dicts_by_sc_and_shellset=proj_dicts)
+        return Kdf(qcis=qcis)
+
+    def _tbks_entry(self):
+        return SimpleNamespace(shells=self.SHELLS)
+
+    def test_unprojected_ell_one_block_is_constant(self):
+        kdf = self._make_kdf()
+        shell = kdf.get_shell(
+            E=5.0, L=5.0, k3_params=[2.5], m1=1.0, m2=1.0, m3=1.0,
+            cindex_row=0, cindex_col=0, sc_index_row=0, sc_index_col=0,
+            ell1=1, ell2=1, tbks_entry=self._tbks_entry(),
+            row_shell_index=0, col_shell_index=1,
+            project=False, irrep=None)
+        self.assertEqual(shell.shape, (3, 6))
+        self.assertTrue(np.all(shell == 2.5))
+
+    def test_unprojected_other_ell_block_is_zero(self):
+        kdf = self._make_kdf()
+        shell = kdf.get_shell(
+            E=5.0, L=5.0, k3_params=[2.5], m1=1.0, m2=1.0, m3=1.0,
+            cindex_row=0, cindex_col=0, sc_index_row=0, sc_index_col=0,
+            ell1=0, ell2=0, tbks_entry=self._tbks_entry(),
+            row_shell_index=0, col_shell_index=1,
+            project=False, irrep=None)
+        self.assertEqual(shell.shape, (1, 2))
+        self.assertTrue(np.all(shell == 0.0))
+
+    def test_projected_block_matches_manual_projection(self):
+        irrep = 'A1PLUS'
+        proj_row = np.arange(6.).reshape((3, 2))
+        proj_col = np.arange(24.).reshape((6, 4))
+        proj_dicts = [
+            [[{irrep: proj_row}, {irrep: proj_col}]],
+            [[{irrep: proj_row}, {irrep: proj_col}]]]
+        kdf = self._make_kdf(proj_dicts)
+        shell = kdf.get_shell(
+            E=5.0, L=5.0, k3_params=[2.5], m1=1.0, m2=1.0, m3=1.0,
+            cindex_row=0, cindex_col=0, sc_index_row=0, sc_index_col=1,
+            ell1=1, ell2=1, tbks_entry=self._tbks_entry(),
+            row_shell_index=0, col_shell_index=1,
+            project=True, irrep=irrep)
+        expected = np.conjugate(proj_row.T)@(
+            np.ones((3, 6))*2.5)@proj_col
+        self.assertTrue(np.allclose(shell, expected))
 
 
 if __name__ == '__main__':

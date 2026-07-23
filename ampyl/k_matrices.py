@@ -318,12 +318,12 @@ class Kdf:
             raise ValueError("k3_params must have length 1 for the version "
                              "of Kdf currently implemented.")
 
+        row_dim = (row_shell[1]-row_shell[0])*(2*ell1+1)
+        col_dim = (col_shell[1]-col_shell[0])*(2*ell2+1)
         if ell1 == ell2 == 1:
-            Kdfshell = np.ones((proj_tmp_left.shape[1],
-                                proj_tmp_right.shape[0]))*k3_params[0]
+            Kdfshell = np.ones((row_dim, col_dim))*k3_params[0]
         else:
-            Kdfshell = np.zeros((proj_tmp_left.shape[1],
-                                 proj_tmp_right.shape[0]))
+            Kdfshell = np.zeros((row_dim, col_dim))
         if project:
             Kdfshell = proj_tmp_left@Kdfshell@proj_tmp_right
         return Kdfshell
