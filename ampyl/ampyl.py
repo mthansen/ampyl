@@ -79,6 +79,14 @@ class IdentifiedObjectList:
             raise TypeError("identifier must be an int or string")
         return self._items[identifier]
 
+    def replace(self, identifier, item):
+        """Replace a stored item, transferring the old ID and name."""
+        old_item = self.get(identifier)
+        item.id = old_item.id
+        item.name = old_item.name
+        self._items[item.id] = item
+        return item
+
     def __getitem__(self, identifier):
         return self.get(identifier)
 
