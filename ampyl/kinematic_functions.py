@@ -35,14 +35,7 @@ Created July 2022.
 ###############################################################################
 
 import numpy as np
-try:
-    from scipy.special import sph_harm
-except ImportError:  # scipy >= 1.17 removed sph_harm
-    from scipy.special import sph_harm_y
-
-    def sph_harm(m, n, theta, phi):
-        """Backward-compatible wrapper for the removed scipy sph_harm."""
-        return sph_harm_y(n, m, phi, theta)
+from scipy.special import sph_harm
 from sympy.physics.quantum.cg import CG
 
 from .constants import EPSILON15
