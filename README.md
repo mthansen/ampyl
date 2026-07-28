@@ -1,5 +1,5 @@
 [![Build/Test](https://github.com/mthansen/ampyl/workflows/Build/Test/badge.svg)](https://github.com/mthansen/ampyl/actions?query=workflow%3ABuild%2FTest)
-![Build Doc](https://github.com/mthansen/ampyl/workflows/Build%20Doc/badge.svg)
+![Docs](https://github.com/mthansen/ampyl/workflows/Docs/badge.svg)
 [![codecov](https://codecov.io/gh/mthansen/ampyl/branch/main/graph/badge.svg?token=IR43OJAV6T)](https://codecov.io/gh/mthansen/ampyl)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
@@ -7,7 +7,7 @@
 
 A Python package to relate finite-volume data to amplitudes.
 
-The name AmPyL ("am-pie-ell") stands for **Am**plitdues via **Py**thon from finite-volume (**L**) data. The package requires python version 3.8.x or newer.
+The name AmPyL ("am-pie-ell") stands for **Am**plitdues via **Py**thon from finite-volume (**L**) data. The package requires python version 3.9.x or newer.
 
 - **Website:** https://github.com/mthansen/ampyl
 - **Documentation:** https://mthansen.github.io/ampyl/
@@ -31,6 +31,20 @@ python
 import numpy
 import ampyl
 ```
+
+## Documentation
+
+The documentation is generated from the package and docstrings with
+pdoc. To build it locally, install the documentation dependencies and run:
+
+```bash
+pip install -e ".[docs]"
+make -C doc html
+```
+
+The generated site is written to `doc/_build/html/index.html`. The same pdoc
+build runs on GitHub Actions for pull requests and publishes from `main` with
+GitHub Pages.
 
 ## Example
 

@@ -1,0 +1,454 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+"""
+Created July 2022.
+
+@author: M.T. Hansen
+"""
+
+###############################################################################
+#
+# flavor_utils.py
+#
+# MIT License
+# Copyright (c) 2022 Maxwell T. Hansen
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+#
+###############################################################################
+
+import numpy as np
+from .constants import EPSILON4
+from .constants import bcolors
+import warnings
+warnings.simplefilter("once")
+
+
+def _check_type(variable, variable_string, variable_type,
+                variable_type_str):
+    """Validate the type of a value when it is not ``None``."""
+    if variable is not None:
+        if not isinstance(variable, variable_type):
+            raise TypeError(f"{variable_string} must be of type "
+                            f"{variable_type_str}")
+
+
+def _particle_to_string(particle):
+    """Return a readable string summary for a particle."""
+    particle_str = "Particle with the following properties:\n"
+    particle_str += f"    mass: {particle.mass},\n"
+    particle_str += f"    spin: {particle.spin},\n"
+    particle_str += f"    flavor: {particle.flavor},\n"
+    particle_str += f"    isospin_multiplet: {particle.isospin_multiplet},\n"
+    if particle.isospin_multiplet:
+        particle_str += f"    isospin: {particle.isospin},\n"
+    return particle_str[:-2]+"."
+
+
+def _particles_equal(particle1, particle2):
+    """Return whether two particle objects have matching properties."""
+    return (particle1.mass == particle2.mass and
+            particle1.spin == particle2.spin and
+            particle1.flavor == particle2.flavor and
+            particle1.isospin_multiplet == particle2.isospin_multiplet and
+            particle1.isospin == particle2.isospin)
+
+
+def _get_allowed_total_isospins(channel, isospins=None):
+    """Return the allowed total isospins for a flavor channel."""
+    if not channel._isospin_channel:
+        return None
+    if isospins is None:
+        none_was_passed = True
+        isospins = channel.isospins
+    else:
+        none_was_passed = False
+    n_isospins = len(isospins)
+    if n_isospins == 1:
+        return isospins
+    if n_isospins == 2:
+        min_isospin = abs(isospins[0]-isospins[1])
+        max_isospin = abs(isospins[0]+isospins[1])
+        return list(np.arange(min_isospin, max_isospin+0.5+EPSILON4))
+    if n_isospins == 3 and none_was_passed:
+        unique_flavors = np.unique(channel.flavors)
+        redundant_list = []
+        counting_list = []
+        for j in range(len(unique_flavors)):
+            spectator_flavor = unique_flavors[j]
+            i = np.where(np.array(channel.flavors) == spectator_flavor)[0][0]
+            spectator_isospin = isospins[i]
+            pair_isospins = isospins[:i] + isospins[i+1:]
+            pair_flavors = channel.flavors[:i] + channel.flavors[i+1:]
+            combined_pair_isospins =\
+                _get_allowed_total_isospins(channel, isospins=pair_isospins)
+            for combined_pair_isospin in combined_pair_isospins:
+                combined_three_isospins =\
+                    _get_allowed_total_isospins(
+                        channel, isospins=[spectator_isospin,
+                                           combined_pair_isospin]
+                        )
+                for combined_three_isospin in combined_three_isospins:
+                    redundant_list.append(combined_three_isospin)
+                    candidate = (combined_three_isospin,
+                                 combined_pair_isospin,
+                                 spectator_flavor,
+                                 spectator_isospin,
+                                 *pair_flavors, *pair_isospins)
+                    if candidate not in counting_list:
+                        counting_list.append(candidate)
+        allowed_total_isospins\
+            = list(np.sort(np.unique(redundant_list)))
+        channel.summary = np.array([entry for entry in counting_list],
+                                   dtype=object)
+        if channel._isospin is not None:
+            if channel._isospin not in allowed_total_isospins:
+                raise ValueError(f"total isospin {channel._isospin} not "
+                                 f"allowed with these particles")
+            channel.summary_reduced\
+                = np.array([entry for entry in channel.summary
+                            if entry[0] == channel.isospin],
+                           dtype=object)
+        return allowed_total_isospins
+    raise NotImplementedError("more than three particles not implemented yet")
+
+
+def _get_allowed_sub_isospins(channel):
+    """Return the allowed two-body sub-isospins for a flavor channel."""
+    if not channel.isospin_channel:
+        return None
+    if channel.n_particles == 2:
+        return None
+    if channel.n_particles == 3:
+        if channel.isospin == 0.:
+            return [1.]
+        if channel.isospin == 1.:
+            return [0., 1., 2.]
+        if channel.isospin == 2.:
+            return [1., 2.]
+        if channel.isospin == 3.:
+            return [2.]
+    raise NotImplementedError(f"total isospin {channel.isospin} not "
+                              f"implemented yet for {channel._n_particles} "
+                              f"particles")
+
+
+def _flavor_channel_to_string(channel):
+    """Return a readable string summary for a flavor channel."""
+    channel_str = "FlavorChannel with the following details:\n"
+    channel_str += f"    {channel.n_particles} particles,\n"
+    channel_str += f"    masses: {channel.masses},\n"
+    channel_str += f"    spins: {channel.spins},\n"
+    channel_str += f"    flavors: {channel.flavors},\n"
+    channel_str += f"    isospin_channel: {channel.isospin_channel},\n"
+    if channel.isospin_channel:
+        channel_str += f"    isospins: {channel.isospins},\n"
+        channel_str += "    allowed_total_isospins: "
+        for i, isospin in enumerate(channel.allowed_total_isospins):
+            if i < len(channel.allowed_total_isospins) - 1:
+                channel_str += f"{isospin}, "
+            else:
+                channel_str += f"{isospin},\n"
+        channel_str += f"    isospin: {channel.isospin},\n"
+    return channel_str[:-2]+"."
+
+
+def _spectator_channel_to_string(channel):
+    """Return a readable string summary for a spectator channel."""
+    channel_str = channel.fc.__str__().replace("Flavor", "Spectator")
+    channel_str = channel_str[:-1]+",\n"
+    channel_str += f"    indexing: {channel.indexing},\n"
+    if channel.fc.isospin_channel:
+        if channel.sub_isospin is not None:
+            channel_str += f"    sub_isospin: "\
+                f"{channel.sub_isospin},\n"
+        if channel.allowed_sub_isospins is not None:
+            channel_str += f"    allowed sub_isospins: "\
+                f"{channel.allowed_sub_isospins},\n"
+    channel_str += f"    ell_set: {channel.ell_set},\n"
+    for i, ell in enumerate(channel.ell_set):
+        channel_str += f"    p_cot_delta_{ell}: "\
+            f"{channel.p_cot_deltas[i]},\n"
+    channel_str += f"    n_params_set: {channel.n_params_set},\n"
+    return channel_str[:-2]+"."
+
+
+def _spectator_channel_equality(channel1, channel2):
+    """Return whether two spectator channels are equivalent."""
+    if not (channel1.fc == channel2.fc):
+        return False
+    if not (channel1.indexing == channel2.indexing):
+        return False
+    if not (channel1.sub_isospin == channel2.sub_isospin):
+        return False
+    if not (channel1.ell_set == channel2.ell_set):
+        return False
+    if not (channel1.p_cot_deltas == channel2.p_cot_deltas):
+        return False
+    if not (channel1.n_params_set == channel2.n_params_set):
+        return False
+    return True
+
+
+def _parse_three_iso_fc_entry(entry, fc):
+    """Parse one summary entry for a three-particle isospin channel."""
+    flavors = entry[[2, 4, 5]]
+    sub_isospin = entry[1]
+    dimer_individual_isospins = entry[[6, 7]]
+    indexing = []
+    for flavor in flavors:
+        tmp_locations = np.where(np.array(fc.flavors) == flavor)[0]
+        added = False
+        for tmp_location in tmp_locations:
+            if (tmp_location not in indexing) and not added:
+                indexing.append(tmp_location)
+                added = True
+    identical_in_dimer = (flavors[1] == flavors[2])
+    pion_iso_in_dimer = (dimer_individual_isospins[0] == 1.0)
+    ident_pions_in_dimer = identical_in_dimer and pion_iso_in_dimer
+    if (sub_isospin == 0.0) and ident_pions_in_dimer:
+        ell_set = [0]
+        warnings.warn(f"\n{bcolors.WARNING}"
+                      "Assuming ell_set = [0] for dimer with "
+                      f"sub_isospin = {sub_isospin} and "
+                      f"flavors = {flavors}"
+                      f"{bcolors.ENDC}", stacklevel=2)
+    elif (sub_isospin == 1.0) and ident_pions_in_dimer:
+        ell_set = [1]
+        warnings.warn(f"\n{bcolors.WARNING}"
+                      "Assuming ell_set = [1] for dimer with "
+                      f"sub_isospin = {sub_isospin} and "
+                      f"flavors = {flavors}"
+                      f"{bcolors.ENDC}", stacklevel=2)
+    elif (sub_isospin == 2.0) and ident_pions_in_dimer:
+        ell_set = [0]
+        warnings.warn(f"\n{bcolors.WARNING}"
+                      "Assuming ell_set = [0] for dimer with "
+                      f"sub_isospin = {sub_isospin} and "
+                      f"flavors = {flavors}"
+                      f"{bcolors.ENDC}", stacklevel=2)
+    else:
+        ell_set = [0]
+        warnings.warn(f"\n{bcolors.WARNING}"
+                      "Assuming ell_set = [0] for dimer with "
+                      f"sub_isospin = {sub_isospin} and "
+                      f"flavors = {flavors[1:]}"
+                      f"{bcolors.ENDC}", stacklevel=2)
+    return indexing, sub_isospin, ell_set
+
+
+def _build_sorted_sc_list(fcs):
+    """Build the sorted spectator-channel list and its slice metadata."""
+    n_particles_max = 0
+    possible_numbers_of_particles = []
+    for fc in fcs.fc_list:
+        if fc.n_particles > n_particles_max:
+            n_particles_max = fc.n_particles
+        if fc.n_particles not in possible_numbers_of_particles:
+            possible_numbers_of_particles.append(fc.n_particles)
+    possible_numbers_of_particles.sort()
+    n_particle_numbers = len(possible_numbers_of_particles)
+    n_channels_by_particle_number = [0 for _ in range(n_particle_numbers)]
+    for sc in fcs.sc_list:
+        n_channels_by_particle_number[possible_numbers_of_particles.index(
+            sc.fc.n_particles)] += 1
+    slices_by_particle_number = []
+    n_channels_prev = 0
+    for n_channels in n_channels_by_particle_number:
+        slices_by_particle_number.append([n_channels_prev,
+                                          n_channels + n_channels_prev])
+        n_channels_prev = n_channels
+    fcs.n_particles_max = n_particles_max
+    fcs.possible_numbers_of_particles = possible_numbers_of_particles
+    fcs.n_particle_numbers = n_particle_numbers
+    fcs.n_channels_by_particle_number = n_channels_by_particle_number
+    fcs.slices_by_particle_number = slices_by_particle_number
+
+    sc_compact = [[] for _ in range(n_particle_numbers)]
+    sc_index = -1
+    for sc in fcs.sc_list:
+        sc_index += 1
+        sc_compact_single = [sc.fc.n_particles]
+        if sc.fc.n_particles == 2:
+            sc_compact_single = _add_two_particle_compact(
+                sc, sc_index, sc_compact_single)
+        elif sc.fc.n_particles == 3:
+            sc_compact_single = _add_three_particle_compact(
+                sc, sc_index, sc_compact_single)
+        else:
+            raise ValueError("n_particles > 3 not implemented yet")
+        sc_compact[possible_numbers_of_particles.index(sc.fc.n_particles)]\
+            .append(sc_compact_single)
+
+    for j in range(len(sc_compact)):
+        sc_compact[j] = np.array(sc_compact[j], dtype=object)
+        len_tmp = len(sc_compact[j].T)
+        for i in range(len_tmp):
+            try:
+                sc_compact[j] = sc_compact[j][
+                    sc_compact[j][:, len_tmp-i-1].argsort(
+                        kind='mergesort')]
+            except TypeError:
+                pass
+
+    three_particle_channel_included\
+        = (3 in fcs.possible_numbers_of_particles)
+    if three_particle_channel_included:
+        slices_by_three_masses = []
+
+        if 2 in fcs.possible_numbers_of_particles:
+            three_offset = fcs.n_channels_by_particle_number[
+                fcs.possible_numbers_of_particles.index(2)]
+        else:
+            three_offset = 0
+
+        sc_compact_three_subspace = sc_compact[
+            fcs.possible_numbers_of_particles.index(3)]
+        first_mass_index = 1
+        last_mass_index = 4
+        sc_three_masses_previous = sc_compact_three_subspace[0][
+            first_mass_index:last_mass_index]
+        slice_min = three_offset
+        slice_max = three_offset
+        for sc_compact_entry in sc_compact_three_subspace:
+            sc_three_masses_current = sc_compact_entry[first_mass_index:
+                                                       last_mass_index]
+            if (sc_three_masses_previous == sc_three_masses_current).all():
+                slice_max = slice_max+1
+            else:
+                slices_by_three_masses.append([slice_min, slice_max])
+                slice_min = slice_max
+                slice_max = slice_max+1
+                sc_three_masses_previous = sc_three_masses_current
+        slices_by_three_masses.append([slice_min, slice_max])
+        fcs.slices_by_three_masses = slices_by_three_masses
+        fcs.n_three_slices = len(slices_by_three_masses)
+    else:
+        fcs.slices_by_three_masses = []
+        fcs.n_three_slices = 0
+
+    sc_list_sorted = []
+    for sc_group in sc_compact:
+        for sc_entry in sc_group:
+            sc_list_sorted.append(fcs.sc_list[sc_entry[-1]])
+    fcs.sc_list_sorted = sc_list_sorted
+
+
+def _generate_flavor_channel_space_summary(fcs):
+    """Build a verbose summary string for a flavor-channel space."""
+    fcs_summary = ("FlavorChannelSpace initialized with the "
+                   "following properties:\n"
+                   "    fc_list (Flavor Channel list) with the following "
+                   "channels:\n")
+    for i, fc in enumerate(fcs.fc_list):
+        fc_str = "        "+(fc.__str__().replace("    ", "            "))
+        fcs_summary += f"    fc_list[{i}]:\n{fc_str}\n"
+    fcs_summary += ("    ni_list (Non-Interacting list) with the following "
+                    "channels:\n")
+    for i, ni in enumerate(fcs.ni_list):
+        ni_str = "        "+(ni.__str__().replace("    ", "            "))
+        fcs_summary += f"    ni_list[{i}]:\n{ni_str}\n"
+    fcs_summary += ("    sc_list (Spectator Channel list) with the following "
+                    "channels:\n")
+    for i, sc in enumerate(fcs.sc_list):
+        sc_str = "        "+(sc.__str__().replace("    ", "            "))
+        fcs_summary += f"    sc_list[{i}]:\n{sc_str}\n"
+    indices = [fcs.sc_list_sorted.index(sc) for sc in fcs.sc_list]
+    if indices != list(range(len(fcs.sc_list))):
+        fcs_summary += ("    sc_list_sorted rearranges sc_list according to"
+                        f" the following indexing: {indices}\n")
+    else:
+        fcs_summary += ("    sc_list_sorted is the same as sc_list.\n")
+    fcs_summary += f"    n_particles_max: {fcs.n_particles_max}\n"
+    fcs_summary += f"    possible_numbers_of_particles: "\
+        f"{fcs.possible_numbers_of_particles}\n"
+    fcs_summary += f"    n_particle_numbers: {fcs.n_particle_numbers}\n"
+    fcs_summary += f"    n_channels_by_particle_number: "\
+        f"{fcs.n_channels_by_particle_number}\n"
+    fcs_summary += f"    slices_by_particle_number: "\
+        f"{fcs.slices_by_particle_number}\n"
+    fcs_summary += f"    slices_by_three_masses: "\
+        f"{fcs.slices_by_three_masses}\n"
+    fcs_summary += f"    n_three_slices: {fcs.n_three_slices}\n"
+    fcs_summary += f"    g_templates:\n        {fcs.g_templates}\n"
+    fcs_summary +=\
+        ("    g_templates_ell_specific:\n"
+         "        Key is built from four entries:\n"
+         "        [slice_index_i,  slice_index_j, ell_i, ell_j]\n"
+         "        Entry is built from five entries:\n"
+         "        [np.array([[g_template_ij[sc_index_i][sc_index_j]]]),\n"
+         "         sc_index_i, sc_index_j,\n"
+         "         collective_index_i, collective_index_j]\n")
+    for g_temp_key in fcs.g_templates_ell_specific:
+        fcs_summary += f"        key = {g_temp_key}:\n"
+        fcs_summary += f"        {fcs.g_templates_ell_specific[g_temp_key]}\n"
+    return fcs_summary
+
+
+def _flavor_channel_space_to_string(fcs):
+    """Return a readable string summary for a flavor-channel space."""
+    flavor_channel_space_str = ("FlavorChannelSpace with the following "
+                                "SpectatorChannels:\n")
+    for sc in fcs.sc_list_sorted:
+        flavor_channel_space_str += "    "
+        flavor_channel_space_str += sc.__str__().replace("\n    ",
+                                                         "\n        ")[:-1]
+        flavor_channel_space_str += ",\n"
+    return flavor_channel_space_str[:-2]+"."
+
+
+def _add_three_particle_compact(sc, sc_index, sc_compact_single):
+    """Append a three-particle spectator channel to a compact record."""
+    sc_compact_single = sc_compact_single\
+        + list(np.array(sc.fc.masses)[sc.indexing])
+    sc_compact_single = sc_compact_single\
+        + list(np.array(sc.fc.spins)[sc.indexing])
+    sc_compact_single = sc_compact_single\
+        + list(np.array(sc.fc.flavors)[sc.indexing])
+    sc_compact_single = sc_compact_single+[sc.fc.isospin_channel]
+    if sc.fc.isospin_channel:
+        sc_compact_single = sc_compact_single\
+                    + list(np.array(sc.fc.isospins)[sc.indexing])
+        sc_compact_single = sc_compact_single+[sc.fc.isospin]
+        sc_compact_single = sc_compact_single+[sc.sub_isospin]
+    else:
+        sc_compact_single = sc_compact_single\
+                    + [None, None, None, None, None]
+    sc_compact_single = sc_compact_single+[sc_index]
+    return sc_compact_single
+
+
+def _add_two_particle_compact(sc, sc_index, sc_compact_single):
+    """Append a two-particle spectator channel to a compact record."""
+    sc_compact_single = sc_compact_single\
+        + list(np.array(sc.fc.masses))
+    sc_compact_single = sc_compact_single\
+        + list(np.array(sc.fc.spins))
+    sc_compact_single = sc_compact_single\
+        + list(np.array(sc.fc.flavors))
+    sc_compact_single = sc_compact_single+[sc.fc.isospin_channel]
+    if sc.fc.isospin_channel:
+        sc_compact_single = sc_compact_single\
+                    + list(np.array(sc.fc.isospins))
+        sc_compact_single = sc_compact_single+[sc.fc.isospin]
+    else:
+        sc_compact_single = sc_compact_single+[None, None, None]
+    sc_compact_single = sc_compact_single+[sc_index]
+    return sc_compact_single

@@ -1,26 +1,36 @@
-# Minimal makefile for Sphinx documentation
-#
+PDOC ?= python -m pdoc
+BUILDDIR ?= _build
+HTMLDIR := $(BUILDDIR)/html
 
-# You can set these variables from the command line, and also
-# from the environment for the first two.
-SPHINXOPTS    ?=
-SPHINXBUILD   ?= sphinx-build
-SOURCEDIR     = .
-BUILDDIR      = _build
+MODULES := \
+	ampyl \
+	ampyl.ampyl \
+	ampyl.check_utils \
+	ampyl.constants \
+	ampyl.cuts \
+	ampyl.flavor \
+	ampyl.flavor_ope_utils \
+	ampyl.flavor_utils \
+	ampyl.fv_spectrum_utils \
+	ampyl.groups \
+	ampyl.interpolable \
+	ampyl.interpolable_utils \
+	ampyl.k_matrices \
+	ampyl.kinematic_functions \
+	ampyl.nonint_utils \
+	ampyl.qc_functions \
+	ampyl.schemes \
+	ampyl.shell_utils \
+	ampyl.spaces \
+	ampyl.version \
+	ampyl.wigner
 
-# Put it first so that "make" without argument is like "make help".
-help:
-	@$(SPHINXBUILD) -M help "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
+.PHONY: html clean
 
-.PHONY: help Makefile
+html:
+	rm -rf "$(HTMLDIR)"
+	$(PDOC) --docformat numpy --math --output-directory "$(HTMLDIR)" $(MODULES)
+	@touch "$(HTMLDIR)/.nojekyll"
 
-# Catch-all target: route all unknown targets to Sphinx using the new
-# "make mode" option.  $(O) is meant as a shortcut for $(SPHINXOPTS).
-%: Makefile
-	@$(SPHINXBUILD) -M $@ "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
-
-html: Makefile
-	@$(SPHINXBUILD) -M html "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS)
-	@if [ ! -d "$(BUILDDIR)/html/_images" ]; then mkdir "$(BUILDDIR)/html/_images"; fi
-	@cp -p $(SOURCEDIR)/ampyl-logo.png $(BUILDDIR)/html/_images
-	@touch "$(BUILDDIR)/html/.nojekyll"
+clean:
+	rm -rf "$(BUILDDIR)"

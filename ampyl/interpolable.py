@@ -1,0 +1,656 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+"""
+Created July 2022.
+
+@author: M.T. Hansen
+"""
+
+###############################################################################
+#
+# interpolable.py
+#
+# MIT License
+# Copyright (c) 2022 Maxwell T. Hansen
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+#
+###############################################################################
+
+import numpy as np
+from scipy.interpolate import RegularGridInterpolator
+from scipy.interpolate import interp1d
+from copy import deepcopy
+from . import check_utils
+from . import interpolable_utils
+from .constants import QC_IMPL_DEFAULTS
+from .constants import EPSILON4
+from .constants import EPSILON10
+from .constants import bcolors
+from .spaces import QCIndexSpace
+import warnings
+warnings.simplefilter("once")
+
+
+class _SingletonAxisInterpolator:
+    """Interpolate along one axis while requiring an exact singleton value."""
+
+    def __init__(self, axis_values, fixed_coordinate, tensor_slice,
+                 singleton_axis, method, atol=EPSILON10):
+        self.axis_values = np.asarray(axis_values)
+        self.fixed_coordinate = fixed_coordinate
+        self.tensor_slice = np.asarray(tensor_slice)
+        self.singleton_axis = singleton_axis
+        self.atol = atol
+        self._interp = None
+        if len(self.axis_values) > 1:
+            self._interp = interp1d(self.axis_values, self.tensor_slice,
+                                    axis=0, kind=method,
+                                    assume_sorted=True,
+                                    bounds_error=True)
+
+    def __call__(self, xi):
+        point = np.asarray(xi, dtype=float)
+        if point.shape == (2,):
+            return self._evaluate_point(point)
+        point = np.atleast_2d(point)
+        return np.array([self._evaluate_point(entry) for entry in point])
+
+    def _evaluate_point(self, point):
+        fixed_coordinate = point[self.singleton_axis]
+        if np.abs(fixed_coordinate-self.fixed_coordinate) > self.atol:
+            raise ValueError("One of the requested xi is out of bounds in "
+                             f"dimension {self.singleton_axis}")
+        varying_coordinate = point[1-self.singleton_axis]
+        min_axis_value = self.axis_values[0]
+        max_axis_value = self.axis_values[-1]
+        if (varying_coordinate < min_axis_value-self.atol
+           or varying_coordinate > max_axis_value+self.atol):
+            raise ValueError("One of the requested xi is out of bounds in "
+                             f"dimension {1-self.singleton_axis}")
+        if self._interp is None:
+            if np.abs(varying_coordinate-min_axis_value) > self.atol:
+                raise ValueError("One of the requested xi is out of bounds in "
+                                 f"dimension {1-self.singleton_axis}")
+            return np.array(self.tensor_slice[0], copy=True)
+        return self._interp(varying_coordinate)
+
+
+def _build_matrix_interpolator(E_grid_unique, L_grid_unique, interp_tensor):
+    """Return the best available interpolator for the E/L tensor grid."""
+    nE = len(E_grid_unique)
+    nL = len(L_grid_unique)
+
+    if nE == 1 and nL > 1:
+        method = 'cubic' if nL >= 4 else 'linear'
+        return _SingletonAxisInterpolator(
+            axis_values=L_grid_unique,
+            fixed_coordinate=E_grid_unique[0],
+            tensor_slice=interp_tensor[0],
+            singleton_axis=0,
+            method=method)
+
+    if nL == 1 and nE > 1:
+        method = 'cubic' if nE >= 4 else 'linear'
+        return _SingletonAxisInterpolator(
+            axis_values=E_grid_unique,
+            fixed_coordinate=L_grid_unique[0],
+            tensor_slice=interp_tensor[:, 0],
+            singleton_axis=1,
+            method=method)
+
+    try:
+        return RegularGridInterpolator((E_grid_unique, L_grid_unique),
+                                       interp_tensor,
+                                       method='cubic')
+    except ValueError:
+        return RegularGridInterpolator((E_grid_unique, L_grid_unique),
+                                       interp_tensor,
+                                       method='linear')
+
+
+class Interpolable:
+    """
+    Base class for matrix objects that can be interpolated.
+
+    Subclasses provide ``_get_value_not_interpolated`` and pole-detection
+    details, while this base class handles grid construction, pole removal,
+    change-of-basis bookkeeping, and storage of one or more interpolators.
+
+    Parameters
+    ----------
+    qcis : QCIndexSpace, optional
+        Quantization-condition index space defining channels, finite-volume
+        setup, and three-body interaction data.
+
+    Attributes
+    ----------
+    all_relevant_nvecSQ_lists : dict
+        Pole-candidate momentum-squared data by irrep.
+    interp_data_lists, polefree_interp_data_lists : dict
+        Raw and pole-removed interpolation data by irrep.
+    cob_matrix_lists : dict
+        Change-of-basis matrices by irrep.
+    interps : dict
+        Matrix-valued interpolators by irrep.
+    interpolators : list of dict
+        Snapshots of interpolation data built by ``build_interpolator``.
+    interpolator_names : dict
+        Mapping from user-provided names to stored interpolator IDs.
+    active_interpolator_id : int or None
+        ID of the interpolation data currently loaded on the object.
+    """
+
+    def __init__(self, qcis=QCIndexSpace()):
+        """
+        Initialize interpolation storage for a QC index space.
+
+        Parameters
+        ----------
+        qcis : QCIndexSpace, optional
+            Quantization-condition index space used by matrix evaluations.
+        """
+        self.qcis = qcis
+        self.all_relevant_nvecSQ_lists = {}
+        self.interp_data_lists = {}
+        self.polefree_interp_data_lists = {}
+        self.cob_matrix_lists = {}
+        self.cob_matrix_key_lists = {}
+        self.matrix_dim_lists = {}
+        self.cob_list_lens = {}
+        self.interp_tensors = {}
+        self.interps = {}
+        self.pole_lists = {}
+        self.pole_mass_lists = {}
+        self.pole_textures_lists = {}
+        self.complement_textures_lists = {}
+        self.pole_residue_matrix_lists = {}
+        self.interpolators = []
+        self.interpolator_names = {}
+        self.active_interpolator_id = None
+
+    def build_interpolator(self, Emin, Emax, Estep, Lmin, Lmax, Lstep,
+                           project, irrep, name=None):
+        """
+        Build and store interpolation data over an energy-volume grid.
+
+        Constructs an interpolator by generating grids and matrices based on
+        specified energy and volume ranges. The method determines the smooth
+        basis, removes poles, and builds the interpolator functions. Relevant
+        data is stored in the class for future use.
+
+        Parameters
+        ----------
+        Emin, Emax : float
+            Minimum and maximum energies in the interpolation grid.
+        Estep : float
+            Energy grid spacing.
+        Lmin, Lmax : float
+            Minimum and maximum volumes in the interpolation grid.
+        Lstep : float
+            Volume grid spacing.
+        project : bool
+            Whether to project onto an irrep. This method currently requires
+            ``True``.
+        irrep : tuple
+            Irrep key used by the projection dictionaries.
+        name : str, optional
+            Human-readable name for the stored interpolator.
+
+        Raises
+        ------
+        AssertionError
+            If projection is disabled, or if nonzero-momentum interpolation is
+            requested with unsupported QC implementation options.
+        ValueError
+            If ``name`` duplicates an existing interpolator name.
+        """
+        assert project
+        nP = self.qcis.fvs.nP
+        if nP@nP != 0:
+            use_cob_matrices = QC_IMPL_DEFAULTS['use_cob_matrices']
+            if 'use_cob_matrices' in self.qcis.fvs.qc_impl:
+                use_cob_matrices = self.qcis.fvs.qc_impl['use_cob_matrices']
+            assert use_cob_matrices is False
+            reduce_size = QC_IMPL_DEFAULTS['reduce_size']
+            if 'reduce_size' in self.qcis.fvs.qc_impl:
+                reduce_size = self.qcis.fvs.qc_impl['reduce_size']
+            assert reduce_size is False
+
+        # Generate grids and interp structure
+        L_grid, E_grid, max_interp_dim, interp_data_list =\
+            interpolable_utils._grids_and_interp(
+                self, Emin, Emax, Estep, Lmin, Lmax, Lstep, project, irrep)
+
+        # Determine basis where entries are smooth
+        use_cob_matrices = QC_IMPL_DEFAULTS['use_cob_matrices']
+        if 'use_cob_matrices' in self.qcis.fvs.qc_impl:
+            use_cob_matrices = self.qcis.fvs.qc_impl['use_cob_matrices']
+        if use_cob_matrices:
+            cob_matrix_key_list =\
+                interpolable_utils._get_cob_matrix_key_list(self)
+            final_set_for_change_of_basis = []
+            for cob_matrix_key in cob_matrix_key_list:
+                dim_with_shell_index_all_scs =\
+                    interpolable_utils._get_dim_with_shell_index_all_scs(
+                        self, irrep, cob_matrix_key)
+                final_set_for_change_of_basis.append(
+                    interpolable_utils._get_final_set_for_change_of_basis(
+                        self, dim_with_shell_index_all_scs))
+            cob_matrix_list = interpolable_utils._get_cob_matrix_list(
+                self, final_set_for_change_of_basis, cob_matrix_key_list)
+            if len(cob_matrix_list) != 0:
+                max_interp_dim = max(
+                    max_interp_dim,
+                    max(cob_matrix.shape[1]
+                        for cob_matrix in cob_matrix_list))
+                interp_data_list = interpolable_utils._resize_interp_data_list(
+                    interp_data_list, max_interp_dim)
+        else:
+            cob_matrix_list = []
+            cob_matrix_key_list = []
+        self.cob_matrix_key_lists[irrep] = cob_matrix_key_list
+
+        # Populate interpolation data
+        energy_volume_index = 0
+        interp_data_index = 1
+        for L in L_grid:
+            for E in E_grid:
+                matrix_tmp = self.get_value(E=E, L=L,
+                                            project=project, irrep=irrep)
+                cob_matrix = interpolable_utils._get_cob_matrix_for_value(
+                    self, E, L, cob_matrix_list, cob_matrix_key_list)
+                if cob_matrix is not None:
+                    matrix_tmp = (cob_matrix.T)@matrix_tmp@cob_matrix
+                for i in range(len(matrix_tmp)):
+                    for j in range(len(matrix_tmp)):
+                        interpolable_value = matrix_tmp[i][j]
+                        populate_interp_zeros =\
+                            QC_IMPL_DEFAULTS['populate_interp_zeros']
+                        if 'populate_interp_zeros' in self.qcis.fvs.qc_impl:
+                            populate_interp_zeros = self.qcis.fvs.qc_impl[
+                                'populate_interp_zeros']
+                        if not populate_interp_zeros:
+                            if (not np.isnan(interpolable_value)
+                               and (interpolable_value != 0.)):
+                                interp_data_list[i][j][interp_data_index]\
+                                    = interp_data_list[i][j][
+                                        interp_data_index]\
+                                    + [[E, L, interpolable_value]]
+                        else:
+                            if np.isnan(interpolable_value):
+                                interpolable_value = 0.
+                            interp_data_list[i][j][interp_data_index]\
+                                = interp_data_list[i][j][interp_data_index]\
+                                + [[E, L, interpolable_value]]
+        for i in range(max_interp_dim):
+            for j in range(max_interp_dim):
+                interp_data_list[i][j][interp_data_index] =\
+                    interp_data_list[i][j][interp_data_index][1:]
+                if len(interp_data_list[i][j][interp_data_index]) == 0:
+                    interp_data_list[i][j][energy_volume_index] = []
+                else:
+                    for interp_entry in\
+                       interp_data_list[i][j][interp_data_index]:
+                        interp_data_list =\
+                            interpolable_utils._update_mins_and_maxes(
+                                self, interp_data_list, energy_volume_index,
+                                i, j, interp_entry)
+
+        # Identify all poles in projected entries
+        nvecSQs_by_shell = interpolable_utils._get_all_nvecSQs_by_shell(
+            self, E=Emax, L=Lmax, project=project, irrep=irrep)
+        all_pole_candidates = self._get_pole_candidates_for_detection(
+            nvecSQs_by_shell
+        )
+        all_relevant_nvecSQs_list =\
+            interpolable_utils._get_all_relevant_nvecSQs_list(
+                self, Emax, project, irrep, max_interp_dim, interp_data_list,
+                cob_matrix_list, all_pole_candidates)
+
+        # Remove poles
+        polefree_interp_data_list =\
+            interpolable_utils._get_polefree_interp_data_list(
+                self, max_interp_dim, interp_data_list, interp_data_index,
+                all_relevant_nvecSQs_list)
+
+        for i in range(max_interp_dim):
+            for j in range(max_interp_dim):
+                interp_data_entry_complete = []
+                polefree_interp_data_entry_complete = []
+                if len(interp_data_list[i][j][energy_volume_index]) == 4:
+                    [Emin_entry, Emax_entry, Lmin_entry, Lmax_entry]\
+                        = interp_data_list[i][j][energy_volume_index]
+                    Lgrid_entry = np.arange(Lmin_entry, Lmax_entry+EPSILON4,
+                                            Lstep)
+                    Egrid_entry = np.arange(Emin_entry, Emax_entry+EPSILON4,
+                                            Estep)
+                    for L_loop in Lgrid_entry:
+                        for E_loop in Egrid_entry:
+                            not_found = True
+                            for interp_loop_index in\
+                                range(len(interp_data_list[i][j][
+                                    interp_data_index])):
+                                interp_entry = interp_data_list[i][j][
+                                    interp_data_index][
+                                        interp_loop_index]
+                                E_candidate = interp_entry[0]
+                                L_candidate = interp_entry[1]
+                                if ((np.abs(E_candidate-E_loop)
+                                    < EPSILON10)
+                                    and (np.abs(L_candidate-L_loop)
+                                         < EPSILON10)):
+                                    not_found = False
+                                    interp_data_entry_complete.\
+                                        append(interp_entry)
+                                    polefree_interp_entry\
+                                        = polefree_interp_data_list[i][j][
+                                            interp_data_index][
+                                                interp_loop_index]
+                                    polefree_interp_data_entry_complete.\
+                                        append(polefree_interp_entry)
+                            if not_found:
+                                interp_data_entry_complete.\
+                                    append([E_loop, L_loop, 0.])
+                                polefree_interp_data_entry_complete.\
+                                    append([E_loop, L_loop, 0.])
+                    interp_data_list[i][j][interp_data_index]\
+                        = interp_data_entry_complete
+                    polefree_interp_data_list[i][j][interp_data_index]\
+                        = polefree_interp_data_entry_complete
+
+        # Build interpolator functions
+        interp_tuple_array = []
+        for i in range(max_interp_dim):
+            interp_tuple_row = []
+            for j in range(max_interp_dim):
+                if len(interp_data_list[i][j][energy_volume_index]) == 4:
+                    [Emin_entry, Emax_entry, Lmin_entry, Lmax_entry]\
+                        = polefree_interp_data_list[i][j][
+                            energy_volume_index]
+                    L_grid_tmp\
+                        = np.arange(Lmin_entry, Lmax_entry+EPSILON4, Lstep)
+                    E_grid_tmp\
+                        = np.arange(Emin_entry, Emax_entry+EPSILON4, Estep)
+                    E_mesh_grid, L_mesh_grid\
+                        = np.meshgrid(E_grid_tmp, L_grid_tmp)
+                    data_index = 2
+                    pole_free_mesh_grid\
+                        = (np.array(polefree_interp_data_list[i][j][
+                            interp_data_index]).T)[data_index].\
+                        reshape(L_mesh_grid.shape).T
+                    interp_tuple_row.append([E_grid_tmp, L_grid_tmp,
+                                             pole_free_mesh_grid])
+                else:
+                    interp_tuple_row.append(None)
+            interp_tuple_array.append(interp_tuple_row)
+        try:
+            interp_tuple_array = np.array(interp_tuple_array, dtype=object)
+        except ValueError:
+            warnings.warn(f"\n{bcolors.WARNING}"
+                          "casting interp_tuple_array to be a numpy array of "
+                          "objects failed. Problem is that numpy is trying to "
+                          "broadcast input array from shape (n,n) into shape "
+                          "(n,). To resolve, loop over the first two ranks."
+                          f"{bcolors.ENDC}")
+            shape_tmp = (len(interp_tuple_array), len(interp_tuple_array))
+            interp_tuple_array_tmp = np.zeros(shape_tmp,
+                                              dtype=object)
+            for i in range(shape_tmp[0]):
+                for j in range(shape_tmp[1]):
+                    interp_tuple_array_tmp[i][j] = interp_tuple_array[i][j]
+            interp_tuple_array = interp_tuple_array_tmp
+
+        # Get unique E and L sets
+        E_grid_unique = []
+        for i in range(len(interp_tuple_array)):
+            for j in range(len(interp_tuple_array[i])):
+                if interp_tuple_array[i][j] is not None:
+                    E_grid_candidate = interp_tuple_array[i][j][0]
+                    for E in E_grid_candidate:
+                        if E not in E_grid_unique:
+                            E_grid_unique.append(E)
+        E_grid_unique = np.unique(np.sort(E_grid_unique).round(decimals=10))
+
+        L_grid_unique = []
+        for i in range(len(interp_tuple_array)):
+            for j in range(len(interp_tuple_array[i])):
+                if interp_tuple_array[i][j] is not None:
+                    L_grid_candidate = interp_tuple_array[i][j][1]
+                    for L in L_grid_candidate:
+                        if L not in L_grid_unique:
+                            L_grid_unique.append(L)
+        L_grid_unique = np.unique(np.sort(L_grid_unique).round(decimals=10))
+
+        # Build the rank 4 tensor
+        interp_tensor = []
+        for E in E_grid_unique:
+            vol_rank = []
+            for L in L_grid_unique:
+                xi_rank = []
+                for i in range(len(interp_tuple_array)):
+                    xj_rank = []
+                    for j in range(len(interp_tuple_array[i])):
+                        if interp_tuple_array[i][j] is None:
+                            xj_rank.append(0.0)
+                        else:
+                            en_bools =\
+                                (np.abs(interp_tuple_array[i][j][0]-E)
+                                 < EPSILON10)
+                            vol_bools =\
+                                (np.abs(interp_tuple_array[i][j][1]-L)
+                                 < EPSILON10)
+                            if (not en_bools.any()) or (not vol_bools.any()):
+                                xj_rank.append(0.0)
+                            else:
+                                en_loc = np.where(en_bools)[0][0]
+                                vol_loc = np.where(vol_bools)[0][0]
+                                xj_rank.append(
+                                    interp_tuple_array[i][j][2][
+                                        en_loc][vol_loc])
+                    xi_rank.append(xj_rank)
+                vol_rank.append(xi_rank)
+            interp_tensor.append(vol_rank)
+        interp_tensor = np.array(interp_tensor)
+        interp = _build_matrix_interpolator(E_grid_unique, L_grid_unique,
+                                            interp_tensor)
+
+        if len(cob_matrix_list) == 0:
+            matrix_dim_index = 2
+            matrix_dim_list = [interp_tensor.shape[matrix_dim_index]]
+        else:
+            matrix_dim_list = []
+            for cob_matrix in cob_matrix_list:
+                matrix_dim_list.append(cob_matrix.shape[1])
+
+        pole_list, pole_mass_list, pole_textures_list,\
+            complement_textures_list =\
+            interpolable_utils._get_pole_textures(
+                self, matrix_dim_list, polefree_interp_data_list)
+
+        # Add relevant data to self
+        self.all_relevant_nvecSQ_lists[irrep] = all_relevant_nvecSQs_list
+        self.polefree_interp_data_lists[irrep]\
+            = polefree_interp_data_list
+        self.interp_data_lists[irrep] = interp_data_list
+        self.cob_matrix_lists[irrep] = cob_matrix_list
+        self.cob_matrix_key_lists[irrep] = cob_matrix_key_list
+        self.cob_list_lens[irrep] = len(cob_matrix_list)
+        self.matrix_dim_lists[irrep] = matrix_dim_list
+        self.interp_tensors[irrep] = interp_tensor
+        self.interps[irrep] = interp
+        self.pole_lists[irrep] = pole_list
+        self.pole_mass_lists[irrep] = pole_mass_list
+        self.pole_textures_lists[irrep] = pole_textures_list
+        self.complement_textures_lists[irrep] = complement_textures_list
+        self._store_interpolator(name=name)
+
+    def _store_interpolator(self, name=None):
+        """Store the current interpolation data as an addressable entry."""
+        interpolator_id = len(self.interpolators)
+        interpolator_name = str(interpolator_id) if name is None else str(name)
+        if interpolator_name in self.interpolator_names:
+            raise ValueError(f"interpolator name '{interpolator_name}' "
+                             "is already in use")
+        data_attrs = interpolable_utils._interpolator_data_attrs(self)
+        self.interpolators.append({
+            attr: deepcopy(getattr(self, attr)) for attr in data_attrs
+        })
+        self.interpolator_names[interpolator_name] = interpolator_id
+        self.active_interpolator_id = interpolator_id
+        return interpolator_id
+
+    def _load_interpolator(self, interpolator_id=None,
+                           interpolator_name=None):
+        """Activate interpolation data by integer ID or string name."""
+        if interpolator_name is not None:
+            if interpolator_name not in self.interpolator_names:
+                raise KeyError(f"unknown interpolator name "
+                               f"'{interpolator_name}'")
+            interpolator_id = self.interpolator_names[interpolator_name]
+        if interpolator_id is None:
+            interpolator_id = 0
+        if isinstance(interpolator_id, str):
+            if interpolator_id not in self.interpolator_names:
+                raise KeyError(f"unknown interpolator name "
+                               f"'{interpolator_id}'")
+            interpolator_id = self.interpolator_names[interpolator_id]
+        if not isinstance(interpolator_id, int):
+            raise TypeError("interpolator_id must be an int or string")
+        data = self.interpolators[interpolator_id]
+        for attr, value in data.items():
+            setattr(self, attr, value)
+        self.active_interpolator_id = interpolator_id
+
+    def _get_all_nvecSQs_for_pole_detection(self, nvecSQs_by_shell):
+        return []
+
+    def _get_pole_candidates_for_detection(self, nvecSQs_by_shell):
+        return []
+
+    def get_value(self, E=5.0, L=5.0, project=False, irrep=None,
+                  short_string='g', interpolate=None,
+                  interpolator_id=None, interpolator_name=None):
+        """
+        Evaluate the matrix directly or from stored interpolation data.
+
+        Parameters
+        ----------
+        E : float, optional
+            Energy at which to evaluate the matrix.
+        L : float, optional
+            Volume at which to evaluate the matrix.
+        project : bool, optional
+            Whether direct evaluation should project onto ``irrep``.
+        irrep : tuple, optional
+            Irrep key for projected or interpolated evaluations.
+        short_string : str, optional
+            Prefix used to look up QC implementation flags such as
+            ``'<short_string>_interpolate'``.
+        interpolate : bool, optional
+            Force interpolation. If ``None``, the corresponding
+            ``QC_IMPL_DEFAULTS`` or ``qcis.fvs.qc_impl`` flag is used.
+        interpolator_id : int or str, optional
+            Stored interpolator ID, or name, to activate before evaluation.
+        interpolator_name : str, optional
+            Stored interpolator name to activate before evaluation.
+
+        Returns
+        -------
+        numpy.ndarray or None
+            Evaluated matrix. The base class returns ``None`` for direct
+            non-interpolated evaluation; subclasses override that path.
+
+        Raises
+        ------
+        ValueError
+            If ``E`` exceeds ``qcis.Emax`` or if ``L`` exceeds ``qcis.Lmax``.
+        KeyError
+            If the requested stored interpolator name is unknown.
+        TypeError
+            If the requested interpolator ID has an unsupported type.
+        """
+        check_utils.check_value_within_qcis_bounds(self, E, L)
+        interpolate = interpolable_utils._get_interpolation_flag(
+            self, short_string, interpolate)
+        if interpolate:
+            self._load_interpolator(interpolator_id=interpolator_id,
+                                    interpolator_name=interpolator_name)
+            final_value = interpolable_utils._get_value_interpolated(
+                self, E, L, irrep)
+            return final_value
+        final_value = self._get_value_not_interpolated(E, L, project, irrep)
+        return final_value
+
+    def get_pole_candidate(self, L, n1vecSQ, n2vecSQ, n3vecSQ, m1, m2, m3):
+        return interpolable_utils.get_pole_candidate(
+            self, L, n1vecSQ, n2vecSQ, n3vecSQ, m1, m2, m3)
+
+    def get_pole_residue_matrices(self, L=5.0, irrep=None,
+                                  interpolator_id=None,
+                                  interpolator_name=None,
+                                  E_range=None, basis='standard'):
+        """
+        Evaluate strict pole-residue matrices from stored interpolation data.
+
+        The returned object is a list over standard-basis sectors. Each sector
+        entry is an array whose leading index labels the saved poles in
+        ``pole_lists[irrep][sector]``. Entries where a pole is absent are zero;
+        entries where other poles are also present include those pole factors
+        evaluated at the target pole. Internally, pole residues are assembled
+        in the smooth interpolator basis and then rotated back to the standard
+        basis before return. Set ``basis='smooth'`` to leave residues in the
+        smooth interpolator basis. If ``E_range`` is supplied, saved poles
+        outside the range are returned as zero matrices without evaluating the
+        interpolator at the out-of-range pole energy.
+        """
+        if basis not in ('standard', 'smooth'):
+            raise ValueError("basis must be 'standard' or 'smooth'")
+        check_utils.check_value_within_qcis_bounds(self, E=0., L=L)
+        self._load_interpolator(interpolator_id=interpolator_id,
+                                interpolator_name=interpolator_name)
+        L_key = float(np.round(L, decimals=10))
+        cache_key = L_key
+        if E_range is not None:
+            cache_key = (
+                L_key,
+                float(np.round(E_range[0], decimals=10)),
+                float(np.round(E_range[1], decimals=10)),
+            )
+        if basis != 'standard':
+            cache_key = (basis, cache_key)
+        if (irrep in self.pole_residue_matrix_lists
+           and cache_key in self.pole_residue_matrix_lists[irrep]):
+            return self.pole_residue_matrix_lists[irrep][cache_key]
+        pole_residue_matrix_list =\
+            interpolable_utils._get_pole_residue_matrix_list(
+                self, L, irrep, E_range=E_range, basis=basis)
+        if irrep not in self.pole_residue_matrix_lists:
+            self.pole_residue_matrix_lists[irrep] = {}
+        self.pole_residue_matrix_lists[irrep][cache_key]\
+            = pole_residue_matrix_list
+        if self.active_interpolator_id is not None:
+            self.interpolators[self.active_interpolator_id][
+                'pole_residue_matrix_lists'] = deepcopy(
+                    self.pole_residue_matrix_lists)
+        return pole_residue_matrix_list
+
+    def _get_value_not_interpolated(self, E, L, project, irrep):
+        return None
