@@ -29,20 +29,26 @@ python -m pip install .
 
 ```python
 import ampyl
+from ampyl.flavor import FlavorChannel
+from ampyl.flavor import FlavorChannelSpace
+from ampyl.spaces import QCIndexSpace
 from scipy.optimize import root_scalar
 
-fc = ampyl.FlavorChannel(3)
-fcs = ampyl.FlavorChannelSpace(fc_list=[fc])
-qcis = ampyl.QCIndexSpace(fcs=fcs, Emax=5.0, Lmax=6.0)
+fc = FlavorChannel(3)
+fcs = FlavorChannelSpace(fc_list=[fc])
+qcis = QCIndexSpace(fcs=fcs, Emax=5.0, Lmax=6.0)
 qcis.populate()
 
 qc = ampyl.QC(qcis=qcis)
 k_params = qcis.default_k_params()
 k_params[0][0][0] = 0.1
 
+qc_dict = {'k_params': k_params,
+           'project': True,
+           'irrep': ("A1PLUS", 0)}
 root = root_scalar(
     qc.get_value,
-    args=(5.0, k_params, True, ("A1PLUS", 0)),
+    args=(5.0, qc_dict),
     bracket=[3.001, 3.1],
 ).root
 ```

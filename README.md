@@ -11,7 +11,7 @@ The name AmPyL ("am-pie-ell") stands for **Am**plitdues via **Py**thon from fini
 
 - **Website:** https://github.com/mthansen/ampyl
 - **Documentation:** https://mthansen.github.io/ampyl/
-- **Examples:** [tutorials](./tutorials)
+- **Examples:** [examples](./examples)
 - **Bug reports:** https://github.com/mthansen/ampyl/issues
 
 ### Authors
@@ -49,15 +49,17 @@ GitHub Pages.
 ## Example
 
 ```python
-import numpy as np
 import ampyl
+from ampyl.flavor import FlavorChannel
+from ampyl.flavor import FlavorChannelSpace
+from ampyl.spaces import QCIndexSpace
 from scipy.optimize import root_scalar
 
 # single 3-particle channel
-fc = ampyl.FlavorChannel(3)
-fcs = ampyl.FlavorChannelSpace(fc_list=[fc])
-qcis = ampyl.QCIndexSpace(fcs=fcs,
-                          Emax=5.0, Lmax=6.0)
+fc = FlavorChannel(3)
+fcs = FlavorChannelSpace(fc_list=[fc])
+qcis = QCIndexSpace(fcs=fcs,
+                    Emax=5.0, Lmax=6.0)
 qcis.populate()
 qc = ampyl.QC(qcis=qcis)
 k_params = qcis.default_k_params()
@@ -67,9 +69,10 @@ k_params = qcis.default_k_params()
 # interaction):
 L = 5.
 k_params[0][0][0] = 0.1  # scattering length
-project = True
-irrep = ('A1PLUS', 0)
-args = (L, k_params, project, irrep)
+qc_dict = {'k_params': k_params,
+           'project': True,
+           'irrep': ('A1PLUS', 0)}
+args = (L, qc_dict)
 bracket = [3.001, 3.1]
 print(root_scalar(qc.get_value, args=args,
                   bracket=bracket).root
