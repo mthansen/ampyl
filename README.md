@@ -67,9 +67,10 @@ k_params = qcis.default_k_params()
 # interaction):
 L = 5.
 k_params[0][0][0] = 0.1  # scattering length
-project = True
-irrep = ('A1PLUS', 0)
-args = (L, k_params, project, irrep)
+qc_dict = {'k_params': k_params,
+           'project': True,
+           'irrep': ('A1PLUS', 0)}
+args = (L, qc_dict)
 bracket = [3.001, 3.1]
 print(root_scalar(qc.get_value, args=args,
                   bracket=bracket).root
