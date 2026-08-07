@@ -36,6 +36,7 @@ Created Feb 2023.
 import unittest
 from scipy.optimize import root_scalar
 import numpy as np
+from ampyl.spaces import FiniteVolumeSetup
 from ampyl.spaces import QCIndexSpace
 from ampyl import QC
 
@@ -127,6 +128,64 @@ class TestEnergyPrediction(unittest.TestCase):
         root_tmp = root_scalar(qc.get_value, args=(L, qc_dict),
                                bracket=[E1_free+delta1, E1_free+delta2]).root
         result = (root_tmp-E1_free)*omega_q*L**3/8./a0/(3.+sqrt_s_prime)
+        expected = np.pi
+        self.assertAlmostEqual(result, expected, delta=0.001)
+
+    def test_weakly_interacting_moving_frame_groundstate(self):
+        """Test the leading-order shift for nonzero total momentum.
+
+        The lowest non-interacting level with total momentum
+        P = (2 pi/L) zhat is built from the momentum set {q, 0, 0} with
+        q = (2 pi/L) zhat, giving the free energy E_0 = 2 m + omega_q,
+        omega_q = sqrt(m^2 + q^2). It lies in the A1 irrep of the
+        little group of P and, being a single Fock configuration, is
+        non-degenerate. The expected leading-order (in a0) shift is
+        taken from:
+
+        [1] D. M. Grabowska and M. T. Hansen, "Analytic expansions of
+            multi-hadron finite-volume energies: I. Two-particle states",
+            arXiv:2110.06878.
+        [2] D. M. Grabowska and M. T. Hansen, "Analytic Expansions of
+            Two- and Three-Particle Excited-State Energies",
+            arXiv:2112.11996 (proceedings of LATTICE2021).
+
+        As in test_weakly_interacting_first_excited_state, Eq. (26) of
+        Ref. [2] expresses the shift as the sum of the two-particle
+        subsystem shifts of Eq. (16). Here the three pairs are: the
+        rest-frame threshold pair (0, 0) with E^(0) = 2 m, gamma = 1,
+        g_n = 1, contributing 4 pi a0/(m L^3); and the two moving-frame
+        ground-state pairs (q, 0) with E^(0) = m + omega_q, g_n = 2,
+        gamma = (m + omega_q)/sqrt(s'), each contributing
+        4 pi sqrt(s') a0/(omega_q L^3), where sqrt(s')
+        = sqrt(2 m^2 + 2 m omega_q) is that pair's CM energy. In total,
+
+            Delta E_0 = (4 pi a0/L^3) (1 + 2 sqrt(s')/omega_q),
+
+        which reduces to 20 pi a0/L^3 in the nonrelativistic (large-L)
+        limit, consistent with counting one same-mode pair (4 pi a0/L^3)
+        and two distinct-mode pairs (8 pi a0/L^3 each) in first-order
+        perturbation theory.
+        """
+        fvs = FiniteVolumeSetup(nP=np.array([0, 0, 1]))
+        qcis = QCIndexSpace(fvs=fvs)
+        qcis.populate()
+        qcis.fvs.qc_impl['g_uses_prep_mat'] = True
+        qcis.fvs.qc_impl['smarter_q_rescale'] = True
+        qc = QC(qcis=qcis)
+        L = 5.0
+        a0 = 0.0001
+        delta1 = 1.e-6
+        delta2 = 1.e-1
+        q = 2.*np.pi/L
+        omega_q = np.sqrt(1.+q**2)
+        E0_free = 2.+omega_q
+        sqrt_s_prime = np.sqrt(2.+2.*omega_q)
+        qc_dict = {'k_params': [[[a0]], [0.0]],
+                   'project': True,
+                   'irrep': ('A1', 0)}
+        root_tmp = root_scalar(qc.get_value, args=(L, qc_dict),
+                               bracket=[E0_free+delta1, E0_free+delta2]).root
+        result = (root_tmp-E0_free)*L**3/4./a0/(1.+2.*sqrt_s_prime/omega_q)
         expected = np.pi
         self.assertAlmostEqual(result, expected, delta=0.001)
 
