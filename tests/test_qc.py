@@ -33,12 +33,17 @@ Created July 2022.
 #
 ###############################################################################
 
+import os
 import unittest
 import warnings
 import numpy as np
 from scipy.optimize import root_scalar
 import ampyl
 from ampyl import fv_spectrum_utils
+
+slow_test = unittest.skipUnless(
+    os.environ.get('AMPYL_SLOW_TESTS') == '1',
+    'slow test: set AMPYL_SLOW_TESTS=1 to run')
 
 
 class TestQC(unittest.TestCase):
@@ -152,6 +157,7 @@ class TestQC(unittest.TestCase):
             any(cob_matrix.shape[0] < cob_matrix.shape[1]
                 for cob_matrix in f.cob_matrix_lists[irrep]))
 
+    @slow_test
     def test_multislice_fplusg_interpolator_skips_zero_g_blocks(self):
         pion = ampyl.flavor.Particle(mass=1.0, spin=0.0, flavor='pi',
                                      isospin_multiplet=True, isospin=1.0)
@@ -203,6 +209,7 @@ class TestQC(unittest.TestCase):
             2.0*kaon.mass+pion.mass,
         )
 
+    @slow_test
     def test_qc_energy_solver_is_explicit(self):
         qc = self.build_qc()
         L, qc_dict = self.build_qc_case()

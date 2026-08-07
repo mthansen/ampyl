@@ -1,28 +1,24 @@
-name: Build/Test
+name: Slow tests
 
 on:
-  push:
-    branches:
-      - main
-      - dev
-  pull_request:
+  schedule:
+    - cron: '0 3 * * *'  # nightly at 03:00 UTC, runs on main
+  workflow_dispatch:  # manual runs from the Actions tab, any branch
 
 jobs:
-  build:
+  slow:
 
     runs-on: ubuntu-latest
 
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: ["3.9", "3.10"]
+    env:
+      AMPYL_SLOW_TESTS: "1"
 
     steps:
 
-    - name: Setup python ${{ matrix.python-version }}
+    - name: Setup python
       uses: actions/setup-python@v5
       with:
-        python-version: ${{ matrix.python-version }}
+        python-version: "3.9"
         architecture: x64
 
     - name: Clone repository
@@ -36,7 +32,7 @@ jobs:
         pip install numpy scipy coverage
         pip install .
 
-    - name: Test
+    - name: Test (full suite including slow tests)
       run: |
         cd tests
         for f in `ls *py`
@@ -49,14 +45,12 @@ jobs:
         cd tests
         coverage combine
         coverage report -m  # Print coverage report to screen
-        coverage xml  # Export coverage report as XML file, for codecov.i
+        coverage xml  # Export coverage report as XML file, for codecov.io
 
     - name: Upload coverage to Codecov
-      if: ${{ (matrix.python-version == 3.9) && (github.event_name == 'push') }}
       env:
-        PYTHON_VERSION: python${{ matrix.python-version }}
         CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-        CODECOV_ENV: PYTHON_VERSION, CODECOV_TOKEN
+        CODECOV_ENV: CODECOV_TOKEN
       run: |
         cd tests
-        bash <(curl -s https://codecov.io/bash) -f ./coverage.xml -F fast
+        bash <(curl -s https://codecov.io/bash) -f ./coverage.xml -F full
