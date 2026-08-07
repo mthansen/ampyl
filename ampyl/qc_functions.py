@@ -185,70 +185,40 @@ def getG_single_entry(E=4.0, nP=np.array([0, 0, 0]), L=5.0,
     return calY1*calY2conj*HH*simple_factor*pole_factor*g_rescale
 
 
-def get_nvec_data(tbks_entry, row_shell, col_shell):
-    """Get the data for the nvecs."""
-    n1vec_arr_shell = tbks_entry.nvec_arr[row_shell[0]:row_shell[1]]
-    n1vecSQ_arr_shell = tbks_entry.nvecSQ_arr[
-        row_shell[0]:row_shell[1]]
+def nvec_shell_data(nP, n1vec_arr_shell, n1vecSQ_arr_shell,
+                    n2vec_arr_shell, n2vecSQ_arr_shell):
+    """Build shell data from row and column spectator momenta.
 
-    n2vec_arr_shell = tbks_entry.nvec_arr[col_shell[0]:col_shell[1]]
-    n2vecSQ_arr_shell = tbks_entry.nvecSQ_arr[
-        col_shell[0]:col_shell[1]]
+    The row momenta broadcast along columns, the column momenta along
+    rows, and the exchange momentum is fixed by momentum conservation,
+    ``n3 = nP-n1-n2``.
 
-    # Awkward swap here
-    n1vec_mat_shell = np.swapaxes(
-        np.swapaxes(
-            ((tbks_entry.n2vec_mat)[
-                row_shell[0]:row_shell[1]]),
-            0, 1
-            )[col_shell[0]:col_shell[1]],
-        0, 1
-        )
+    Parameters
+    ----------
+    nP : numpy.ndarray
+        Dimensionless total momentum.
+    n1vec_arr_shell, n1vecSQ_arr_shell : numpy.ndarray
+        Row spectator momenta and their squared norms.
+    n2vec_arr_shell, n2vecSQ_arr_shell : numpy.ndarray
+        Column spectator momenta and their squared norms.
 
-    n2vec_mat_shell = np.swapaxes(
-        np.swapaxes(
-            ((tbks_entry.n1vec_mat)[
-                row_shell[0]:row_shell[1]]),
-            0, 1
-            )[col_shell[0]:col_shell[1]],
-        0, 1
-        )
-
-    n3vec_mat_shell = np.swapaxes(
-        np.swapaxes(
-            ((tbks_entry.n3vec_mat)[
-                row_shell[0]:row_shell[1]]),
-            0, 1
-            )[col_shell[0]:col_shell[1]],
-        0, 1
-        )
-
-    n1vecSQ_mat_shell = np.swapaxes(
-        np.swapaxes(
-            ((tbks_entry.n2vecSQ_mat)[
-                row_shell[0]:row_shell[1]]),
-            0, 1
-            )[col_shell[0]:col_shell[1]],
-        0, 1
-        )
-
-    n2vecSQ_mat_shell = np.swapaxes(
-        np.swapaxes(
-            ((tbks_entry.n1vecSQ_mat)[
-                row_shell[0]:row_shell[1]]),
-            0, 1
-            )[col_shell[0]:col_shell[1]],
-        0, 1
-        )
-
-    n3vecSQ_mat_shell = np.swapaxes(
-        np.swapaxes(
-            ((tbks_entry.n3vecSQ_mat)[
-                row_shell[0]:row_shell[1]]),
-            0, 1
-            )[col_shell[0]:col_shell[1]],
-        0, 1
-        )
+    Returns
+    -------
+    list
+        Shell data as consumed by the ``G`` kinematics helpers.
+    """
+    nrow = len(n1vec_arr_shell)
+    ncol = len(n2vec_arr_shell)
+    n1vec_mat_shell = np.repeat(n1vec_arr_shell[:, np.newaxis, :],
+                                ncol, axis=1)
+    n2vec_mat_shell = np.repeat(n2vec_arr_shell[np.newaxis, :, :],
+                                nrow, axis=0)
+    n3vec_mat_shell = nP-n1vec_mat_shell-n2vec_mat_shell
+    n1vecSQ_mat_shell = np.repeat(n1vecSQ_arr_shell[:, np.newaxis],
+                                  ncol, axis=1)
+    n2vecSQ_mat_shell = np.repeat(n2vecSQ_arr_shell[np.newaxis, :],
+                                  nrow, axis=0)
+    n3vecSQ_mat_shell = (n3vec_mat_shell*n3vec_mat_shell).sum(2)
 
     return [n1vec_arr_shell, n1vecSQ_arr_shell,
             n2vec_arr_shell, n2vecSQ_arr_shell,
@@ -256,12 +226,14 @@ def get_nvec_data(tbks_entry, row_shell, col_shell):
             n1vecSQ_mat_shell, n2vecSQ_mat_shell, n3vecSQ_mat_shell]
 
 
-def __helperG_array(E, nP, L, m1, m2, m3,
-                    tbks_entry,
-                    row_shell,
-                    col_shell):
-    shell_data = get_nvec_data(tbks_entry, row_shell, col_shell)
-    return __helperG_kinematics(E, nP, L, m1, m2, m3, shell_data)
+def get_nvec_data(tbks_entry, row_shell, col_shell):
+    """Get the data for the nvecs."""
+    return nvec_shell_data(
+        tbks_entry.nP,
+        tbks_entry.nvec_arr[row_shell[0]:row_shell[1]],
+        tbks_entry.nvecSQ_arr[row_shell[0]:row_shell[1]],
+        tbks_entry.nvec_arr[col_shell[0]:col_shell[1]],
+        tbks_entry.nvecSQ_arr[col_shell[0]:col_shell[1]])
 
 
 def __helperG_kinematics(E, nP, L, m1, m2, m3, shell_data):
@@ -379,7 +351,8 @@ def getG_array(E, nP, L, m1, m2, m3,
                alpha, beta,
                qc_impl, three_scheme,
                g_rescale,
-               alpha2=None, beta2=None):
+               alpha2=None, beta2=None,
+               col_tbks_entry=None):
     """Return a NumPy-accelerated block of the ``G`` matrix.
 
     Parameters
@@ -393,7 +366,7 @@ def getG_array(E, nP, L, m1, m2, m3,
     m1, m2, m3 : float
         Channel masses.
     tbks_entry : object
-        TBKS entry providing shell data.
+        TBKS entry providing the row shell data.
     row_shell, col_shell : tuple[int, int]
         Row and column shell slices.
     ell1, ell2 : int
@@ -406,6 +379,9 @@ def getG_array(E, nP, L, m1, m2, m3,
         Three-body interaction scheme.
     g_rescale : float
         Overall rescaling applied to the result.
+    col_tbks_entry : object, optional
+        TBKS entry providing the column shell data. Defaults to
+        ``tbks_entry``.
 
     Returns
     -------
@@ -416,8 +392,15 @@ def getG_array(E, nP, L, m1, m2, m3,
         alpha2 = alpha
     if beta2 is None:
         beta2 = beta
-    helper_data = __helperG_array(E, nP, L, m1, m2, m3, tbks_entry,
-                                  row_shell, col_shell)
+    if col_tbks_entry is None:
+        col_tbks_entry = tbks_entry
+    shell_data = nvec_shell_data(
+        nP,
+        tbks_entry.nvec_arr[row_shell[0]:row_shell[1]],
+        tbks_entry.nvecSQ_arr[row_shell[0]:row_shell[1]],
+        col_tbks_entry.nvec_arr[col_shell[0]:col_shell[1]],
+        col_tbks_entry.nvecSQ_arr[col_shell[0]:col_shell[1]])
+    helper_data = __helperG_kinematics(E, nP, L, m1, m2, m3, shell_data)
     return __getG_array_core(E, L, m1, m2, m3, helper_data, ell1, ell2,
                              alpha, beta, alpha2, beta2, qc_impl,
                              three_scheme, g_rescale)
@@ -518,64 +501,6 @@ def __getG_array_core(E, L, m1, m2, m3, helper_data, ell1, ell2,
     if np.sum(H1_mat**2) < EPSILON20 or np.sum(H2_mat**2) < EPSILON20:
         return np.zeros_like(full_mat_big)
     return YY*full_mat_big*H1_mat*H2_mat*g_rescale
-
-
-def getG_array_two_tbks(E, nP, L, m1, m2, m3,
-                        row_tbks_entry, col_tbks_entry,
-                        row_shell, col_shell,
-                        ell1, ell2,
-                        alpha, beta,
-                        qc_impl, three_scheme,
-                        g_rescale,
-                        alpha2=None, beta2=None):
-    """Return a G block whose row and column use different TBKS entries."""
-    row_nvec_arr = row_tbks_entry.nvec_arr[row_shell[0]:row_shell[1]]
-    row_nvecSQ_arr = row_tbks_entry.nvecSQ_arr[row_shell[0]:row_shell[1]]
-    col_nvec_arr = col_tbks_entry.nvec_arr[col_shell[0]:col_shell[1]]
-    col_nvecSQ_arr = col_tbks_entry.nvecSQ_arr[col_shell[0]:col_shell[1]]
-
-    nrow = len(row_nvec_arr)
-    ncol = len(col_nvec_arr)
-    ntotal = nrow+ncol
-    row_slice = [0, nrow]
-    col_slice = [nrow, ntotal]
-
-    class _MixedTBKSEntry:
-        pass
-
-    mixed_tbks_entry = _MixedTBKSEntry()
-    mixed_tbks_entry.nvec_arr = np.concatenate(
-        (row_nvec_arr, col_nvec_arr), axis=0)
-    mixed_tbks_entry.nvecSQ_arr = np.concatenate(
-        (row_nvecSQ_arr, col_nvecSQ_arr), axis=0)
-    shape = (ntotal, ntotal, 3)
-    mixed_tbks_entry.n1vec_mat = np.zeros(shape, dtype=int)
-    mixed_tbks_entry.n2vec_mat = np.zeros(shape, dtype=int)
-    mixed_tbks_entry.n3vec_mat = np.zeros(shape, dtype=int)
-    mixed_tbks_entry.n1vecSQ_mat = np.zeros((ntotal, ntotal), dtype=int)
-    mixed_tbks_entry.n2vecSQ_mat = np.zeros((ntotal, ntotal), dtype=int)
-    mixed_tbks_entry.n3vecSQ_mat = np.zeros((ntotal, ntotal), dtype=int)
-
-    row_mat = np.repeat(row_nvec_arr[:, np.newaxis, :], ncol, axis=1)
-    col_mat = np.repeat(col_nvec_arr[np.newaxis, :, :], nrow, axis=0)
-    exchange_mat = nP-row_mat-col_mat
-
-    row_idx = slice(row_slice[0], row_slice[1])
-    col_idx = slice(col_slice[0], col_slice[1])
-    mixed_tbks_entry.n2vec_mat[row_idx, col_idx] = row_mat
-    mixed_tbks_entry.n1vec_mat[row_idx, col_idx] = col_mat
-    mixed_tbks_entry.n3vec_mat[row_idx, col_idx] = exchange_mat
-    mixed_tbks_entry.n2vecSQ_mat[row_idx, col_idx] = (
-        row_mat*row_mat).sum(axis=2)
-    mixed_tbks_entry.n1vecSQ_mat[row_idx, col_idx] = (
-        col_mat*col_mat).sum(axis=2)
-    mixed_tbks_entry.n3vecSQ_mat[row_idx, col_idx] = (
-        exchange_mat*exchange_mat).sum(axis=2)
-
-    return getG_array(E, nP, L, m1, m2, m3,
-                      mixed_tbks_entry, row_slice, col_slice,
-                      ell1, ell2, alpha, beta, qc_impl, three_scheme,
-                      g_rescale, alpha2=alpha2, beta2=beta2)
 
 
 def getG_array_prep_mat(E, nP, L, m1, m2, m3,

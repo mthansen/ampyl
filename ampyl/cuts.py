@@ -396,22 +396,16 @@ class G(Interpolable):
                                                       alpha2=alpha2,
                                                       beta2=beta2)
         else:
-            if col_tbks_entry is tbks_entry:
-                Gshell = qc_functions.getG_array(E, nP, L, m1, m2, m3,
-                                                 tbks_entry,
-                                                 row_shell, col_shell,
-                                                 ell1, ell2,
-                                                 alpha, beta,
-                                                 qc_impl, three_scheme,
-                                                 g_rescale,
-                                                 alpha2=alpha2,
-                                                 beta2=beta2)
-            else:
-                Gshell = qc_functions.getG_array_two_tbks(
-                    E, nP, L, m1, m2, m3, tbks_entry, col_tbks_entry,
-                    row_shell, col_shell, ell1, ell2, alpha, beta,
-                    qc_impl, three_scheme, g_rescale, alpha2=alpha2,
-                    beta2=beta2)
+            Gshell = qc_functions.getG_array(E, nP, L, m1, m2, m3,
+                                             tbks_entry,
+                                             row_shell, col_shell,
+                                             ell1, ell2,
+                                             alpha, beta,
+                                             qc_impl, three_scheme,
+                                             g_rescale,
+                                             alpha2=alpha2,
+                                             beta2=beta2,
+                                             col_tbks_entry=col_tbks_entry)
         if project:
             Gshell = proj_tmp_left@Gshell@proj_tmp_right
         return Gshell
