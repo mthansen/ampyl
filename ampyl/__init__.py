@@ -29,11 +29,14 @@ python -m pip install .
 
 ```python
 import ampyl
+from ampyl.flavor import FlavorChannel
+from ampyl.flavor import FlavorChannelSpace
+from ampyl.spaces import QCIndexSpace
 from scipy.optimize import root_scalar
 
-fc = ampyl.FlavorChannel(3)
-fcs = ampyl.FlavorChannelSpace(fc_list=[fc])
-qcis = ampyl.QCIndexSpace(fcs=fcs, Emax=5.0, Lmax=6.0)
+fc = FlavorChannel(3)
+fcs = FlavorChannelSpace(fc_list=[fc])
+qcis = QCIndexSpace(fcs=fcs, Emax=5.0, Lmax=6.0)
 qcis.populate()
 
 qc = ampyl.QC(qcis=qcis)
@@ -68,8 +71,5 @@ __all__ = []
 from .version import __version__, __version_full__
 __all__.extend(["__version__"])
 from .ampyl import *
-from .flavor import FlavorChannel, FlavorChannelSpace
-from .spaces import QCIndexSpace
-__all__.extend(["FlavorChannel", "FlavorChannelSpace", "QCIndexSpace"])
 from . import kinematic_functions
 from . import qc_functions
