@@ -33,11 +33,17 @@ Created July 2022.
 #
 ###############################################################################
 
+import os
 import unittest
 import numpy as np
 import ampyl
 
+slow_test = unittest.skipUnless(
+    os.environ.get('AMPYL_SLOW_TESTS') == '1',
+    'slow test: set AMPYL_SLOW_TESTS=1 to run')
 
+
+@slow_test
 class TestF(unittest.TestCase):
     """Class to test the FlavorChannel class."""
 
