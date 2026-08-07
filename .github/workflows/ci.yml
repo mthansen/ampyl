@@ -55,7 +55,7 @@ jobs:
       if: ${{ (matrix.python-version == 3.9) && (github.event_name == 'push') }}
       env:
         PYTHON_VERSION: python${{ matrix.python-version }}
-        CODECOV_TOKEN: "fff52416-cbeb-4926-b062-04e528abb51c"
+        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
         CODECOV_ENV: PYTHON_VERSION, CODECOV_TOKEN
       run: |
         cd tests
