@@ -123,8 +123,8 @@ def _find_root_near_interpolated_energy(spectrum, Etmp, Ltmp, qc_dict,
     while np.isnan(Eupdate) and bracket_shift < 1.e-1:
         E_range = [Etmp-bracket_shift, Etmp+bracket_shift]
         cuts = _get_refinement_cuts()
-        E_set = spectrum.get_roots_from_range(
-            E_range, Ltmp, qc_dict, ni_functions, cuts=cuts)
+        E_set = np.asarray(spectrum.get_roots_from_range(
+            E_range, Ltmp, qc_dict, ni_functions, cuts=cuts))
         if len(E_set) == 1:
             Eupdate = E_set[0]
         elif len(E_set) > 1:
@@ -182,6 +182,7 @@ def _append_energy_level_at_volume(spectrum, band_index, L, Emin, Emax,
         interp_L_vals[band_index], interp_E_vals[band_index], L)
     E_val, dE = _find_roots_near_energy_guess(
         spectrum, E_guess, L, Emin, Emax, qc_dict, ni_functions)
+    E_val = np.asarray(E_val)
     if len(E_val) == 1:
         print(f'Unique solution found with dE = {dE}')
         print(f'L = {L}, E = {E_val[0]}')

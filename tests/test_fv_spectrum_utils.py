@@ -412,14 +412,14 @@ class TestInterpolatedEnergyRefinement(unittest.TestCase):
     """Tests for the interpolation-based refinement drivers."""
 
     def test_find_updated_energy_uses_direct_root(self):
-        spectrum = _StubSpectrum(lambda E_range, L: np.array([2.31]))
+        spectrum = _StubSpectrum(lambda E_range, L: [2.31])
         Eupdate = fv_spectrum_utils._find_updated_energy(
             spectrum, 2.3, 4.0, {}, [])
         self.assertAlmostEqual(Eupdate, 2.31, places=12)
 
     def test_find_root_near_interpolated_energy_picks_nearest(self):
         spectrum = _StubSpectrum(
-            lambda E_range, L: np.array([2.31, 2.9]))
+            lambda E_range, L: [2.31, 2.9])
         with self.assertWarns(UserWarning):
             warnings.simplefilter("always")
             Eupdate = fv_spectrum_utils._find_root_near_interpolated_energy(
@@ -427,7 +427,7 @@ class TestInterpolatedEnergyRefinement(unittest.TestCase):
         self.assertAlmostEqual(Eupdate, 2.31, places=12)
 
     def test_find_updated_energy_falls_back_to_retry(self):
-        spectrum = _StubSpectrum(lambda E_range, L: np.array([]))
+        spectrum = _StubSpectrum(lambda E_range, L: [])
         spectrum.qc = _FakeQC([lambda L: 2.31], _FakeQCIS())
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
@@ -436,7 +436,7 @@ class TestInterpolatedEnergyRefinement(unittest.TestCase):
         self.assertAlmostEqual(Eupdate, 2.31, places=8)
 
     def test_refine_interpolated_energies_updates_all_points(self):
-        spectrum = _StubSpectrum(lambda E_range, L: np.array([2.22]))
+        spectrum = _StubSpectrum(lambda E_range, L: [2.22])
         interp_E_vals = [[2.0, 2.1, 2.2, 2.3]]
         interp_L_vals = [[3.0, 3.1, 3.2, 3.3]]
         fv_spectrum_utils._refine_interpolated_energies(
@@ -450,7 +450,7 @@ class TestExtendEnergyLevels(unittest.TestCase):
     """Tests for extending bands to new volumes."""
 
     def test_append_energy_level_unique_solution(self):
-        spectrum = _StubSpectrum(lambda E_range, L: np.array([2.55]))
+        spectrum = _StubSpectrum(lambda E_range, L: [2.55])
         interp_E_vals = [[2.4, 2.45, 2.5]]
         interp_L_vals = [[3.0, 3.1, 3.2]]
         fv_spectrum_utils._append_energy_level_at_volume(
@@ -462,7 +462,7 @@ class TestExtendEnergyLevels(unittest.TestCase):
 
     def test_append_energy_level_multiple_solutions_picks_nearest(self):
         spectrum = _StubSpectrum(
-            lambda E_range, L: np.array([2.56, 3.2]))
+            lambda E_range, L: [2.56, 3.2])
         interp_E_vals = [[2.4, 2.45, 2.5]]
         interp_L_vals = [[3.0, 3.1, 3.2]]
         with self.assertWarns(UserWarning):
@@ -476,7 +476,7 @@ class TestExtendEnergyLevels(unittest.TestCase):
             spectrum.qc.qcis.fvs.qc_impl['fplusg_interpolate'])
 
     def test_append_energy_level_out_of_bounds_appends_nothing(self):
-        spectrum = _StubSpectrum(lambda E_range, L: np.array([4.6]))
+        spectrum = _StubSpectrum(lambda E_range, L: [4.6])
         interp_E_vals = [[4.4, 4.45, 4.5]]
         interp_L_vals = [[3.0, 3.1, 3.2]]
         with self.assertWarns(UserWarning):
