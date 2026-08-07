@@ -63,6 +63,73 @@ class TestEnergyPrediction(unittest.TestCase):
         expected = np.pi
         self.assertAlmostEqual(result, expected, delta=0.001)
 
+    def test_weakly_interacting_first_excited_state(self):
+        """Test the leading-order shift of the first excited state.
+
+        The first excited non-interacting level in the rest-frame A1PLUS
+        irrep is built from the momentum set {q, -q, 0} with q = 2 pi/L,
+        giving the free energy E_1 = m + 2 omega_q, omega_q
+        = sqrt(m^2 + q^2). The expected leading-order (in a0) shift is
+        taken from:
+
+        [1] D. M. Grabowska and M. T. Hansen, "Analytic expansions of
+            multi-hadron finite-volume energies: I. Two-particle states",
+            arXiv:2110.06878.
+        [2] D. M. Grabowska and M. T. Hansen, "Analytic Expansions of
+            Two- and Three-Particle Excited-State Energies",
+            arXiv:2112.11996 (proceedings of LATTICE2021).
+
+        Two equations are being matched. First, Eq. (16) of Ref. [2]
+        (derived in detail in Ref. [1]) gives the leading-order shift of a
+        two-particle level with total momentum d (2 pi/L)*[d] and
+        constituent momenta nu, d - nu:
+
+            E_n = E_n^(0)
+                  + g_n [E_n^(0)/(4 omega_nu omega_(d-nu))]
+                    [8 pi a0/(gamma_n^(0) L^3)] + O(a0^2),
+
+        where g_n is the degeneracy of the free level and gamma^(0)
+        = E^(0)/E* is the boost factor to the pair CM frame. Second,
+        Eq. (26) of Ref. [2] states that the leading-order shift of a
+        non-degenerate three-particle level is the sum of the Eq.-(16)
+        shifts of its three two-particle subsystems. For {q, -q, 0} these
+        are: the rest-frame pair (q, -q) with E^(0) = 2 omega_q, gamma
+        = 1, g_n = 6, contributing 24 pi a0/(omega_q L^3); and the two
+        moving-frame pairs (+-q, 0) with E^(0) = m + omega_q, g_n = 2,
+        gamma = (m + omega_q)/sqrt(s'), each contributing
+        4 pi sqrt(s') a0/(omega_q L^3), where sqrt(s')
+        = sqrt(2 m^2 + 2 m omega_q) is that pair's CM energy. In total,
+
+            Delta E_1 = (8 pi a0/(omega_q L^3)) (3 + sqrt(s')),
+
+        which reduces to 40 pi a0/L^3 in the nonrelativistic (large-L)
+        limit, the analogue of the ground-state result 12 pi a0/L^3. The
+        same coefficient follows from relativistic degenerate perturbation
+        theory over the three Fock states (q along x, y, or z), providing
+        an independent check of the pair-sum result for this level.
+        """
+        qcis = QCIndexSpace()
+        qcis.populate()
+        qcis.fvs.qc_impl['g_uses_prep_mat'] = True
+        qcis.fvs.qc_impl['smarter_q_rescale'] = True
+        qc = QC(qcis=qcis)
+        L = 5.0
+        a0 = 0.0001
+        delta1 = 1.e-6
+        delta2 = 1.e-1
+        q = 2.*np.pi/L
+        omega_q = np.sqrt(1.+q**2)
+        E1_free = 1.+2.*omega_q
+        sqrt_s_prime = np.sqrt(2.+2.*omega_q)
+        qc_dict = {'k_params': [[[a0]], [0.0]],
+                   'project': True,
+                   'irrep': ('A1PLUS', 0)}
+        root_tmp = root_scalar(qc.get_value, args=(L, qc_dict),
+                               bracket=[E1_free+delta1, E1_free+delta2]).root
+        result = (root_tmp-E1_free)*omega_q*L**3/8./a0/(3.+sqrt_s_prime)
+        expected = np.pi
+        self.assertAlmostEqual(result, expected, delta=0.001)
+
 
 if __name__ == '__main__':
     unittest.main()
