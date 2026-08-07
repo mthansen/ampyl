@@ -40,9 +40,12 @@ qc = ampyl.QC(qcis=qcis)
 k_params = qcis.default_k_params()
 k_params[0][0][0] = 0.1
 
+qc_dict = {'k_params': k_params,
+           'project': True,
+           'irrep': ("A1PLUS", 0)}
 root = root_scalar(
     qc.get_value,
-    args=(5.0, k_params, True, ("A1PLUS", 0)),
+    args=(5.0, qc_dict),
     bracket=[3.001, 3.1],
 ).root
 ```
@@ -65,5 +68,8 @@ __all__ = []
 from .version import __version__, __version_full__
 __all__.extend(["__version__"])
 from .ampyl import *
+from .flavor import FlavorChannel, FlavorChannelSpace
+from .spaces import QCIndexSpace
+__all__.extend(["FlavorChannel", "FlavorChannelSpace", "QCIndexSpace"])
 from . import kinematic_functions
 from . import qc_functions
