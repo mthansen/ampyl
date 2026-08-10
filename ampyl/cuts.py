@@ -165,9 +165,11 @@ class G(Interpolable):
             tbks_sub_indices = self.qcis.get_tbks_sub_indices(E=E, L=L)
             tbks_entries = []
             slices_by_three_slice = []
+            slot_offset = 1 if self.qcis.n_two_channels > 0 else 0
             for three_slice_index in range(self.qcis.fcs.n_three_slices):
-                tbks_entry = self.qcis.tbks_list[three_slice_index][
-                    tbks_sub_indices[three_slice_index]]
+                slot_index = three_slice_index+slot_offset
+                tbks_entry = self.qcis.tbks_list[slot_index][
+                    tbks_sub_indices[slot_index]]
                 tbks_entries.append(tbks_entry)
                 slices_by_three_slice.append(tbks_entry.shells)
             if self.qcis.verbosity >= 2:
@@ -225,7 +227,13 @@ class G(Interpolable):
         g_final = []
         if self.qcis.verbosity >= 2:
             print('iterating over spectator channels, slices')
+        # two-particle channels have no G coupling at this stage; they are
+        # skipped here and re-inserted as a leading zero block at the end
+        slot_offset = 1 if self.qcis.n_two_channels > 0 else 0
         for sc_row_ind in range(len(self.qcis.fcs.sc_list_sorted)):
+            if self.qcis.fcs.sc_list_sorted[
+                    sc_row_ind].fc.n_particles == 2:
+                continue
             g_outer_row = []
             row_ell_set = self.qcis.fcs.sc_list_sorted[sc_row_ind].ell_set
             if len(row_ell_set) != 1:
@@ -233,6 +241,9 @@ class G(Interpolable):
                                  + "supported in G")
             ell1 = row_ell_set[0]
             for sc_col_ind in range(len(self.qcis.fcs.sc_list_sorted)):
+                if self.qcis.fcs.sc_list_sorted[
+                        sc_col_ind].fc.n_particles == 2:
+                    continue
                 if self.qcis.verbosity >= 2:
                     print('sc_row_ind, sc_col_ind =', sc_row_ind, sc_col_ind)
                 col_ell_set = self.qcis.fcs.sc_list_sorted[sc_col_ind].ell_set
@@ -240,8 +251,10 @@ class G(Interpolable):
                     raise ValueError("only length-one ell_set currently "
                                      + "supported in G")
                 ell2 = col_ell_set[0]
-                row_three_slice = self.qcis.sc_to_three_slice[sc_row_ind]
-                col_three_slice = self.qcis.sc_to_three_slice[sc_col_ind]
+                row_three_slice = self.qcis.sc_to_three_slice[
+                    sc_row_ind]-slot_offset
+                col_three_slice = self.qcis.sc_to_three_slice[
+                    sc_col_ind]-slot_offset
                 row_inslice = sc_row_ind - self.qcis.fcs\
                     .slices_by_three_masses[row_three_slice][0]
                 col_inslice = sc_col_ind - self.qcis.fcs\
@@ -279,8 +292,18 @@ class G(Interpolable):
                 g_block_tmp = np.block(g_inner)
                 g_outer_row = g_outer_row+[g_block_tmp]
             g_final.append(g_outer_row)
-        g_final = self._clean_shape(g_final)
-        g_final = np.block(g_final)
+        if len(g_final) != 0:
+            g_final = self._clean_shape(g_final)
+            g_final = np.block(g_final)
+        else:
+            g_final = np.zeros((0, 0))
+        two_particle_dim = sum(
+            shell_utils.two_particle_block_dim(project, irrep)
+            for sc in self.qcis.fcs.sc_list_sorted
+            if sc.fc.n_particles == 2)
+        if two_particle_dim > 0:
+            g_final = block_diag(
+                np.zeros((two_particle_dim, two_particle_dim)), g_final)
         return g_final
 
     def _extract_g_masses(self, sc_row_ind, sc_col_ind):
@@ -673,6 +696,25 @@ class F(Interpolable):
             Fshell = proj_tmp_left@Fshell@proj_tmp_right
         return Fshell
 
+    def _get_two_particle_shell(self, E, L, sc, project, irrep):
+        """Build the 1x1 F block for a two-particle channel."""
+        nP = self.qcis.fvs.nP
+        if nP@nP != 0:
+            raise NotImplementedError(
+                "two-particle channels are implemented only for zero total "
+                "momentum")
+        if list(sc.ell_set) != [0]:
+            raise NotImplementedError(
+                "two-particle channels currently support only "
+                "ell_set == [0]")
+        if shell_utils.two_particle_block_dim(project, irrep) == 0:
+            return np.array([])
+        m1, m2 = sc.fc.masses
+        Ftwo = qc_functions.getFtwo_single_entry(
+            E2=E, nP2=nP, L=L, m1=m1, m2=m2,
+            C1cut=self.C1cut, alphaKSS=self.alphaKSS)
+        return np.array([[Ftwo]])
+
     def _get_value_not_interpolated(self, E, L, project, irrep):
         """Build the un-interpolated F matrix shell by shell."""
         check_utils.check_value_within_qcis_bounds(self, E, L)
@@ -744,6 +786,12 @@ class F(Interpolable):
         f_final_list = []
         for sc_ind in range(len(self.qcis.fcs.sc_list_sorted)):
             sc = self.qcis.fcs.sc_list_sorted[sc_ind]
+            if sc.fc.n_particles == 2:
+                f_tmp = self._get_two_particle_shell(E, L, sc, project,
+                                                     irrep)
+                if len(f_tmp) != 0:
+                    f_final_list = f_final_list+[f_tmp]
+                continue
             ell_set = sc.ell_set
             if len(ell_set) != 1:
                 raise ValueError("only length-one ell_set currently "

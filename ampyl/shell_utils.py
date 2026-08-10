@@ -40,6 +40,19 @@ from .constants import FOURPI2, TWOPI
 from .constants import QC_IMPL_DEFAULTS
 
 
+def two_particle_block_dim(project, irrep):
+    """Return the block size of an s-wave two-particle channel.
+
+    At zero total momentum the s-wave pair contributes a single state,
+    which transforms in A1PLUS; for any other irrep the projected block
+    is empty.
+    """
+    if (irrep is None) and (project is False):
+        return 1
+    irrep_name = irrep[0] if isinstance(irrep, (tuple, list)) else irrep
+    return 1 if irrep_name == 'A1PLUS' else 0
+
+
 def _verify_irrep_is_known(qcis, irrep):
     """Raise if irrep appears in no shell projector dictionary.
 

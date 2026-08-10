@@ -121,6 +121,36 @@ class K:
             Kshell = proj_tmp_left@Kshell@proj_tmp_right
         return Kshell
 
+    def _get_two_particle_shell(self, E, L, sc, sc_ind,
+                                pcotdelta_parameter_lists, project, irrep):
+        """Build the 1x1 K block for a two-particle channel."""
+        nP = self.qcis.fvs.nP
+        if nP@nP != 0:
+            raise NotImplementedError(
+                "two-particle channels are implemented only for zero total "
+                "momentum")
+        if list(sc.ell_set) != [0]:
+            raise NotImplementedError(
+                "two-particle channels currently support only "
+                "ell_set == [0]")
+        if shell_utils.two_particle_block_dim(project, irrep) == 0:
+            return np.array([])
+        m1, m2 = sc.fc.masses
+        alpha, beta = self.qcis.tbis.scheme_data[sc_ind]
+        # mspec = 0 reduces the spectator kinematics to the genuine
+        # two-particle system; the hermitian 2*omega_spec normalization
+        # belongs to the three-particle sector and must not multiply the
+        # pair block
+        qc_impl = dict(self.qcis.fvs.qc_impl)
+        qc_impl['hermitian'] = False
+        Ktwo = qc_functions.getK_single_entry(
+            pcotdelta_function=sc.p_cot_deltas[0],
+            pcotdelta_parameter_list=pcotdelta_parameter_lists[sc_ind],
+            E=E, nP=nP, npspec=np.array([0, 0, 0]), L=L,
+            m1=m1, m2=m2, mspec=0.0, alpha=alpha, beta=beta,
+            ell=0, qc_impl=qc_impl)
+        return np.array([[Ktwo]])
+
     def get_value(self, E=5.0, L=5.0, pcotdelta_parameter_lists=None,
                   project=False, irrep=None):
         """Build the K matrix in a shell-based way."""
@@ -169,6 +199,13 @@ class K:
         k_final_list = []
         for sc_ind in range(len(self.qcis.fcs.sc_list_sorted)):
             sc = self.qcis.fcs.sc_list_sorted[sc_ind]
+            if sc.fc.n_particles == 2:
+                k_tmp = self._get_two_particle_shell(
+                    E, L, sc, sc_ind, pcotdelta_parameter_lists,
+                    project, irrep)
+                if len(k_tmp) != 0:
+                    k_final_list = k_final_list+[k_tmp]
+                continue
             ell_set = sc.ell_set
             if len(ell_set) != 1:
                 raise ValueError("only length-one ell_set currently "

@@ -555,6 +555,15 @@ class SpectatorChannel:
 
     def _set_cutoff_scheme_data(self):
         """Set default pole-cutoff data for this spectator channel."""
+        if self.fc.n_particles == 2:
+            m1, m2 = self.fc.masses
+            self.thresholdSQ = (m1+m2)**2
+            self.ESQmin = 0.0
+            self.ESQMIN = 0.0
+            self.alpha = -1.0
+            self.beta = 0.0
+            self.scheme_data = [self.alpha, self.beta]
+            return
         if self.fc.n_particles != 3:
             self.thresholdSQ = None
             self.ESQmin = None
