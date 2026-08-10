@@ -142,5 +142,84 @@ class TestTwoParticleChannelsInFcList(unittest.TestCase):
         self.assertAlmostEqual(shift, expansion, places=4)
 
 
+class TestPureTwoParticleSpace(unittest.TestCase):
+    """A purely two-particle fc_list must work without a dummy channel."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.masses = [1.0, 1.3]
+        cls.a_values = [0.14, -0.06]
+        particles = [ampyl.flavor.Particle(mass=m, flavor=f)
+                     for m, f in zip(cls.masses, 'ab')]
+        fc_two = [ampyl.flavor.FlavorChannel(2, particles=[p, p])
+                  for p in particles]
+        fcs = ampyl.flavor.FlavorChannelSpace(fc_list=fc_two,
+                                              ni_list=fc_two)
+        fvs = ampyl.spaces.FiniteVolumeSetup()
+        tbis = ampyl.spaces.ThreeBodyInteractionScheme(fcs=fcs)
+        cls.qcis = ampyl.spaces.QCIndexSpace(fcs=fcs, fvs=fvs, tbis=tbis,
+                                             Emax=4.2, Lmax=5.5)
+        with contextlib.redirect_stdout(io.StringIO()):
+            cls.qcis.populate()
+        cls.qc = ampyl.QC(qcis=cls.qcis)
+        cls.qc_dict = {
+            'k_params': [[[a] for a in cls.a_values], [0.0]],
+            'project': True,
+            'irrep': ('A1PLUS', 0),
+        }
+
+    def _qc_full(self, E, L):
+        with contextlib.redirect_stdout(io.StringIO()):
+            return self.qc.get_value(E=E, L=L, qc_dict=self.qc_dict)
+
+    def _qc_direct(self, E, L, m, a):
+        Ftwo = qcf.getFtwo_single_entry(
+            E2=E, nP2=np.array([0, 0, 0]), L=L,
+            m1=m, m2=m, C1cut=5, alphaKSS=1.0)
+        Ktwo = qcf.getK_single_entry(
+            pcotdelta_function=qcf.pcotdelta_scattering_length,
+            pcotdelta_parameter_list=[a],
+            E=E, npspec=np.array([0, 0, 0]), L=L,
+            m1=m, m2=m, mspec=0.0, ell=0,
+            qc_impl={'hermitian': False})
+        return 1.0 + Ftwo*Ktwo
+
+    def test_populate_without_three_particle_channel(self):
+        """The index space populates with zero three-particle slices."""
+        self.assertEqual(self.qcis.fcs.n_three_slices, 0)
+        self.assertEqual(self.qcis.n_two_channels, 2)
+        self.assertEqual(self.qcis.sc_to_three_slice, [0, 0])
+        self.assertIn(('A1PLUS', 0), self.qcis.proj_dict.keys())
+
+    def test_matrix_layout_is_two_by_two(self):
+        """F, G and K reduce to the pair blocks alone."""
+        E, L = 3.0, 5.0
+        with contextlib.redirect_stdout(io.StringIO()):
+            f_mat = self.qc.f.get_value(E=E, L=L, project=True,
+                                        irrep=('A1PLUS', 0))
+            g_mat = self.qc.g.get_value(E=E, L=L, project=True,
+                                        irrep=('A1PLUS', 0))
+        self.assertEqual(f_mat.shape, (2, 2))
+        self.assertEqual(g_mat.shape, (2, 2))
+        self.assertTrue((g_mat == 0.0).all())
+        self.assertEqual(f_mat[0, 1], 0.0)
+        self.assertEqual(f_mat[1, 0], 0.0)
+
+    def test_roots_match_direct_luscher(self):
+        """Both channels' ground states match the standalone condition."""
+        L = 5.0
+        for m, a in zip(self.masses, self.a_values):
+            if a > 0:
+                bracket = [2.0*m+1.0e-9, 2.0*m+0.4]
+            else:
+                bracket = [2.0*m-0.2, 2.0*m-1.0e-9]
+            root_direct = root_scalar(self._qc_direct, args=(L, m, a),
+                                      bracket=bracket).root
+            root_full = root_scalar(self._qc_full, args=(L,),
+                                    bracket=[root_direct-1.0e-4,
+                                             root_direct+1.0e-4]).root
+            self.assertAlmostEqual(root_full, root_direct, places=10)
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -1385,6 +1385,9 @@ class QCIndexSpace:
 
     def _get_sc_to_three_slice(self):
         """Get the spectator channel to three-slice mapping."""
+        if len(self.fcs.slices_by_three_masses) == 0:
+            # purely two-particle space: every channel shares slot 0
+            return [0]*self.n_channels
         last_loc = -1
         offset = 1
         three_channel_max =\
