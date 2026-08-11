@@ -198,6 +198,11 @@ class QCMatrixBuilder:
 
         [pcotdelta_parameter_lists, k3_params] = k_params
 
+        if self._creates_ftwo(version):
+            return self._build_two_particle_matrices(
+                E, L, pcotdelta_parameter_lists, project, irrep, rescale,
+                policy_element)
+
         k = self._select_component('k', policy_element)
         K = k.get_value(E, L, pcotdelta_parameter_lists,
                         project, irrep)*rescale
@@ -231,6 +236,27 @@ class QCMatrixBuilder:
             matrices['K'], matrices['G'] = self._match_matrix_to_k(G, K, 'G')
 
         return matrices
+
+    def _build_two_particle_matrices(self, E, L, pcotdelta_parameter_lists,
+                                     project, irrep, rescale,
+                                     policy_element):
+        """Build the pair-sector matrices for a two-particle QC version.
+
+        G, FplusG, and Kdf have no meaning for the pair sector and are
+        deliberately never touched on this path.
+        """
+        ftwo = self._select_component('ftwo', policy_element)
+        if ftwo.qcis.n_two_channels == 0:
+            raise ValueError(
+                "a two-particle QC version requires a flavor-channel "
+                "space containing two-particle channels")
+        ktwo = self._select_component('ktwo', policy_element)
+        Ktwo_mat = ktwo.get_value(E, L, pcotdelta_parameter_lists,
+                                  project, irrep)*rescale
+        kwargs = self._interpolator_kwargs('ftwo', policy_element)
+        Ftwo_mat = ftwo.get_value(E, L, project, irrep,
+                                  short_string='ftwo', **kwargs)/rescale
+        return {'Ktwo': Ktwo_mat, 'Ftwo': Ftwo_mat}
 
     def _get_f_matrix(self, E, L, project, irrep, rescale, policy_element):
         """Return the F matrix for the requested kinematics."""
@@ -356,6 +382,18 @@ class QCMatrixBuilder:
             'kdf_zero_1+_FinverseF3'
         ]
 
+    def _creates_ftwo(self, version):
+        """Return whether a QC version requires the two-particle F."""
+        return version in [
+            'two_particle_1+'
+        ]
+
+    def _creates_ktwo(self, version):
+        """Return whether a QC version requires the two-particle K."""
+        return version in [
+            'two_particle_1+'
+        ]
+
 
 class QCVersionEvaluator:
     """Evaluate QC formulas from a prepared set of matrices."""
@@ -364,6 +402,13 @@ class QCVersionEvaluator:
         """Evaluate the selected QC expression."""
         version = qc_dict['version']
         shift = qc_dict['shift']
+
+        if version == 'two_particle_1+':
+            Ftwo = matrices['Ftwo']
+            Ktwo = matrices['Ktwo']
+            id_mat = np.identity(len(Ftwo))
+            return np.linalg.det(id_mat+Ftwo@Ktwo)-shift
+
         K = matrices['K']
         F = matrices.get('F')
         FplusG = matrices.get('FplusG')

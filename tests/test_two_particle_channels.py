@@ -260,6 +260,43 @@ class TestPureTwoParticleSpace(unittest.TestCase):
         self.assertEqual(f_mat[0, 1], 0.0)
         self.assertEqual(f_mat[1, 0], 0.0)
 
+    def test_two_particle_version_equals_fgcombo(self):
+        """On a pure pair space the dedicated version equals the old one.
+
+        With F == Ftwo, K == Ktwo, and G == 0, det(1 + Ftwo*Ktwo) and
+        det(1 + (F+G)K) are the same number, so the dedicated version
+        must agree with the grafted kdf_zero route exactly.
+        """
+        L = 5.0
+        qc_dict_two = dict(self.qc_dict, version='two_particle_1+')
+        qc_dict_old = dict(self.qc_dict,
+                           version='kdf_zero_1+_fgcombo')
+        for E in (2.1, 2.8, 3.3, 3.9):
+            with contextlib.redirect_stdout(io.StringIO()):
+                value_two = self.qc.get_value(E=E, L=L,
+                                              qc_dict=qc_dict_two)
+                value_old = self.qc.get_value(E=E, L=L,
+                                              qc_dict=qc_dict_old)
+            self.assertAlmostEqual(value_two, value_old, places=13)
+
+    def test_two_particle_version_requires_pair_channels(self):
+        """The dedicated version refuses a purely three-particle space."""
+        fc_three = ampyl.flavor.FlavorChannel(3)
+        fcs = ampyl.flavor.FlavorChannelSpace(fc_list=[fc_three])
+        fvs = ampyl.spaces.FiniteVolumeSetup()
+        tbis = ampyl.spaces.ThreeBodyInteractionScheme(fcs=fcs)
+        qcis = ampyl.spaces.QCIndexSpace(fcs=fcs, fvs=fvs, tbis=tbis,
+                                         Emax=4.0, Lmax=4.0)
+        with contextlib.redirect_stdout(io.StringIO()):
+            qcis.populate()
+        qc = ampyl.QC(qcis=qcis)
+        qc_dict = {'k_params': [[[0.1], [0.1]], [0.0]],
+                   'project': True, 'irrep': ('A1PLUS', 0),
+                   'version': 'two_particle_1+'}
+        with self.assertRaises(ValueError):
+            with contextlib.redirect_stdout(io.StringIO()):
+                qc.get_value(E=3.5, L=3.9, qc_dict=qc_dict)
+
     def test_roots_match_direct_luscher(self):
         """Both channels' ground states match the standalone condition."""
         L = 5.0
