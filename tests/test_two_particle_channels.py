@@ -120,6 +120,41 @@ class TestTwoParticleChannelsInFcList(unittest.TestCase):
         self.assertTrue((g_mat[0, 1:] == 0.0).all())
         self.assertTrue((g_mat[1:, 0] == 0.0).all())
 
+    def test_ftwo_ktwo_match_pair_blocks(self):
+        """Ftwo/Ktwo reproduce the pair blocks currently carried by F/K."""
+        E, L = 3.0, 5.0
+        project, irrep = True, ('A1PLUS', 0)
+        with contextlib.redirect_stdout(io.StringIO()):
+            f_mat = self.qc.f.get_value(E=E, L=L, project=project,
+                                        irrep=irrep)
+            ftwo_mat = self.qc.ftwo.get_value(E=E, L=L, project=project,
+                                              irrep=irrep,
+                                              short_string='ftwo')
+            k_mat = self.qc.k.get_value(
+                E=E, L=L,
+                pcotdelta_parameter_lists=self.qc_dict['k_params'][0],
+                project=project, irrep=irrep)
+            ktwo_mat = self.qc.ktwo.get_value(
+                E=E, L=L,
+                pcotdelta_parameter_lists=self.qc_dict['k_params'][0],
+                project=project, irrep=irrep)
+        # this mixed space has one two-particle channel, leading in F/K
+        self.assertEqual(ftwo_mat.shape, (1, 1))
+        self.assertEqual(ktwo_mat.shape, (1, 1))
+        self.assertEqual(ftwo_mat[0, 0], f_mat[0, 0])
+        self.assertEqual(ktwo_mat[0, 0], k_mat[0, 0])
+
+    def test_ftwo_pole_candidates_match_channel_masses(self):
+        """Ftwo pole candidates are the pair levels below Emax at Lmax."""
+        candidates = self.qc.ftwo._get_pole_candidates_for_detection([])
+        self.assertGreater(len(candidates), 0)
+        for nvecSQs, masses in candidates:
+            self.assertEqual(nvecSQs[0], 0)
+            self.assertEqual(masses[0], 0.0)
+            self.assertEqual(nvecSQs[1], nvecSQs[2])
+            self.assertEqual(masses[1], self.mass)
+            self.assertEqual(masses[2], self.mass)
+
     def test_ground_state_matches_direct_luscher(self):
         """Full-QC ground state equals the standalone two-particle root."""
         L = 5.0
@@ -190,6 +225,26 @@ class TestPureTwoParticleSpace(unittest.TestCase):
         self.assertEqual(self.qcis.n_two_channels, 2)
         self.assertEqual(self.qcis.sc_to_three_slice, [0, 0])
         self.assertIn(('A1PLUS', 0), self.qcis.proj_dict.keys())
+
+    def test_ftwo_ktwo_equal_full_matrices(self):
+        """On a purely two-particle space Ftwo/Ktwo equal F/K entirely."""
+        E, L = 3.0, 5.0
+        project, irrep = True, ('A1PLUS', 0)
+        pcotdelta_lists = self.qc_dict['k_params'][0]
+        with contextlib.redirect_stdout(io.StringIO()):
+            f_mat = self.qc.f.get_value(E=E, L=L, project=project,
+                                        irrep=irrep)
+            ftwo_mat = self.qc.ftwo.get_value(E=E, L=L, project=project,
+                                              irrep=irrep,
+                                              short_string='ftwo')
+            k_mat = self.qc.k.get_value(
+                E=E, L=L, pcotdelta_parameter_lists=pcotdelta_lists,
+                project=project, irrep=irrep)
+            ktwo_mat = self.qc.ktwo.get_value(
+                E=E, L=L, pcotdelta_parameter_lists=pcotdelta_lists,
+                project=project, irrep=irrep)
+        np.testing.assert_array_equal(ftwo_mat, f_mat)
+        np.testing.assert_array_equal(ktwo_mat, k_mat)
 
     def test_matrix_layout_is_two_by_two(self):
         """F, G and K reduce to the pair blocks alone."""

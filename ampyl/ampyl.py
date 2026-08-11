@@ -42,9 +42,11 @@ from .constants import bcolors
 from .cuts import G
 from .cuts import F
 from .cuts import FplusG
+from .cuts import Ftwo
 from . import fv_spectrum_utils
 from .k_matrices import K
 from .k_matrices import Kdf
+from .k_matrices import Ktwo
 import warnings
 warnings.simplefilter("once")
 
@@ -168,14 +170,19 @@ class QCMatrixBuilder:
             self.g = G(qcis=self.qcis)
             self.fplusg = FplusG(qcis=self.qcis, alphaKSS=alphaKSS,
                                  C1cut=C1cut)
+            self.ftwo = Ftwo(qcis=self.qcis, alphaKSS=alphaKSS,
+                             C1cut=C1cut)
             self.k = K(qcis=self.qcis)
             self.kdf = Kdf(qcis=self.qcis)
+            self.ktwo = Ktwo(qcis=self.qcis)
         else:
             self.f = owner.f
             self.g = owner.g
             self.fplusg = owner.fplusg
+            self.ftwo = owner.ftwo
             self.k = owner.k
             self.kdf = owner.kdf
+            self.ktwo = owner.ktwo
 
     def build(self, E, L, qc_dict, policy_element=None):
         """Build the matrices required for the selected QC version."""
@@ -442,8 +449,10 @@ class QC:
         self.f_list = IdentifiedObjectList()
         self.g_list = IdentifiedObjectList()
         self.fplusg_list = IdentifiedObjectList()
+        self.ftwo_list = IdentifiedObjectList()
         self.k_list = IdentifiedObjectList()
         self.kdf_list = IdentifiedObjectList()
+        self.ktwo_list = IdentifiedObjectList()
         self.qcis = self.qcis_list.add(qcis)
         self.f = self.f_list.add(F(qcis=self.qcis, alphaKSS=alphaKSS,
                                    C1cut=C1cut))
@@ -451,8 +460,12 @@ class QC:
         self.fplusg = self.fplusg_list.add(
             FplusG(qcis=self.qcis, alphaKSS=alphaKSS, C1cut=C1cut)
         )
+        self.ftwo = self.ftwo_list.add(
+            Ftwo(qcis=self.qcis, alphaKSS=alphaKSS, C1cut=C1cut)
+        )
         self.k = self.k_list.add(K(qcis=self.qcis))
         self.kdf = self.kdf_list.add(Kdf(qcis=self.qcis))
+        self.ktwo = self.ktwo_list.add(Ktwo(qcis=self.qcis))
         self.matrix_builder = QCMatrixBuilder(qcis=self.qcis,
                                               C1cut=C1cut,
                                               alphaKSS=alphaKSS,
@@ -469,8 +482,11 @@ class QC:
         self.add_g(qcis_id=qcis.id, name=name)
         self.add_fplusg(qcis_id=qcis.id, name=name, C1cut=C1cut,
                         alphaKSS=alphaKSS)
+        self.add_ftwo(qcis_id=qcis.id, name=name, C1cut=C1cut,
+                      alphaKSS=alphaKSS)
         self.add_k(qcis_id=qcis.id, name=name)
         self.add_kdf(qcis_id=qcis.id, name=name)
+        self.add_ktwo(qcis_id=qcis.id, name=name)
         return qcis
 
     def add_f(self, qcis_id=0, name=None, C1cut=5, alphaKSS=1.0):
@@ -490,10 +506,21 @@ class QC:
         return self.fplusg_list.add(FplusG(qcis=qcis, alphaKSS=alphaKSS,
                                            C1cut=C1cut), name=name)
 
+    def add_ftwo(self, qcis_id=0, name=None, C1cut=5, alphaKSS=1.0):
+        """Add an Ftwo instance tied to a registered qcis."""
+        qcis = self.qcis_list.get(qcis_id)
+        return self.ftwo_list.add(Ftwo(qcis=qcis, alphaKSS=alphaKSS,
+                                       C1cut=C1cut), name=name)
+
     def add_k(self, qcis_id=0, name=None):
         """Add a K instance tied to a registered qcis."""
         qcis = self.qcis_list.get(qcis_id)
         return self.k_list.add(K(qcis=qcis), name=name)
+
+    def add_ktwo(self, qcis_id=0, name=None):
+        """Add a Ktwo instance tied to a registered qcis."""
+        qcis = self.qcis_list.get(qcis_id)
+        return self.ktwo_list.add(Ktwo(qcis=qcis), name=name)
 
     def add_kdf(self, qcis_id=0, name=None):
         """Add a Kdf instance tied to a registered qcis."""

@@ -124,32 +124,9 @@ class K:
     def _get_two_particle_shell(self, E, L, sc, sc_ind,
                                 pcotdelta_parameter_lists, project, irrep):
         """Build the 1x1 K block for a two-particle channel."""
-        nP = self.qcis.fvs.nP
-        if nP@nP != 0:
-            raise NotImplementedError(
-                "two-particle channels are implemented only for zero total "
-                "momentum")
-        if list(sc.ell_set) != [0]:
-            raise NotImplementedError(
-                "two-particle channels currently support only "
-                "ell_set == [0]")
-        if shell_utils.two_particle_block_dim(project, irrep) == 0:
-            return np.array([])
-        m1, m2 = sc.fc.masses
-        alpha, beta = self.qcis.tbis.scheme_data[sc_ind]
-        # mspec = 0 reduces the spectator kinematics to the genuine
-        # two-particle system; the hermitian 2*omega_spec normalization
-        # belongs to the three-particle sector and must not multiply the
-        # pair block
-        qc_impl = dict(self.qcis.fvs.qc_impl)
-        qc_impl['hermitian'] = False
-        Ktwo = qc_functions.getK_single_entry(
-            pcotdelta_function=sc.p_cot_deltas[0],
-            pcotdelta_parameter_list=pcotdelta_parameter_lists[sc_ind],
-            E=E, nP=nP, npspec=np.array([0, 0, 0]), L=L,
-            m1=m1, m2=m2, mspec=0.0, alpha=alpha, beta=beta,
-            ell=0, qc_impl=qc_impl)
-        return np.array([[Ktwo]])
+        return _get_two_particle_k_shell(self.qcis, E, L, sc, sc_ind,
+                                         pcotdelta_parameter_lists,
+                                         project, irrep)
 
     def get_value(self, E=5.0, L=5.0, pcotdelta_parameter_lists=None,
                   project=False, irrep=None):
@@ -230,6 +207,69 @@ class K:
                 if len(k_tmp) != 0:
                     k_final_list = k_final_list+[k_tmp]
         return block_diag(*k_final_list)
+
+
+def _get_two_particle_k_shell(qcis, E, L, sc, sc_ind,
+                              pcotdelta_parameter_lists, project, irrep):
+    """Build the 1x1 K block for one two-particle channel."""
+    nP = qcis.fvs.nP
+    if nP@nP != 0:
+        raise NotImplementedError(
+            "two-particle channels are implemented only for zero total "
+            "momentum")
+    if list(sc.ell_set) != [0]:
+        raise NotImplementedError(
+            "two-particle channels currently support only "
+            "ell_set == [0]")
+    if shell_utils.two_particle_block_dim(project, irrep) == 0:
+        return np.array([])
+    m1, m2 = sc.fc.masses
+    alpha, beta = qcis.tbis.scheme_data[sc_ind]
+    # mspec = 0 reduces the spectator kinematics to the genuine
+    # two-particle system; the hermitian 2*omega_spec normalization
+    # belongs to the three-particle sector and must not multiply the
+    # pair block
+    qc_impl = dict(qcis.fvs.qc_impl)
+    qc_impl['hermitian'] = False
+    Ktwo_entry = qc_functions.getK_single_entry(
+        pcotdelta_function=sc.p_cot_deltas[0],
+        pcotdelta_parameter_list=pcotdelta_parameter_lists[sc_ind],
+        E=E, nP=nP, npspec=np.array([0, 0, 0]), L=L,
+        m1=m1, m2=m2, mspec=0.0, alpha=alpha, beta=beta,
+        ell=0, qc_impl=qc_impl)
+    return np.array([[Ktwo_entry]])
+
+
+class Ktwo:
+    """Two-particle sector of the two-body K matrix.
+
+    Block diagonal over the two-particle channels of the space, in
+    ``sc_list_sorted`` order, matching the layout of :class:`Ftwo`.
+
+    :param qcis: quantization-condition index space, specifying all data
+        for the class
+    :type qcis: QCIndexSpace
+    """
+
+    def __init__(self, qcis=None):
+        self.qcis = qcis
+
+    def get_value(self, E=5.0, L=5.0, pcotdelta_parameter_lists=None,
+                  project=False, irrep=None):
+        """Build the two-particle K matrix channel by channel."""
+        check_utils.check_value_within_qcis_bounds(self, E, L)
+        blocks = []
+        for sc_ind, sc in enumerate(self.qcis.fcs.sc_list_sorted):
+            if sc.fc.n_particles != 2:
+                continue
+            k_tmp = _get_two_particle_k_shell(
+                self.qcis, E, L, sc, sc_ind,
+                pcotdelta_parameter_lists, project, irrep)
+            if len(k_tmp) != 0:
+                blocks.append(k_tmp)
+        if len(blocks) == 0:
+            return np.zeros((0, 0))
+        return block_diag(*blocks)
 
 
 class Kdf:

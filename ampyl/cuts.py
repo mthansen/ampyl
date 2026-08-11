@@ -50,6 +50,39 @@ import warnings
 warnings.simplefilter("once")
 
 
+def _get_two_particle_pole_candidates(qcis, seen_pole_candidates):
+    """Collect pole candidates for the two-particle channels of a space.
+
+    A two-particle pole sits at the sum of two back-to-back
+    single-particle energies, which the shared candidate format
+    expresses as a third particle with zero mass and zero momentum.
+    """
+    pole_candidates = []
+    for sc in qcis.fcs.sc_list_sorted:
+        if sc.fc.n_particles != 2:
+            continue
+        m1, m2 = sc.fc.masses
+        for nvecSQ in range(0, 10000):
+            E_pole = (np.sqrt(m1**2+FOURPI2*nvecSQ/qcis.Lmax**2)
+                      + np.sqrt(m2**2+FOURPI2*nvecSQ/qcis.Lmax**2))
+            if E_pole > qcis.Emax:
+                break
+            remainder = nvecSQ
+            while remainder % 4 == 0 and remainder > 0:
+                remainder //= 4
+            if remainder % 8 == 7:
+                continue
+            pole_candidate = interpolable_utils._canonicalize_pole_candidate(
+                [nvecSQ, nvecSQ, 0], [m1, m2, 0.0])
+            if pole_candidate not in seen_pole_candidates:
+                seen_pole_candidates.add(pole_candidate)
+                pole_candidates.append([
+                    list(pole_candidate[0]),
+                    list(pole_candidate[1]),
+                ])
+    return pole_candidates
+
+
 class G(Interpolable):
     """Represent the finite-volume G matrix."""
 
@@ -567,37 +600,9 @@ class F(Interpolable):
         return all_nvecSQs
 
     def _get_two_particle_pole_candidates(self, seen_pole_candidates):
-        """Collect pole candidates for the two-particle channels.
-
-        A two-particle pole sits at the sum of two back-to-back
-        single-particle energies, which the shared candidate format
-        expresses as a third particle with zero mass and zero momentum.
-        """
-        pole_candidates = []
-        for sc in self.qcis.fcs.sc_list_sorted:
-            if sc.fc.n_particles != 2:
-                continue
-            m1, m2 = sc.fc.masses
-            for nvecSQ in range(0, 10000):
-                E_pole = (np.sqrt(m1**2+FOURPI2*nvecSQ/self.qcis.Lmax**2)
-                          + np.sqrt(m2**2+FOURPI2*nvecSQ/self.qcis.Lmax**2))
-                if E_pole > self.qcis.Emax:
-                    break
-                remainder = nvecSQ
-                while remainder % 4 == 0 and remainder > 0:
-                    remainder //= 4
-                if remainder % 8 == 7:
-                    continue
-                pole_candidate = interpolable_utils\
-                    ._canonicalize_pole_candidate(
-                        [nvecSQ, nvecSQ, 0], [m1, m2, 0.0])
-                if pole_candidate not in seen_pole_candidates:
-                    seen_pole_candidates.add(pole_candidate)
-                    pole_candidates.append([
-                        list(pole_candidate[0]),
-                        list(pole_candidate[1]),
-                    ])
-        return pole_candidates
+        """Collect pole candidates for the two-particle channels."""
+        return _get_two_particle_pole_candidates(self.qcis,
+                                                 seen_pole_candidates)
 
     def _get_pole_candidates_for_detection(self, nvecSQs_by_shell):
         """Collect canonicalized F pole candidates for every mass slice."""
@@ -907,3 +912,57 @@ class FplusG(Interpolable):
                     seen_pole_candidates.add(pole_key)
                     all_pole_candidates.append(pole_candidate)
         return all_pole_candidates
+
+
+class Ftwo(Interpolable):
+    """Represent the two-particle sector of the finite-volume F matrix.
+
+    The matrix is block diagonal over the two-particle channels of the
+    space, ordered as in ``sc_list_sorted``; three-particle channels do
+    not enter. Each channel contributes a single s-wave entry at zero
+    total momentum, so the projected block exists only in A1PLUS.
+    """
+
+    def __init__(self, qcis=None, alphaKSS=1.0, C1cut=3):
+        """Initialize with zeta-function cutoff parameters."""
+        super().__init__(qcis)
+        self.C1cut = C1cut
+        self.alphaKSS = alphaKSS
+
+    def _get_value_not_interpolated(self, E, L, project, irrep):
+        """Build the two-particle F matrix channel by channel."""
+        check_utils.check_value_within_qcis_bounds(self, E, L)
+        nP = self.qcis.fvs.nP
+        if nP@nP != 0:
+            raise NotImplementedError(
+                "two-particle channels are implemented only for zero total "
+                "momentum")
+        blocks = []
+        for sc in self.qcis.fcs.sc_list_sorted:
+            if sc.fc.n_particles != 2:
+                continue
+            if list(sc.ell_set) != [0]:
+                raise NotImplementedError(
+                    "two-particle channels currently support only "
+                    "ell_set == [0]")
+            if shell_utils.two_particle_block_dim(project, irrep) == 0:
+                continue
+            m1, m2 = sc.fc.masses
+            blocks.append([[qc_functions.getFtwo_single_entry(
+                E2=E, nP2=nP, L=L, m1=m1, m2=m2,
+                C1cut=self.C1cut, alphaKSS=self.alphaKSS)]])
+        if len(blocks) == 0:
+            return np.zeros((0, 0))
+        return block_diag(*blocks)
+
+    def _get_all_nvecSQs_for_pole_detection(self, nvecSQs_by_shell):
+        """Two-particle poles carry no three-particle shell data."""
+        return []
+
+    def _get_pole_candidates_for_detection(self, nvecSQs_by_shell):
+        """Collect pair-sector pole candidates from the channel masses.
+
+        The three-particle shell data is ignored; the pair poles are
+        fully determined by the channel masses and the momentum shells.
+        """
+        return _get_two_particle_pole_candidates(self.qcis, set())
