@@ -221,5 +221,84 @@ class TestPureTwoParticleSpace(unittest.TestCase):
             self.assertAlmostEqual(root_full, root_direct, places=10)
 
 
+class TestTwoParticleInterpolator(unittest.TestCase):
+    """build_interpolator must work for purely two-particle F+G."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.mass = 1.0
+        cls.a_scatter = 0.1
+        cls.irrep = ('A1PLUS', 0)
+        particle = ampyl.flavor.Particle(mass=cls.mass, flavor='a')
+        fc_two = ampyl.flavor.FlavorChannel(2, particles=[particle]*2)
+        fcs = ampyl.flavor.FlavorChannelSpace(fc_list=[fc_two],
+                                              ni_list=[fc_two])
+        fvs = ampyl.spaces.FiniteVolumeSetup()
+        tbis = ampyl.spaces.ThreeBodyInteractionScheme(fcs=fcs)
+        cls.qcis = ampyl.spaces.QCIndexSpace(fcs=fcs, fvs=fvs, tbis=tbis,
+                                             Emax=3.4, Lmax=5.5)
+        with contextlib.redirect_stdout(io.StringIO()):
+            cls.qcis.populate()
+        cls.qcis.fvs.qc_impl["fplusg_interpolate"] = False
+        cls.qc = ampyl.QC(qcis=cls.qcis)
+        # grid bottom below threshold, offset so no point hits the poles
+        with contextlib.redirect_stdout(io.StringIO()):
+            cls.qc.fplusg.build_interpolator(1.9499877, 3.31, 0.03,
+                                             4.5, 5.5, 0.25,
+                                             True, cls.irrep,
+                                             name="test_window")
+            cls.qc.fplusg._load_interpolator(interpolator_id=0)
+        cls.qcis.fvs.qc_impl["fplusg_interpolate"] = True
+
+    def test_spline_matches_direct(self):
+        """Interpolated F+G reproduces direct evaluation off the grid."""
+        for E, L in [(2.13, 4.63), (2.47, 5.11), (3.05, 5.37)]:
+            with contextlib.redirect_stdout(io.StringIO()):
+                direct = self.qc.fplusg.get_value(
+                    E=E, L=L, project=True, irrep=self.irrep,
+                    interpolate=False)
+                splined = self.qc.fplusg.get_value(
+                    E=E, L=L, project=True, irrep=self.irrep,
+                    interpolate=True, interpolator_id=0)
+            rel = abs(float(splined[0][0])-float(direct[0][0])) \
+                / abs(float(direct[0][0]))
+            self.assertLess(rel, 1.0e-3)
+
+    def test_policy_root_matches_direct(self):
+        """QC root through the interpolator equals the direct root."""
+        policy_element = {
+            "Lmin": 4.5, "Lmax": 5.5, "Emin": 1.96, "Emax": 3.30,
+            "version": "kdf_zero_1+_fgcombo",
+            "qcis_id": 0, "fplusg_id": 0, "k_id": 0,
+            "fplusg_interpolator": True, "fplusg_interpolator_id": 0,
+        }
+        default_element = dict(policy_element)
+        default_element.update({"Lmin": None, "Lmax": None,
+                                "Emin": None, "Emax": None,
+                                "fplusg_interpolator": False})
+        qc_dict_spline = {'k_params': [[[self.a_scatter]], [0.0]],
+                          'project': True, 'irrep': self.irrep,
+                          'policy': [policy_element, default_element]}
+        qc_dict_direct = {'k_params': [[[self.a_scatter]], [0.0]],
+                          'project': True, 'irrep': self.irrep,
+                          'version': 'kdf_zero_1+_fgcombo'}
+        L = 5.0
+
+        def det_spline(E):
+            with contextlib.redirect_stdout(io.StringIO()):
+                return self.qc.get_value(E=E, L=L,
+                                         qc_dict=qc_dict_spline)
+
+        def det_direct(E):
+            with contextlib.redirect_stdout(io.StringIO()):
+                return self.qc.get_value(E=E, L=L,
+                                         qc_dict=qc_dict_direct)
+
+        bracket = [2.0+1.0e-6, 3.0]
+        root_direct = root_scalar(det_direct, bracket=bracket).root
+        root_spline = root_scalar(det_spline, bracket=bracket).root
+        self.assertAlmostEqual(root_spline, root_direct, places=6)
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -311,9 +311,11 @@ def _get_all_nvecSQs_by_shell(interpolable, E=5.0, L=5.0, project=False,
         tbks_sub_indices = interpolable.qcis.get_tbks_sub_indices(E=E, L=L)
         tbks_entries = []
         slices_by_three_slice = []
+        slot_offset = 1 if interpolable.qcis.n_two_channels > 0 else 0
         for three_slice_index in range(interpolable.qcis.fcs.n_three_slices):
-            tbks_entry = interpolable.qcis.tbks_list[three_slice_index][
-                tbks_sub_indices[three_slice_index]]
+            slot_index = three_slice_index+slot_offset
+            tbks_entry = interpolable.qcis.tbks_list[slot_index][
+                tbks_sub_indices[slot_index]]
             tbks_entries.append(tbks_entry)
             slices_by_three_slice.append(tbks_entry.shells)
         if interpolable.qcis.verbosity >= 2:
@@ -371,13 +373,22 @@ def _get_all_nvecSQs_by_shell(interpolable, E=5.0, L=5.0, project=False,
     nvecSQs_final = [[]]
     if interpolable.qcis.verbosity >= 2:
         print('iterating over spectator channels, slices')
+    # two-particle channels carry no shell data; their pole candidates
+    # are generated directly from the channel masses instead
+    slot_offset = 1 if interpolable.qcis.n_two_channels > 0 else 0
     for sc_row_ind in range(len(interpolable.qcis.fcs.sc_list_sorted)):
+        if interpolable.qcis.fcs.sc_list_sorted[
+                sc_row_ind].fc.n_particles == 2:
+            continue
         nvecSQs_outer_row = []
         row_ell_set = interpolable.qcis.fcs.sc_list_sorted[sc_row_ind].ell_set
         if len(row_ell_set) != 1:
             raise ValueError("only length-one ell_set currently "
                              + "supported in G")
         for sc_col_ind in range(len(interpolable.qcis.fcs.sc_list_sorted)):
+            if interpolable.qcis.fcs.sc_list_sorted[
+                    sc_col_ind].fc.n_particles == 2:
+                continue
             if interpolable.qcis.verbosity >= 2:
                 print('sc_row_ind, sc_col_ind =', sc_row_ind, sc_col_ind)
             col_ell_set =\
@@ -386,8 +397,10 @@ def _get_all_nvecSQs_by_shell(interpolable, E=5.0, L=5.0, project=False,
                 raise ValueError("only length-one ell_set currently "
                                  + "supported in G")
 
-            row_three_slice = interpolable.qcis.sc_to_three_slice[sc_row_ind]
-            col_three_slice = interpolable.qcis.sc_to_three_slice[sc_col_ind]
+            row_three_slice = interpolable.qcis.sc_to_three_slice[
+                sc_row_ind]-slot_offset
+            col_three_slice = interpolable.qcis.sc_to_three_slice[
+                sc_col_ind]-slot_offset
             row_slices = slices_by_three_slice[row_three_slice]
             col_slices = slices_by_three_slice[col_three_slice]
             row_tbks_entry = tbks_entries[row_three_slice]

@@ -566,10 +566,45 @@ class F(Interpolable):
                         )
         return all_nvecSQs
 
+    def _get_two_particle_pole_candidates(self, seen_pole_candidates):
+        """Collect pole candidates for the two-particle channels.
+
+        A two-particle pole sits at the sum of two back-to-back
+        single-particle energies, which the shared candidate format
+        expresses as a third particle with zero mass and zero momentum.
+        """
+        pole_candidates = []
+        for sc in self.qcis.fcs.sc_list_sorted:
+            if sc.fc.n_particles != 2:
+                continue
+            m1, m2 = sc.fc.masses
+            for nvecSQ in range(0, 10000):
+                E_pole = (np.sqrt(m1**2+FOURPI2*nvecSQ/self.qcis.Lmax**2)
+                          + np.sqrt(m2**2+FOURPI2*nvecSQ/self.qcis.Lmax**2))
+                if E_pole > self.qcis.Emax:
+                    break
+                remainder = nvecSQ
+                while remainder % 4 == 0 and remainder > 0:
+                    remainder //= 4
+                if remainder % 8 == 7:
+                    continue
+                pole_candidate = interpolable_utils\
+                    ._canonicalize_pole_candidate(
+                        [nvecSQ, nvecSQ, 0], [m1, m2, 0.0])
+                if pole_candidate not in seen_pole_candidates:
+                    seen_pole_candidates.add(pole_candidate)
+                    pole_candidates.append([
+                        list(pole_candidate[0]),
+                        list(pole_candidate[1]),
+                    ])
+        return pole_candidates
+
     def _get_pole_candidates_for_detection(self, nvecSQs_by_shell):
         """Collect canonicalized F pole candidates for every mass slice."""
         all_pole_candidates = []
         seen_pole_candidates = set()
+        all_pole_candidates.extend(self._get_two_particle_pole_candidates(
+            seen_pole_candidates))
         mass_slices = self.qcis.fcs.slices_by_three_masses
         mass_assignments = []
         for slice_bounds in mass_slices:
