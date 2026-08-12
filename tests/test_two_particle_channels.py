@@ -44,14 +44,14 @@ from ampyl import qc_functions as qcf
 
 
 class TestTwoParticleChannelsInFcList(unittest.TestCase):
-    """Two-particle channels in fc_list must give the Luscher condition.
+    """Mixed spaces populate and expose sectors, but refuse evaluation.
 
     The space couples one two-particle channel (an identical pair with
-    mass 1.0) to a heavy three-particle channel whose threshold (4.5)
-    sits above every energy probed, with its interaction switched off,
-    so the QC determinant factorizes and the two-particle roots must
-    match the standalone condition 1 + F2*K2 = 0 built directly from
-    ``qc_functions``.
+    mass 1.0) to a heavy three-particle channel. The index space must
+    populate, Ftwo/Ktwo must extract the pair sector, and F/G/K must
+    reduce to the three-particle sector — but QC evaluation is refused
+    for every version, since mixed spaces are unsupported until a
+    genuine 2<->3 coupled formalism exists.
     """
 
     @classmethod
@@ -77,22 +77,6 @@ class TestTwoParticleChannelsInFcList(unittest.TestCase):
             'irrep': ('A1PLUS', 0),
         }
 
-    def _qc_full(self, E, L):
-        with contextlib.redirect_stdout(io.StringIO()):
-            return self.qc.get_value(E=E, L=L, qc_dict=self.qc_dict)
-
-    def _qc_direct(self, E, L):
-        Ftwo = qcf.getFtwo_single_entry(
-            E2=E, nP2=np.array([0, 0, 0]), L=L,
-            m1=self.mass, m2=self.mass, C1cut=5, alphaKSS=1.0)
-        Ktwo = qcf.getK_single_entry(
-            pcotdelta_function=qcf.pcotdelta_scattering_length,
-            pcotdelta_parameter_list=[self.a_scatter],
-            E=E, npspec=np.array([0, 0, 0]), L=L,
-            m1=self.mass, m2=self.mass, mspec=0.0, ell=0,
-            qc_impl={'hermitian': False})
-        return 1.0 + Ftwo*Ktwo
-
     def test_slot_mappings(self):
         """Two-particle channels map to slot 0, three-slices shift by one."""
         self.assertEqual(self.qcis.n_two_channels, 1)
@@ -100,8 +84,8 @@ class TestTwoParticleChannelsInFcList(unittest.TestCase):
         sub_indices = self.qcis.get_tbks_sub_indices(E=3.0, L=5.0)
         self.assertEqual(len(sub_indices), len(self.qcis.tbks_list))
 
-    def test_matrix_shapes_agree(self):
-        """F, G and K must share one block layout."""
+    def test_sector_split(self):
+        """F/G/K hold the three-particle sector, Ftwo/Ktwo the pair."""
         E, L = 3.0, 5.0
         project, irrep = True, ('A1PLUS', 0)
         with contextlib.redirect_stdout(io.StringIO()):
@@ -113,36 +97,29 @@ class TestTwoParticleChannelsInFcList(unittest.TestCase):
                 E=E, L=L,
                 pcotdelta_parameter_lists=self.qc_dict['k_params'][0],
                 project=project, irrep=irrep)
-        self.assertEqual(f_mat.shape, g_mat.shape)
-        self.assertEqual(f_mat.shape, k_mat.shape)
-        # pair block is first and G has no two-particle coupling
-        self.assertEqual(g_mat[0, 0], 0.0)
-        self.assertTrue((g_mat[0, 1:] == 0.0).all())
-        self.assertTrue((g_mat[1:, 0] == 0.0).all())
-
-    def test_ftwo_ktwo_match_pair_blocks(self):
-        """Ftwo/Ktwo reproduce the pair blocks currently carried by F/K."""
-        E, L = 3.0, 5.0
-        project, irrep = True, ('A1PLUS', 0)
-        with contextlib.redirect_stdout(io.StringIO()):
-            f_mat = self.qc.f.get_value(E=E, L=L, project=project,
-                                        irrep=irrep)
             ftwo_mat = self.qc.ftwo.get_value(E=E, L=L, project=project,
                                               irrep=irrep,
                                               short_string='ftwo')
-            k_mat = self.qc.k.get_value(
-                E=E, L=L,
-                pcotdelta_parameter_lists=self.qc_dict['k_params'][0],
-                project=project, irrep=irrep)
             ktwo_mat = self.qc.ktwo.get_value(
                 E=E, L=L,
                 pcotdelta_parameter_lists=self.qc_dict['k_params'][0],
                 project=project, irrep=irrep)
-        # this mixed space has one two-particle channel, leading in F/K
+        self.assertEqual(f_mat.shape, g_mat.shape)
+        self.assertEqual(f_mat.shape, k_mat.shape)
         self.assertEqual(ftwo_mat.shape, (1, 1))
         self.assertEqual(ktwo_mat.shape, (1, 1))
-        self.assertEqual(ftwo_mat[0, 0], f_mat[0, 0])
-        self.assertEqual(ktwo_mat[0, 0], k_mat[0, 0])
+        # the pair entries match the standalone qc_functions evaluations
+        ftwo_direct = qcf.getFtwo_single_entry(
+            E2=E, nP2=np.array([0, 0, 0]), L=L,
+            m1=self.mass, m2=self.mass, C1cut=5, alphaKSS=1.0)
+        ktwo_direct = qcf.getK_single_entry(
+            pcotdelta_function=qcf.pcotdelta_scattering_length,
+            pcotdelta_parameter_list=[self.a_scatter],
+            E=E, npspec=np.array([0, 0, 0]), L=L,
+            m1=self.mass, m2=self.mass, mspec=0.0, ell=0,
+            qc_impl={'hermitian': False})
+        self.assertAlmostEqual(ftwo_mat[0, 0], ftwo_direct, places=14)
+        self.assertAlmostEqual(ktwo_mat[0, 0], ktwo_direct, places=12)
 
     def test_ftwo_pole_candidates_match_channel_masses(self):
         """Ftwo pole candidates are the pair levels below Emax at Lmax."""
@@ -155,26 +132,14 @@ class TestTwoParticleChannelsInFcList(unittest.TestCase):
             self.assertEqual(masses[1], self.mass)
             self.assertEqual(masses[2], self.mass)
 
-    def test_ground_state_matches_direct_luscher(self):
-        """Full-QC ground state equals the standalone two-particle root."""
-        L = 5.0
-        root_direct = root_scalar(self._qc_direct, args=(L,),
-                                  bracket=[2.0+1.0e-9, 2.5]).root
-        root_full = root_scalar(self._qc_full, args=(L,),
-                                bracket=[root_direct-1.0e-4,
-                                         root_direct+1.0e-4]).root
-        self.assertAlmostEqual(root_full, root_direct, places=10)
-
-    def test_ground_state_matches_threshold_expansion(self):
-        """Ground-state shift follows the Luscher threshold expansion."""
-        L = 5.0
-        root_full = root_scalar(self._qc_full, args=(L,),
-                                bracket=[2.0+1.0e-9, 2.5]).root
-        shift = root_full-2.0*self.mass
-        a_over_L = self.a_scatter/L
-        expansion = (4.0*np.pi*self.a_scatter/(self.mass*L**3)
-                     * (1.0+2.837297*a_over_L+6.375183*a_over_L**2))
-        self.assertAlmostEqual(shift, expansion, places=4)
+    def test_mixed_space_evaluation_refused(self):
+        """Every QC version refuses evaluation on a mixed space."""
+        for version in ('kdf_zero_1+_fgcombo', 'kdf_zero_1+',
+                        'two_particle_1+'):
+            qc_dict = dict(self.qc_dict, version=version)
+            with self.assertRaises(ValueError, msg=version):
+                with contextlib.redirect_stdout(io.StringIO()):
+                    self.qc.get_value(E=3.0, L=5.0, qc_dict=qc_dict)
 
 
 class TestPureTwoParticleSpace(unittest.TestCase):
@@ -201,6 +166,7 @@ class TestPureTwoParticleSpace(unittest.TestCase):
             'k_params': [[[a] for a in cls.a_values], [0.0]],
             'project': True,
             'irrep': ('A1PLUS', 0),
+            'version': 'two_particle_1+',
         }
 
     def _qc_full(self, E, L):
@@ -226,58 +192,39 @@ class TestPureTwoParticleSpace(unittest.TestCase):
         self.assertEqual(self.qcis.sc_to_three_slice, [0, 0])
         self.assertIn(('A1PLUS', 0), self.qcis.proj_dict.keys())
 
-    def test_ftwo_ktwo_equal_full_matrices(self):
-        """On a purely two-particle space Ftwo/Ktwo equal F/K entirely."""
+    def test_sector_matrices(self):
+        """Ftwo/Ktwo carry the pair blocks; F, G and K are empty."""
         E, L = 3.0, 5.0
         project, irrep = True, ('A1PLUS', 0)
         pcotdelta_lists = self.qc_dict['k_params'][0]
         with contextlib.redirect_stdout(io.StringIO()):
             f_mat = self.qc.f.get_value(E=E, L=L, project=project,
                                         irrep=irrep)
+            g_mat = self.qc.g.get_value(E=E, L=L, project=project,
+                                        irrep=irrep)
             ftwo_mat = self.qc.ftwo.get_value(E=E, L=L, project=project,
                                               irrep=irrep,
                                               short_string='ftwo')
-            k_mat = self.qc.k.get_value(
-                E=E, L=L, pcotdelta_parameter_lists=pcotdelta_lists,
-                project=project, irrep=irrep)
             ktwo_mat = self.qc.ktwo.get_value(
                 E=E, L=L, pcotdelta_parameter_lists=pcotdelta_lists,
                 project=project, irrep=irrep)
-        np.testing.assert_array_equal(ftwo_mat, f_mat)
-        np.testing.assert_array_equal(ktwo_mat, k_mat)
+        self.assertEqual(len(f_mat), 0)
+        self.assertEqual(g_mat.shape, (0, 0))
+        self.assertEqual(ftwo_mat.shape, (2, 2))
+        self.assertEqual(ktwo_mat.shape, (2, 2))
+        self.assertEqual(ftwo_mat[0, 1], 0.0)
+        self.assertEqual(ftwo_mat[1, 0], 0.0)
+        self.assertEqual(ktwo_mat[0, 1], 0.0)
+        self.assertEqual(ktwo_mat[1, 0], 0.0)
 
-    def test_matrix_layout_is_two_by_two(self):
-        """F, G and K reduce to the pair blocks alone."""
-        E, L = 3.0, 5.0
-        with contextlib.redirect_stdout(io.StringIO()):
-            f_mat = self.qc.f.get_value(E=E, L=L, project=True,
-                                        irrep=('A1PLUS', 0))
-            g_mat = self.qc.g.get_value(E=E, L=L, project=True,
-                                        irrep=('A1PLUS', 0))
-        self.assertEqual(f_mat.shape, (2, 2))
-        self.assertEqual(g_mat.shape, (2, 2))
-        self.assertTrue((g_mat == 0.0).all())
-        self.assertEqual(f_mat[0, 1], 0.0)
-        self.assertEqual(f_mat[1, 0], 0.0)
-
-    def test_two_particle_version_equals_fgcombo(self):
-        """On a pure pair space the dedicated version equals the old one.
-
-        With F == Ftwo, K == Ktwo, and G == 0, det(1 + Ftwo*Ktwo) and
-        det(1 + (F+G)K) are the same number, so the dedicated version
-        must agree with the grafted kdf_zero route exactly.
-        """
-        L = 5.0
-        qc_dict_two = dict(self.qc_dict, version='two_particle_1+')
-        qc_dict_old = dict(self.qc_dict,
-                           version='kdf_zero_1+_fgcombo')
-        for E in (2.1, 2.8, 3.3, 3.9):
-            with contextlib.redirect_stdout(io.StringIO()):
-                value_two = self.qc.get_value(E=E, L=L,
-                                              qc_dict=qc_dict_two)
-                value_old = self.qc.get_value(E=E, L=L,
-                                              qc_dict=qc_dict_old)
-            self.assertAlmostEqual(value_two, value_old, places=13)
+    def test_kdf_zero_versions_refused(self):
+        """Three-particle versions refuse spaces with pair channels."""
+        for version in ('kdf_zero_1+_fgcombo', 'kdf_zero_1+',
+                        'kdf_zero_k2_inv', 'f3'):
+            qc_dict = dict(self.qc_dict, version=version)
+            with self.assertRaises(ValueError, msg=version):
+                with contextlib.redirect_stdout(io.StringIO()):
+                    self.qc.get_value(E=3.0, L=5.0, qc_dict=qc_dict)
 
     def test_two_particle_version_requires_pair_channels(self):
         """The dedicated version refuses a purely three-particle space."""
@@ -314,7 +261,7 @@ class TestPureTwoParticleSpace(unittest.TestCase):
 
 
 class TestTwoParticleInterpolator(unittest.TestCase):
-    """build_interpolator must work for purely two-particle F+G."""
+    """build_interpolator must work for the two-particle Ftwo."""
 
     @classmethod
     def setUpClass(cls):
@@ -331,27 +278,26 @@ class TestTwoParticleInterpolator(unittest.TestCase):
                                              Emax=3.4, Lmax=5.5)
         with contextlib.redirect_stdout(io.StringIO()):
             cls.qcis.populate()
-        cls.qcis.fvs.qc_impl["fplusg_interpolate"] = False
         cls.qc = ampyl.QC(qcis=cls.qcis)
         # grid bottom below threshold, offset so no point hits the poles
         with contextlib.redirect_stdout(io.StringIO()):
-            cls.qc.fplusg.build_interpolator(1.9499877, 3.31, 0.03,
-                                             4.5, 5.5, 0.25,
-                                             True, cls.irrep,
-                                             name="test_window")
-            cls.qc.fplusg._load_interpolator(interpolator_id=0)
-        cls.qcis.fvs.qc_impl["fplusg_interpolate"] = True
+            cls.qc.ftwo.build_interpolator(1.9499877, 3.31, 0.03,
+                                           4.5, 5.5, 0.25,
+                                           True, cls.irrep,
+                                           name="test_window")
+            cls.qc.ftwo._load_interpolator(interpolator_id=0)
 
     def test_spline_matches_direct(self):
-        """Interpolated F+G reproduces direct evaluation off the grid."""
+        """Interpolated Ftwo reproduces direct evaluation off the grid."""
         for E, L in [(2.13, 4.63), (2.47, 5.11), (3.05, 5.37)]:
             with contextlib.redirect_stdout(io.StringIO()):
-                direct = self.qc.fplusg.get_value(
+                direct = self.qc.ftwo.get_value(
                     E=E, L=L, project=True, irrep=self.irrep,
-                    interpolate=False)
-                splined = self.qc.fplusg.get_value(
+                    short_string='ftwo', interpolate=False)
+                splined = self.qc.ftwo.get_value(
                     E=E, L=L, project=True, irrep=self.irrep,
-                    interpolate=True, interpolator_id=0)
+                    short_string='ftwo', interpolate=True,
+                    interpolator_id=0)
             rel = abs(float(splined[0][0])-float(direct[0][0])) \
                 / abs(float(direct[0][0]))
             self.assertLess(rel, 1.0e-3)
@@ -360,20 +306,20 @@ class TestTwoParticleInterpolator(unittest.TestCase):
         """QC root through the interpolator equals the direct root."""
         policy_element = {
             "Lmin": 4.5, "Lmax": 5.5, "Emin": 1.96, "Emax": 3.30,
-            "version": "kdf_zero_1+_fgcombo",
-            "qcis_id": 0, "fplusg_id": 0, "k_id": 0,
-            "fplusg_interpolator": True, "fplusg_interpolator_id": 0,
+            "version": "two_particle_1+",
+            "qcis_id": 0, "ftwo_id": 0, "ktwo_id": 0,
+            "ftwo_interpolator": True, "ftwo_interpolator_id": 0,
         }
         default_element = dict(policy_element)
         default_element.update({"Lmin": None, "Lmax": None,
                                 "Emin": None, "Emax": None,
-                                "fplusg_interpolator": False})
+                                "ftwo_interpolator": False})
         qc_dict_spline = {'k_params': [[[self.a_scatter]], [0.0]],
                           'project': True, 'irrep': self.irrep,
                           'policy': [policy_element, default_element]}
         qc_dict_direct = {'k_params': [[[self.a_scatter]], [0.0]],
                           'project': True, 'irrep': self.irrep,
-                          'version': 'kdf_zero_1+_fgcombo'}
+                          'version': 'two_particle_1+'}
         L = 5.0
 
         def det_spline(E):

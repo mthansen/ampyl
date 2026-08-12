@@ -260,8 +260,7 @@ class G(Interpolable):
         g_final = []
         if self.qcis.verbosity >= 2:
             print('iterating over spectator channels, slices')
-        # two-particle channels have no G coupling at this stage; they are
-        # skipped here and re-inserted as a leading zero block at the end
+        # the pair sector lives in Ftwo/Ktwo; G is three-particle only
         slot_offset = 1 if self.qcis.n_two_channels > 0 else 0
         for sc_row_ind in range(len(self.qcis.fcs.sc_list_sorted)):
             if self.qcis.fcs.sc_list_sorted[
@@ -330,13 +329,6 @@ class G(Interpolable):
             g_final = np.block(g_final)
         else:
             g_final = np.zeros((0, 0))
-        two_particle_dim = sum(
-            shell_utils.two_particle_block_dim(project, irrep)
-            for sc in self.qcis.fcs.sc_list_sorted
-            if sc.fc.n_particles == 2)
-        if two_particle_dim > 0:
-            g_final = block_diag(
-                np.zeros((two_particle_dim, two_particle_dim)), g_final)
         return g_final
 
     def _extract_g_masses(self, sc_row_ind, sc_col_ind):
@@ -599,17 +591,10 @@ class F(Interpolable):
                         )
         return all_nvecSQs
 
-    def _get_two_particle_pole_candidates(self, seen_pole_candidates):
-        """Collect pole candidates for the two-particle channels."""
-        return _get_two_particle_pole_candidates(self.qcis,
-                                                 seen_pole_candidates)
-
     def _get_pole_candidates_for_detection(self, nvecSQs_by_shell):
         """Collect canonicalized F pole candidates for every mass slice."""
         all_pole_candidates = []
         seen_pole_candidates = set()
-        all_pole_candidates.extend(self._get_two_particle_pole_candidates(
-            seen_pole_candidates))
         mass_slices = self.qcis.fcs.slices_by_three_masses
         mass_assignments = []
         for slice_bounds in mass_slices:
@@ -736,25 +721,6 @@ class F(Interpolable):
             Fshell = proj_tmp_left@Fshell@proj_tmp_right
         return Fshell
 
-    def _get_two_particle_shell(self, E, L, sc, project, irrep):
-        """Build the 1x1 F block for a two-particle channel."""
-        nP = self.qcis.fvs.nP
-        if nP@nP != 0:
-            raise NotImplementedError(
-                "two-particle channels are implemented only for zero total "
-                "momentum")
-        if list(sc.ell_set) != [0]:
-            raise NotImplementedError(
-                "two-particle channels currently support only "
-                "ell_set == [0]")
-        if shell_utils.two_particle_block_dim(project, irrep) == 0:
-            return np.array([])
-        m1, m2 = sc.fc.masses
-        Ftwo = qc_functions.getFtwo_single_entry(
-            E2=E, nP2=nP, L=L, m1=m1, m2=m2,
-            C1cut=self.C1cut, alphaKSS=self.alphaKSS)
-        return np.array([[Ftwo]])
-
     def _get_value_not_interpolated(self, E, L, project, irrep):
         """Build the un-interpolated F matrix shell by shell."""
         check_utils.check_value_within_qcis_bounds(self, E, L)
@@ -826,11 +792,8 @@ class F(Interpolable):
         f_final_list = []
         for sc_ind in range(len(self.qcis.fcs.sc_list_sorted)):
             sc = self.qcis.fcs.sc_list_sorted[sc_ind]
+            # the pair sector lives in Ftwo; F is three-particle only
             if sc.fc.n_particles == 2:
-                f_tmp = self._get_two_particle_shell(E, L, sc, project,
-                                                     irrep)
-                if len(f_tmp) != 0:
-                    f_final_list = f_final_list+[f_tmp]
                 continue
             ell_set = sc.ell_set
             if len(ell_set) != 1:
@@ -864,6 +827,8 @@ class F(Interpolable):
                     project, irrep, mask)
                 if len(f_tmp) != 0:
                     f_final_list = f_final_list+[f_tmp]
+        if len(f_final_list) == 0:
+            return np.zeros((0, 0))
         return block_diag(*f_final_list)
 
 

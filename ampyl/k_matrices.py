@@ -121,13 +121,6 @@ class K:
             Kshell = proj_tmp_left@Kshell@proj_tmp_right
         return Kshell
 
-    def _get_two_particle_shell(self, E, L, sc, sc_ind,
-                                pcotdelta_parameter_lists, project, irrep):
-        """Build the 1x1 K block for a two-particle channel."""
-        return _get_two_particle_k_shell(self.qcis, E, L, sc, sc_ind,
-                                         pcotdelta_parameter_lists,
-                                         project, irrep)
-
     def get_value(self, E=5.0, L=5.0, pcotdelta_parameter_lists=None,
                   project=False, irrep=None):
         """Build the K matrix in a shell-based way."""
@@ -176,12 +169,8 @@ class K:
         k_final_list = []
         for sc_ind in range(len(self.qcis.fcs.sc_list_sorted)):
             sc = self.qcis.fcs.sc_list_sorted[sc_ind]
+            # the pair sector lives in Ktwo; K is three-particle only
             if sc.fc.n_particles == 2:
-                k_tmp = self._get_two_particle_shell(
-                    E, L, sc, sc_ind, pcotdelta_parameter_lists,
-                    project, irrep)
-                if len(k_tmp) != 0:
-                    k_final_list = k_final_list+[k_tmp]
                 continue
             ell_set = sc.ell_set
             if len(ell_set) != 1:
@@ -206,6 +195,8 @@ class K:
                     slice_index, project, irrep)
                 if len(k_tmp) != 0:
                     k_final_list = k_final_list+[k_tmp]
+        if len(k_final_list) == 0:
+            return np.zeros((0, 0))
         return block_diag(*k_final_list)
 
 

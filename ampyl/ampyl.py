@@ -204,6 +204,13 @@ class QCMatrixBuilder:
                 policy_element)
 
         k = self._select_component('k', policy_element)
+        if k.qcis.n_two_channels > 0:
+            raise ValueError(
+                f"version '{version}' covers only the three-particle "
+                "sector and does not support flavor-channel spaces "
+                "containing two-particle channels; use version "
+                "'two_particle_1+' with a purely two-particle space "
+                "(mixed spaces are currently unsupported)")
         K = k.get_value(E, L, pcotdelta_parameter_lists,
                         project, irrep)*rescale
         matrices = {'K': K}
@@ -250,6 +257,11 @@ class QCMatrixBuilder:
             raise ValueError(
                 "a two-particle QC version requires a flavor-channel "
                 "space containing two-particle channels")
+        if ftwo.qcis.fcs.n_three_slices > 0:
+            raise ValueError(
+                "a two-particle QC version requires a purely "
+                "two-particle flavor-channel space; mixed spaces are "
+                "currently unsupported")
         ktwo = self._select_component('ktwo', policy_element)
         Ktwo_mat = ktwo.get_value(E, L, pcotdelta_parameter_lists,
                                   project, irrep)*rescale
