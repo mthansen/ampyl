@@ -243,6 +243,10 @@ class Interpolable:
         use_cob_matrices = QC_IMPL_DEFAULTS['use_cob_matrices']
         if 'use_cob_matrices' in self.qcis.fvs.qc_impl:
             use_cob_matrices = self.qcis.fvs.qc_impl['use_cob_matrices']
+        if self.qcis.fcs.n_three_slices == 0:
+            # a purely two-particle space has a single static shell set,
+            # so there is no basis change to track
+            use_cob_matrices = False
         if use_cob_matrices:
             cob_matrix_key_list =\
                 interpolable_utils._get_cob_matrix_key_list(self)

@@ -42,9 +42,11 @@ from .constants import bcolors
 from .cuts import G
 from .cuts import F
 from .cuts import FplusG
+from .cuts import Ftwo
 from . import fv_spectrum_utils
 from .k_matrices import K
 from .k_matrices import Kdf
+from .k_matrices import Ktwo
 import warnings
 warnings.simplefilter("once")
 
@@ -168,14 +170,19 @@ class QCMatrixBuilder:
             self.g = G(qcis=self.qcis)
             self.fplusg = FplusG(qcis=self.qcis, alphaKSS=alphaKSS,
                                  C1cut=C1cut)
+            self.ftwo = Ftwo(qcis=self.qcis, alphaKSS=alphaKSS,
+                             C1cut=C1cut)
             self.k = K(qcis=self.qcis)
             self.kdf = Kdf(qcis=self.qcis)
+            self.ktwo = Ktwo(qcis=self.qcis)
         else:
             self.f = owner.f
             self.g = owner.g
             self.fplusg = owner.fplusg
+            self.ftwo = owner.ftwo
             self.k = owner.k
             self.kdf = owner.kdf
+            self.ktwo = owner.ktwo
 
     def build(self, E, L, qc_dict, policy_element=None):
         """Build the matrices required for the selected QC version."""
@@ -191,7 +198,19 @@ class QCMatrixBuilder:
 
         [pcotdelta_parameter_lists, k3_params] = k_params
 
+        if self._creates_ftwo(version):
+            return self._build_two_particle_matrices(
+                E, L, pcotdelta_parameter_lists, project, irrep, rescale,
+                policy_element)
+
         k = self._select_component('k', policy_element)
+        if k.qcis.n_two_channels > 0:
+            raise ValueError(
+                f"version '{version}' covers only the three-particle "
+                "sector and does not support flavor-channel spaces "
+                "containing two-particle channels; use version "
+                "'two_particle_1+' with a purely two-particle space "
+                "(mixed spaces are currently unsupported)")
         K = k.get_value(E, L, pcotdelta_parameter_lists,
                         project, irrep)*rescale
         matrices = {'K': K}
@@ -224,6 +243,32 @@ class QCMatrixBuilder:
             matrices['K'], matrices['G'] = self._match_matrix_to_k(G, K, 'G')
 
         return matrices
+
+    def _build_two_particle_matrices(self, E, L, pcotdelta_parameter_lists,
+                                     project, irrep, rescale,
+                                     policy_element):
+        """Build the pair-sector matrices for a two-particle QC version.
+
+        G, FplusG, and Kdf have no meaning for the pair sector and are
+        deliberately never touched on this path.
+        """
+        ftwo = self._select_component('ftwo', policy_element)
+        if ftwo.qcis.n_two_channels == 0:
+            raise ValueError(
+                "a two-particle QC version requires a flavor-channel "
+                "space containing two-particle channels")
+        if ftwo.qcis.fcs.n_three_slices > 0:
+            raise ValueError(
+                "a two-particle QC version requires a purely "
+                "two-particle flavor-channel space; mixed spaces are "
+                "currently unsupported")
+        ktwo = self._select_component('ktwo', policy_element)
+        Ktwo_mat = ktwo.get_value(E, L, pcotdelta_parameter_lists,
+                                  project, irrep)*rescale
+        kwargs = self._interpolator_kwargs('ftwo', policy_element)
+        Ftwo_mat = ftwo.get_value(E, L, project, irrep,
+                                  short_string='ftwo', **kwargs)/rescale
+        return {'Ktwo': Ktwo_mat, 'Ftwo': Ftwo_mat}
 
     def _get_f_matrix(self, E, L, project, irrep, rescale, policy_element):
         """Return the F matrix for the requested kinematics."""
@@ -349,6 +394,18 @@ class QCMatrixBuilder:
             'kdf_zero_1+_FinverseF3'
         ]
 
+    def _creates_ftwo(self, version):
+        """Return whether a QC version requires the two-particle F."""
+        return version in [
+            'two_particle_1+'
+        ]
+
+    def _creates_ktwo(self, version):
+        """Return whether a QC version requires the two-particle K."""
+        return version in [
+            'two_particle_1+'
+        ]
+
 
 class QCVersionEvaluator:
     """Evaluate QC formulas from a prepared set of matrices."""
@@ -357,6 +414,13 @@ class QCVersionEvaluator:
         """Evaluate the selected QC expression."""
         version = qc_dict['version']
         shift = qc_dict['shift']
+
+        if version == 'two_particle_1+':
+            Ftwo = matrices['Ftwo']
+            Ktwo = matrices['Ktwo']
+            id_mat = np.identity(len(Ftwo))
+            return np.linalg.det(id_mat+Ftwo@Ktwo)-shift
+
         K = matrices['K']
         F = matrices.get('F')
         FplusG = matrices.get('FplusG')
@@ -442,8 +506,10 @@ class QC:
         self.f_list = IdentifiedObjectList()
         self.g_list = IdentifiedObjectList()
         self.fplusg_list = IdentifiedObjectList()
+        self.ftwo_list = IdentifiedObjectList()
         self.k_list = IdentifiedObjectList()
         self.kdf_list = IdentifiedObjectList()
+        self.ktwo_list = IdentifiedObjectList()
         self.qcis = self.qcis_list.add(qcis)
         self.f = self.f_list.add(F(qcis=self.qcis, alphaKSS=alphaKSS,
                                    C1cut=C1cut))
@@ -451,8 +517,12 @@ class QC:
         self.fplusg = self.fplusg_list.add(
             FplusG(qcis=self.qcis, alphaKSS=alphaKSS, C1cut=C1cut)
         )
+        self.ftwo = self.ftwo_list.add(
+            Ftwo(qcis=self.qcis, alphaKSS=alphaKSS, C1cut=C1cut)
+        )
         self.k = self.k_list.add(K(qcis=self.qcis))
         self.kdf = self.kdf_list.add(Kdf(qcis=self.qcis))
+        self.ktwo = self.ktwo_list.add(Ktwo(qcis=self.qcis))
         self.matrix_builder = QCMatrixBuilder(qcis=self.qcis,
                                               C1cut=C1cut,
                                               alphaKSS=alphaKSS,
@@ -469,8 +539,11 @@ class QC:
         self.add_g(qcis_id=qcis.id, name=name)
         self.add_fplusg(qcis_id=qcis.id, name=name, C1cut=C1cut,
                         alphaKSS=alphaKSS)
+        self.add_ftwo(qcis_id=qcis.id, name=name, C1cut=C1cut,
+                      alphaKSS=alphaKSS)
         self.add_k(qcis_id=qcis.id, name=name)
         self.add_kdf(qcis_id=qcis.id, name=name)
+        self.add_ktwo(qcis_id=qcis.id, name=name)
         return qcis
 
     def add_f(self, qcis_id=0, name=None, C1cut=5, alphaKSS=1.0):
@@ -490,10 +563,21 @@ class QC:
         return self.fplusg_list.add(FplusG(qcis=qcis, alphaKSS=alphaKSS,
                                            C1cut=C1cut), name=name)
 
+    def add_ftwo(self, qcis_id=0, name=None, C1cut=5, alphaKSS=1.0):
+        """Add an Ftwo instance tied to a registered qcis."""
+        qcis = self.qcis_list.get(qcis_id)
+        return self.ftwo_list.add(Ftwo(qcis=qcis, alphaKSS=alphaKSS,
+                                       C1cut=C1cut), name=name)
+
     def add_k(self, qcis_id=0, name=None):
         """Add a K instance tied to a registered qcis."""
         qcis = self.qcis_list.get(qcis_id)
         return self.k_list.add(K(qcis=qcis), name=name)
+
+    def add_ktwo(self, qcis_id=0, name=None):
+        """Add a Ktwo instance tied to a registered qcis."""
+        qcis = self.qcis_list.get(qcis_id)
+        return self.ktwo_list.add(Ktwo(qcis=qcis), name=name)
 
     def add_kdf(self, qcis_id=0, name=None):
         """Add a Kdf instance tied to a registered qcis."""

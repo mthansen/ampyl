@@ -730,11 +730,10 @@ class NonIntSpace:
         if len(self.fcs.fc_list) == 0:
             self.nonint_multiplicities = None
             return
-        if (len(self.fcs.fc_list) == 1
-           and not self.fcs.fc_list[0].isospin_channel):
-            isospin_int = 0
-        elif self.fcs.fc_list[0].isospin_channel:
+        if self.fcs.fc_list[0].isospin_channel:
             isospin_int = int(self.fcs.fc_list[0].isospin)
+        else:
+            isospin_int = 0
         nPSQ = self.nPSQ
         group = self.group
         if nPSQ == 0:
@@ -1386,6 +1385,9 @@ class QCIndexSpace:
 
     def _get_sc_to_three_slice(self):
         """Get the spectator channel to three-slice mapping."""
+        if len(self.fcs.slices_by_three_masses) == 0:
+            # purely two-particle space: every channel shares slot 0
+            return [0]*self.n_channels
         last_loc = -1
         offset = 1
         three_channel_max =\
@@ -1404,11 +1406,12 @@ class QCIndexSpace:
             if sc_index < self.n_two_channels:
                 three_slice_index = 0
             else:
-                sc_index_shift = sc_index-self.n_two_channels
+                # slices_by_three_masses holds full sorted-list indices, so
+                # sc_index is compared directly
                 three_slice_index = -1
                 for k in range(len(self.fcs.slices_by_three_masses)):
                     three_slice = self.fcs.slices_by_three_masses[k]
-                    if three_slice[0] <= sc_index_shift < three_slice[1]:
+                    if three_slice[0] <= sc_index < three_slice[1]:
                         three_slice_index = k
                 if self.n_two_channels > 0:
                     three_slice_index = three_slice_index+1
@@ -1635,7 +1638,14 @@ class QCIndexSpace:
                             )**2))/(2.*FOURPI2*(ESQ*L**2-FOURPI2*nPSQ))
             nPmaxintSQ = int(nPspecmax**2)
             nPnewintSQ = int(nPspecnew**2)
-            tbks_sub_indices[sc_index] = nPmaxintSQ - nPnewintSQ
+            # tbks_list slot convention: with two-particle channels present,
+            # slot 0 holds their shared kinematics and three-slice i lives
+            # in slot i+1
+            if self.n_two_channels > 0:
+                slot_index = slice_index+1
+            else:
+                slot_index = slice_index
+            tbks_sub_indices[slot_index] = nPmaxintSQ - nPnewintSQ
         return tbks_sub_indices
 
     def _get_tbks_sub_indices_nonzero_mom(self, E, L):
@@ -1645,7 +1655,12 @@ class QCIndexSpace:
             sc = self.fcs.sc_list_sorted[sc_index]
             m_spec = sc.spectator.mass
             nP = self.nP
-            tbkstmp_set = self.tbks_list[sc_index]
+            # same tbks_list slot convention as the zero-momentum case
+            if self.n_two_channels > 0:
+                slot_index = slice_index+1
+            else:
+                slot_index = slice_index
+            tbkstmp_set = self.tbks_list[slot_index]
             still_searching = True
             i = 0
             while still_searching:
@@ -1672,7 +1687,7 @@ class QCIndexSpace:
                                     + FOURPI2/L**2
                                     * ((nvec_arr**2).sum(axis=1))))**2\
                 - FOURPI2/L**2*((nP-nvec_arr)**2).sum(axis=1)
-            tbks_sub_indices[sc_index] = i
+            tbks_sub_indices[slot_index] = i
         warnings.warn(f"\n{bcolors.WARNING}"
                       f"get_tbks_sub_indices is being called with "
                       f"non_zero nP; this can lead to shells being "
