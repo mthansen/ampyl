@@ -47,7 +47,6 @@ from .constants import EPSILON10
 from .constants import BAD_MIN_GUESS
 from .constants import BAD_MAX_GUESS
 from .constants import POLE_CUT
-from .constants import bcolors
 from . import qc_functions
 import warnings
 warnings.simplefilter("once")
@@ -332,11 +331,7 @@ def _get_all_nvecSQs_by_shell(interpolable, E=5.0, L=5.0, project=False,
         mspec = sc.spectator.mass
         m2 = sc.first_dimer.mass
         m3 = sc.second_dimer.mass
-        # ibest = interpolable.qcis._get_ibest(E, L)
-        ibest = 0
-        warnings.warn(f"\n{bcolors.WARNING}"
-                      "ibest is set to 0. This is a temporary fix."
-                      f"{bcolors.ENDC}")
+        ibest = interpolable.qcis.get_shellset_index(E, L)
         if len(interpolable.qcis.tbks_list) > 1:
             raise ValueError("get_value within G assumes tbks_list is "
                              + "length one.")
@@ -446,11 +441,7 @@ def _get_shell_nvecSQs_projs(interpolable, E=5.0, L=5.0,
     if project:
         try:
             if nP@nP != 0:
-                ibest = interpolable.qcis._get_ibest(E, L)
-                ibest = 0
-                warnings.warn(f"\n{bcolors.WARNING}"
-                              "ibest is set to 0. This is a temporary fix."
-                              f"{bcolors.ENDC}")
+                ibest = interpolable.qcis.get_shellset_index(E, L)
                 proj_tmp_right = np.array(interpolable.qcis
                                           .proj_dicts_by_sc_and_shellset[
                                               sc_index_col][ibest]

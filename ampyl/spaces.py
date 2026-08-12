@@ -48,6 +48,7 @@ from .constants import L_GRID_SHIFT
 from .constants import E_GRID_SHIFT
 from .constants import ISO_PROJECTORS
 from .constants import CAL_C_ISO
+from .constants import QC_IMPL_DEFAULTS
 from .constants import bcolors
 from .flavor import FlavorChannel
 from .flavor import FlavorChannelSpace
@@ -1600,6 +1601,49 @@ class QCIndexSpace:
             return tbks_sub_indices
         tbks_sub_indices = self._get_tbks_sub_indices_zero_mom(E, L)
         return tbks_sub_indices
+
+    def get_shellset_index(self, E, L):
+        """
+        Select the projector shell-set index for an evaluation point.
+
+        Projection dictionaries are stored per shell set in
+        ``proj_dicts_by_sc_and_shellset``. For zero total momentum the
+        precomputed shell sets are nested: each smaller set is a prefix
+        of shell set 0 and the per-shell projectors agree exactly, so
+        index 0 is always correct and is returned silently.
+
+        For nonzero total momentum, matched-window selection is not yet
+        supported: shell set 0 (built at ``Emax`` and ``Lmax``) is used
+        and a warning is emitted. Setting the ``qc_impl`` option
+        ``'ibest_always_zero'`` to ``False`` instead selects the set via
+        ``_get_ibest``; this path is experimental and not validated.
+
+        Parameters
+        ----------
+        E : float
+            Energy at which the QC matrix will be evaluated.
+        L : float
+            Volume at which the QC matrix will be evaluated.
+
+        Returns
+        -------
+        int
+            Index into each ``proj_dicts_by_sc_and_shellset`` entry (and
+            each ``tbks_list`` entry) selecting the shell set to use.
+        """
+        if self.nPSQ == 0:
+            return 0
+        ibest_always_zero = QC_IMPL_DEFAULTS['ibest_always_zero']
+        if 'ibest_always_zero' in self.fvs.qc_impl:
+            ibest_always_zero = self.fvs.qc_impl['ibest_always_zero']
+        if not ibest_always_zero:
+            return self._get_ibest(E, L)
+        warnings.warn(f"\n{bcolors.WARNING}"
+                      "nonzero total momentum: matched shell-set "
+                      "selection is not yet supported; using shell set 0 "
+                      "(built at Emax, Lmax)."
+                      f"{bcolors.ENDC}")
+        return 0
 
     def _get_tbks_sub_indices_zero_mom(self, E, L):
         tbks_sub_indices = [0]*len(self.tbks_list)
