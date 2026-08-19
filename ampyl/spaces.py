@@ -1475,6 +1475,14 @@ class QCIndexSpace:
 
         The resulting dictionaries are organized by spectator channel and, for
         shell-resolved projections, by kinematic shell set.
+
+        At zero total momentum only shell set 0 is stored: the precomputed
+        shell sets are nested (each smaller set is a prefix of set 0) and
+        per-shell projectors depend only on the shell's own momentum orbit,
+        so set 0's table is exact for every set (see
+        ``tests/test_shellset_index.py``). At nonzero total momentum the
+        shrinking spaces re-split the orbits, so a full table is kept per
+        shell set.
         """
         group = self.group
         proj_dicts_by_sc = []
@@ -1489,7 +1497,11 @@ class QCIndexSpace:
                 qcis=self, sc_index=sc_index)
             proj_dicts_by_sc.append(fixed_sc_proj_dict)
             fixed_sc_proj_dicts_by_shellset = []
-            for kellm_shell_index in range(len(self.kellm_shells[sc_index])):
+            if self.nPSQ == 0:
+                shellset_indices = range(1)
+            else:
+                shellset_indices = range(len(self.kellm_shells[sc_index]))
+            for kellm_shell_index in shellset_indices:
                 kellm_shell_set = self.kellm_shells[sc_index][
                     kellm_shell_index]
                 fixed_sc_and_shellset_proj_dict = []
@@ -1610,7 +1622,9 @@ class QCIndexSpace:
         ``proj_dicts_by_sc_and_shellset``. For zero total momentum the
         precomputed shell sets are nested: each smaller set is a prefix
         of shell set 0 and the per-shell projectors agree exactly, so
-        index 0 is always correct and is returned silently.
+        index 0 is always correct and is returned silently. (For this
+        reason, only shell set 0 is stored at zero total momentum; see
+        ``populate_all_proj_dicts``.)
 
         For nonzero total momentum, matched-window selection is not yet
         supported: shell set 0 (built at ``Emax`` and ``Lmax``) is used
