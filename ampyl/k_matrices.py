@@ -91,15 +91,15 @@ class K:
             dimer_symmetry_factor=dimer_symmetry_factor)
 
         if project:
-            ibest = self.qcis.get_shellset_index(E, L)
             try:
                 if nP@nP != 0:
+                    ibest = self.qcis.get_shellset_index(E, L)
                     proj_tmp_right = np.array(
                         self.qcis.proj_dicts_by_sc_and_shellset[
                             sc_ind][ibest])[mask_slices][slice_index][irrep]
                 else:
                     proj_tmp_right = self.qcis.proj_dicts_by_sc_and_shellset[
-                        sc_ind][ibest][slice_index][irrep]
+                        sc_ind][slice_index][irrep]
                 proj_tmp_left = np.conjugate((proj_tmp_right).T)
             except KeyError:
                 shell_utils._verify_irrep_is_known(self.qcis, irrep)
@@ -384,10 +384,10 @@ class Kdf:
     def _nPzero_projectors(self, sc_index_row, sc_index_col,
                            row_shell_index, col_shell_index, irrep):
         proj_tmp_right = self.qcis.proj_dicts_by_sc_and_shellset[
-                        sc_index_col][0][col_shell_index][irrep]
+                        sc_index_col][col_shell_index][irrep]
         proj_tmp_left = np.conjugate((
                         self.qcis.proj_dicts_by_sc_and_shellset[
-                            sc_index_row][0][row_shell_index][irrep]
+                            sc_index_row][row_shell_index][irrep]
                         ).T)
         return proj_tmp_right, proj_tmp_left
 

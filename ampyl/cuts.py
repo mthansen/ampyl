@@ -471,10 +471,10 @@ class G(Interpolable):
                            row_shell_index, col_shell_index, irrep):
         """Return shell projectors for zero total momentum."""
         proj_tmp_right = self.qcis.proj_dicts_by_sc_and_shellset[
-                        sc_index_col][0][col_shell_index][irrep]
+                        sc_index_col][col_shell_index][irrep]
         proj_tmp_left = np.conjugate((
                         self.qcis.proj_dicts_by_sc_and_shellset[
-                            sc_index_row][0][row_shell_index][irrep]
+                            sc_index_row][row_shell_index][irrep]
                         ).T)
         return proj_tmp_right, proj_tmp_left
 
@@ -699,7 +699,7 @@ class F(Interpolable):
                     proj_tmp_left = np.conjugate(((proj_tmp_right)).T)
                 else:
                     proj_tmp_right = self.qcis.proj_dicts_by_sc_and_shellset[
-                        sc_ind][0][slice_index][irrep]
+                        sc_ind][slice_index][irrep]
                     proj_tmp_left = np.conjugate((proj_tmp_right).T)
             except KeyError:
                 shell_utils._verify_irrep_is_known(self.qcis, irrep)

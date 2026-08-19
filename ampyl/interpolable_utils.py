@@ -102,12 +102,12 @@ def _grids_and_interp(interpolable, Emin, Emax, Estep, Lmin, Lmax, Lstep,
         for sc_index in range(interpolable.qcis.n_channels):
             three_slice_index = interpolable.qcis.sc_to_three_slice[sc_index]
             tbks_sub_index = tbks_sub_indices[three_slice_index]
-            # only shell set 0 is stored at zero momentum; restrict it to
-            # the shells active in the matched kinematic space
+            # the zero-momentum projector table is flat over shells;
+            # restrict it to the shells active in the matched space
             n_shells = len(interpolable.qcis.tbks_list[three_slice_index][
                 tbks_sub_index].shells)
             proj_dict_list = interpolable.qcis.proj_dicts_by_sc_and_shellset[
-                sc_index][0][:n_shells]
+                sc_index][:n_shells]
             for proj_dict in proj_dict_list:
                 try:
                     projected_size =\
@@ -153,8 +153,9 @@ def _resize_interp_data_list(interp_data_list, target_dim):
 def _get_dim_with_shell_index_all_scs(interpolable, irrep,
                                       tbks_sub_indices=None):
     # change-of-basis bookkeeping is only used at zero total momentum,
-    # where only shell set 0 is stored (exact for every set); the shell
-    # loop below is bounded by the matched kinematic space
+    # where the projector table is flat over shells (exact for every
+    # truncation); the shell loop below is bounded by the matched
+    # kinematic space
     assert interpolable.qcis.nPSQ == 0
     dim_with_shell_index_all_scs = []
     if tbks_sub_indices is None:
@@ -171,7 +172,7 @@ def _get_dim_with_shell_index_all_scs(interpolable, irrep,
             try:
                 proj_candidate = interpolable.qcis.\
                     proj_dicts_by_sc_and_shellset[
-                        spectator_channel_index][0][
+                        spectator_channel_index][
                             shell_index][irrep]
                 dim_with_shell_index_single_sc.\
                     append([(proj_candidate.shape)[1], shell_index])
@@ -464,10 +465,10 @@ def _get_shell_nvecSQs_projs(interpolable, E=5.0, L=5.0,
             else:
                 proj_tmp_right =\
                     interpolable.qcis.proj_dicts_by_sc_and_shellset[
-                        sc_index_col][0][col_shell_index][irrep]
+                        sc_index_col][col_shell_index][irrep]
                 proj_tmp_left = np.conjugate((
                     interpolable.qcis.proj_dicts_by_sc_and_shellset[
-                        sc_index_row][0][row_shell_index][irrep]
+                        sc_index_row][row_shell_index][irrep]
                 ).T)
         except KeyError:
             return np.array([])

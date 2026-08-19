@@ -1476,13 +1476,16 @@ class QCIndexSpace:
         The resulting dictionaries are organized by spectator channel and, for
         shell-resolved projections, by kinematic shell set.
 
-        At zero total momentum only shell set 0 is stored: the precomputed
-        shell sets are nested (each smaller set is a prefix of set 0) and
-        per-shell projectors depend only on the shell's own momentum orbit,
-        so set 0's table is exact for every set (see
+        The shell-resolved structure differs by total momentum. At zero
+        total momentum there is no shell-set rank:
+        ``proj_dicts_by_sc_and_shellset[sc][shell][irrep]`` holds the
+        per-shell table built for shell set 0, which is exact for every
+        truncation because the precomputed shell sets are nested (each
+        smaller set is a prefix of set 0) and per-shell projectors depend
+        only on the shell's own momentum orbit (see
         ``tests/test_shellset_index.py``). At nonzero total momentum the
         shrinking spaces re-split the orbits, so a full table is kept per
-        shell set.
+        shell set: ``[sc][shellset][shell][irrep]``.
         """
         group = self.group
         proj_dicts_by_sc = []
@@ -1496,12 +1499,18 @@ class QCIndexSpace:
             fixed_sc_proj_dict = group.get_fixed_sc_proj_dict(
                 qcis=self, sc_index=sc_index)
             proj_dicts_by_sc.append(fixed_sc_proj_dict)
-            fixed_sc_proj_dicts_by_shellset = []
             if self.nPSQ == 0:
-                shellset_indices = range(1)
-            else:
-                shellset_indices = range(len(self.kellm_shells[sc_index]))
-            for kellm_shell_index in shellset_indices:
+                shell_proj_dicts = []
+                for kellm_shell in self.kellm_shells[sc_index][0]:
+                    shell_proj_dicts.append(
+                        group.get_fixed_sc_and_shell_proj_dict(
+                            qcis=self, sc_index=sc_index,
+                            kellm_shell=kellm_shell,
+                            kellm_shell_index=0))
+                proj_dicts_by_sc_and_shellset.append(shell_proj_dicts)
+                continue
+            fixed_sc_proj_dicts_by_shellset = []
+            for kellm_shell_index in range(len(self.kellm_shells[sc_index])):
                 kellm_shell_set = self.kellm_shells[sc_index][
                     kellm_shell_index]
                 fixed_sc_and_shellset_proj_dict = []
@@ -1618,13 +1627,11 @@ class QCIndexSpace:
         """
         Select the projector shell-set index for an evaluation point.
 
-        Projection dictionaries are stored per shell set in
-        ``proj_dicts_by_sc_and_shellset``. For zero total momentum the
-        precomputed shell sets are nested: each smaller set is a prefix
-        of shell set 0 and the per-shell projectors agree exactly, so
-        index 0 is always correct and is returned silently. (For this
-        reason, only shell set 0 is stored at zero total momentum; see
-        ``populate_all_proj_dicts``.)
+        Only meaningful at nonzero total momentum, where projection
+        dictionaries are stored per shell set in
+        ``proj_dicts_by_sc_and_shellset``. At zero total momentum that
+        structure has no shell-set rank (see
+        ``populate_all_proj_dicts``), so calling this raises.
 
         For nonzero total momentum, matched-window selection is not yet
         supported: shell set 0 (built at ``Emax`` and ``Lmax``) is used
@@ -1644,9 +1651,18 @@ class QCIndexSpace:
         int
             Index into each ``proj_dicts_by_sc_and_shellset`` entry (and
             each ``tbks_list`` entry) selecting the shell set to use.
+
+        Raises
+        ------
+        ValueError
+            If the total momentum is zero.
         """
         if self.nPSQ == 0:
-            return 0
+            raise ValueError(
+                "get_shellset_index is only defined for nonzero total "
+                "momentum; at nP = [0, 0, 0] the projector structure "
+                "proj_dicts_by_sc_and_shellset[sc][shell][irrep] has no "
+                "shell-set rank")
         ibest_always_zero = QC_IMPL_DEFAULTS['ibest_always_zero']
         if 'ibest_always_zero' in self.fvs.qc_impl:
             ibest_always_zero = self.fvs.qc_impl['ibest_always_zero']

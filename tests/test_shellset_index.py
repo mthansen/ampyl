@@ -12,12 +12,13 @@ import ampyl
 class TestShellsetIndex(unittest.TestCase):
     """Test shell-set handling at zero total momentum.
 
-    At zero total momentum only shell set 0 of
-    ``proj_dicts_by_sc_and_shellset`` is stored, and
-    ``QCIndexSpace.get_shellset_index`` returns 0. This is exact
-    because the precomputed shell sets are nested (each smaller set is
-    a prefix of shell set 0) and each per-shell projector depends only
-    on the shell's own momentum orbit. These tests pin both properties.
+    At zero total momentum ``proj_dicts_by_sc_and_shellset`` has no
+    shell-set rank: it stores one flat per-shell table per spectator
+    channel, built for shell set 0. This is exact because the
+    precomputed shell sets are nested (each smaller set is a prefix of
+    shell set 0) and each per-shell projector depends only on the
+    shell's own momentum orbit. These tests pin both properties, and
+    that ``get_shellset_index`` refuses zero-momentum calls.
     """
 
     @classmethod
@@ -32,18 +33,18 @@ class TestShellsetIndex(unittest.TestCase):
                 fcs=fcs, fvs=fvs, tbis=tbis, Emax=5.0, Lmax=6.0)
             cls.qcis.populate()
 
-    def test_zero_momentum_returns_zero_silently(self):
-        """Index 0 is selected at nP = 0 without emitting a warning."""
-        with warnings.catch_warnings(record=True) as caught:
-            warnings.simplefilter("always")
-            shellset_index = self.qcis.get_shellset_index(4.2, 5.0)
-        self.assertEqual(shellset_index, 0)
-        self.assertEqual(len(caught), 0)
+    def test_zero_momentum_shellset_index_raises(self):
+        """The shell-set selector refuses zero-momentum calls."""
+        with self.assertRaises(ValueError) as caught:
+            self.qcis.get_shellset_index(4.2, 5.0)
+        self.assertIn("nonzero total momentum", str(caught.exception))
 
-    def test_only_shell_set_zero_is_stored(self):
-        """At nP = 0 each channel stores a single projector shell set."""
-        for pd_by_shellset in self.qcis.proj_dicts_by_sc_and_shellset:
-            self.assertEqual(len(pd_by_shellset), 1)
+    def test_flat_per_shell_table_is_stored(self):
+        """At nP = 0 each channel stores a flat list of per-shell dicts."""
+        for shell_dicts in self.qcis.proj_dicts_by_sc_and_shellset:
+            self.assertGreater(len(shell_dicts), 0)
+            for shell_dict in shell_dicts:
+                self.assertIsInstance(shell_dict, dict)
 
     def test_shell_sets_are_nested_prefixes(self):
         """Each smaller kinematic space keeps a prefix of the shells."""
@@ -55,15 +56,15 @@ class TestShellsetIndex(unittest.TestCase):
                     shells_zero[:len(tbks_entry.shells)])
 
     def test_truncated_set_projectors_equal_stored_set(self):
-        """Rebuilt truncated-set projectors match the stored set 0.
+        """Rebuilt truncated-set projectors match the stored table.
 
         The stored table is built for shell set 0 only; here the
         per-shell projectors of two smaller shell sets are rebuilt from
         scratch and must coincide with the stored entries, justifying
-        the single-set storage.
+        the single flat table.
         """
         sc_index = 0
-        stored = self.qcis.proj_dicts_by_sc_and_shellset[sc_index][0]
+        stored = self.qcis.proj_dicts_by_sc_and_shellset[sc_index]
         compared = 0
         for shellset_index in (2, 4):
             kellm_shell_set = self.qcis.kellm_shells[sc_index][
@@ -85,8 +86,8 @@ class TestShellsetIndex(unittest.TestCase):
                     compared += 1
         self.assertGreater(compared, 0)
 
-    def test_mixed_space_stores_single_shell_set(self):
-        """A mixed two-plus-three-particle space also stores one set."""
+    def test_mixed_space_stores_flat_tables(self):
+        """A mixed two-plus-three-particle space also stores flat tables."""
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             pion = ampyl.flavor.Particle(mass=1.0, spin=0.0, flavor='pi',
@@ -104,8 +105,10 @@ class TestShellsetIndex(unittest.TestCase):
                 fcs=fcs, fvs=fvs, tbis=tbis, Emax=4.6, Lmax=5.0)
             qcis.populate()
         self.assertEqual(qcis.n_two_channels, 1)
-        for pd_by_shellset in qcis.proj_dicts_by_sc_and_shellset:
-            self.assertEqual(len(pd_by_shellset), 1)
+        for shell_dicts in qcis.proj_dicts_by_sc_and_shellset:
+            self.assertGreater(len(shell_dicts), 0)
+            for shell_dict in shell_dicts:
+                self.assertIsInstance(shell_dict, dict)
 
 
 if __name__ == '__main__':

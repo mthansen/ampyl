@@ -103,8 +103,8 @@ class TestKdfGetShell(unittest.TestCase):
         # zero-padded downstream into a plausible all-zero block.
         irrep = ('A1PLUS', 0)
         proj_dicts = [
-            [[{irrep: np.identity(3)}, {irrep: np.identity(6)}]],
-            [[{irrep: np.identity(3)}, {irrep: np.identity(6)}]]]
+            [{irrep: np.identity(3)}, {irrep: np.identity(6)}],
+            [{irrep: np.identity(3)}, {irrep: np.identity(6)}]]
         kdf = self._make_kdf(proj_dicts)
         with self.assertRaises(ValueError):
             kdf.get_shell(
@@ -119,8 +119,8 @@ class TestKdfGetShell(unittest.TestCase):
         # to is legitimate and must still yield the empty block.
         irrep = ('A1PLUS', 0)
         proj_dicts = [
-            [[{irrep: np.identity(3)}, {}]],
-            [[{irrep: np.identity(3)}, {}]]]
+            [{irrep: np.identity(3)}, {}],
+            [{irrep: np.identity(3)}, {}]]
         kdf = self._make_kdf(proj_dicts)
         shell = kdf.get_shell(
             E=5.0, L=5.0, k3_params=[2.5], m1=1.0, m2=1.0, m3=1.0,
@@ -135,8 +135,8 @@ class TestKdfGetShell(unittest.TestCase):
         proj_row = np.arange(6.).reshape((3, 2))
         proj_col = np.arange(24.).reshape((6, 4))
         proj_dicts = [
-            [[{irrep: proj_row}, {irrep: proj_col}]],
-            [[{irrep: proj_row}, {irrep: proj_col}]]]
+            [{irrep: proj_row}, {irrep: proj_col}],
+            [{irrep: proj_row}, {irrep: proj_col}]]
         kdf = self._make_kdf(proj_dicts)
         shell = kdf.get_shell(
             E=5.0, L=5.0, k3_params=[2.5], m1=1.0, m2=1.0, m3=1.0,
