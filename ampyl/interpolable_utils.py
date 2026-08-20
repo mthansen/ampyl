@@ -47,7 +47,6 @@ from .constants import EPSILON10
 from .constants import BAD_MIN_GUESS
 from .constants import BAD_MAX_GUESS
 from .constants import POLE_CUT
-from .constants import bcolors
 from . import qc_functions
 import warnings
 warnings.simplefilter("once")
@@ -103,8 +102,12 @@ def _grids_and_interp(interpolable, Emin, Emax, Estep, Lmin, Lmax, Lstep,
         for sc_index in range(interpolable.qcis.n_channels):
             three_slice_index = interpolable.qcis.sc_to_three_slice[sc_index]
             tbks_sub_index = tbks_sub_indices[three_slice_index]
+            # the zero-momentum projector table is flat over shells;
+            # restrict it to the shells active in the matched space
+            n_shells = len(interpolable.qcis.tbks_list[three_slice_index][
+                tbks_sub_index].shells)
             proj_dict_list = interpolable.qcis.proj_dicts_by_sc_and_shellset[
-                sc_index][tbks_sub_index]
+                sc_index][:n_shells]
             for proj_dict in proj_dict_list:
                 try:
                     projected_size =\
@@ -149,6 +152,11 @@ def _resize_interp_data_list(interp_data_list, target_dim):
 
 def _get_dim_with_shell_index_all_scs(interpolable, irrep,
                                       tbks_sub_indices=None):
+    # change-of-basis bookkeeping is only used at zero total momentum,
+    # where the projector table is flat over shells (exact for every
+    # truncation); the shell loop below is bounded by the matched
+    # kinematic space
+    assert interpolable.qcis.nPSQ == 0
     dim_with_shell_index_all_scs = []
     if tbks_sub_indices is None:
         tbks_sub_indices = [0]*interpolable.qcis.fcs.n_three_slices
@@ -164,7 +172,7 @@ def _get_dim_with_shell_index_all_scs(interpolable, irrep,
             try:
                 proj_candidate = interpolable.qcis.\
                     proj_dicts_by_sc_and_shellset[
-                        spectator_channel_index][tbks_sub_index][
+                        spectator_channel_index][
                             shell_index][irrep]
                 dim_with_shell_index_single_sc.\
                     append([(proj_candidate.shape)[1], shell_index])
@@ -332,11 +340,7 @@ def _get_all_nvecSQs_by_shell(interpolable, E=5.0, L=5.0, project=False,
         mspec = sc.spectator.mass
         m2 = sc.first_dimer.mass
         m3 = sc.second_dimer.mass
-        # ibest = interpolable.qcis._get_ibest(E, L)
-        ibest = 0
-        warnings.warn(f"\n{bcolors.WARNING}"
-                      "ibest is set to 0. This is a temporary fix."
-                      f"{bcolors.ENDC}")
+        ibest = interpolable.qcis.get_shellset_index(E, L)
         if len(interpolable.qcis.tbks_list) > 1:
             raise ValueError("get_value within G assumes tbks_list is "
                              + "length one.")
@@ -446,11 +450,7 @@ def _get_shell_nvecSQs_projs(interpolable, E=5.0, L=5.0,
     if project:
         try:
             if nP@nP != 0:
-                ibest = interpolable.qcis._get_ibest(E, L)
-                ibest = 0
-                warnings.warn(f"\n{bcolors.WARNING}"
-                              "ibest is set to 0. This is a temporary fix."
-                              f"{bcolors.ENDC}")
+                ibest = interpolable.qcis.get_shellset_index(E, L)
                 proj_tmp_right = np.array(interpolable.qcis
                                           .proj_dicts_by_sc_and_shellset[
                                               sc_index_col][ibest]
@@ -465,10 +465,10 @@ def _get_shell_nvecSQs_projs(interpolable, E=5.0, L=5.0,
             else:
                 proj_tmp_right =\
                     interpolable.qcis.proj_dicts_by_sc_and_shellset[
-                        sc_index_col][0][col_shell_index][irrep]
+                        sc_index_col][col_shell_index][irrep]
                 proj_tmp_left = np.conjugate((
                     interpolable.qcis.proj_dicts_by_sc_and_shellset[
-                        sc_index_row][0][row_shell_index][irrep]
+                        sc_index_row][row_shell_index][irrep]
                 ).T)
         except KeyError:
             return np.array([])

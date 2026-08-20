@@ -86,19 +86,31 @@ _NP_UNIT = [1, 0, 0]
 class TestVerifyIrrepIsKnown(unittest.TestCase):
     """Tests for the irrep sanity check."""
 
-    def _qcis(self):
+    def _qcis_nonzero_momentum(self):
+        # per-shell-set tables: [sc][shellset][shell][irrep]
         return SimpleNamespace(proj_dicts_by_sc_and_shellset=[
             [[{('A1PLUS', 0): 'projector'}],
              [{('EPLUS', 0): 'projector'}]]])
 
+    def _qcis_zero_momentum(self):
+        # flat per-shell table: [sc][shell][irrep]
+        return SimpleNamespace(proj_dicts_by_sc_and_shellset=[
+            [{('A1PLUS', 0): 'projector'},
+             {('EPLUS', 0): 'projector'}]])
+
     def test_known_irrep_passes(self):
-        shell_utils._verify_irrep_is_known(self._qcis(), ('EPLUS', 0))
+        shell_utils._verify_irrep_is_known(
+            self._qcis_nonzero_momentum(), ('EPLUS', 0))
+        shell_utils._verify_irrep_is_known(
+            self._qcis_zero_momentum(), ('EPLUS', 0))
 
     def test_unknown_irrep_raises(self):
-        with self.assertRaises(ValueError) as caught:
-            shell_utils._verify_irrep_is_known(self._qcis(), ('T1PLUS', 0))
-        self.assertIn('T1PLUS', str(caught.exception))
-        self.assertIn('A1PLUS', str(caught.exception))
+        for qcis in (self._qcis_nonzero_momentum(),
+                     self._qcis_zero_momentum()):
+            with self.assertRaises(ValueError) as caught:
+                shell_utils._verify_irrep_is_known(qcis, ('T1PLUS', 0))
+            self.assertIn('T1PLUS', str(caught.exception))
+            self.assertIn('A1PLUS', str(caught.exception))
 
 
 class TestGetZeroSupportPoint(unittest.TestCase):

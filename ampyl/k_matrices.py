@@ -40,7 +40,6 @@ from . import shell_utils
 from . import check_utils
 from .constants import TWOPI
 from .constants import FOURPI2
-from .constants import QC_IMPL_DEFAULTS
 from .constants import bcolors
 from . import qc_functions
 import warnings
@@ -94,26 +93,14 @@ class K:
         if project:
             try:
                 if nP@nP != 0:
-                    ibest_always_zero = QC_IMPL_DEFAULTS['ibest_always_zero']
-                    if 'ibest_always_zero' in self.qcis.fvs.qc_impl:
-                        ibest_always_zero =\
-                            self.qcis.fvs.qc_impl['ibest_always_zero']
-                    if ibest_always_zero:
-                        ibest = 0
-                    else:
-                        ibest = self.qcis._get_ibest(E, L)
+                    ibest = self.qcis.get_shellset_index(E, L)
                     proj_tmp_right = np.array(
                         self.qcis.proj_dicts_by_sc_and_shellset[
                             sc_ind][ibest])[mask_slices][slice_index][irrep]
-                    proj_tmp_left = np.conjugate(((proj_tmp_right)).T)
                 else:
-                    warnings.warn(f"\n{bcolors.WARNING}"
-                                  "ibest is set to 0. This is a temporary fix."
-                                  f"{bcolors.ENDC}")
-                    ibest = 0
                     proj_tmp_right = self.qcis.proj_dicts_by_sc_and_shellset[
-                        sc_ind][ibest][slice_index][irrep]
-                    proj_tmp_left = np.conjugate((proj_tmp_right).T)
+                        sc_ind][slice_index][irrep]
+                proj_tmp_left = np.conjugate((proj_tmp_right).T)
             except KeyError:
                 shell_utils._verify_irrep_is_known(self.qcis, irrep)
                 return np.array([])
@@ -136,11 +123,7 @@ class K:
                 raise NotImplementedError(
                     "multi-slice K is implemented only for zero total "
                     "momentum")
-            # ibest = self.qcis._get_ibest(E, L)
-            ibest = 0
-            warnings.warn(f"\n{bcolors.WARNING}"
-                          "ibest is set to 0. This is a temporary fix."
-                          f"{bcolors.ENDC}")
+            ibest = self.qcis.get_shellset_index(E, L)
             sc = self.qcis.fcs.sc_list_sorted[0]
             mspec = sc.spectator.mass
             m2 = sc.first_dimer.mass
@@ -401,21 +384,17 @@ class Kdf:
     def _nPzero_projectors(self, sc_index_row, sc_index_col,
                            row_shell_index, col_shell_index, irrep):
         proj_tmp_right = self.qcis.proj_dicts_by_sc_and_shellset[
-                        sc_index_col][0][col_shell_index][irrep]
+                        sc_index_col][col_shell_index][irrep]
         proj_tmp_left = np.conjugate((
                         self.qcis.proj_dicts_by_sc_and_shellset[
-                            sc_index_row][0][row_shell_index][irrep]
+                            sc_index_row][row_shell_index][irrep]
                         ).T)
         return proj_tmp_right, proj_tmp_left
 
     def _nP_nonzero_projectors(self, E, L, sc_index_row, sc_index_col,
                                row_shell_index, col_shell_index, irrep,
                                mask_row_shells, mask_col_shells):
-        ibest = self.qcis._get_ibest(E, L)
-        ibest = 0
-        warnings.warn(f"\n{bcolors.WARNING}"
-                      "ibest is set to 0. This is a temporary fix."
-                      f"{bcolors.ENDC}")
+        ibest = self.qcis.get_shellset_index(E, L)
         proj_tmp_right\
             = np.array(
                 self.qcis.proj_dicts_by_sc_and_shellset[sc_index_col][ibest]

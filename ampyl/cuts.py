@@ -42,7 +42,6 @@ from . import interpolable_utils
 from .constants import QC_IMPL_DEFAULTS
 from .constants import TWOPI
 from .constants import FOURPI2
-from .constants import bcolors
 from . import qc_functions
 from .spaces import QCIndexSpace
 from .interpolable import Interpolable
@@ -219,11 +218,7 @@ class G(Interpolable):
             mspec = sc.spectator.mass
             m2 = sc.first_dimer.mass
             m3 = sc.second_dimer.mass
-            ibest = self.qcis._get_ibest(E, L)
-            ibest = 0
-            warnings.warn(f"\n{bcolors.WARNING}"
-                          "ibest is set to 0. This is a temporary fix."
-                          f"{bcolors.ENDC}")
+            ibest = self.qcis.get_shellset_index(E, L)
             if len(self.qcis.tbks_list) > 1:
                 raise ValueError("get_value within G assumes tbks_list is "
                                  + "length one.")
@@ -462,11 +457,7 @@ class G(Interpolable):
                                row_shell_index, col_shell_index, irrep,
                                mask_row_shells, mask_col_shells):
         """Return shell projectors for nonzero total momentum."""
-        ibest = self.qcis._get_ibest(E, L)
-        ibest = 0
-        warnings.warn(f"\n{bcolors.WARNING}"
-                      "ibest is set to 0. This is a temporary fix."
-                      f"{bcolors.ENDC}")
+        ibest = self.qcis.get_shellset_index(E, L)
         proj_tmp_right = np.array(self.qcis.proj_dicts_by_sc_and_shellset[
             sc_index_col][ibest])[mask_col_shells][
                 col_shell_index][irrep]
@@ -480,10 +471,10 @@ class G(Interpolable):
                            row_shell_index, col_shell_index, irrep):
         """Return shell projectors for zero total momentum."""
         proj_tmp_right = self.qcis.proj_dicts_by_sc_and_shellset[
-                        sc_index_col][0][col_shell_index][irrep]
+                        sc_index_col][col_shell_index][irrep]
         proj_tmp_left = np.conjugate((
                         self.qcis.proj_dicts_by_sc_and_shellset[
-                            sc_index_row][0][row_shell_index][irrep]
+                            sc_index_row][row_shell_index][irrep]
                         ).T)
         return proj_tmp_right, proj_tmp_left
 
@@ -701,18 +692,14 @@ class F(Interpolable):
         if project:
             try:
                 if nP@nP != 0:
-                    # ibest = self.qcis._get_ibest(E, L)
-                    ibest = 0
-                    warnings.warn(f"\n{bcolors.WARNING}"
-                                  "ibest is set to 0. This is a temporary fix."
-                                  f"{bcolors.ENDC}")
+                    ibest = self.qcis.get_shellset_index(E, L)
                     proj_tmp_right = np.array(
                         self.qcis.proj_dicts_by_sc_and_shellset[
                             sc_ind][ibest])[mask_slices][slice_index][irrep]
                     proj_tmp_left = np.conjugate(((proj_tmp_right)).T)
                 else:
                     proj_tmp_right = self.qcis.proj_dicts_by_sc_and_shellset[
-                        sc_ind][0][slice_index][irrep]
+                        sc_ind][slice_index][irrep]
                     proj_tmp_left = np.conjugate((proj_tmp_right).T)
             except KeyError:
                 shell_utils._verify_irrep_is_known(self.qcis, irrep)
@@ -744,11 +731,7 @@ class F(Interpolable):
             m1 = sc.spectator.mass
             m2 = sc.first_dimer.mass
             m3 = sc.second_dimer.mass
-            # ibest = self.qcis._get_ibest(E, L)
-            ibest = 0
-            warnings.warn(f"\n{bcolors.WARNING}"
-                          "ibest is set to 0. This is a temporary fix."
-                          f"{bcolors.ENDC}")
+            ibest = self.qcis.get_shellset_index(E, L)
             reduce_size = QC_IMPL_DEFAULTS['reduce_size']
             if 'reduce_size' in self.qcis.fvs.qc_impl:
                 reduce_size = self.qcis.fvs.qc_impl['reduce_size']

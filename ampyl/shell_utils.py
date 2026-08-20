@@ -63,7 +63,13 @@ def _verify_irrep_is_known(qcis, irrep):
     """
     known_irreps = set()
     for sc_dicts in qcis.proj_dicts_by_sc_and_shellset:
-        for shellset_dicts in sc_dicts:
+        # zero momentum stores a flat per-shell table, nonzero momentum
+        # one table per shell set
+        if len(sc_dicts) > 0 and isinstance(sc_dicts[0], dict):
+            shellset_dicts_list = [sc_dicts]
+        else:
+            shellset_dicts_list = sc_dicts
+        for shellset_dicts in shellset_dicts_list:
             for shell_dict in shellset_dicts:
                 known_irreps.update(shell_dict.keys())
     if irrep not in known_irreps:
