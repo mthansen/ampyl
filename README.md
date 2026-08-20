@@ -80,3 +80,70 @@ print(root_scalar(qc.get_value, args=args,
 # Returns ground state energy
 # around 3.031816
 ```
+
+## Evaluation policy
+
+The example above passes no `'version'` and no `'policy'`. That is the common
+case: `qc.get_value` then evaluates the default quantization condition,
+`'kdf_zero_1+'`, using the matrix objects that `ampyl.QC` builds for itself.
+
+A **policy** is the part of `qc_dict` that is allowed to depend on the point
+`(E, L)` being evaluated. It does not describe the physical system --- that
+lives in `FlavorChannel`, `FlavorChannelSpace` and `QCIndexSpace` --- it
+selects *how* a value is computed: which QC version, which registered matrix
+object, and whether an interpolator is used.
+
+A policy is a list of dictionaries (a single dictionary is promoted to a
+one-element list). Every element requires `'version'`; the remaining keys are
+optional:
+
+```python
+policy = [{'version': 'kdf_zero_1+_fgcombo',
+           'fplusg_interpolator': True,
+           'fplusg_interpolator_id': 0,
+           'Emin': 3.0, 'Emax': 4.5,
+           'Lmin': 3.0, 'Lmax': 6.0},
+          {'version': 'kdf_zero_1+'}]  # default element, no bounds
+qc_dict = {'k_params': k_params,
+           'project': True,
+           'irrep': ('A1PLUS', 0),
+           'policy': policy}
+```
+
+Elements are scanned in list order and the first one whose `(E, L)` box
+contains the evaluation point is used. The last element is the fallback and
+must leave all four bounds unset. An element is only eligible to match if all
+four of `Emin`, `Emax`, `Lmin` and `Lmax` are given; an element with a partial
+range never matches and falls through to the fallback.
+
+Keys that may be set per element:
+
+| Key | Effect |
+| --- | --- |
+| `'version'` | QC expression to evaluate (required) |
+| `'shift'` | Constant subtracted from the determinant, for versions that use it |
+| `'f_id'`, `'f_name'` (likewise `g`, `fplusg`, `ftwo`, `k`, `kdf`, `ktwo`) | Which registered matrix object to use; defaults to id `0` |
+| `'f_interpolator'`, `'f_interpolator_id'`, `'f_interpolator_name'` (likewise `g`, `fplusg`, `ftwo`) | Which interpolator to evaluate through |
+
+The remaining `qc_dict` keys --- `'k_params'`, `'project'`, `'irrep'` and
+`'rescale'` --- are global to the call and cannot vary by element.
+
+### When a policy is needed
+
+- **An interpolator was built.** `qc.fplusg.build_interpolator(...)` creates a
+  spline but does not by itself route evaluations through it; the
+  `'fplusg_interpolator'` key does. See
+  [examples/KKpi](./examples/KKpi).
+- **More than one matrix object is registered.** `qc.add_fplusg(qcis_id=0,
+  name='coarse')` and friends append to per-component registries. Without a
+  policy element every component resolves to id `0`, so the extra objects are
+  unreachable.
+- **Different formulas are wanted in different windows**, for example an
+  interpolated evaluation over the bulk of a scan and an exact one near
+  threshold.
+
+Otherwise the policy can be ignored; `'version': ...` in `qc_dict` is simply a
+shorthand for a one-element policy with no bounds, and omitting both selects
+the default version. Note that `'policy'` takes precedence over `'version'`
+when both are supplied, and that `FVSpectrum` sizes its scan window from the
+version of the fallback element.
