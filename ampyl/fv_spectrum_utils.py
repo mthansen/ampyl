@@ -472,9 +472,13 @@ def _refine_root_without_interpolation(spectrum, root, L, qc_dict,
     previous_settings = {
         key: qc_impl[key] for key in interpolation_keys if key in qc_impl
     }
+    previous_policy = qc_dict.get('policy')
+    interpolator_free_policy = _policy_without_interpolators(qc_dict)
     try:
         for key in interpolation_keys:
             qc_impl[key] = False
+        if interpolator_free_policy is not None:
+            qc_dict['policy'] = interpolator_free_policy
         for bracket_shift in np.logspace(-9, -3, 7):
             E_bracket = [root-bracket_shift, root+bracket_shift]
             try:
@@ -508,11 +512,48 @@ def _refine_root_without_interpolation(spectrum, root, L, qc_dict,
                 return true_root
         return np.nan
     finally:
+        if interpolator_free_policy is not None:
+            qc_dict['policy'] = previous_policy
         for key in interpolation_keys:
             if key in previous_settings:
                 qc_impl[key] = previous_settings[key]
             else:
                 del qc_impl[key]
+
+
+def _policy_without_interpolators(qc_dict):
+    """Return the evaluation policy with every interpolator removed.
+
+    Clearing the interpolation flags of ``qc_impl`` is not enough to
+    reach an uninterpolated evaluation: a policy element naming an
+    interpolator makes the matrix builder pass ``interpolate=True``
+    explicitly, which those flags do not override. Refining a root
+    against the very interpolator it was found with would leave the
+    interpolation error in place, so the policy is stripped for the
+    duration of the refinement.
+
+    Parameters
+    ----------
+    qc_dict : dict
+        QC evaluation options.
+
+    Returns
+    -------
+    list[dict] or None
+        Policy elements without interpolator entries, or ``None`` when
+        ``qc_dict`` carries no policy to strip.
+    """
+    policy = qc_dict.get('policy')
+    if policy is None:
+        return None
+    elements = getattr(policy, 'elements', policy)
+    if isinstance(elements, dict):
+        elements = [elements]
+    return [
+        {key: value for key, value in element.items()
+         if 'interpolator' not in key}
+        for element in elements
+    ]
 
 
 def _build_interpolated_E_vals(all_E_vals, L_vals, n_interp_points=4):

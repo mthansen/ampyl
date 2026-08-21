@@ -37,6 +37,7 @@ import unittest
 import warnings
 import numpy as np
 from ampyl import fv_spectrum_utils
+from ampyl.ampyl import EvaluationPolicy
 from ampyl.ampyl import FVSpectrum
 from ampyl.constants import DEFAULT_EMIN
 from ampyl.constants import DEFAULT_LMIN
@@ -114,6 +115,35 @@ class _StubPolicy:
 
     def __init__(self, elements):
         self.elements = elements
+
+
+class _PolicyDrivenQC:
+    """QC whose root moves when the policy stops naming an interpolator."""
+
+    def __init__(self, qcis, interpolated_root=1.0,
+                 exact_root=1.00002):
+        self.qcis = qcis
+        self.interpolated_root = interpolated_root
+        self.exact_root = exact_root
+
+    def validate_qc_dict(self, qc_dict):
+        return None
+
+    def get_value(self, E, L, qc_dict):
+        policy = qc_dict.get('policy')
+        elements = getattr(policy, 'elements', policy) or []
+        interpolating = any(
+            'interpolator' in key and element[key]
+            for element in elements for key in element)
+        root = self.interpolated_root if interpolating else self.exact_root
+        return E-root
+
+
+def _interpolating_policy():
+    return [{'version': 'kdf_zero_1+_fgcombo',
+             'fplusg_interpolator': True,
+             'fplusg_interpolator_id': 0,
+             'Lmin': None, 'Lmax': None, 'Emin': None, 'Emax': None}]
 
 
 class TestPureHelpers(unittest.TestCase):
@@ -481,6 +511,99 @@ class TestInterpolatedEnergyRefinement(unittest.TestCase):
         self.assertTrue(np.allclose(interp_E_vals[0], [2.22]*4))
         self.assertTrue(
             spectrum.qc.qcis.fvs.qc_impl['fplusg_interpolate'])
+
+
+class TestPolicyWithoutInterpolators(unittest.TestCase):
+    """Tests for stripping interpolators out of an evaluation policy."""
+
+    def test_missing_policy_returns_none(self):
+        self.assertIsNone(
+            fv_spectrum_utils._policy_without_interpolators({}))
+
+    def test_interpolator_entries_are_dropped(self):
+        stripped = fv_spectrum_utils._policy_without_interpolators(
+            {'policy': _interpolating_policy()})
+        self.assertEqual(len(stripped), 1)
+        self.assertNotIn('fplusg_interpolator', stripped[0])
+        self.assertNotIn('fplusg_interpolator_id', stripped[0])
+
+    def test_other_entries_are_preserved(self):
+        policy = _interpolating_policy()
+        policy[0].update({'qcis_id': 2, 'fplusg_id': 2, 'k_id': 2})
+        stripped = fv_spectrum_utils._policy_without_interpolators(
+            {'policy': policy})
+        self.assertEqual(stripped[0]['version'], 'kdf_zero_1+_fgcombo')
+        self.assertEqual(stripped[0]['fplusg_id'], 2)
+        self.assertIsNone(stripped[0]['Lmin'])
+
+    def test_evaluation_policy_objects_are_accepted(self):
+        policy = EvaluationPolicy(_interpolating_policy())
+        stripped = fv_spectrum_utils._policy_without_interpolators(
+            {'policy': policy})
+        self.assertNotIn('fplusg_interpolator', stripped[0])
+        self.assertEqual(stripped[0]['id'], 0)
+
+    def test_a_single_element_dict_is_accepted(self):
+        stripped = fv_spectrum_utils._policy_without_interpolators(
+            {'policy': _interpolating_policy()[0]})
+        self.assertEqual(len(stripped), 1)
+        self.assertNotIn('fplusg_interpolator', stripped[0])
+
+    def test_the_stripped_policy_is_a_copy(self):
+        policy = _interpolating_policy()
+        fv_spectrum_utils._policy_without_interpolators({'policy': policy})
+        self.assertTrue(policy[0]['fplusg_interpolator'])
+
+
+class TestRefinementStripsPolicyInterpolators(unittest.TestCase):
+    """The refinement pass must escape a policy-named interpolator.
+
+    Clearing the ``qc_impl`` interpolation flags is not enough on its
+    own: the matrix builder passes ``interpolate=True`` explicitly when
+    a policy element names an interpolator, which those flags do not
+    override.
+    """
+
+    def _spectrum(self, exact_root=1.00002):
+        qc_impl = {'refine_roots': True, 'fplusg_interpolate': True}
+        qcis = _FakeQCIS(qc_impl=qc_impl)
+        return FVSpectrum(_PolicyDrivenQC(qcis, exact_root=exact_root))
+
+    def test_refined_root_escapes_the_interpolator(self):
+        spectrum = self._spectrum()
+        qc_dict = {'policy': _interpolating_policy()}
+        root = fv_spectrum_utils._simple_try_at_fixed_L(
+            spectrum, [0.99, 1.01], 5.0, qc_dict)
+        self.assertAlmostEqual(root, 1.00002, places=10)
+
+    def test_the_original_policy_is_restored(self):
+        spectrum = self._spectrum()
+        policy = _interpolating_policy()
+        qc_dict = {'policy': policy}
+        fv_spectrum_utils._simple_try_at_fixed_L(
+            spectrum, [0.99, 1.01], 5.0, qc_dict)
+        self.assertIs(qc_dict['policy'], policy)
+        self.assertTrue(policy[0]['fplusg_interpolator'])
+
+    def test_the_policy_is_restored_when_refinement_fails(self):
+        # no uninterpolated root sits within the widest bracket
+        spectrum = self._spectrum(exact_root=1.5)
+        policy = _interpolating_policy()
+        qc_dict = {'policy': policy}
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore')
+            root = fv_spectrum_utils._simple_try_at_fixed_L(
+                spectrum, [0.99, 1.01], 5.0, qc_dict)
+        self.assertTrue(np.isnan(root))
+        self.assertIs(qc_dict['policy'], policy)
+
+    def test_refinement_is_skipped_when_refine_roots_is_off(self):
+        qc_impl = {'refine_roots': False, 'fplusg_interpolate': True}
+        qcis = _FakeQCIS(qc_impl=qc_impl)
+        spectrum = FVSpectrum(_PolicyDrivenQC(qcis))
+        root = fv_spectrum_utils._simple_try_at_fixed_L(
+            spectrum, [0.99, 1.01], 5.0, {'policy': _interpolating_policy()})
+        self.assertAlmostEqual(root, 1.0, places=10)
 
 
 class TestExtendEnergyLevels(unittest.TestCase):
