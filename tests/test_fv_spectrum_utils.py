@@ -90,12 +90,19 @@ class _StubSpectrum:
     def __init__(self, roots_for_call, qc_impl=None):
         self.roots_for_call = roots_for_call
         self.calls = []
+        self.recorded = []
         self.qc = _FakeQC([], _FakeQCIS(qc_impl=qc_impl))
 
     def get_roots_from_range(self, E_range, L, qc_dict, ni_functions,
                              cuts=None):
         self.calls.append((E_range[0], E_range[1], L))
         return self.roots_for_call(E_range, L)
+
+    def get_value(self, E, L, qc_dict):
+        return self.qc.get_value(E, L, qc_dict)
+
+    def record_root(self, band_index, L, E):
+        self.recorded.append((band_index, L, E))
 
 
 def _analytic_spectrum(root_functions, **qcis_kwargs):
@@ -231,6 +238,36 @@ class TestPureHelpers(unittest.TestCase):
                                   {irrep: [third]}])
         ni_functions = fv_spectrum_utils._get_ni_functions(spectrum, irrep)
         self.assertEqual(ni_functions, [first, second, third])
+
+
+class TestPoleFreeWindow(unittest.TestCase):
+    """Tests for the bracket clipping used by guess-based refinement."""
+
+    def test_window_is_the_full_range_without_nonint_energies(self):
+        window = fv_spectrum_utils._pole_free_window(
+            3.0, np.array([]), 1.8, 4.5)
+        self.assertEqual(window, (1.8, 4.5))
+
+    def test_window_stops_at_the_neighbouring_nonint_energies(self):
+        nonint_energies = np.array([2.5, 3.8, 4.4])
+        E_lower, E_upper = fv_spectrum_utils._pole_free_window(
+            3.0, nonint_energies, 1.8, 4.5)
+        self.assertGreater(E_lower, 2.5)
+        self.assertLess(E_upper, 3.8)
+        self.assertAlmostEqual(E_lower, 2.5, places=5)
+        self.assertAlmostEqual(E_upper, 3.8, places=5)
+
+    def test_window_ignores_non_finite_nonint_energies(self):
+        nonint_energies = np.array([np.nan, np.inf, 3.8])
+        _, E_upper = fv_spectrum_utils._pole_free_window(
+            3.0, nonint_energies, 1.8, 4.5)
+        self.assertAlmostEqual(E_upper, 3.8, places=5)
+
+    def test_window_ignores_a_nonint_energy_at_the_guess(self):
+        nonint_energies = np.array([3.0])
+        window = fv_spectrum_utils._pole_free_window(
+            3.0, nonint_energies, 1.8, 4.5)
+        self.assertEqual(window, (1.8, 4.5))
 
 
 class TestExtractELSet(unittest.TestCase):

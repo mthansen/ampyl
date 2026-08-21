@@ -41,6 +41,7 @@ from scipy.optimize import root_scalar
 
 from .constants import DEFAULT_CUTS
 from .constants import DEFAULT_EMIN
+from .constants import DEFAULT_GUESS_BRACKET
 from .constants import DEFAULT_LMIN
 from .constants import EPSILON4
 from .constants import EPSILON6
@@ -91,6 +92,7 @@ def _refine_interpolated_energy(spectrum, band_index, point_index,
     interp_E_vals[band_index][point_index] = Etmp
     Eupdate = _find_updated_energy(spectrum, Etmp, Ltmp, qc_dict, ni_functions)
     interp_E_vals[band_index][point_index] = Eupdate
+    spectrum.record_root(band_index, Ltmp, Eupdate)
     spectrum.qc.qcis.fvs.qc_impl['fplusg_interpolate'] = True
 
 
@@ -157,6 +159,69 @@ def _retry_root_near_interpolated_energy(spectrum, Etmp, Ltmp, qc_dict,
     return Eupdate
 
 
+def _refine_energies_from_guesses(spectrum, interp_E_vals, interp_L_vals,
+                                  qc_dict, ni_functions, Emin, Emax,
+                                  max_bracket=DEFAULT_GUESS_BRACKET):
+    """Re-solve supplied energies, one bracket per point.
+
+    Unlike ``_refine_interpolated_energies``, each point is bracketed
+    around the value supplied for it rather than around a value
+    interpolated from its neighbours, and the bracket is clipped to the
+    pole-free window around the guess. Guesses that come from a
+    neighbouring parameter set can therefore sit much further from the
+    solution than the interpolated guesses of a single scan, without a
+    widening bracket swallowing a non-interacting pole.
+    """
+    for band_index, _ in enumerate(interp_E_vals):
+        for point_index, _ in enumerate(interp_E_vals[band_index]):
+            _refine_energy_from_guess(
+                spectrum, band_index, point_index, interp_E_vals,
+                interp_L_vals, qc_dict, ni_functions, Emin, Emax,
+                max_bracket)
+
+
+def _refine_energy_from_guess(spectrum, band_index, point_index,
+                              interp_E_vals, interp_L_vals, qc_dict,
+                              ni_functions, Emin, Emax, max_bracket):
+    L = interp_L_vals[band_index][point_index]
+    E_guess = interp_E_vals[band_index][point_index]
+    nonint_energies = np.array([ni_function(L)
+                                for ni_function in ni_functions])
+    E_lower, E_upper = _pole_free_window(E_guess, nonint_energies,
+                                         Emin, Emax)
+    E_update = np.nan
+    bracket_shift = EPSILON10
+    while np.isnan(E_update) and bracket_shift <= max_bracket:
+        E_bracket = [max(E_guess-bracket_shift, E_lower),
+                     min(E_guess+bracket_shift, E_upper)]
+        if E_bracket[0] < E_bracket[1]:
+            E_update = _simple_try_at_fixed_L(
+                spectrum, E_bracket, L, qc_dict, nonint_energies)
+        bracket_shift = bracket_shift*10.
+    if np.isnan(E_update):
+        warnings.warn(f"\n{bcolors.WARNING}"
+                      "failed to refine the guess "
+                      f"E = {E_guess} at L = {L}"
+                      f"{bcolors.ENDC}")
+    interp_E_vals[band_index][point_index] = E_update
+    spectrum.record_root(band_index, L, E_update)
+
+
+def _pole_free_window(E_guess, nonint_energies, Emin, Emax):
+    """Return the widest pole-free energy window containing a guess."""
+    E_lower = Emin
+    E_upper = Emax
+    nonint_energies = np.asarray(nonint_energies, dtype=float)
+    nonint_energies = nonint_energies[np.isfinite(nonint_energies)]
+    below = nonint_energies[nonint_energies < E_guess-EPSILON6]
+    above = nonint_energies[nonint_energies > E_guess+EPSILON6]
+    if below.size:
+        E_lower = max(E_lower, float(below.max())+EPSILON6)
+    if above.size:
+        E_upper = min(E_upper, float(above.min())-EPSILON6)
+    return E_lower, E_upper
+
+
 def _get_refinement_cuts():
     cuts_a = np.logspace(-8, -2, 4)
     cuts_b = np.linspace(0.011, 0.989, 10)
@@ -188,11 +253,13 @@ def _append_energy_level_at_volume(spectrum, band_index, L, Emin, Emax,
         print(f'L = {L}, E = {E_val[0]}')
         interp_E_vals[band_index].append(E_val[0])
         interp_L_vals[band_index].append(L)
+        spectrum.record_root(band_index, L, E_val[0])
     elif len(E_val) > 1:
         index = np.abs(E_val - E_guess).argmin()
         Eupdate = E_val[index]
         interp_E_vals[band_index].append(Eupdate)
         interp_L_vals[band_index].append(L)
+        spectrum.record_root(band_index, L, Eupdate)
         warnings.warn(f'Multiple solutions found for L = {L}.\n'
                       f'Differences are {np.abs(E_val - E_guess)}')
         spectrum.qc.qcis.fvs.qc_impl['fplusg_interpolate'] = True
@@ -250,7 +317,8 @@ def _get_version_and_irrep(qc_dict):
     return version, irrep
 
 
-def _extract_EL_set(spectrum, version, irrep, dL):
+def _extract_EL_bounds(spectrum, version, irrep):
+    """Return the energy-volume window the solver is allowed to explore."""
     if (version in ['kdf_zero_1+_fgcombo',
                     'kdf_zero_detf3inv_asym_fgcombo',
                     'kdf+f3inv_asym_fgcombo']
@@ -268,6 +336,11 @@ def _extract_EL_set(spectrum, version, irrep, dL):
         Emax = spectrum.qc.qcis.Emax
         Lmin = DEFAULT_LMIN
         Lmax = spectrum.qc.qcis.Lmax
+    return Emin, Emax, Lmin, Lmax
+
+
+def _extract_EL_set(spectrum, version, irrep, dL):
+    Emin, Emax, Lmin, Lmax = _extract_EL_bounds(spectrum, version, irrep)
     if dL > 0.:
         L = Lmin+dL+EPSILON4
     else:
@@ -341,12 +414,12 @@ def _get_roots_from_range(spectrum, E_range, L, qc_dict, ni_functions,
 def _simple_try_at_fixed_L(spectrum, E_bracket, L, qc_dict,
                            nonint_energies=None):
     try:
-        root = root_scalar(spectrum.qc.get_value,
+        root = root_scalar(spectrum.get_value,
                            args=(L, qc_dict),
                            bracket=E_bracket).root
-        abs_qc_value_at_root = np.abs(spectrum.qc.get_value(root, L, qc_dict))
+        abs_qc_value_at_root = np.abs(spectrum.get_value(root, L, qc_dict))
         abs_qc_value_at_root_plus = np.abs(
-            spectrum.qc.get_value(root+EPSILON6, L, qc_dict)
+            spectrum.get_value(root+EPSILON6, L, qc_dict)
         )
         qc_ratio = abs_qc_value_at_root / abs_qc_value_at_root_plus
         if qc_ratio < EPSILON6:
@@ -405,16 +478,16 @@ def _refine_root_without_interpolation(spectrum, root, L, qc_dict,
         for bracket_shift in np.logspace(-9, -3, 7):
             E_bracket = [root-bracket_shift, root+bracket_shift]
             try:
-                true_root = root_scalar(spectrum.qc.get_value,
+                true_root = root_scalar(spectrum.get_value,
                                         args=(L, qc_dict),
                                         bracket=E_bracket).root
             except ValueError:
                 continue
             abs_qc_value_at_root = np.abs(
-                spectrum.qc.get_value(true_root, L, qc_dict)
+                spectrum.get_value(true_root, L, qc_dict)
             )
             abs_qc_value_at_root_plus = np.abs(
-                spectrum.qc.get_value(true_root+EPSILON6, L, qc_dict)
+                spectrum.get_value(true_root+EPSILON6, L, qc_dict)
             )
             qc_ratio = abs_qc_value_at_root / abs_qc_value_at_root_plus
             if qc_ratio < EPSILON6:

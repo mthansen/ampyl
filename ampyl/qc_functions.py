@@ -49,6 +49,7 @@ from .constants import FOURPI2
 from .constants import R4PI
 from .constants import EPSILON15
 from .constants import EPSILON20
+from .constants import EPSILON30
 from .constants import QC_IMPL_DEFAULTS
 import functools
 import warnings
@@ -1016,7 +1017,15 @@ def pcotdelta_scattering_length_str():
 
 @with_str(pcotdelta_scattering_length_str)
 def pcotdelta_scattering_length(pSQ=1.5, a=1.0):
-    r"""Evaluate ``p cot(delta)`` in the scattering-length approximation."""
+    r"""Evaluate ``p cot(delta)`` in the scattering-length approximation.
+
+    A vanishing scattering length is replaced by ``EPSILON30`` so that
+    parameter scans that include ``a = 0`` return the non-interacting
+    limit (a K matrix of order ``EPSILON30``) instead of raising
+    ``ZeroDivisionError``.
+    """
+    if a == 0.:
+        a = EPSILON30
     return -1.0/a
 
 

@@ -473,6 +473,9 @@ class TestQC(unittest.TestCase):
             def __init__(self):
                 self.qc = FakeQC()
 
+            def get_value(self, E, L, qc_dict):
+                return self.qc.get_value(E, L, qc_dict)
+
         root = fv_spectrum_utils._simple_try_at_fixed_L(
             FakeSpectrum(), [0.99, 1.01], 5.0, {}
         )
@@ -498,6 +501,9 @@ class TestQC(unittest.TestCase):
         class FakeSpectrum:
             def __init__(self):
                 self.qc = FakeQC()
+
+            def get_value(self, E, L, qc_dict):
+                return self.qc.get_value(E, L, qc_dict)
 
         root = fv_spectrum_utils._simple_try_at_fixed_L(
             FakeSpectrum(), [0.99, 1.01], 5.0, {}, np.array([1.00005])
@@ -527,6 +533,9 @@ class TestQC(unittest.TestCase):
         class FakeSpectrum:
             def __init__(self):
                 self.qc = FakeQC()
+
+            def get_value(self, E, L, qc_dict):
+                return self.qc.get_value(E, L, qc_dict)
 
         root = fv_spectrum_utils._simple_try_at_fixed_L(
             FakeSpectrum(), [0.99, 1.01], 5.0, {}, np.array([1.00005])
@@ -563,6 +572,9 @@ class TestQC(unittest.TestCase):
         class FakeSpectrum:
             def __init__(self):
                 self.qc = FakeQC()
+
+            def get_value(self, E, L, qc_dict):
+                return self.qc.get_value(E, L, qc_dict)
 
         spectrum = FakeSpectrum()
         qc_impl_before = dict(spectrum.qc.qcis.fvs.qc_impl)
@@ -602,6 +614,9 @@ class TestQC(unittest.TestCase):
         class FakeSpectrum:
             def __init__(self):
                 self.qc = FakeQC()
+
+            def get_value(self, E, L, qc_dict):
+                return self.qc.get_value(E, L, qc_dict)
 
         spectrum = FakeSpectrum()
         qc_impl_before = dict(spectrum.qc.qcis.fvs.qc_impl)

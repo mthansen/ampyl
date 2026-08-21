@@ -37,13 +37,16 @@ Created July 2022.
 import numpy as np
 from .constants import EPSILON30
 from .constants import QC_IMPL_DEFAULTS
+from .constants import DEFAULT_GUESS_BRACKET
 from .constants import QC_DICT_DEFAULTS
+from .constants import SPECTRUM_STORE_AUTOSAVE
 from .constants import bcolors
 from .cuts import G
 from .cuts import F
 from .cuts import FplusG
 from .cuts import Ftwo
 from . import fv_spectrum_utils
+from . import spectrum_store_utils
 from .k_matrices import K
 from .k_matrices import Kdf
 from .k_matrices import Ktwo
@@ -673,14 +676,188 @@ class QC:
         return qc_dict
 
 
-class FVSpectrum:
-    """Trace finite-volume spectra for a QC instance."""
+def _curves_are_finite(E_vals):
+    """Return whether every energy of every band is finite."""
+    for E_band in E_vals:
+        if len(E_band) == 0 or not np.all(np.isfinite(E_band)):
+            return False
+    return len(E_vals) > 0
 
-    def __init__(self, qc):
+
+class FVSpectrum:
+    """Trace finite-volume spectra for a QC instance.
+
+    An optional :class:`~ampyl.spectrum_store_utils.SpectrumValueStore`
+    remembers every energy the solver determines, so that an interrupted
+    run can be resumed, a neighbouring parameter set can be seeded from an
+    earlier solution, and repeated calls need not repeat the work. The
+    store is inactive unless one is supplied or ``enable_value_store`` is
+    called.
+
+    Parameters
+    ----------
+    qc : QC
+        Quantization condition whose spectrum is traced.
+    value_store : SpectrumValueStore, optional
+        Store used to remember determined energies and, when it is
+        configured with ``memoize_values``, QC values.
+    store_context : dict, optional
+        Extra plain-data entries folded into the store context, for
+        details ampyl cannot infer from ``qc_dict``, such as the
+        energy-volume grid spacings of the active interpolator.
+
+    Attributes
+    ----------
+    qc : QC
+        Quantization condition being solved.
+    value_store : SpectrumValueStore or None
+        Active store, if any.
+    store_context : dict or None
+        Extra entries folded into the store context.
+    """
+
+    def __init__(self, qc, value_store=None, store_context=None):
         """Initialize a finite-volume spectrum solver from a QC instance."""
         self.qc = qc
+        self.value_store = value_store
+        self.store_context = (None if store_context is None
+                              else dict(store_context))
+        self._active_context = None
+        self._value_context_cache = {}
 
-    def get_all_energies(self, qc_dict, dL=0.1):
+    def enable_value_store(self, directory=None, context=None,
+                           memoize_values=False,
+                           autosave_every=SPECTRUM_STORE_AUTOSAVE):
+        """Attach a new value store to this spectrum solver.
+
+        Parameters
+        ----------
+        directory : str or pathlib.Path, optional
+            Directory in which determined energies are stored. ``None``
+            keeps the store in memory only.
+        context : dict, optional
+            Extra plain-data entries folded into the store context. When
+            given, this replaces ``store_context``.
+        memoize_values : bool, optional
+            Whether individual QC values are cached as well as the
+            determined energies.
+        autosave_every : int, optional
+            Number of determined energies after which the store is
+            written to disk.
+
+        Returns
+        -------
+        SpectrumValueStore
+            The newly attached store.
+        """
+        self.value_store = spectrum_store_utils.SpectrumValueStore(
+            directory=directory, autosave_every=autosave_every,
+            memoize_values=memoize_values)
+        if context is not None:
+            self.store_context = dict(context)
+        self.clear_store_caches()
+        return self.value_store
+
+    def clear_store_caches(self):
+        """Forget the cached store context, e.g. after a policy change."""
+        self._active_context = None
+        self._value_context_cache = {}
+
+    def store_context_for(self, qc_dict, refresh=False):
+        """Return the store context describing a spectrum calculation.
+
+        Parameters
+        ----------
+        qc_dict : dict
+            QC evaluation options for the calculation.
+        refresh : bool, optional
+            Whether to rebuild the context even if one is cached. The
+            context is cached so that every energy of one run is
+            recorded against the context in force when the run began,
+            and is rebuilt at the start of each run.
+
+        Returns
+        -------
+        dict
+            Context suitable for the value store.
+        """
+        if refresh or self._active_context is None:
+            self._active_context = spectrum_store_utils.build_context(
+                self.qc, qc_dict, extra=self.store_context)
+            self._value_context_cache = {}
+        return self._active_context
+
+    def record_root(self, band_index, L, E):
+        """Record one determined energy in the value store, if active."""
+        if self.value_store is None or self._active_context is None:
+            return
+        self.value_store.put_root(self._active_context, band_index, L, E)
+
+    def get_value(self, E, L, qc_dict):
+        """Evaluate the QC, reusing a memoized value when one is stored.
+
+        Parameters
+        ----------
+        E : float
+            Energy value.
+        L : float
+            Box length.
+        qc_dict : dict
+            QC evaluation options.
+
+        Returns
+        -------
+        float or numpy.ndarray
+            Value of the selected QC version.
+        """
+        store = self.value_store
+        if store is None or not store.memoize_values:
+            return self.qc.get_value(E, L, qc_dict)
+        context = self._value_context(qc_dict, E, L)
+        cached_value = store.get_value(context, E, L)
+        if cached_value is not None:
+            return cached_value
+        value = self.qc.get_value(E, L, qc_dict)
+        if np.ndim(value) == 0 and not np.iscomplexobj(value):
+            store.put_value(context, E, L, float(value))
+        return value
+
+    def _value_context(self, qc_dict, E, L):
+        """Return the context under which one QC value may be reused.
+
+        A QC value depends on the interpolation flags in force and on the
+        policy element selected at ``(E, L)``, both of which change while
+        the solver runs, so they extend the context of the run itself.
+        """
+        base_context = self.store_context_for(qc_dict)
+        qc_impl = getattr(getattr(self.qc.qcis, 'fvs', None), 'qc_impl', {})
+        interpolation_state = tuple(
+            sorted((key, bool(qc_impl[key])) for key in qc_impl
+                   if 'interp' in key))
+        policy_element = self._policy_element(qc_dict, E, L)
+        cache_key = (interpolation_state, policy_element.get('id'))
+        if cache_key in self._value_context_cache:
+            return self._value_context_cache[cache_key]
+        context = dict(base_context)
+        context['interpolation_state'] = [[key, flag] for key, flag
+                                          in interpolation_state]
+        context['policy_element'] = spectrum_store_utils.canonical_value(
+            dict(policy_element))
+        self._value_context_cache[cache_key] = context
+        return context
+
+    def _policy_element(self, qc_dict, E, L):
+        """Return the policy element the QC would select at ``(E, L)``."""
+        if 'policy' not in qc_dict and 'version' not in qc_dict:
+            return {'id': None}
+        policy = qc_dict.get('policy')
+        if not isinstance(policy, EvaluationPolicy):
+            policy = EvaluationPolicy.from_qc_dict(qc_dict)
+            qc_dict['policy'] = policy
+        return policy.select(E, L)
+
+    def get_all_energies(self, qc_dict, dL=0.1, initial_curves=None,
+                         use_store=True):
         """Track all interpolated energy levels across a range of volumes.
 
         Parameters
@@ -689,6 +866,14 @@ class FVSpectrum:
             QC evaluation options for the spectrum calculation.
         dL : float, optional
             Step size in box length.
+        initial_curves : tuple, optional
+            Volume and energy band lists used as a starting guess, as
+            returned by this method. When given, the initial scan over
+            the full energy window is skipped and the bands are refined
+            and extended instead.
+        use_store : bool, optional
+            Whether an attached value store may supply a completed
+            result, or a partial one to continue from.
 
         Returns
         -------
@@ -696,6 +881,26 @@ class FVSpectrum:
             Interpolated volume values and their corresponding energy levels.
         """
         version, irrep = fv_spectrum_utils._get_version_and_irrep(qc_dict)
+        seeded_from_store = False
+        if self.value_store is not None:
+            context = self.store_context_for(qc_dict, refresh=True)
+            self.value_store.register(context)
+            if use_store and initial_curves is None:
+                completed_curves = self._completed_curves(dL)
+                if completed_curves is not None:
+                    return completed_curves
+                initial_curves = self.value_store.get_curves(context)
+                seeded_from_store = initial_curves is not None
+        if initial_curves is not None:
+            curves = self.get_energies_from_guesses(
+                qc_dict, initial_curves[0], initial_curves[1], dL=dL)
+            if not seeded_from_store or _curves_are_finite(curves[1]):
+                return curves
+            warnings.warn(f"\n{bcolors.WARNING}"
+                          "stored energies did not refine onto solutions; "
+                          "discarding them and scanning from scratch"
+                          f"{bcolors.ENDC}")
+            self.value_store.clear(self._active_context)
         solver_state = fv_spectrum_utils._initialize_energy_scan(
             self, version, irrep, qc_dict, dL)
         fv_spectrum_utils._refine_interpolated_energies(
@@ -720,7 +925,99 @@ class FVSpectrum:
         )
         interp_L_vals = solver_state['interp_L_vals']
         interp_E_vals = solver_state['interp_E_vals']
+        self._mark_run_complete(dL)
         return interp_L_vals, interp_E_vals
+
+    def get_energies_from_guesses(self, qc_dict, L_vals, E_vals, dL=0.1,
+                                  refine=True, extend=True,
+                                  max_bracket=DEFAULT_GUESS_BRACKET):
+        """Refine and extend energy bands supplied as a starting guess.
+
+        This is the continuation path used to resume an interrupted run,
+        or to solve a new parameter set from the solution of a nearby
+        one, without repeating the initial scan over the full energy
+        window. All bands are assumed to share a common volume grid.
+
+        Parameters
+        ----------
+        qc_dict : dict
+            QC evaluation options for the spectrum calculation.
+        L_vals, E_vals : list[list[float]]
+            Volume and energy values of each band, used as a guess.
+        dL : float, optional
+            Step size in box length used when extending the bands.
+        refine : bool, optional
+            Whether the supplied points are re-solved before extending.
+        extend : bool, optional
+            Whether the bands are extended to the edge of the window.
+        max_bracket : float, optional
+            Widest bracket used around a supplied energy. The bracket is
+            clipped to the pole-free window around the guess in any case,
+            so a guess taken from a neighbouring parameter set may sit
+            well away from the solution.
+
+        Returns
+        -------
+        tuple[list[list[float]], list[list[float]]]
+            Volume values and their corresponding energy levels.
+
+        Raises
+        ------
+        ValueError
+            If no bands are supplied, or if the volume and energy band
+            lists have different shapes.
+        """
+        version, irrep = fv_spectrum_utils._get_version_and_irrep(qc_dict)
+        if len(L_vals) == 0:
+            raise ValueError("at least one band is required")
+        if len(L_vals) != len(E_vals):
+            raise ValueError("L_vals and E_vals must have the same length")
+        interp_L_vals = [list(band) for band in L_vals]
+        interp_E_vals = [list(band) for band in E_vals]
+        for band_index, L_band in enumerate(interp_L_vals):
+            if len(L_band) != len(interp_E_vals[band_index]):
+                raise ValueError("each L band must match its E band")
+            if len(L_band) == 0:
+                raise ValueError("each band must contain at least one point")
+        if self.value_store is not None:
+            context = self.store_context_for(qc_dict)
+            self.value_store.register(context)
+        ni_functions = fv_spectrum_utils._get_ni_functions(self, irrep)
+        Emin, Emax, Lmin, Lmax = fv_spectrum_utils._extract_EL_bounds(
+            self, version, irrep)
+        if refine:
+            fv_spectrum_utils._refine_energies_from_guesses(
+                self, interp_E_vals, interp_L_vals, qc_dict, ni_functions,
+                Emin, Emax, max_bracket=max_bracket)
+        if extend:
+            band_ends = [L_band[-1] for L_band in interp_L_vals]
+            L = max(band_ends) if dL > 0. else min(band_ends)
+            fv_spectrum_utils._extend_energy_levels(
+                self, L, Lmin, Lmax, Emin, Emax, dL, qc_dict, ni_functions,
+                interp_E_vals, interp_L_vals)
+        self._mark_run_complete(dL)
+        return interp_L_vals, interp_E_vals
+
+    def _completed_curves(self, dL):
+        """Return stored bands from a completed run at this step size."""
+        context = self._active_context
+        if self.value_store is None or context is None:
+            return None
+        meta = self.value_store.get_meta(context)
+        if not meta.get('complete'):
+            return None
+        canonical_dL = spectrum_store_utils.canonical_value(float(dL))
+        if meta.get('dL') != canonical_dL:
+            return None
+        return self.value_store.get_curves(context)
+
+    def _mark_run_complete(self, dL):
+        """Flag the active context as complete and flush it to disk."""
+        context = self._active_context
+        if self.value_store is None or context is None:
+            return
+        self.value_store.set_meta(context, complete=True, dL=float(dL))
+        self.value_store.save(context)
 
     def get_roots_from_range(self, E_range, L, qc_dict, ni_functions,
                              cuts=fv_spectrum_utils.DEFAULT_CUTS):

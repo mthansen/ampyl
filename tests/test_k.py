@@ -5,6 +5,8 @@ import unittest
 from types import SimpleNamespace
 import numpy as np
 import ampyl
+from ampyl.constants import EPSILON20
+from ampyl.constants import EPSILON30
 from ampyl.k_matrices import Kdf
 
 
@@ -147,6 +149,28 @@ class TestKdfGetShell(unittest.TestCase):
         expected = np.conjugate(proj_row.T)@(
             np.ones((3, 6))*2.5)@proj_col
         self.assertTrue(np.allclose(shell, expected))
+
+
+class TestPcotdeltaScatteringLength(unittest.TestCase):
+    """Unit tests for the scattering-length parametrization."""
+
+    def test_matches_minus_inverse_scattering_length(self):
+        pcotdelta = ampyl.qc_functions.pcotdelta_scattering_length
+        self.assertAlmostEqual(pcotdelta(1.5, 0.25), -4.0, places=12)
+        self.assertAlmostEqual(pcotdelta(1.5, -0.25), 4.0, places=12)
+
+    def test_vanishing_scattering_length_uses_epsilon(self):
+        pcotdelta = ampyl.qc_functions.pcotdelta_scattering_length
+        self.assertAlmostEqual(pcotdelta(1.5, 0.0), -1.0/EPSILON30, places=12)
+
+    def test_vanishing_scattering_length_gives_vanishing_k(self):
+        qcis = ampyl.spaces.QCIndexSpace()
+        qcis.populate()
+        k = ampyl.K(qcis=qcis)
+        k_matrix = k.get_value(E=4.0, L=5.0,
+                               pcotdelta_parameter_lists=[[0.0]],
+                               project=False)
+        self.assertTrue(np.all(np.abs(k_matrix) < EPSILON20))
 
 
 if __name__ == '__main__':
