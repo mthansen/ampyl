@@ -40,7 +40,6 @@ from . import shell_utils
 from . import check_utils
 from .constants import TWOPI
 from .constants import FOURPI2
-from .constants import bcolors
 from . import qc_functions
 import warnings
 warnings.simplefilter("once")
@@ -247,107 +246,217 @@ class Ktwo:
 
 
 class Kdf:
-    """
-    Class for the three-to-three K matrix.
+    """Three-to-three K matrix, with a single constant parameter.
 
-    :param qcis: quantization-condition index space, specifying all data for
-        the class
+    The matrix is laid out exactly like :class:`ampyl.cuts.G` and the
+    three-particle block of :class:`K`: block rows and columns run over
+    the three-particle entries of ``fcs.sc_list_sorted``, and within a
+    channel over that channel's own spectator shells. Channels whose
+    spectator masses differ live in different three-particle slices and
+    therefore carry different shell sets; row and column blocks are
+    taken from their own slice, so a space with more than one slice is
+    supported.
+
+    Only a single three-body parameter is implemented: ``k3_params``
+    has length one and the matrix is that constant on every block whose
+    row and column angular momenta agree, and zero on every block where
+    they differ. Blocks connecting different spectator channels carry
+    the same constant, because the term does not depend on which
+    particle is called the spectator.
+
+    At ``ell = 0`` that constant block is the isotropic term
+    ``Kdf3[k, 0, 0; p, 0, 0] = K_iso``. It is rank one, so after
+    projection it survives only in the trivial irrep, which is the
+    expected behaviour of an isotropic three-body term at zero total
+    momentum.
+
+    At ``ell > 0`` the constant block is what the implementation
+    carried before the ``ell = 0`` case was added, and the three-pion
+    benchmark in ``tests/test_qc.py`` fixes it. It is one ansatz among
+    several: a term that is a scalar under rotations would be
+    proportional to ``delta_{m m'}`` within a wave rather than constant
+    across it. That choice is deliberately left unchanged here.
+
+    :param qcis: quantization-condition index space, specifying all data
+        for the class
     :type qcis: QCIndexSpace
 
-    At this stage only the asymmetric version is implemented, and only for
-    zero total momentum.
+    Only zero total momentum is supported.
     """
+
     def __init__(self, qcis=None):
         self.qcis = qcis
 
     def get_value(self, E, L, k3_params, project, irrep):
+        """Build the Kdf matrix for the whole index space.
+
+        Parameters
+        ----------
+        E : float
+            Total energy.
+        L : float
+            Box length.
+        k3_params : list[float]
+            Three-body parameters; length one, the isotropic term.
+        project : bool
+            Whether to project onto ``irrep``.
+        irrep : tuple
+            Target irrep when projecting.
+
+        Returns
+        -------
+        numpy.ndarray
+            Kdf matrix, laid out to match F, G and F+G.
+        """
         nP = self.qcis.fvs.nP
-        cindex_row = cindex_col = 0
         not_projecting = (irrep is None) and (project is False)
         projecting = not not_projecting
         irrep_not_in_keys = irrep not in self.qcis.proj_dict.keys()
         if projecting and irrep_not_in_keys:
             raise ValueError("irrep "+str(irrep)+" not in "
                              "qcis.proj_dict.keys()")
-        tbks_entry, slices = self._get_entry_and_slices(E, L, nP)
-        kdf_final = self._get_value_from_tbks(E, L, k3_params, project, irrep,
-                                              cindex_col, cindex_row,
-                                              tbks_entry, slices)
-        return kdf_final
+        tbks_entries, slices_by_three_slice\
+            = self._get_entry_and_slices(E, L, nP)
+        return self._get_value_from_tbks(E, L, k3_params, project, irrep,
+                                         tbks_entries, slices_by_three_slice)
 
     def _get_entry_and_slices(self, E, L, nP):
-        if nP@nP == 0:
-            tbks_sub_indices = self.qcis.get_tbks_sub_indices(E=E, L=L)
-            if len(self.qcis.tbks_list) > 1:
-                raise ValueError("get_value within G assumes tbks_list is "
-                                 "length one.")
-            tbks_entry = self.qcis.tbks_list[0][tbks_sub_indices[0]]
-            slices = tbks_entry.shells
-            if self.qcis.verbosity >= 2:
-                print('tbks_sub_indices =', tbks_sub_indices)
-                print('tbks_entry =', tbks_entry)
-                print('slices =', slices)
-        else:
+        """Return one TBKS entry and shell list per three-particle slice."""
+        if nP@nP != 0:
             raise NotImplementedError("get_value within Kdf is not "
                                       "implemented for non-zero nP yet.")
-        return tbks_entry, slices
+        tbks_sub_indices = self.qcis.get_tbks_sub_indices(E=E, L=L)
+        # the pair sector owns slot 0 of tbks_list when it is present, so
+        # three-slice i lives in slot i + 1; the same convention as G
+        slot_offset = 1 if self.qcis.n_two_channels > 0 else 0
+        tbks_entries = []
+        slices_by_three_slice = []
+        for three_slice_index in range(self.qcis.fcs.n_three_slices):
+            slot_index = three_slice_index+slot_offset
+            tbks_entry = self.qcis.tbks_list[slot_index][
+                tbks_sub_indices[slot_index]]
+            tbks_entries.append(tbks_entry)
+            slices_by_three_slice.append(tbks_entry.shells)
+        if self.qcis.verbosity >= 2:
+            print('tbks_sub_indices =', tbks_sub_indices)
+            print('slices =', slices_by_three_slice)
+        return tbks_entries, slices_by_three_slice
 
-    def _get_value_from_tbks(self, E, L, k3_params, project, irrep, cindex_col,
-                             cindex_row, tbks_entry, slices):
-        m1, m2, m3 = [1.0, 1.0, 1.0]
-        warnings.warn(f"\n{bcolors.WARNING}"
-                      "assuming m1 = m2 = m3 = 1.0 in Kdf"
-                      f"{bcolors.ENDC}")
+    def _single_ell(self, sc_index):
+        """Return the one angular momentum of a spectator channel."""
+        ell_set = self.qcis.fcs.sc_list_sorted[sc_index].ell_set
+        if len(ell_set) != 1:
+            raise ValueError("only length-one ell_set currently "
+                             "supported in Kdf")
+        return ell_set[0]
+
+    def _channel_masses(self, sc_index):
+        """Return the spectator and dimer masses of a channel."""
+        sc = self.qcis.fcs.sc_list_sorted[sc_index]
+        return (sc.spectator.mass, sc.first_dimer.mass,
+                sc.second_dimer.mass)
+
+    def _get_value_from_tbks(self, E, L, k3_params, project, irrep,
+                             tbks_entries, slices_by_three_slice):
+        """Assemble the full Kdf matrix from the TBKS entries."""
+        # the pair sector lives in Ktwo; Kdf is three-particle only
+        slot_offset = 1 if self.qcis.n_two_channels > 0 else 0
+        sc_list = self.qcis.fcs.sc_list_sorted
         kdf_final = []
-        for sc_row_ind in range(len(self.qcis.fcs.sc_list_sorted)):
+        for sc_row_ind in range(len(sc_list)):
+            if sc_list[sc_row_ind].fc.n_particles == 2:
+                continue
             kdf_outer_row = []
-            row_ell_set = self.qcis.fcs.sc_list_sorted[sc_row_ind].ell_set
-            if len(row_ell_set) != 1:
-                raise ValueError("only length-one ell_set currently "
-                                 "supported in Kdf")
-            ell1 = row_ell_set[0]
-            for sc_col_ind in range(len(self.qcis.fcs.sc_list_sorted)):
-                col_ell_set = self.qcis.fcs.sc_list_sorted[sc_col_ind].ell_set
-                if len(col_ell_set) != 1:
-                    raise ValueError("only length-one ell_set currently "
-                                     "supported in Kdf")
-                ell2 = col_ell_set[0]
+            ell1 = self._single_ell(sc_row_ind)
+            m1, m2, m3 = self._channel_masses(sc_row_ind)
+            row_three_slice = self.qcis.sc_to_three_slice[
+                sc_row_ind]-slot_offset
+            row_tbks_entry = tbks_entries[row_three_slice]
+            row_slices = slices_by_three_slice[row_three_slice]
+            for sc_col_ind in range(len(sc_list)):
+                if sc_list[sc_col_ind].fc.n_particles == 2:
+                    continue
+                ell2 = self._single_ell(sc_col_ind)
+                col_three_slice = self.qcis.sc_to_three_slice[
+                    sc_col_ind]-slot_offset
+                col_tbks_entry = tbks_entries[col_three_slice]
+                col_slices = slices_by_three_slice[col_three_slice]
                 kdf_inner = []
-                for row_shell_index in range(len(slices)):
+                for row_shell_index in range(len(row_slices)):
                     kdf_inner_row = []
-                    for col_shell_index in range(len(slices)):
-                        kdf_tmp = self.get_shell(E, L, k3_params,
-                                                 m1, m2, m3,
-                                                 cindex_row, cindex_col,
-                                                 # only for non-zero nP
-                                                 sc_row_ind, sc_col_ind,
-                                                 ell1, ell2,
-                                                 tbks_entry,
-                                                 row_shell_index,
-                                                 col_shell_index,
-                                                 project, irrep)
+                    for col_shell_index in range(len(col_slices)):
+                        kdf_tmp = self.get_shell(
+                            E, L, k3_params,
+                            m1, m2, m3,
+                            sc_row_ind, sc_col_ind,
+                            sc_row_ind, sc_col_ind,
+                            ell1, ell2,
+                            row_tbks_entry,
+                            row_shell_index,
+                            col_shell_index,
+                            project, irrep,
+                            col_tbks_entry=col_tbks_entry)
                         kdf_inner_row.append(kdf_tmp)
                     kdf_inner.append(kdf_inner_row)
                 kdf_inner = self._clean_shape(kdf_inner)
-                kdf_block_tmp = np.block(kdf_inner)
-                kdf_outer_row = kdf_outer_row+[kdf_block_tmp]
+                kdf_outer_row = kdf_outer_row+[np.block(kdf_inner)]
             kdf_final.append(kdf_outer_row)
+        if len(kdf_final) == 0:
+            return np.zeros((0, 0))
         kdf_final = self._clean_shape(kdf_final)
-        kdf_final = np.block(kdf_final)
-        return kdf_final
+        return np.block(kdf_final)
 
     def get_shell(self, E=5.0, L=5.0, k3_params=None, m1=1.0, m2=1.0, m3=1.0,
                   cindex_row=None, cindex_col=None,  # only for non-zero nP
                   sc_index_row=None, sc_index_col=None, ell1=0, ell2=0,
                   tbks_entry=None, row_shell_index=None, col_shell_index=None,
-                  project=False, irrep=None):
-        """Build the Kdf matrix on a single shell."""
+                  project=False, irrep=None, col_tbks_entry=None):
+        """Build the Kdf matrix block for a single pair of shells.
+
+        Parameters
+        ----------
+        E : float, optional
+            Total energy.
+        L : float, optional
+            Box length.
+        k3_params : list[float], optional
+            Three-body parameters; length one, the isotropic term.
+        m1, m2, m3 : float, optional
+            Spectator and dimer masses of the row channel. The isotropic
+            term does not depend on them; they are carried so that a
+            kinematic Kdf3 can use them without a signature change.
+        cindex_row, cindex_col : int, optional
+            Spectator-channel indices used to reach the three-slice, for
+            nonzero total momentum.
+        sc_index_row, sc_index_col : int, optional
+            Spectator-channel indices.
+        ell1, ell2 : int, optional
+            Partial-wave indices of the row and column channels.
+        tbks_entry : object, optional
+            TBKS entry defining the row channel's shells.
+        row_shell_index, col_shell_index : int, optional
+            Shell indices within the row and column channels.
+        project : bool, optional
+            Whether to project onto ``irrep``.
+        irrep : tuple, optional
+            Target irrep when projecting.
+        col_tbks_entry : object, optional
+            TBKS entry defining the column channel's shells. Defaults to
+            ``tbks_entry``, which is correct only when both channels sit
+            in the same three-particle slice.
+
+        Returns
+        -------
+        numpy.ndarray
+            Kdf block for the requested shells.
+        """
         nP = self.qcis.fvs.nP
 
         mask_row_shells, mask_col_shells, row_shell, col_shell\
             = shell_utils._get_masks_and_shells_for_nondiagonal(
                 self, E, L, tbks_entry, cindex_row, cindex_col,
-                row_shell_index, col_shell_index)
+                row_shell_index, col_shell_index,
+                col_tbks_entry=col_tbks_entry)
         if project:
             try:
                 if nP@nP == 0:
@@ -373,7 +482,12 @@ class Kdf:
 
         row_dim = (row_shell[1]-row_shell[0])*(2*ell1+1)
         col_dim = (col_shell[1]-col_shell[0])*(2*ell2+1)
-        if ell1 == ell2 == 1:
+        # a constant block on each partial wave, and nothing off the
+        # ell diagonal. At ell = 0 that is the isotropic term. The
+        # ell > 0 blocks keep the behaviour the gate had before it was
+        # widened, which the three-pion benchmark in tests/test_qc.py
+        # fixes; see the class docstring
+        if ell1 == ell2:
             Kdfshell = np.ones((row_dim, col_dim))*k3_params[0]
         else:
             Kdfshell = np.zeros((row_dim, col_dim))
@@ -406,19 +520,28 @@ class Kdf:
         return proj_tmp_right, proj_tmp_left
 
     def _clean_shape(self, kdf_collection):
-        rowsizes = [0]*len(kdf_collection)
-        colsizes = [0]*len(kdf_collection)
-        for i in range(len(kdf_collection)):
-            for j in range(len(kdf_collection)):
+        """Pad empty blocks so a nested Kdf collection can be assembled.
+
+        The collection is rectangular rather than square whenever the
+        row and column channels carry different numbers of shells, so
+        the column count is taken from the rows themselves.
+        """
+        nrows = len(kdf_collection)
+        ncols = max((len(row) for row in kdf_collection), default=0)
+        rowsizes = [0]*nrows
+        colsizes = [0]*ncols
+        for i in range(nrows):
+            for j in range(len(kdf_collection[i])):
                 shtmp = kdf_collection[i][j].shape
                 if shtmp != (0,):
                     if shtmp[0] > rowsizes[i]:
                         rowsizes[i] = shtmp[0]
                     if shtmp[1] > colsizes[j]:
                         colsizes[j] = shtmp[1]
-        for i in range(len(kdf_collection)):
-            for j in range(len(kdf_collection)):
+        for i in range(nrows):
+            for j in range(len(kdf_collection[i])):
                 shtmp = kdf_collection[i][j].shape
                 if shtmp == (0,) or shtmp == (0, 0):
-                    kdf_collection[i][j].shape = (rowsizes[i], colsizes[j])
+                    kdf_collection[i][j] = np.zeros((rowsizes[i],
+                                                     colsizes[j]))
         return kdf_collection
