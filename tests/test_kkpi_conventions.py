@@ -10,6 +10,8 @@ import unittest
 from types import SimpleNamespace
 import numpy as np
 import ampyl
+from ampyl import qc_functions
+from ampyl import shell_utils
 from ampyl.constants import PI
 
 
@@ -149,6 +151,75 @@ class TestSpectatorBoxAtNonzeroMomentum(unittest.TestCase):
         qcis.populate()
         for slot in range(2):
             self.assertGreater(len(qcis.tbks_list[slot][0].shells), 0)
+
+
+class TestMultiSliceMovingFrameFK(unittest.TestCase):
+    """Multi-slice F and K at nonzero total momentum.
+
+    For the trivial irrep at ell = 0 both are diagonal and constant on
+    a little-group orbit, so each projected entry is the single-entry
+    kernel at the orbit's first momentum, times the dimer factor (2 on
+    F and 1/2 on K for the non-identical K pi dimer). Channels are
+    ordered pion spectator then kaon spectator, orbits in shell order
+    and masked with each channel's own cutoff."""
+
+    def test_projected_entries(self):
+        E, L = 5.2, 5.0
+        a_vals = [0.4, -0.7]
+        for nP in [np.array([0, 0, 1]), np.array([0, 1, 1])]:
+            pion = ampyl.flavor.Particle(mass=1.0, spin=0.0, flavor='pi')
+            kaon = ampyl.flavor.Particle(mass=MK, spin=0.0, flavor='K')
+            fc = ampyl.flavor.FlavorChannel(
+                3, particles=[kaon, kaon, pion])
+            fcs = ampyl.flavor.FlavorChannelSpace(fc_list=[fc],
+                                                  ni_list=[fc])
+            fvs = ampyl.spaces.FiniteVolumeSetup(nP=nP)
+            tbis = ampyl.spaces.ThreeBodyInteractionScheme(
+                fcs=fcs, scheme_data=[[-0.4, 0.0], [-0.7, 0.0]])
+            qcis = ampyl.spaces.QCIndexSpace(fcs=fcs, fvs=fvs, tbis=tbis,
+                                             Emax=5.4, Lmax=5.2)
+            qcis.populate()
+            qc = ampyl.QC(qcis=qcis)
+            irrep = ('A1', 0)
+            f = qc.f.get_value(E=E, L=L, project=True, irrep=irrep)
+            k = qc.k.get_value(E=E, L=L,
+                               pcotdelta_parameter_lists=[[a] for a
+                                                          in a_vals],
+                               project=True, irrep=irrep)
+            f_expected = []
+            k_expected = []
+            for sc_index, sc in enumerate(qcis.fcs.sc_list_sorted):
+                identical = sc.first_dimer == sc.second_dimer
+                mspec = sc.spectator.mass
+                m2 = sc.first_dimer.mass
+                m3 = sc.second_dimer.mass
+                alpha, beta = qcis.tbis.scheme_data[sc_index]
+                tbks_entry = qcis.tbks_list[
+                    qcis.sc_to_three_slice[sc_index]][0]
+                _, shells = shell_utils._get_active_shells(
+                    qcis, sc_index, E, L, tbks_entry)
+                for shell in shells:
+                    nvec = tbks_entry.nvec_arr[shell[0]]
+                    f_expected.append(
+                        (1.0 if identical else 2.0)
+                        * qc_functions.getF_single_entry(
+                            E=E, nP=nP, L=L, npspec=nvec, m1=m2, m2=m3,
+                            mspec=mspec, C1cut=qc.f.C1cut,
+                            alphaKSS=qc.f.alphaKSS, alpha=alpha,
+                            beta=beta))
+                    k_expected.append(
+                        (1.0 if identical else 0.5)
+                        * qc_functions.getK_single_entry(
+                            pcotdelta_parameter_list=[a_vals[sc_index]],
+                            E=E, nP=nP, L=L, npspec=nvec, m1=m2, m2=m3,
+                            mspec=mspec, alpha=alpha, beta=beta))
+            self.assertGreater(len(k_expected), 4)
+            for matrix, expected in [(f, f_expected), (k, k_expected)]:
+                expected = np.diag(np.real(expected))
+                self.assertEqual(matrix.shape, expected.shape)
+                scale = np.max(np.abs(expected))
+                self.assertLess(np.max(np.abs(matrix-expected)),
+                                1.0e-13*scale)
 
 
 if __name__ == '__main__':

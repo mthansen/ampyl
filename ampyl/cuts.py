@@ -687,15 +687,7 @@ class F(Interpolable):
         if nP@nP == 0:
             tbks_sub_indices = self.qcis.get_tbks_sub_indices(E=E, L=L)
         else:
-            if self.qcis.fcs.n_three_slices != 1:
-                raise NotImplementedError(
-                    "multi-slice F is implemented only for zero total "
-                    "momentum")
             ibest = self.qcis.get_shellset_index(E, L)
-            if len(self.qcis.tbks_list) > 1:
-                raise ValueError("get_value within F assumes tbks_list is "
-                                 "length one.")
-            tbks_entry = self.qcis.tbks_list[0][ibest]
         f_final_list = []
         for sc_ind in range(len(self.qcis.fcs.sc_list_sorted)):
             sc = self.qcis.fcs.sc_list_sorted[sc_ind]
@@ -708,10 +700,12 @@ class F(Interpolable):
                                  "supported in F")
             ell1 = ell_set[0]
             ell2 = ell1
+            three_slice_index = self.qcis.sc_to_three_slice[sc_ind]
             if nP@nP == 0:
-                three_slice_index = self.qcis.sc_to_three_slice[sc_ind]
                 tbks_entry = self.qcis.tbks_list[three_slice_index][
                     tbks_sub_indices[three_slice_index]]
+            else:
+                tbks_entry = self.qcis.tbks_list[three_slice_index][ibest]
             mask, slices = shell_utils._get_active_shells(
                 self.qcis, sc_ind, E, L, tbks_entry)
             m1 = sc.spectator.mass
