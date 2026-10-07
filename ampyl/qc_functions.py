@@ -1137,6 +1137,14 @@ def getK_single_entry(pcotdelta_function=None,
     -------
     complex or float
         Requested matrix element.
+
+    Notes
+    -----
+    Returns zero where the dimer has no physical invariant mass,
+    ``E2CMSQ <= 0``, or the spectator carries more than the total
+    energy. A shell there counts as active when the cutoff's zero
+    support point is negative (``alpha < -1`` or ``beta > 0``); ``F``
+    vanishes there as well.
     """
     if pcotdelta_function is None:
         pcotdelta_function = pcotdelta_scattering_length
@@ -1147,7 +1155,7 @@ def getK_single_entry(pcotdelta_function=None,
     P2 = P-pspec
     E2CMSQ = E2**2-P2@P2
     if E2CMSQ <= 0.0 or E2 < 0.0:
-        return np.nan
+        return 0.0
     ECM = np.sqrt(E2CMSQ)
     if m1 == m2:
         pSQ = E2CMSQ/4.0-m1**2
@@ -1223,6 +1231,14 @@ def getK_single_entry_IPV(pcotdelta_function=None,
     -------
     complex or float
         Requested matrix element including the PV-shift term.
+
+    Notes
+    -----
+    Returns zero where the dimer has no physical invariant mass,
+    ``E2CMSQ <= 0``, or the spectator carries more than the total
+    energy. A shell there counts as active when the cutoff's zero
+    support point is negative (``alpha < -1`` or ``beta > 0``); ``F``
+    vanishes there as well.
     """
     if pcotdelta_function is None:
         pcotdelta_function = pcotdelta_scattering_length
@@ -1235,7 +1251,7 @@ def getK_single_entry_IPV(pcotdelta_function=None,
     P2 = P-pspec
     E2CMSQ = E2**2-P2@P2
     if E2CMSQ <= 0.0 or E2 < 0.0:
-        return np.nan
+        return 0.0
     ECM = np.sqrt(E2CMSQ)
     if m1 == m2:
         pSQ = E2CMSQ/4.0-m1**2

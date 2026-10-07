@@ -320,5 +320,44 @@ class TestPcotdeltaScatteringLength(unittest.TestCase):
         self.assertTrue(np.all(np.abs(k_matrix) < EPSILON20))
 
 
+class TestKBelowDimerThreshold(unittest.TestCase):
+    """K vanishes where the dimer has no physical invariant mass.
+
+    Regression: the kernels returned NaN at E2CMSQ <= 0, which a
+    negative zero support point (alpha < -1 or beta > 0) makes
+    reachable on active shells, poisoning the whole K matrix."""
+
+    def test_kernels_return_zero(self):
+        # spectator n = (0, 0, 1) at L = 4: omega_spec = 1.862, and
+        # E = 2.5 leaves E2 = 0.638 > 0 but E2CMSQ = E2^2-(pi/2)^2 < 0;
+        # E = 0.5 leaves E2 < 0
+        for E in [2.5, 0.5]:
+            for kernel in [ampyl.qc_functions.getK_single_entry,
+                           ampyl.qc_functions.getK_single_entry_IPV]:
+                self.assertEqual(
+                    kernel(E=E, nP=np.array([0, 0, 0]), L=4.0,
+                           npspec=np.array([0, 0, 1]), alpha=-1.0,
+                           beta=0.1), 0.0)
+
+    def test_moving_frame_positive_beta_stays_finite(self):
+        # beta = 0.1 puts the zero support point at -1.6; at E = 3.05,
+        # L = 3 the zero-momentum shell, sigma = (E-1)^2-(2 pi/L)^2
+        # < 0, is active
+        pion = ampyl.flavor.Particle(mass=1.0, flavor='pi')
+        fc = ampyl.flavor.FlavorChannel(3, particles=[pion, pion, pion])
+        fcs = ampyl.flavor.FlavorChannelSpace(fc_list=[fc])
+        fvs = ampyl.spaces.FiniteVolumeSetup(nP=np.array([0, 0, 1]))
+        tbis = ampyl.spaces.ThreeBodyInteractionScheme(
+            fcs=fcs, scheme_data=[[-1.0, 0.1]])
+        qcis = ampyl.spaces.QCIndexSpace(
+            fcs=fcs, fvs=fvs, tbis=tbis, Emax=5.0, Lmax=6.0)
+        qcis.populate()
+        k = ampyl.K(qcis=qcis).get_value(
+            E=3.05, L=3.0, pcotdelta_parameter_lists=[[0.3]])
+        self.assertTrue(np.all(np.isfinite(k)))
+        self.assertEqual(k[0, 0], 0.0)
+        self.assertNotEqual(k[1, 1], 0.0)
+
+
 if __name__ == '__main__':
     unittest.main()
