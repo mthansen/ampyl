@@ -76,7 +76,7 @@ class K:
         sc = self.qcis.fcs.sc_list_sorted[sc_ind]
         dimer_symmetry_factor = 1.0
         if sc.first_dimer != sc.second_dimer:
-            dimer_symmetry_factor = 2.0
+            dimer_symmetry_factor = 0.5
 
         mask_slices, slice_entry\
             = shell_utils._get_masks_and_shells_for_k(

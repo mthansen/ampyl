@@ -14,7 +14,7 @@ class TestK(unittest.TestCase):
     """Class to test the two-particle K matrix."""
 
     def test_k_dimer_symmetry_factor(self):
-        """Test K is doubled only for non-identical dimer particles."""
+        """Test K is halved only for non-identical dimer particles."""
         pion = ampyl.flavor.Particle(mass=1.0, flavor='pi')
         kaon = ampyl.flavor.Particle(mass=2.5, flavor='K')
         fc = ampyl.flavor.FlavorChannel(
@@ -31,7 +31,7 @@ class TestK(unittest.TestCase):
         L = 4.0
         epsilon = 1.0e-15
 
-        for sc_ind, expected_factor in [(0, 1.0), (1, 2.0)]:
+        for sc_ind, expected_factor in [(0, 1.0), (1, 0.5)]:
             sc = qcis.fcs.sc_list_sorted[sc_ind]
             three_slice_index = qcis.sc_to_three_slice[sc_ind]
             tbks_entry = qcis.tbks_list[three_slice_index][0]
