@@ -1532,35 +1532,24 @@ class QCIndexSpace:
         return self.tbis.ESQmins[sc_index]
 
     def _get_nPspecmax(self, three_slice_index):
+        """Return the largest spectator |n| whose dimer can reach ESQmin.
+
+        The dimer invariant mass squared, sigma = (E-omega_k)^2-(P-k)^2,
+        grows with E and, at fixed integer n, with L, and at fixed |k|
+        is largest for k parallel to P. Solving sigma = ESQmin there,
+        at Emax and Lmax, gives |k|max in closed form.
+        """
         sc = self.fcs.sc_list_sorted[
             self.fcs.slices_by_three_masses[three_slice_index][0]]
         m_spec = sc.spectator.mass
-        Emax = self.Emax
-        EmaxSQ = Emax**2
-        nPSQ = self.nPSQ
+        EmaxSQ = self.Emax**2
         Lmax = self.Lmax
         ESQmin = self._get_ESQmin(three_slice_index)
-        if (ESQmin != 0.0):
-            if nPSQ == 0:
-                nPspecmax = (Lmax*np.sqrt(
-                    Emax**4+(ESQmin-m_spec**2)**2-2.*Emax**2*(ESQmin+m_spec**2)
-                    ))/(2.*Emax*TWOPI)
-                return nPspecmax
-            else:
-                raise ValueError("simultaneous nonzero nP and ESQmin not"
-                                 " supported")
-        else:
-            if nPSQ == 0:
-                nPspecmax = Lmax*(EmaxSQ-m_spec**2)/(2.0*TWOPI*Emax)
-                return nPspecmax
-            else:
-                nPmag = np.sqrt(nPSQ)
-                nPspecmax = (FOURPI2*nPmag*(
-                    Lmax**2*(EmaxSQ+m_spec**2)-FOURPI2*nPSQ
-                    )+np.sqrt(EmaxSQ*FOURPI2*Lmax**2*(
-                        Lmax**2*(-EmaxSQ+m_spec**2)+FOURPI2*nPSQ
-                        )**2))/(2.*FOURPI2*(EmaxSQ*Lmax**2-FOURPI2*nPSQ))
-                return nPspecmax
+        PSQ = FOURPI2*self.nPSQ/Lmax**2
+        A = EmaxSQ+m_spec**2-PSQ-ESQmin
+        kmax = (A*np.sqrt(PSQ)+self.Emax*np.sqrt(
+            A**2-4.0*m_spec**2*(EmaxSQ-PSQ)))/(2.0*(EmaxSQ-PSQ))
+        return Lmax*kmax/TWOPI
 
     def _populate_nP_iteration(self, slot_index, tbks_tmp, nPspec):
         if self.verbosity >= 2:

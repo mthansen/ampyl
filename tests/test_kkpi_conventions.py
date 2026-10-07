@@ -7,6 +7,7 @@ stand alone.
 """
 
 import unittest
+from types import SimpleNamespace
 import numpy as np
 import ampyl
 from ampyl.constants import PI
@@ -102,6 +103,52 @@ class TestK2DimerSymmetryFactor(unittest.TestCase):
                     hi = mid
             ratio = (0.5*(lo+hi)-thr)/pred
             self.assertLess(abs(ratio-1.0), 1.0e-2)
+
+
+class TestSpectatorBoxAtNonzeroMomentum(unittest.TestCase):
+    """The spectator box admits nonzero ESQmin at nonzero nP."""
+
+    @staticmethod
+    def _npspecmax(m_spec, Emax, Lmax, nPSQ, ESQmin):
+        qcis = SimpleNamespace(
+            fcs=SimpleNamespace(
+                sc_list_sorted=[SimpleNamespace(
+                    spectator=SimpleNamespace(mass=m_spec))],
+                slices_by_three_masses=[[0]]),
+            Emax=Emax, Lmax=Lmax, nPSQ=nPSQ,
+            _get_ESQmin=lambda three_slice_index: ESQmin)
+        return ampyl.spaces.QCIndexSpace._get_nPspecmax(qcis, 0)
+
+    def test_rest_frame_value(self):
+        # sigma = ESQmin = 0 with the spectator recoiling against the
+        # dimer at rest: |k| = (E^2 - m^2)/(2 E)
+        nmax = self._npspecmax(1.0, 5.0, 6.0, 0, 0.0)
+        self.assertAlmostEqual(nmax, 6.0*(25.0-1.0)/(10.0*2.0*PI),
+                               places=12)
+
+    def test_moving_frame_bound_is_reached_parallel_to_P(self):
+        m_spec, Emax, Lmax, ESQmin = MK, 5.8, 6.0, 0.972
+        nP = np.array([0, 1, 1])
+        nmax = self._npspecmax(m_spec, Emax, Lmax, nP@nP, ESQmin)
+        nvec = nmax*nP/np.sqrt(nP@nP)
+        kSQ = (2.0*PI/Lmax)**2*(nvec@nvec)
+        PmkSQ = (2.0*PI/Lmax)**2*((nP-nvec)@(nP-nvec))
+        sigma = (Emax-np.sqrt(m_spec**2+kSQ))**2-PmkSQ
+        self.assertAlmostEqual(sigma, ESQmin, places=10)
+
+    def test_kkpi_populates_with_default_ESQmins(self):
+        pion = ampyl.flavor.Particle(mass=1.0, spin=0.0, flavor='pi')
+        kaon = ampyl.flavor.Particle(mass=MK, spin=0.0, flavor='K')
+        fc = ampyl.flavor.FlavorChannel(3, particles=[kaon, kaon, pion])
+        fcs = ampyl.flavor.FlavorChannelSpace(fc_list=[fc], ni_list=[fc])
+        fvs = ampyl.spaces.FiniteVolumeSetup(nP=np.array([0, 0, 1]))
+        tbis = ampyl.spaces.ThreeBodyInteractionScheme(fcs=fcs)
+        self.assertTrue(all(ESQmin > 0.0 for ESQmin in tbis.ESQmins))
+        qcis = ampyl.spaces.QCIndexSpace(fcs=fcs, fvs=fvs, tbis=tbis,
+                                         Emax=5.0, Lmax=5.0)
+        qcis.populate()
+        for slot in range(2):
+            self.assertGreater(len(qcis.tbks_list[slot][0].shells), 0)
 
 
 if __name__ == '__main__':
