@@ -2,6 +2,8 @@
 # -*- coding: utf-8 -*-
 
 import unittest
+from itertools import permutations, product
+from types import SimpleNamespace
 import numpy as np
 from ampyl.spaces import ThreeBodyKinematicSpace
 from ampyl import qc_functions
@@ -80,6 +82,46 @@ class TestGArrayVariantsAgree(unittest.TestCase):
             1.2, (1.0, 1.0, 1.0), 0, 'original pole')
         for block in blocks:
             self.assertTrue(np.all(block == 0.))
+
+
+class TestGSingleEntryMatchesArray(unittest.TestCase):
+    """getG_single_entry must reproduce getG_array entrywise.
+
+    Regression: it indexed calY's (calY, calYconj) pair before
+    unpacking, which raised on every call. Covers nonzero total
+    momentum, unequal masses in every role, ell = 1 harmonics and
+    distinct row- and column-side cutoffs (alpha2, beta2)."""
+
+    def test_entrywise_agreement(self):
+        nvecs = np.array([[0, 0, 0], [0, 0, 1], [1, 0, 0], [0, -1, 0],
+                          [0, 0, -1], [1, 1, 0], [1, 0, 1], [0, -1, 1]])
+        tbks = SimpleNamespace(nvec_arr=nvecs,
+                               nvecSQ_arr=(nvecs**2).sum(1))
+        m_K = 1.4
+        L = 4.6
+        E = 2.0*m_K+1.9
+        alpha, beta, alpha2, beta2 = -0.6, 0.02, -0.35, -0.01
+        full = [0, len(nvecs)]
+        for nP in [np.array([0, 0, 1]), np.array([0, 1, 1])]:
+            for m1, m2, m3 in set(permutations([m_K, m_K, 1.0])):
+                for ell in [0, 1]:
+                    g_array = qc_functions.getG_array(
+                        E, nP, L, m1, m2, m3, tbks, full, full, ell, ell,
+                        alpha, beta, {}, 'relativistic pole', 1.0,
+                        alpha2=alpha2, beta2=beta2)
+                    scale = np.max(np.abs(g_array))
+                    self.assertGreater(scale, 0.0)
+                    d = 2*ell+1
+                    for i, j, mi, mj in product(range(len(nvecs)),
+                                                range(len(nvecs)),
+                                                range(d), range(d)):
+                        g_entry = qc_functions.getG_single_entry(
+                            E, nP, L, nvecs[i], nvecs[j],
+                            ell, mi-ell, ell, mj-ell, m1, m2, m3,
+                            alpha, beta, alpha2=alpha2, beta2=beta2)
+                        self.assertLess(
+                            abs(g_entry-g_array[i*d+mi, j*d+mj]),
+                            1.0e-13*scale)
 
 
 if __name__ == '__main__':

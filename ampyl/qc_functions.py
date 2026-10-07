@@ -113,7 +113,8 @@ def getG_single_entry(E=4.0, nP=np.array([0, 0, 0]), L=5.0,
                       J_slow=False,
                       three_scheme='relativistic pole',
                       qc_impl={},
-                      g_rescale=1.0):
+                      g_rescale=1.0,
+                      alpha2=None, beta2=None):
     """Evaluate a single entry of the finite-volume ``G`` matrix.
 
     Parameters
@@ -133,7 +134,7 @@ def getG_single_entry(E=4.0, nP=np.array([0, 0, 0]), L=5.0,
     m1, m2, m3 : float, optional
         Channel masses.
     alpha, beta : float, optional
-        Cutoff parameters.
+        Cutoff parameters for the row-side pair, ``m1+m2``.
     J_slow : bool, optional
         Whether to use the slower cutoff implementation.
     three_scheme : str, optional
@@ -142,6 +143,9 @@ def getG_single_entry(E=4.0, nP=np.array([0, 0, 0]), L=5.0,
         Quantization-condition implementation options.
     g_rescale : float, optional
         Overall rescaling applied to the result.
+    alpha2, beta2 : float, optional
+        Cutoff parameters for the column-side pair, ``m2+m3``.
+        Default to ``alpha`` and ``beta``, as in :func:`getG_array`.
 
     Returns
     -------
@@ -155,13 +159,19 @@ def getG_single_entry(E=4.0, nP=np.array([0, 0, 0]), L=5.0,
     [vecstar_for1, vecstar_for2, E2CMSQ_for1, E2CMSQ_for2, q_for1, q_for2]\
         = __helperG_single_entry(E, nP, L, np1spec, np2spec, m1, m2, m3)
 
+    if alpha2 is None:
+        alpha2 = alpha
+    if beta2 is None:
+        beta2 = beta
     calY1, _ = calY(ell1, mazi1, vecstar_for1.reshape((1, 3)),
-                    q_for1, qc_impl)[0]
+                    q_for1, qc_impl)
     _, calY2conj = calY(ell2, mazi2, vecstar_for2.reshape((1, 3)),
-                        q_for2, qc_impl)[0]
+                        q_for2, qc_impl)
+    calY1 = calY1[0]
+    calY2conj = calY2conj[0]
 
     HH = H(E2CMSQ_for1, m1+m2, alpha, beta, J_slow)\
-        * H(E2CMSQ_for2, m2+m3, alpha, beta, J_slow)
+        * H(E2CMSQ_for2, m2+m3, alpha2, beta2, J_slow)
 
     Pvec = TWOPI*nP/L
     p1vec = TWOPI*np2spec/L
