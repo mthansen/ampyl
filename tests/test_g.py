@@ -89,8 +89,9 @@ class TestGSingleEntryMatchesArray(unittest.TestCase):
 
     Regression: it indexed calY's (calY, calYconj) pair before
     unpacking, which raised on every call. Covers nonzero total
-    momentum, unequal masses in every role, ell = 1 harmonics and
-    distinct row- and column-side cutoffs (alpha2, beta2)."""
+    momentum, unequal masses in every role, ell = 1 harmonics, both
+    pole schemes and distinct row- and column-side cutoffs (alpha2,
+    beta2)."""
 
     def test_entrywise_agreement(self):
         nvecs = np.array([[0, 0, 0], [0, 0, 1], [1, 0, 0], [0, -1, 0],
@@ -104,10 +105,11 @@ class TestGSingleEntryMatchesArray(unittest.TestCase):
         full = [0, len(nvecs)]
         for nP in [np.array([0, 0, 1]), np.array([0, 1, 1])]:
             for m1, m2, m3 in set(permutations([m_K, m_K, 1.0])):
-                for ell in [0, 1]:
+                for ell, scheme in product(
+                        [0, 1], ['relativistic pole', 'original pole']):
                     g_array = qc_functions.getG_array(
                         E, nP, L, m1, m2, m3, tbks, full, full, ell, ell,
-                        alpha, beta, {}, 'relativistic pole', 1.0,
+                        alpha, beta, {}, scheme, 1.0,
                         alpha2=alpha2, beta2=beta2)
                     scale = np.max(np.abs(g_array))
                     self.assertGreater(scale, 0.0)
@@ -118,10 +120,51 @@ class TestGSingleEntryMatchesArray(unittest.TestCase):
                         g_entry = qc_functions.getG_single_entry(
                             E, nP, L, nvecs[i], nvecs[j],
                             ell, mi-ell, ell, mj-ell, m1, m2, m3,
-                            alpha, beta, alpha2=alpha2, beta2=beta2)
+                            alpha, beta, three_scheme=scheme,
+                            alpha2=alpha2, beta2=beta2)
                         self.assertLess(
                             abs(g_entry-g_array[i*d+mi, j*d+mj]),
                             1.0e-13*scale)
+
+
+class TestGOriginalPoleNormalization(unittest.TestCase):
+    """The original pole puts the exchanged particle on shell.
+
+    The relativistic pole carries 1/(2 w1 L^3 (E-w1-w3+w2)); the
+    original pole replaces E-w1-w3+w2 by its on-shell value 2 w2, so
+    G_orig/G_rel = (E-w1-w3+w2)/(2 w2) entrywise, which tends to 1 at
+    the pole. Regression: getG_array used 1/(2 w1 w2 L^3), twice the
+    correct 1/(4 w1 w2 L^3)."""
+
+    def test_ratio_to_relativistic_pole(self):
+        nvecs = np.array([[0, 0, 0], [0, 0, 1], [1, 0, 0], [0, -1, 0],
+                          [1, 1, 0], [1, 0, 1]])
+        tbks = SimpleNamespace(nvec_arr=nvecs,
+                               nvecSQ_arr=(nvecs**2).sum(1))
+        m1, m2, m3 = 1.4, 1.0, 1.2
+        nP = np.array([0, 0, 1])
+        L = 4.6
+        E = 5.4
+        full = [0, len(nvecs)]
+        g = {}
+        for scheme in ['relativistic pole', 'original pole']:
+            g[scheme] = qc_functions.getG_array(
+                E, nP, L, m1, m2, m3, tbks, full, full, 0, 0,
+                -0.6, 0.0, {}, scheme, 1.0)
+        P = 2.0*np.pi*nP/L
+        for i, j in product(range(len(nvecs)), repeat=2):
+            p3 = 2.0*np.pi*nvecs[i]/L
+            p1 = 2.0*np.pi*nvecs[j]/L
+            p2 = P-p1-p3
+            omega1 = np.sqrt(m1**2+p1@p1)
+            omega2 = np.sqrt(m2**2+p2@p2)
+            omega3 = np.sqrt(m3**2+p3@p3)
+            g_rel = g['relativistic pole'][i, j]
+            if g_rel == 0.0:
+                continue
+            self.assertAlmostEqual(
+                g['original pole'][i, j]/g_rel,
+                (E-omega1-omega3+omega2)/(2.0*omega2), places=13)
 
 
 if __name__ == '__main__':

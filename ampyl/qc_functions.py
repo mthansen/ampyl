@@ -485,7 +485,7 @@ def __getG_array_core(E, L, m1, m2, m3, helper_data, ell1, ell2,
     omega3_mat = omegap1spec_mat_shell
 
     if three_scheme == 'original pole':
-        simple_factor_mat = 1.0/(2.0*omega1_mat*omega2_mat*L**3)
+        simple_factor_mat = 1.0/(4.0*omega1_mat*omega2_mat*L**3)
     elif three_scheme == 'relativistic pole':
         simple_factor_mat = 1.0/(2.0*omega1_mat*L**3
                                  * (E-omega1_mat-omega3_mat+omega2_mat))

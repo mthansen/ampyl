@@ -177,7 +177,7 @@ class G(Interpolable):
         print('cutoff params:', self.alpha, ',', self.beta)
 
         if self.qcis.tbis.three_scheme == 'original pole':
-            sf = '1./(2.*w1*w2*L**3)'
+            sf = '1./(4.*w1*w2*L**3)'
         elif self.qcis.tbis.three_scheme == 'relativistic pole':
             sf = '1./(2.*w1*L**3)\n    * 1./(E-w1-w3+w2)'
         else:
