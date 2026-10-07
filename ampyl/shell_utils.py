@@ -35,7 +35,6 @@ Created July 2022.
 ###############################################################################
 
 import numpy as np
-import warnings
 from .constants import FOURPI2, TWOPI
 from .constants import QC_IMPL_DEFAULTS
 
@@ -78,35 +77,52 @@ def _verify_irrep_is_known(qcis, irrep):
             f"known irreps are {sorted(known_irreps, key=str)}")
 
 
-def _get_masks_and_shells_for_k(k, E, L, tbks_entry, cindex, slice_index):
-    nP = k.qcis.fvs.nP
-    mask_slices = None
-    three_slice_index = k.qcis.sc_to_three_slice[cindex]
+def _get_zero_support_point(alpha, beta, threshold):
+    """Return the dimer sigma below which the cutoff H vanishes."""
+    return (1.0+alpha)*threshold**2/4.0-beta*((3.0-alpha)*threshold**2/4.0)
+
+
+def _get_active_shells(qcis, sc_index, E, L, tbks_entry):
+    """Return the shell mask and the active shells of one channel.
+
+    At nonzero total momentum with ``reduce_size``, a shell is active
+    iff the dimer invariant mass squared exceeds the zero-support point
+    of the cutoff on every momentum of the shell. The masses and the
+    cutoff parameters are those of channel ``sc_index``, so channels
+    sharing a TBKS entry can keep different shells. At zero total
+    momentum the TBKS entry already selects the shells and the mask is
+    ``None``.
+    """
+    nP = qcis.fvs.nP
+    shells = tbks_entry.shells
     if nP@nP == 0:
-        slice_entry = tbks_entry.shells[slice_index]
-    else:
-        sc_list_sorted = k.qcis.fcs.sc_list_sorted
-        slices_by_three_masses = k.qcis.fcs.slices_by_three_masses
-        inslice_index = 0
-        sc_index = slices_by_three_masses[three_slice_index][inslice_index]
-        sc = sc_list_sorted[sc_index]
-        mspec = sc.spectator.mass
-        kvecSQ_arr = FOURPI2*tbks_entry.nvecSQ_arr/L**2
-        kvec_arr = TWOPI*tbks_entry.nvec_arr/L
-        omk_arr = np.sqrt(mspec**2+kvecSQ_arr)
-        Pvec = TWOPI*nP/L
-        PmkSQ_arr = ((Pvec-kvec_arr)**2).sum(axis=1)
-        threshold = sc.first_dimer.mass + sc.second_dimer.mass
-        zero_support_point = _get_zero_support_point(k, threshold)
-        mask = (E-omk_arr)**2-PmkSQ_arr > zero_support_point
-        slices = tbks_entry.shells
-        mask_slices = []
-        for slice_entry in slices:
-            mask_slices = mask_slices\
-                + [mask[slice_entry[0]:slice_entry[1]].all()]
-        slices = list(np.array(slices)[mask_slices])
-        slice_entry = slices[slice_index]
-    return mask_slices, slice_entry
+        return None, shells
+    reduce_size = QC_IMPL_DEFAULTS['reduce_size']
+    if 'reduce_size' in qcis.fvs.qc_impl:
+        reduce_size = qcis.fvs.qc_impl['reduce_size']
+    if not reduce_size:
+        return len(shells)*[True], shells
+    sc = qcis.fcs.sc_list_sorted[sc_index]
+    mspec = sc.spectator.mass
+    threshold = sc.first_dimer.mass+sc.second_dimer.mass
+    alpha, beta = qcis.tbis.scheme_data[sc_index]
+    zero_support_point = _get_zero_support_point(alpha, beta, threshold)
+    kvecSQ_arr = FOURPI2*tbks_entry.nvecSQ_arr/L**2
+    kvec_arr = TWOPI*tbks_entry.nvec_arr/L
+    omk_arr = np.sqrt(mspec**2+kvecSQ_arr)
+    Pvec = TWOPI*nP/L
+    PmkSQ_arr = ((Pvec-kvec_arr)**2).sum(axis=1)
+    mask = (E-omk_arr)**2-PmkSQ_arr > zero_support_point
+    mask_shells = []
+    for shell in shells:
+        mask_shells = mask_shells+[mask[shell[0]:shell[1]].all()]
+    return mask_shells, list(np.array(shells)[mask_shells])
+
+
+def _get_masks_and_shells_for_k(k, E, L, tbks_entry, cindex, slice_index):
+    mask_slices, slices = _get_active_shells(k.qcis, cindex, E, L,
+                                             tbks_entry)
+    return mask_slices, slices[slice_index]
 
 
 def _get_masks_and_shells_for_nondiagonal(nondiagonal, E, L, tbks_entry,
@@ -116,24 +132,23 @@ def _get_masks_and_shells_for_nondiagonal(nondiagonal, E, L, tbks_entry,
     if col_tbks_entry is None:
         col_tbks_entry = tbks_entry
     nP = nondiagonal.qcis.fvs.nP
+    if nP@nP == 0:
+        return _mask_and_shell_helper_nPzero(
+            nondiagonal, tbks_entry, row_shell_index, col_shell_index,
+            col_tbks_entry)
     three_slice_index_row =\
         nondiagonal.qcis.sc_to_three_slice[cindex_row]
     three_slice_index_col =\
         nondiagonal.qcis.sc_to_three_slice[cindex_col]
-    three_slice_index = three_slice_index_row
-    if nP@nP == 0:
-        mask_row_shells, mask_col_shells, row_shell, col_shell =\
-            _mask_and_shell_helper_nPzero(
-                nondiagonal, tbks_entry, row_shell_index, col_shell_index,
-                col_tbks_entry)
-    else:
-        if three_slice_index_row != three_slice_index_col:
-            raise NotImplementedError(
-                "multi-slice nonzero-momentum G blocks are not supported")
-        mask_row_shells, mask_col_shells, row_shell, col_shell =\
-            _mask_and_shell_helper_nPnonzero(
-                nondiagonal, E, nP, L, tbks_entry,
-                row_shell_index, col_shell_index, three_slice_index)
+    if three_slice_index_row != three_slice_index_col:
+        raise NotImplementedError(
+            "multi-slice nonzero-momentum G blocks are not supported")
+    mask_row_shells, row_shells = _get_active_shells(
+        nondiagonal.qcis, cindex_row, E, L, tbks_entry)
+    mask_col_shells, col_shells = _get_active_shells(
+        nondiagonal.qcis, cindex_col, E, L, col_tbks_entry)
+    row_shell = list(row_shells[row_shell_index])
+    col_shell = list(col_shells[col_shell_index])
     return mask_row_shells, mask_col_shells, row_shell, col_shell
 
 
@@ -149,99 +164,7 @@ def _mask_and_shell_helper_nPzero(nondiagonal, tbks_entry,
     return mask_row_shells, mask_col_shells, row_shell, col_shell
 
 
-def _mask_and_shell_helper_nPnonzero(nondiagonal, E, nP, L, tbks_entry,
-                                     row_shell_index, col_shell_index,
-                                     three_slice_index):
-    reduce_size = QC_IMPL_DEFAULTS['reduce_size']
-    if 'reduce_size' in nondiagonal.qcis.fvs.qc_impl:
-        reduce_size = nondiagonal.qcis.fvs.qc_impl['reduce_size']
-    if reduce_size:
-        sc_index = nondiagonal.qcis.fcs.slices_by_three_masses[0][0]
-        sc = nondiagonal.qcis.fcs.sc_list_sorted[sc_index]
-        mspec = sc.spectator.mass
-        m2 = sc.first_dimer.mass
-        m3 = sc.second_dimer.mass
-        kvecSQ_arr = FOURPI2*tbks_entry.nvecSQ_arr/L**2
-        kvec_arr = TWOPI*tbks_entry.nvec_arr/L
-        omk_arr = np.sqrt(mspec**2+kvecSQ_arr)
-        Pvec = TWOPI*nP/L
-        PmkSQ_arr = ((Pvec-kvec_arr)**2).sum(axis=1)
-        threshold = m2+m3
-        zero_support_point = _get_zero_support_point(nondiagonal, threshold)
-        mask_row = (E-omk_arr)**2-PmkSQ_arr > zero_support_point
-        row_shells = tbks_entry.shells
-        mask_row_shells = []
-        for row_shell in row_shells:
-            mask_row_shells = mask_row_shells\
-                    + [mask_row[row_shell[0]:row_shell[1]].all()]
-        row_shells = list(np.array(row_shells)[mask_row_shells])
-        row_shell = list(row_shells[row_shell_index])
-    else:
-        row_shells = tbks_entry.shells
-        mask_row_shells = len(row_shells)*[True]
-        row_shell = list(row_shells[row_shell_index])
-
-    if reduce_size:
-        mask_col = mask_row
-        col_shells = tbks_entry.shells
-        mask_col_shells = []
-        for col_shell in col_shells:
-            mask_col_shells = mask_col_shells\
-                    + [mask_col[col_shell[0]:col_shell[1]].all()]
-        col_shells = list(np.array(col_shells)[mask_col_shells])
-        col_shell = list(col_shells[col_shell_index])
-    else:
-        col_shells = tbks_entry.shells
-        mask_col_shells = len(col_shells)*[True]
-        col_shell = list(col_shells[col_shell_index])
-    return mask_row_shells, mask_col_shells, row_shell, col_shell
-
-
 def _get_masks_and_shells_for_f(f, E, L, tbks_entry, cindex, slice_index):
-    nP = f.qcis.fvs.nP
-    mask_slices = None
-    # three_slice_index\
-    #     = self.qcis._get_three_slice_index(cindex)
-    if nP@nP == 0:
-        slice_entry = tbks_entry.shells[slice_index]
-    else:
-        reduce_size = QC_IMPL_DEFAULTS['reduce_size']
-        if 'reduce_size' in f.qcis.fvs.qc_impl:
-            reduce_size = f.qcis.fvs.qc_impl['reduce_size']
-        if reduce_size:
-            sc_index = f.qcis.fcs.slices_by_three_masses[0][0]
-            sc = f.qcis.fcs.sc_list_sorted[sc_index]
-            mspec = sc.spectator.mass
-            m2 = sc.first_dimer.mass
-            m3 = sc.second_dimer.mass
-            kvecSQ_arr = FOURPI2*tbks_entry.nvecSQ_arr/L**2
-            kvec_arr = TWOPI*tbks_entry.nvec_arr/L
-            omk_arr = np.sqrt(mspec**2+kvecSQ_arr)
-            Pvec = TWOPI*nP/L
-            PmkSQ_arr = ((Pvec-kvec_arr)**2).sum(axis=1)
-            threshold = m2+m3
-            zero_support_point = _get_zero_support_point(f, threshold)
-            mask = (E-omk_arr)**2-PmkSQ_arr > zero_support_point
-            slices = tbks_entry.shells
-            mask_slices = []
-            for slice_entry in slices:
-                mask_slices = mask_slices\
-                    + [mask[slice_entry[0]:slice_entry[1]].all()]
-            slices = list(np.array(slices)[mask_slices])
-            slice_entry = slices[slice_index]
-        else:
-            slice_entry = tbks_entry.shells[slice_index]
-            mask_slices = [True]*len(tbks_entry.shells)
-    return mask_slices, slice_entry
-
-
-def _get_zero_support_point(qcmatrix, threshold):
-    warnings.warn("The zero support point is currently hardcoded to be "
-                  "the same for all QC implementations. This may not be "
-                  "correct for all implementations.")
-    if hasattr(qcmatrix, 'alpha') and hasattr(qcmatrix, 'beta'):
-        alpha = qcmatrix.alpha
-        beta = qcmatrix.beta
-    else:
-        alpha, beta = qcmatrix.qcis.tbis.scheme_data[0]
-    return (1.0+alpha)*threshold**2/4.0-beta*((3.0-alpha)*threshold**2/4.0)
+    mask_slices, slices = _get_active_shells(f.qcis, cindex, E, L,
+                                             tbks_entry)
+    return mask_slices, slices[slice_index]

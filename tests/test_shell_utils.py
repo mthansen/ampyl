@@ -34,20 +34,20 @@ Created August 2026.
 ###############################################################################
 
 import unittest
-import warnings
 from types import SimpleNamespace
 import numpy as np
 from ampyl import shell_utils
 from ampyl.constants import TWOPI
 
 
-def _make_qcmatrix(nP, qc_impl=None, alpha=-1.0, beta=0.0,
+def _make_qcmatrix(nP, qc_impl=None, scheme_data=None,
                    sc_to_three_slice=None):
     """Build a minimal stand-in for a QC matrix element (K, F or G).
 
-    All masses are 1 so the two-particle threshold is 2, and with the
-    default alpha = -1, beta = 0 the zero support point vanishes and the
-    shell mask reduces to (E-omega_k)^2 - (P-k)^2 > 0.
+    Two spectator channels with all masses 1, so the two-particle
+    threshold is 2. With the default alpha = -1, beta = 0 in both
+    channels the zero support point vanishes and the shell mask reduces
+    to (E-omega_k)^2 - (P-k)^2 > 0.
     """
     sc = SimpleNamespace(
         spectator=SimpleNamespace(mass=1.0),
@@ -58,9 +58,11 @@ def _make_qcmatrix(nP, qc_impl=None, alpha=-1.0, beta=0.0,
                             qc_impl={} if qc_impl is None else qc_impl),
         sc_to_three_slice=([0, 0] if sc_to_three_slice is None
                            else sc_to_three_slice),
-        fcs=SimpleNamespace(sc_list_sorted=[sc],
-                            slices_by_three_masses=[[0]]),
-        tbis=SimpleNamespace(scheme_data=[(alpha, beta)]))
+        fcs=SimpleNamespace(sc_list_sorted=[sc, sc],
+                            slices_by_three_masses=[[0, 1]]),
+        tbis=SimpleNamespace(scheme_data=(
+            [(-1.0, 0.0), (-1.0, 0.0)] if scheme_data is None
+            else scheme_data)))
     return SimpleNamespace(qcis=qcis)
 
 
@@ -116,30 +118,46 @@ class TestVerifyIrrepIsKnown(unittest.TestCase):
 class TestGetZeroSupportPoint(unittest.TestCase):
     """Tests for the zero-support-point evaluation."""
 
-    def test_uses_scheme_data_when_no_attributes(self):
-        qcmatrix = _make_qcmatrix(_NP_ZERO, alpha=-1.0, beta=0.0)
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            value = shell_utils._get_zero_support_point(qcmatrix, 2.0)
-        self.assertAlmostEqual(value, 0.0, places=12)
+    def test_vanishes_for_standard_cutoff(self):
+        self.assertAlmostEqual(
+            shell_utils._get_zero_support_point(-1.0, 0.0, 2.0), 0.0,
+            places=12)
 
-    def test_uses_alpha_beta_attributes_when_present(self):
-        qcmatrix = _make_qcmatrix(_NP_ZERO)
-        qcmatrix.alpha = 0.5
-        qcmatrix.beta = 0.25
+    def test_general_alpha_beta(self):
         threshold = 2.0
         expected = (1.5*threshold**2/4.
                     - 0.25*(2.5*threshold**2/4.))
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            value = shell_utils._get_zero_support_point(qcmatrix, threshold)
-        self.assertAlmostEqual(value, expected, places=12)
+        self.assertAlmostEqual(
+            shell_utils._get_zero_support_point(0.5, 0.25, threshold),
+            expected, places=12)
 
-    def test_warns_about_hardcoded_scheme(self):
-        qcmatrix = _make_qcmatrix(_NP_ZERO)
-        with self.assertWarns(UserWarning):
-            warnings.simplefilter("always")
-            shell_utils._get_zero_support_point(qcmatrix, 2.0)
+
+class TestGetActiveShells(unittest.TestCase):
+    """Each channel's shells are selected by its own cutoff."""
+
+    def test_channels_use_their_own_scheme_data(self):
+        # sigma on the momenta [0, 0, 0], [1, 0, 0], [-1, 0, 0] is
+        # 1.25, 2.25, -3.75; alpha = 0 puts the zero support point at
+        # 1 (shell [0, 1] kept), alpha = 0.5 at 1.5 (both cut)
+        qcis = _make_qcmatrix(
+            _NP_UNIT, scheme_data=[(0.0, 0.0), (0.5, 0.0)]).qcis
+        tbks_entry = _make_tbks_entry()
+        mask_0, shells_0 = shell_utils._get_active_shells(
+            qcis, 0, _E, _L, tbks_entry)
+        mask_1, shells_1 = shell_utils._get_active_shells(
+            qcis, 1, _E, _L, tbks_entry)
+        self.assertEqual(mask_0, [True, False])
+        self.assertEqual([list(shell) for shell in shells_0], [[0, 1]])
+        self.assertEqual(mask_1, [False, False])
+        self.assertEqual(shells_1, [])
+
+    def test_rest_frame_returns_all_shells_without_mask(self):
+        qcis = _make_qcmatrix(_NP_ZERO).qcis
+        tbks_entry = _make_tbks_entry()
+        mask, shells = shell_utils._get_active_shells(
+            qcis, 1, _E, _L, tbks_entry)
+        self.assertIsNone(mask)
+        self.assertEqual(shells, [[0, 1], [1, 3]])
 
 
 class TestGetMasksAndShellsForK(unittest.TestCase):
@@ -156,22 +174,18 @@ class TestGetMasksAndShellsForK(unittest.TestCase):
     def test_moving_frame_masks_shells_above_threshold(self):
         k = _make_qcmatrix(_NP_UNIT)
         tbks_entry = _make_tbks_entry()
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            mask_slices, slice_entry = \
-                shell_utils._get_masks_and_shells_for_k(
-                    k, _E, _L, tbks_entry, 0, 0)
+        mask_slices, slice_entry = \
+            shell_utils._get_masks_and_shells_for_k(
+                k, _E, _L, tbks_entry, 0, 0)
         self.assertEqual(mask_slices, [True, False])
         self.assertEqual(list(slice_entry), [0, 1])
 
     def test_moving_frame_keeps_all_shells_at_high_energy(self):
         k = _make_qcmatrix(_NP_UNIT)
         tbks_entry = _make_tbks_entry()
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            mask_slices, slice_entry = \
-                shell_utils._get_masks_and_shells_for_k(
-                    k, 6.0, _L, tbks_entry, 0, 1)
+        mask_slices, slice_entry = \
+            shell_utils._get_masks_and_shells_for_k(
+                k, 6.0, _L, tbks_entry, 0, 1)
         self.assertEqual(mask_slices, [True, True])
         self.assertEqual(list(slice_entry), [1, 3])
 
@@ -190,11 +204,9 @@ class TestGetMasksAndShellsForF(unittest.TestCase):
     def test_moving_frame_with_reduce_size_masks_shells(self):
         f = _make_qcmatrix(_NP_UNIT, qc_impl={'reduce_size': True})
         tbks_entry = _make_tbks_entry()
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            mask_slices, slice_entry = \
-                shell_utils._get_masks_and_shells_for_f(
-                    f, _E, _L, tbks_entry, 0, 0)
+        mask_slices, slice_entry = \
+            shell_utils._get_masks_and_shells_for_f(
+                f, _E, _L, tbks_entry, 0, 0)
         self.assertEqual(mask_slices, [True, False])
         self.assertEqual(list(slice_entry), [0, 1])
 
@@ -209,10 +221,8 @@ class TestGetMasksAndShellsForF(unittest.TestCase):
     def test_moving_frame_defaults_to_reduce_size(self):
         f = _make_qcmatrix(_NP_UNIT)
         tbks_entry = _make_tbks_entry()
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            mask_slices, _ = shell_utils._get_masks_and_shells_for_f(
-                f, _E, _L, tbks_entry, 0, 0)
+        mask_slices, _ = shell_utils._get_masks_and_shells_for_f(
+            f, _E, _L, tbks_entry, 0, 0)
         self.assertEqual(mask_slices, [True, False])
 
 
@@ -265,15 +275,34 @@ class TestGetMasksAndShellsForNondiagonal(unittest.TestCase):
         nondiagonal = _make_qcmatrix(
             _NP_UNIT, qc_impl={'reduce_size': True})
         tbks_entry = _make_tbks_entry()
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            mask_row, mask_col, row_shell, col_shell = \
-                shell_utils._get_masks_and_shells_for_nondiagonal(
-                    nondiagonal, _E, _L, tbks_entry, 0, 1, 0, 0)
+        mask_row, mask_col, row_shell, col_shell = \
+            shell_utils._get_masks_and_shells_for_nondiagonal(
+                nondiagonal, _E, _L, tbks_entry, 0, 1, 0, 0)
         self.assertEqual(mask_row, [True, False])
         self.assertEqual(mask_col, [True, False])
         self.assertEqual(row_shell, [0, 1])
         self.assertEqual(col_shell, [0, 1])
+
+    def test_moving_frame_masks_rows_and_columns_per_channel(self):
+        # at E = 3.6, sigma on [0, 0, 0], [1, 0, 0], [-1, 0, 0] is
+        # 5.76, 4.78, 0.78: channel 0 (zero support point 0) keeps both
+        # shells, channel 1 (alpha = 0, zero support point 1) only the
+        # first
+        nondiagonal = _make_qcmatrix(
+            _NP_UNIT, scheme_data=[(-1.0, 0.0), (0.0, 0.0)])
+        tbks_entry = _make_tbks_entry()
+        mask_row, mask_col, row_shell, col_shell = \
+            shell_utils._get_masks_and_shells_for_nondiagonal(
+                nondiagonal, 3.6, _L, tbks_entry, 0, 1, 1, 0)
+        self.assertEqual(mask_row, [True, True])
+        self.assertEqual(mask_col, [True, False])
+        self.assertEqual(row_shell, [1, 3])
+        self.assertEqual(col_shell, [0, 1])
+        mask_row, mask_col, _, _ = \
+            shell_utils._get_masks_and_shells_for_nondiagonal(
+                nondiagonal, 3.6, _L, tbks_entry, 1, 0, 0, 1)
+        self.assertEqual(mask_row, [True, False])
+        self.assertEqual(mask_col, [True, True])
 
     def test_moving_frame_without_reduce_size_keeps_all_shells(self):
         nondiagonal = _make_qcmatrix(

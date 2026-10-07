@@ -40,7 +40,6 @@ from itertools import product
 from . import shell_utils
 from . import check_utils
 from .constants import QC_IMPL_DEFAULTS
-from .constants import TWOPI
 from .constants import FOURPI2
 from .constants import EPSILON4
 from .constants import EPSILON10
@@ -318,14 +317,12 @@ def _get_all_nvecSQs_by_shell(interpolable, E=5.0, L=5.0, project=False,
             print('nP = [0 0 0] indexing')
         tbks_sub_indices = interpolable.qcis.get_tbks_sub_indices(E=E, L=L)
         tbks_entries = []
-        slices_by_three_slice = []
         slot_offset = 1 if interpolable.qcis.n_two_channels > 0 else 0
         for three_slice_index in range(interpolable.qcis.fcs.n_three_slices):
             slot_index = three_slice_index+slot_offset
             tbks_entry = interpolable.qcis.tbks_list[slot_index][
                 tbks_sub_indices[slot_index]]
             tbks_entries.append(tbks_entry)
-            slices_by_three_slice.append(tbks_entry.shells)
         if interpolable.qcis.verbosity >= 2:
             print('tbks_sub_indices =', tbks_sub_indices)
     else:
@@ -335,44 +332,12 @@ def _get_all_nvecSQs_by_shell(interpolable, E=5.0, L=5.0, project=False,
                 "only for zero total momentum")
         if interpolable.qcis.verbosity >= 2:
             print('nP != [0 0 0] indexing')
-        sc_index = interpolable.qcis.fcs.slices_by_three_masses[0][0]
-        sc = interpolable.qcis.fcs.sc_list_sorted[sc_index]
-        mspec = sc.spectator.mass
-        m2 = sc.first_dimer.mass
-        m3 = sc.second_dimer.mass
         ibest = interpolable.qcis.get_shellset_index(E, L)
         if len(interpolable.qcis.tbks_list) > 1:
             raise ValueError("get_value within G assumes tbks_list is "
                              + "length one.")
         tbks_entry = interpolable.qcis.tbks_list[0][ibest]
-        kvecSQ_arr = FOURPI2*tbks_entry.nvecSQ_arr/L**2
-        kvec_arr = TWOPI*tbks_entry.nvec_arr/L
-        omk_arr = np.sqrt(mspec**2+kvecSQ_arr)
-        Pvec = TWOPI*nP/L
-        PmkSQ_arr = ((Pvec-kvec_arr)**2).sum(axis=1)
-        threshold = m2+m3
-        zero_support_point = shell_utils._get_zero_support_point(
-            interpolable, threshold)
-        mask = (E-omk_arr)**2-PmkSQ_arr > zero_support_point
-        if interpolable.qcis.verbosity >= 2:
-            print('mask =')
-            print(mask)
-
-        reduce_size = QC_IMPL_DEFAULTS['reduce_size']
-        if 'reduce_size' in interpolable.qcis.fvs.qc_impl:
-            reduce_size = interpolable.qcis.fvs.qc_impl['reduce_size']
-        if reduce_size:
-            mask_slices = []
-            slices = tbks_entry.shells
-            for slice_entry in slices:
-                mask_slices = mask_slices\
-                    + [mask[slice_entry[0]:slice_entry[1]].all()]
-            slices = list((np.array(slices))[mask_slices])
-        else:
-            slices = tbks_entry.shells
-            mask_slices = [True]*len(slices)
         tbks_entries = [tbks_entry]
-        slices_by_three_slice = [slices]
 
     nvecSQs_final = [[]]
     if interpolable.qcis.verbosity >= 2:
@@ -405,10 +370,12 @@ def _get_all_nvecSQs_by_shell(interpolable, E=5.0, L=5.0, project=False,
                 sc_row_ind]-slot_offset
             col_three_slice = interpolable.qcis.sc_to_three_slice[
                 sc_col_ind]-slot_offset
-            row_slices = slices_by_three_slice[row_three_slice]
-            col_slices = slices_by_three_slice[col_three_slice]
             row_tbks_entry = tbks_entries[row_three_slice]
             col_tbks_entry = tbks_entries[col_three_slice]
+            _, row_slices = shell_utils._get_active_shells(
+                interpolable.qcis, sc_row_ind, E, L, row_tbks_entry)
+            _, col_slices = shell_utils._get_active_shells(
+                interpolable.qcis, sc_col_ind, E, L, col_tbks_entry)
             nvecSQs_inner = [[]]
             for row_shell_index in range(len(row_slices)):
                 nvecSQs_inner_row = []

@@ -38,8 +38,6 @@ import numpy as np
 from scipy.linalg import block_diag
 from . import shell_utils
 from . import check_utils
-from .constants import TWOPI
-from .constants import FOURPI2
 from . import qc_functions
 import warnings
 warnings.simplefilter("once")
@@ -123,30 +121,7 @@ class K:
                     "multi-slice K is implemented only for zero total "
                     "momentum")
             ibest = self.qcis.get_shellset_index(E, L)
-            sc = self.qcis.fcs.sc_list_sorted[0]
-            mspec = sc.spectator.mass
-            m2 = sc.first_dimer.mass
-            m3 = sc.second_dimer.mass
             tbks_entry = self.qcis.tbks_list[0][ibest]
-            kvecSQ_arr = FOURPI2*tbks_entry.nvecSQ_arr/L**2
-            kvec_arr = TWOPI*tbks_entry.nvec_arr/L
-            omk_arr = np.sqrt(mspec**2+kvecSQ_arr)
-            Pvec = TWOPI*nP/L
-            PmkSQ_arr = ((Pvec-kvec_arr)**2).sum(axis=1)
-            threshold = m2+m3
-            zero_support_point = shell_utils._get_zero_support_point(
-                self, threshold)
-            mask = (E-omk_arr)**2-PmkSQ_arr > zero_support_point
-            if self.qcis.verbosity >= 2:
-                print('mask =')
-                print(mask)
-
-            mask_slices = []
-            slices = tbks_entry.shells
-            for slice_entry in slices:
-                mask_slices = mask_slices\
-                    + [mask[slice_entry[0]:slice_entry[1]].all()]
-            slices = list((np.array(slices))[mask_slices])
 
         k_final_list = []
         for sc_ind in range(len(self.qcis.fcs.sc_list_sorted)):
@@ -165,10 +140,11 @@ class K:
                 three_slice_index = self.qcis.sc_to_three_slice[sc_ind]
                 tbks_entry = self.qcis.tbks_list[three_slice_index][
                     tbks_sub_indices[three_slice_index]]
-                slices = tbks_entry.shells
-                mspec = sc.spectator.mass
-                m2 = sc.first_dimer.mass
-                m3 = sc.second_dimer.mass
+            _, slices = shell_utils._get_active_shells(
+                self.qcis, sc_ind, E, L, tbks_entry)
+            mspec = sc.spectator.mass
+            m2 = sc.first_dimer.mass
+            m3 = sc.second_dimer.mass
             cindex = sc_ind
             for slice_index in range(len(slices)):
                 k_tmp = self.get_shell(

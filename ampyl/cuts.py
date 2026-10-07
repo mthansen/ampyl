@@ -40,7 +40,6 @@ from . import shell_utils
 from . import check_utils
 from . import interpolable_utils
 from .constants import QC_IMPL_DEFAULTS
-from .constants import TWOPI
 from .constants import FOURPI2
 from . import qc_functions
 from .spaces import QCIndexSpace
@@ -96,10 +95,9 @@ class G(Interpolable):
         if projecting and irrep_not_in_keys:
             raise ValueError("irrep "+str(irrep)+" not in "
                              "qcis.proj_dict.keys()")
-        tbks_entries, slices_by_three_slice = self._get_entries_and_slices(
-            E, L, nP)
+        tbks_entries = self._get_entries(E, L, nP)
         g_final = self._get_value_from_tbks(
-            E, L, project, irrep, tbks_entries, slices_by_three_slice)
+            E, L, project, irrep, tbks_entries)
         return g_final
 
     def _get_all_nvecSQs_for_pole_detection(self, nvecSQs_by_shell):
@@ -189,21 +187,19 @@ class G(Interpolable):
             sf = sf+'\n    * 1./(2.0*w3)'
         print('G = YY*H1*H2\n    * '+sf+'\n    * 1./(E-w1-w2-w3)\n')
 
-    def _get_entries_and_slices(self, E, L, nP):
-        """Return the relevant TBKS entries and shell slices for G."""
+    def _get_entries(self, E, L, nP):
+        """Return the relevant TBKS entry of each three-particle slice."""
         if nP@nP == 0:
             if self.qcis.verbosity >= 2:
                 print('nP = [0 0 0] indexing')
             tbks_sub_indices = self.qcis.get_tbks_sub_indices(E=E, L=L)
             tbks_entries = []
-            slices_by_three_slice = []
             slot_offset = 1 if self.qcis.n_two_channels > 0 else 0
             for three_slice_index in range(self.qcis.fcs.n_three_slices):
                 slot_index = three_slice_index+slot_offset
                 tbks_entry = self.qcis.tbks_list[slot_index][
                     tbks_sub_indices[slot_index]]
                 tbks_entries.append(tbks_entry)
-                slices_by_three_slice.append(tbks_entry.shells)
             if self.qcis.verbosity >= 2:
                 print('tbks_sub_indices =', tbks_sub_indices)
         else:
@@ -213,44 +209,14 @@ class G(Interpolable):
                 )
             if self.qcis.verbosity >= 2:
                 print('nP != [0 0 0] indexing')
-            sc_index = self.qcis.fcs.slices_by_three_masses[0][0]
-            sc = self.qcis.fcs.sc_list_sorted[sc_index]
-            mspec = sc.spectator.mass
-            m2 = sc.first_dimer.mass
-            m3 = sc.second_dimer.mass
             ibest = self.qcis.get_shellset_index(E, L)
             if len(self.qcis.tbks_list) > 1:
                 raise ValueError("get_value within G assumes tbks_list is "
                                  + "length one.")
-            tbks_entry = self.qcis.tbks_list[0][ibest]
-            kvecSQ_arr = FOURPI2*tbks_entry.nvecSQ_arr/L**2
-            kvec_arr = TWOPI*tbks_entry.nvec_arr/L
-            omk_arr = np.sqrt(mspec**2+kvecSQ_arr)
-            Pvec = TWOPI*nP/L
-            PmkSQ_arr = ((Pvec-kvec_arr)**2).sum(axis=1)
-            threshold = m2+m3
-            zero_support_point = shell_utils._get_zero_support_point(
-                self, threshold)
-            mask = (E-omk_arr)**2-PmkSQ_arr > zero_support_point
-            if self.qcis.verbosity >= 2:
-                print('mask =')
-                print(mask)
-            mask_slices = []
-            slices = tbks_entry.shells
-            reduce_size = QC_IMPL_DEFAULTS['reduce_size']
-            if 'reduce_size' in self.qcis.fvs.qc_impl:
-                reduce_size = self.qcis.fvs.qc_impl['reduce_size']
-            if reduce_size:
-                for slice_entry in slices:
-                    mask_slices = mask_slices\
-                        + [mask[slice_entry[0]:slice_entry[1]].all()]
-                slices = list((np.array(slices))[mask_slices])
-            tbks_entries = [tbks_entry]
-            slices_by_three_slice = [slices]
-        return tbks_entries, slices_by_three_slice
+            tbks_entries = [self.qcis.tbks_list[0][ibest]]
+        return tbks_entries
 
-    def _get_value_from_tbks(self, E, L, project, irrep, tbks_entries,
-                             slices_by_three_slice):
+    def _get_value_from_tbks(self, E, L, project, irrep, tbks_entries):
         """Assemble the full G matrix from a TBKS entry."""
         g_final = []
         if self.qcis.verbosity >= 2:
@@ -296,8 +262,10 @@ class G(Interpolable):
                     sc_row_ind, sc_col_ind)
                 row_tbks_entry = tbks_entries[row_three_slice]
                 col_tbks_entry = tbks_entries[col_three_slice]
-                row_slices = slices_by_three_slice[row_three_slice]
-                col_slices = slices_by_three_slice[col_three_slice]
+                _, row_slices = shell_utils._get_active_shells(
+                    self.qcis, sc_row_ind, E, L, row_tbks_entry)
+                _, col_slices = shell_utils._get_active_shells(
+                    self.qcis, sc_col_ind, E, L, col_tbks_entry)
                 g_inner = []
                 for row_shell_index in range(len(row_slices)):
                     g_inner_row = []
@@ -718,60 +686,16 @@ class F(Interpolable):
 
         if nP@nP == 0:
             tbks_sub_indices = self.qcis.get_tbks_sub_indices(E=E, L=L)
-            mask = None
         else:
             if self.qcis.fcs.n_three_slices != 1:
                 raise NotImplementedError(
                     "multi-slice F is implemented only for zero total "
                     "momentum")
-            three_slice_index = 0
-            cindex = 0
-            sc_index = self.qcis.fcs.slices_by_three_masses[0][0]
-            sc = self.qcis.fcs.sc_list_sorted[sc_index]
-            m1 = sc.spectator.mass
-            m2 = sc.first_dimer.mass
-            m3 = sc.second_dimer.mass
             ibest = self.qcis.get_shellset_index(E, L)
-            reduce_size = QC_IMPL_DEFAULTS['reduce_size']
-            if 'reduce_size' in self.qcis.fvs.qc_impl:
-                reduce_size = self.qcis.fvs.qc_impl['reduce_size']
-            if reduce_size:
-                mspec = m1
-                if len(self.qcis.tbks_list) > 1:
-                    raise ValueError("get_value within F assumes tbks_list is "
-                                     "length one.")
-                three_slice_index = 0
-                tbks_entry = self.qcis.tbks_list[three_slice_index][ibest]
-                kvecSQ_arr = FOURPI2*tbks_entry.nvecSQ_arr/L**2
-                kvec_arr = TWOPI*tbks_entry.nvec_arr/L
-                omk_arr = np.sqrt(mspec**2+kvecSQ_arr)
-                Pvec = TWOPI*nP/L
-                PmkSQ_arr = ((Pvec-kvec_arr)**2).sum(axis=1)
-                threshold = m2+m3
-                zero_support_point = shell_utils._get_zero_support_point(
-                    self, threshold)
-                mask = (E-omk_arr)**2-PmkSQ_arr > zero_support_point
-                if self.qcis.verbosity >= 2:
-                    print('mask =')
-                    print(mask)
-                mask_slices = []
-                slices = tbks_entry.shells
-                if self.qcis.verbosity >= 2:
-                    print('slices =')
-                    print(slices)
-                for slice_entry in slices:
-                    mask_slices = mask_slices\
-                        + [mask[slice_entry[0]:slice_entry[1]].all()]
-                slices = list((np.array(slices))[mask_slices])
-                if self.qcis.verbosity >= 2:
-                    print('mask_slices =')
-                    print(mask_slices)
-                    print('range for sc_ind =')
-                    print(range(len(self.qcis.fcs.sc_list_sorted)))
-            else:
-                tbks_entry = self.qcis.tbks_list[three_slice_index][ibest]
-                slices = tbks_entry.shells
-                mask = [True]*len(tbks_entry.nvecSQ_arr)
+            if len(self.qcis.tbks_list) > 1:
+                raise ValueError("get_value within F assumes tbks_list is "
+                                 "length one.")
+            tbks_entry = self.qcis.tbks_list[0][ibest]
         f_final_list = []
         for sc_ind in range(len(self.qcis.fcs.sc_list_sorted)):
             sc = self.qcis.fcs.sc_list_sorted[sc_ind]
@@ -788,11 +712,12 @@ class F(Interpolable):
                 three_slice_index = self.qcis.sc_to_three_slice[sc_ind]
                 tbks_entry = self.qcis.tbks_list[three_slice_index][
                     tbks_sub_indices[three_slice_index]]
-                slices = tbks_entry.shells
-                m1 = sc.spectator.mass
-                m2 = sc.first_dimer.mass
-                m3 = sc.second_dimer.mass
-                cindex = sc_ind
+            mask, slices = shell_utils._get_active_shells(
+                self.qcis, sc_ind, E, L, tbks_entry)
+            m1 = sc.spectator.mass
+            m2 = sc.first_dimer.mass
+            m3 = sc.second_dimer.mass
+            cindex = sc_ind
             for slice_index in range(len(slices)):
                 if self.qcis.verbosity >= 2:
                     print('get_shell is receiving:')
